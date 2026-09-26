@@ -30,7 +30,7 @@ const Walrein = (() => {
   const DEFAULT = { headPitch: 0.12, headYaw: 0, mouth: 0, eyes: 'open', squash: 0, flipper: 0, side: 1 };
 
   const K = 1.08;
-  const OX = 38;
+  const OX = 32;
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -116,8 +116,8 @@ const Walrein = (() => {
     };
 
     /* --- torso, rear, tail --- */
-    const torso = chain(root, T(-14, 45, 0), R(M3.rz(0.14)));
-    const torsoP = ell(torso, [104, 57, 68], { part: 1, grp: 1 });
+    const torso = chain(root, T(-12, 45, 0), R(M3.rz(0.14)));
+    const torsoP = ell(torso, [100, 57, 68], { part: 1, grp: 1 });
     torsoP.mat = bodyMat(torsoP);
     const rear = chain(root, T(-92, 36, 0), R(M3.rz(0.32)));
     const rearP = ell(rear, [54, 32, 46], { part: 1, grp: 1 });
@@ -128,8 +128,8 @@ const Walrein = (() => {
     prims.push(torsoP, rearP, tailP);
     const flukeBase = chain(tailS, T(-18, 2, 0));
     for (const side of [1, -1]) {
-      const lobe = chain(flukeBase, R(M3.ry(side * 0.5)), R(M3.rx(-side * 0.62)), T(-30, 0, 0), R(M3.rz(-0.12)));
-      prims.push(ell(lobe, [38, 8, 20], {
+      const lobe = chain(flukeBase, R(M3.ry(side * 0.5)), R(M3.rx(-side * 0.62)), T(-27, 0, 0), R(M3.rz(-0.12)));
+      prims.push(ell(lobe, [34, 8, 19], {
         part: 20, grp: 20,
         mat: (s) => (Math.abs(s[0] + 0.1) < 0.1 ? code(BAND) : code(FLIP)),
       }));
@@ -293,6 +293,6 @@ const Walrein = (() => {
 
   return {
     build, render, PAL, MAT, DEFAULT,
-    meta: { heightM: 1.4, bw: 348, bh: 288, oy: 0.92 },
+    meta: { heightM: 1.4, bw: 384, bh: 300, oy: 0.923 },
   };
 })();

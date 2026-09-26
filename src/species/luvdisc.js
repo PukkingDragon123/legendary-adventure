@@ -46,7 +46,7 @@ const Luvdisc = (() => {
     { c: [10, 32, 0], r: [28.8, 6.4, THK * 0.55], a: 1.18 }, // lower front edge
   ];
   // lips: two small ellipsoids converging at the front (the mouth line is their seam)
-  const LIP_C = [19, 49.5, 0];
+  const LIP_C = [18.4, 49.5, 0];
 
   // ---- face: eye and cheek positions on the side of the body (model units)
   const EYE_P = [0.5, 59.5], CHEEK_P = [-4.2, 50];
@@ -89,13 +89,15 @@ const Luvdisc = (() => {
 
     // --- lips (front-most): a round blob plus two beak halves converging on a point;
     //     the mouth line is a decal in the mid-plane, so it reads from either side
+    // kiss: the pucker pushes forward while the lips' base stays anchored in the body
     const k = Math.max(0, Math.min(1, P.kiss));
-    const lipBase = chain(body, T(LIP_C[0] + k * 3.5, LIP_C[1], 0), R(M3.diag(1 + k * 0.1, 1 + k * 0.06, 1 + k * 0.1)));
-    const bt = 0.55 + k * 0.2, by = 2.3 - k * 0.3;
-    prims.push(ellF(chain(lipBase, T(4.6, by, 0), R(M3.rz(-bt))), [6.8, 3.7, 6.2], 5, 5, M_LIPS));
-    prims.push(ellF(chain(lipBase, T(4.6, -by, 0), R(M3.rz(bt))), [6.8, 3.7, 6.2], 5, 5, M_LIPS));
-    const blob = ellF(lipBase, [8.6, 8.2, 8.6], 5, 5, M_LIPS);
-    blob.lines = [{ pts: [[1.28, 0, 0], [0.62, 0.02, 0], [0.2, 0.06, 0]], tone: 1, mat: LIPS, useLn: true }];
+    const lipBase = chain(body, T(LIP_C[0] + k * 1.6, LIP_C[1], 0), R(M3.diag(1, 1 + k * 0.06, 1 + k * 0.1)));
+    const bx = 9.2 * (1 + k * 0.3), bt = 0.55 + k * 0.2, by = 2.3 - k * 0.3, fx = bx - 4.6;
+    prims.push(ellF(chain(lipBase, T(fx, by, 0), R(M3.rz(-bt))), [6.8, 3.7, 6.2], 5, 5, M_LIPS));
+    prims.push(ellF(chain(lipBase, T(fx, -by, 0), R(M3.rz(bt))), [6.8, 3.7, 6.2], 5, 5, M_LIPS));
+    const blob = ellF(lipBase, [bx, 8.2, 8.6], 5, 5, M_LIPS);
+    const tip = (fx + 6.8 * Math.cos(bt) * 0.98) / bx;
+    blob.lines = [{ pts: [[tip, 0, 0], [tip * 0.5, 0.02, 0], [tip * 0.18, 0.06, 0]], tone: 1, mat: LIPS, useLn: true }];
     prims.push(blob);
 
     // --- body lobes
@@ -112,7 +114,7 @@ const Luvdisc = (() => {
       stamps.push({ at: { prim: fillPrim, p: add(fillPrim.c, M3.v(fillPrim.L, s)), s }, set: side > 0 ? EYES : EYES_M, colors: EYEC, kind });
     }
 
-    anchors.lips = inF(lipBase, [9.5, 0, 0]);
+    anchors.lips = inF(lipBase, [fx + 6.8 * Math.cos(bt), 0, 0]);
     anchors.top = inF(back, [-12, 105, 0]);
     anchors.center = inF(body, CEN);
     return { prims, anchors, pose: P, headPrim: fillPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: BODY };
