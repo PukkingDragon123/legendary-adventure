@@ -146,7 +146,8 @@ const Critters = (() => {
 
     keyOf(P) {
       const pose = this.pose;
-      let k = this.kind + '|' + this.palId + '|' + P.key + '|' + this.scale + '|' + q(this.yaw, this.qy).toFixed(3) + '|' + this.pitch + '|' + this.haze;
+      const yk = this.sp.flat2d ? (Math.cos(this.yaw) >= 0 ? 'R' : 'L') : q(this.yaw, this.qy).toFixed(3);
+      let k = this.kind + '|' + this.palId + '|' + P.key + '|' + this.scale + '|' + yk + '|' + this.pitch + '|' + this.haze;
       for (const f in pose) {
         const v = pose[f];
         k += '|' + f + ':' + (typeof v === 'number' ? q(v, this.qf[f] || this.qp).toFixed(3) : v);

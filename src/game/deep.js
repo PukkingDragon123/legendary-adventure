@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------------
    Deep — sea life: the Luvdisc school tracing a heart around the reef,
    Kyogre gliding through the trench, Wailord surfacing far out to
-   spout, Wingull over the horizon and Chinchou lights at night.
+   spout, Wingull over the horizon and shooting stars at night.
 ------------------------------------------------------------------- */
 const Deep = (() => {
   const { clamp, lerp, mixc } = Scenery;
@@ -17,7 +17,7 @@ const Deep = (() => {
   /* ================================================================
      LUVDISC school
   ================================================================ */
-  const HEART = { cx: 2280, cy: 770, sx: 8.6, sy: 5.0 };
+  const HEART = { cx: 2280, cy: 770, sx: 10.5, sy: 6.2 };
   function heartAt(u) {
     const s = Math.sin(u), c = Math.cos(u);
     const x = 16 * s * s * s;
@@ -41,14 +41,14 @@ const Deep = (() => {
       this.pose = P;
       if (Math.abs(this.vx) > 6) this.turn(this.vx > 0 ? 0.35 : Math.PI - 0.35, dt, 3.5);
     }
-    onPoke(wx, wy) { School.scatterFrom(wx, wy); }
+    onPoke(wx, wy) { School.scatterFrom(wx, wy); this.kissT = 1.3; Game.sfx('kiss', this.x, 1); FX.floatIcon('heart', this.x + 20, this.y - 60); }
   }
   const School = {
     fish: [], u: 0, scatterT: 0, kissT: 6, cx: HEART.cx, cy: HEART.cy,
     init(G) {
       if (!SP.Luvdisc) return;
       for (let k = 0; k < 5; k++) {
-        const [x, y] = heartAt(-k * 0.42);
+        const [x, y] = heartAt(-k * 1.2566);
         const f = new LuvdiscMon({ x, y, k });
         f.phase = k * 1.3;
         this.fish.push(f); G.mons.push(f);
@@ -73,7 +73,7 @@ const Deep = (() => {
       const m = Game.mudkip;
       let sx = 0, sy2 = 0;
       for (const f of this.fish) {
-        const [tx, ty] = heartAt(this.u - f.k * 0.42);
+        const [tx, ty] = heartAt(this.u - f.k * 1.2566);
         let gx = tx + Math.sin(t * 0.9 + f.k) * 6, gyy = ty + Math.cos(t * 1.1 + f.k * 2) * 5;
         // a curious one visits Mudkip when it dives close
         if (m && m.mode === 'dive' && f.k === 2 && Math.hypot(m.x - f.x, m.y - f.y) < 260 && !this.scatterT) {
@@ -310,35 +310,7 @@ const Deep = (() => {
       }
     },
   };
-  const Chinchou = {
-    list: [],
-    init() { for (let i = 0; i < 5; i++) this.list.push({ x: rnd(2800, 3500), y: rnd(1060, 1170), ph: rnd(0, 6), vx: rnd(-8, 8) }); },
-    update(dt, t) { for (const c of this.list) { c.x += Math.sin(t * 0.3 + c.ph) * 6 * dt + c.vx * dt * 0.2; c.y += Math.cos(t * 0.8 + c.ph) * 5 * dt; c.x = clamp(c.x, 2780, 3560); c.y = clamp(c.y, 1000, gy(c.x) - 14); } },
-    draw(fb, cx, cy, P, t) {
-      const night = P.key === 'night' || P.key === 'dusk';
-      const body = [hex('#2a4a9a'), hex('#3e6cc8'), hex('#6a9ae8')], ink = hex('#101a3a');
-      const lamp = hex('#fff27a'), lamp2 = hex('#ffc93a');
-      for (const c of this.list) {
-        const X = Math.round(c.x) - cx, Y = Math.round(c.y) - cy;
-        if (X < -40 || X > fb.w + 40 || Y < -40 || Y > fb.h + 40) continue;
-        // antennae lights
-        const sw = Math.sin(t * 2 + c.ph) * 2;
-        const L = [[X - 9 + sw, Y - 12], [X + 9 - sw, Y - 12]];
-        if (night) for (const [lx, ly] of L) Scenery.glow(fb, lx + 0.5, ly + 0.5, 16, lamp, 0.55, null, null, 3, 0.3);
-        for (const [lx, ly] of L) {
-          fb.line(X + Math.sign(lx - X) * 3, Y - 4, lx, ly, ink);
-          fb.ellipse(lx + 0.5, ly + 0.5, 2.5, 2.5, night ? lamp : lamp2);
-          fb.set(Math.round(lx) - 1, Math.round(ly) - 1, hex('#ffffff'));
-        }
-        // round body with a smile
-        fb.ellipse(X + 0.5, Y + 0.5, 8, 6.5, ink);
-        fb.ellipse(X + 0.5, Y + 0.5, 7, 5.5, body[1]);
-        fb.ellipse(X - 1.5, Y - 1.5, 3.5, 2.5, body[2]);
-        fb.set(X - 3, Y - 1, ink); fb.set(X + 3, Y - 1, ink); fb.set(X - 3, Y, hex('#ffe066')); fb.set(X + 3, Y, hex('#ffe066'));
-        fb.set(X - 1, Y + 2, ink); fb.set(X, Y + 3, ink); fb.set(X + 1, Y + 2, ink);
-      }
-    },
-  };
+
 
   const Meteors = {
     list: [], nextT: 6,
@@ -364,11 +336,10 @@ const Deep = (() => {
     },
   };
   const sys = {
-    init(G) { School.init(G); Kyo.init(G); Wail.init(); Gulls.init(); Chinchou.init(); },
-    update(dt, t) { School.update(dt, t); Wail.update(dt, t); Gulls.update(dt); Chinchou.update(dt, t); Meteors.update(dt); },
+    init(G) { School.init(G); Kyo.init(G); Wail.init(); Gulls.init(); },
+    update(dt, t) { School.update(dt, t); Wail.update(dt, t); Gulls.update(dt); Meteors.update(dt); },
     drawSky(fb, cx, cy, P, t) { Gulls.draw(fb, cx, cy, P, t); Meteors.draw(fb, cx, cy, P, t); },
     drawBackdrop(fb, cx, cy, P, t, bx, byy) { Wail.draw(fb, cx, cy, P, t, bx, byy); },
-    drawFront(fb, cx, cy, P, t) { Chinchou.draw(fb, cx, cy, P, t); },
     pokeSky(wx, wy) {
       if (Wail.poke(wx, wy)) return true;
       const h = Game.hour();

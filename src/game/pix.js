@@ -7,13 +7,16 @@ const Pix = (() => {
   const { hex, Buf, bayer4 } = PX;
   const LX = -0.5, LY = -0.62, LZ = 0.6;
 
+  // tones: 0 outline, 1..5 ramp (deep shade .. highlight), 6 lit outline
+  const FLAT = [0, 2, 3, 5];
   class Painter {
-    constructor(w, h, mats) {
-      this.w = w; this.h = h; this.ix = {};
+    constructor(w, h, mats, s = 1) {
+      this.s = s; this.w = Math.ceil(w * s); this.h = Math.ceil(h * s); this.ix = {};
       mats.forEach((k, i) => { this.ix[k] = i + 1; });
-      this.m = new Uint8Array(w * h); this.t = new Uint8Array(w * h);
+      this.m = new Uint8Array(this.w * this.h); this.t = new Uint8Array(this.w * this.h);
+      this.dith = s > 1.5;
     }
-    // test(px, py) -> null outside, or [nx, ny] (-1..1) for shading
+    // pixel-space bbox; test(px, py) -> null outside, or [nx, ny] (-1..1) for shading
     shape(test, x0, y0, x1, y1, mat, o = {}) {
       const { w, h, m, t } = this;
       x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0));
@@ -22,38 +25,39 @@ const Pix = (() => {
       if (bw <= 0 || bh <= 0) return this;
       const mi = this.ix[mat] || 0, inside = o.inside && o.inside.map((k) => this.ix[k]);
       const ins = new Uint8Array(bw * bh), tn = new Uint8Array(bw * bh);
-      const hi = o.hi ?? 0.84, mid = o.mid ?? 0.3;
+      const hi = o.hi ?? 0.86, mid = o.mid ?? 0.28, dj = this.dith ? 0.2 : 0;
       for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
         const r = test(x0 + x + 0.5, y0 + y + 0.5);
         if (!r) continue;
         if (inside && !inside.includes(m[(y0 + y) * w + x0 + x])) continue;
         ins[y * bw + x] = 1;
-        if (o.tone !== undefined) { tn[y * bw + x] = o.tone; continue; }
+        if (o.tone !== undefined) { tn[y * bw + x] = FLAT[o.tone]; continue; }
         const nx = r[0], ny = r[1], nz = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
-        const lam = LX * nx + LY * ny + LZ * nz;
-        tn[y * bw + x] = lam > hi ? 3 : lam > mid ? 2 : 1;
+        let lam = LX * nx + LY * ny + LZ * nz;
+        if (dj) lam += (bayer4(x0 + x, y0 + y) - 0.5) * dj;
+        tn[y * bw + x] = lam > hi ? 5 : lam > (hi + mid) / 2 + 0.05 ? 4 : lam > mid ? 3 : lam > -0.02 ? 2 : 1;
       }
-      const ol = o.ol ?? true;
+      const ol = o.ol ?? true, sel = this.dith && o.sel !== false;
       for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
         if (!ins[y * bw + x]) continue;
         const i = (y0 + y) * w + x0 + x;
-        let edge = false;
+        let edge = false, lit = true;
         if (ol) {
-          const nb = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]];
-          for (const [a, b] of nb) {
+          const nb = [[x - 1, y, 1], [x, y - 1, 1], [x + 1, y, 0], [x, y + 1, 0]];
+          for (const [a, b, up] of nb) {
             const inn = a >= 0 && b >= 0 && a < bw && b < bh && ins[b * bw + a];
             if (inn) continue;
-            if (ol === 'out') {
-              const gx = x0 + a, gy = y0 + b;
-              if (gx < 0 || gy < 0 || gx >= w || gy >= h || !m[gy * w + gx]) { edge = true; break; }
-            } else { edge = true; break; }
+            let e = true;
+            if (ol === 'out') { const gx = x0 + a, gy = y0 + b; e = gx < 0 || gy < 0 || gx >= w || gy >= h || !m[gy * w + gx]; }
+            if (e) { edge = true; if (!up) lit = false; }
           }
         }
-        m[i] = mi; t[i] = edge ? 0 : tn[y * bw + x];
+        m[i] = mi; t[i] = edge ? (sel && lit && tn[y * bw + x] >= 3 ? 6 : 0) : tn[y * bw + x];
       }
       return this;
     }
     el(cx, cy, rx, ry, mat, o = {}) {
+      const S = this.s; cx *= S; cy *= S; rx *= S; ry *= S;
       const a = o.rot || 0, c = Math.cos(a), s = Math.sin(a), R = Math.max(rx, ry) + 1;
       return this.shape((px, py) => {
         const dx = px - cx, dy = py - cy, u = (dx * c + dy * s) / rx, v = (-dx * s + dy * c) / ry;
@@ -62,6 +66,7 @@ const Pix = (() => {
       }, cx - R, cy - R, cx + R, cy + R, mat, o);
     }
     poly(pts, mat, o = {}) {
+      const S = this.s; pts = pts.map(([x, y]) => [x * S, y * S]);
       let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
       for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
       const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, hw = (x1 - x0) / 2 * 1.3 + 0.5, hh = (y1 - y0) / 2 * 1.3 + 0.5;
@@ -69,35 +74,47 @@ const Pix = (() => {
     }
     // union of ellipses [cx,cy,rx,ry] and polygons [[x,y],...] outlined as one silhouette
     blob(parts, mat, o = {}) {
+      const S = this.s;
       let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
       const tests = parts.map((p) => {
         if (typeof p[0] === 'number') {
-          const [cx, cy, rx, ry] = p;
+          const [cx, cy, rx, ry] = p.map((v) => v * S);
           x0 = Math.min(x0, cx - rx); x1 = Math.max(x1, cx + rx); y0 = Math.min(y0, cy - ry); y1 = Math.max(y1, cy + ry);
           return (px, py) => ((px - cx) / rx) ** 2 + ((py - cy) / ry) ** 2 <= 1;
         }
-        for (const [x, y] of p) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
-        return (px, py) => inPoly(p, px, py);
+        const q = p.map(([x, y]) => [x * S, y * S]);
+        for (const [x, y] of q) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+        return (px, py) => inPoly(q, px, py);
       });
       const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, hw = (x1 - x0) / 2 + 0.5, hh = (y1 - y0) / 2 + 0.5;
       return this.shape((px, py) => (tests.some((f) => f(px, py)) ? [(px - cx) / hw, (py - cy) / hh] : null), x0, y0, x1, y1, mat, o);
     }
+    px(X, Y, mi, tn) { if (X >= 0 && Y >= 0 && X < this.w && Y < this.h) { const i = Y * this.w + X; this.m[i] = mi; this.t[i] = tn; } }
     dot(x, y, mat, tone = 2) {
-      x = Math.round(x); y = Math.round(y);
-      if (x < 0 || y < 0 || x >= this.w || y >= this.h) return this;
-      const i = y * this.w + x; this.m[i] = this.ix[mat]; this.t[i] = tone; return this;
+      const S = this.s, n = Math.max(1, Math.round(S * 0.8)), mi = this.ix[mat], tn = FLAT[tone];
+      const X = Math.round(Math.round(x) * S + (S - n) / 2), Y = Math.round(Math.round(y) * S + (S - n) / 2);
+      for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) this.px(X + a, Y + b, mi, tn);
+      return this;
     }
     line(x0, y0, x1, y1, mat, tone = 2, th = 1) {
-      const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0)));
-      for (let i = 0; i <= n; i++) {
-        const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n;
-        for (let a = 0; a < th; a++) for (let b = 0; b < th; b++) this.dot(x + a - (th >> 1), y + b - (th >> 1), mat, tone);
+      const S = this.s, n = Math.max(1, Math.round(th * S * 0.75)), mi = this.ix[mat], tn = FLAT[tone];
+      const ax = (x0 + 0.5) * S, ay = (y0 + 0.5) * S, bx = (x1 + 0.5) * S, by = (y1 + 0.5) * S;
+      const k = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay)));
+      for (let i = 0; i <= k; i++) {
+        const X = Math.round(ax + (bx - ax) * i / k - n / 2), Y = Math.round(ay + (by - ay) * i / k - n / 2);
+        for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) this.px(X + a, Y + b, mi, tn);
       }
       return this;
     }
-    toBuf(ramps) {
+    // pal: Creature palette keyed by material index { r:[5], od, ol }
+    toBuf(pal) {
       const b = new Buf(this.w, this.h);
-      for (let i = 0; i < this.m.length; i++) if (this.m[i]) b.d[i] = ramps[this.m[i] - 1][this.t[i]];
+      for (let i = 0; i < this.m.length; i++) {
+        const mi = this.m[i];
+        if (!mi) continue;
+        const e = pal[mi], tn = this.t[i];
+        b.d[i] = tn === 0 ? e.od : tn === 6 ? e.ol : e.r[tn - 1];
+      }
       return b;
     }
   }
@@ -130,6 +147,7 @@ const Pix = (() => {
   const SP = {
     spheal: {
       w: 46, h: 43, ax: 22, ay: 42,
+      anchors: (o) => { const cy = 22 + (o.squash || 0) * 6; return { top: [22, cy - 16], headTop: [24, cy - 16], head: [28, cy - 2], mouth: [29, cy + 9], nose: [29, cy + 5], eyeN: [32, cy - 2] }; },
       pal: { body: ['#1b3c70', '#3d7cc2', '#5aa6e6', '#9ad6fa'], spot: ['#6cb6ee', '#a8dcfa', '#c8ecff', '#e6f7ff'], cream: ['#a88450', '#e6cb92', '#f6e2b2', '#fff4d6'], eye: R.black, shine: R.white, nose: ['#2a2230', '#2a2230', '#3a3040', '#3a3040'], mouth: R.mouth },
       draw(P, o) {
         const cl = o.clap || 0, op = o.mouth || 0, sq = o.squash || 0;
@@ -152,6 +170,7 @@ const Pix = (() => {
     },
     sealeo: {
       w: 64, h: 60, ax: 31, ay: 59,
+      anchors: (o) => { const hp = o.headPitch || 0, hx = 40 - hp * 2, hy = 22 - hp * 3, nose = [hx + 11 + hp, hy + 1 - hp]; return { nose, nosN: nose, mouth: [hx + 9 + hp, hy + 10 - hp], top: [hx, hy - 13], headTop: [hx, hy - 13], head: [hx, hy], eyeN: [hx + 8, hy - 6] }; },
       pal: { body: ['#1f4a82', '#5a92d2', '#7cb6ea', '#b4dcfa'], cream: ['#8a8a86', '#dcd8c4', '#f2eedc', '#fffdf0'], white: ['#6d7a92', '#d8e2ee', '#ffffff', '#ffffff'], eye: R.black, shine: R.white, nose: R.black, mouth: R.mouth },
       draw(P, o) {
         const hp = o.headPitch || 0, cl = o.clap || 0, op = o.mouth || 0;
@@ -174,6 +193,7 @@ const Pix = (() => {
     },
     walrein: {
       w: 86, h: 74, ax: 42, ay: 73,
+      anchors: (o) => { const hy = 26 - (o.headPitch || 0) * 3; return { mouth: [69, hy + 14], nose: [71, hy + 2], tusk: [65, hy + 31], top: [60, hy - 15], headTop: [60, hy - 15], head: [60, hy], eyeN: [66, hy - 6] }; },
       pal: { body: ['#16305e', '#2f5aa0', '#4474bf', '#7aa6e0'], cream: ['#7a6c50', '#cdbb90', '#e6d6ae', '#f6ecd0'], mane: ['#5f6f8c', '#cfdcec', '#f4f8fc', '#ffffff'], tusk: ['#7a6a4a', '#e6dcc0', '#fbf6e6', '#ffffff'], eye: R.black, shine: R.white, nose: R.black, mouth: R.mouth },
       draw(P, o) {
         const op = o.mouth || 0, hp = o.headPitch || 0;
@@ -197,6 +217,7 @@ const Pix = (() => {
     },
     corphish: {
       w: 44, h: 40, ax: 22, ay: 39,
+      anchors: (o) => ({ top: [22, 7], headTop: [22, 7], head: [22, 20], mouth: [22, 27], nose: [22, 26], eyeN: [26, 20], clawTipN: [37, 13 - (o.armR || 0) * 5], clawTipF: [7, 13 - (o.armL || 0) * 5] }),
       pal: { red: ['#6a1410', '#c03a28', '#e45a3a', '#ff9a70'], cream: ['#9a7648', '#e8c890', '#f8e2b4', '#fff6dc'], white: R.white, eye: R.black, shine: R.white, mouth: R.mouth },
       draw(P, o) {
         const wk = o.walk || 0, sq = o.squash || 0;
@@ -234,6 +255,7 @@ const Pix = (() => {
     },
     luvdisc: {
       w: 32, h: 30, ax: 15, ay: 15,
+      anchors: () => ({ lips: [29, 15], mouth: [29, 15], nose: [29, 15], top: [9, 2], headTop: [12, 3], head: [19, 11], center: [15, 14], eyeN: [19, 11] }),
       pal: { pink: ['#8a2a50', '#e0608e', '#f58cb0', '#ffc4d8'], lips: ['#a84a6a', '#f4b8c8', '#ffd6e0', '#ffffff'], blush: ['#e05a88', '#ff7aa4', '#ff7aa4', '#ff7aa4'], eye: ['#10183a', '#10183a', '#1c2a60', '#1c2a60'], shine: R.white },
       draw(P, o) {
         const k = o.kiss || 0;
@@ -246,6 +268,7 @@ const Pix = (() => {
     },
     pelipper: {
       w: 64, h: 50, ax: 30, ay: 25,
+      anchors: (o) => ({ billTip: [58, 20], pouch: [46, 25 + (o.pouch || 0)], mouth: [46, 21], nose: [58, 19], top: [35, 11], headTop: [35, 11], head: [35, 18], eyeN: [36, 14] }),
       pal: { white: ['#5d6a84', '#d6e0ec', '#ffffff', '#ffffff'], blue: ['#15306a', '#2c5aa8', '#3f7ad0', '#6ea2e8'], bill: ['#8a5a10', '#e8b030', '#f8d448', '#fff0a0'], orange: ['#7a3a10', '#e07a28', '#f89a3a', '#ffc070'], eye: R.black, shine: R.white, mouth: R.mouth },
       draw(P, o) {
         const f = o.flap || 0, pc = o.pouch || 0, perch = o.perch;
@@ -307,6 +330,7 @@ const Pix = (() => {
     },
     dialga: {
       w: 40, h: 38, ax: 19, ay: 37,
+      anchors: () => ({ gem: [25.5, 24], mouth: [33, 18], nose: [36, 16], top: [22, 1], headTop: [27, 5], head: [27, 13], eyeN: [30, 11.5] }),
       pal: { steel: ['#141c3c', '#2e3e78', '#44589e', '#7088c8'], silver: ['#3a4a6a', '#9aaccc', '#c4d2ea', '#eef4ff'], gem: ['#1e5a8a', '#6ec6f0', '#a8e6ff', '#ffffff'], cyan: ['#6ee0ff', '#6ee0ff', '#8ef0ff', '#c8ffff'], eye: ['#4a0a18', '#7a1020', '#c8283c', '#c8283c'], shine: R.white, mouth: R.mouth },
       draw(P, o) {
         const wk = o.walk || 0, op = o.mouth || 0, hy = -(o.hop || 0) * 0;
@@ -336,6 +360,7 @@ const Pix = (() => {
     },
     kyogre: {
       w: 142, h: 82, ax: 71, ay: 41,
+      anchors: () => ({ mouth: [113, 44], nose: [120, 40], top: [76, 20], headTop: [100, 22], head: [100, 34], eyeN: [106, 33] }),
       pal: { blue: ['#0c2458', '#1f4ea0', '#2d64c0', '#5a8ee0'], belly: ['#2d64c0', '#8ab4ea', '#b0d0f6', '#dcecff'], red: ['#6a0a14', '#d02838', '#f04858', '#ff8a90'], white: R.white, eye: ['#4a3a08', '#e8c028', '#f8e060', '#fff8c0'], pupil: R.black, mouth: ['#0a1430', '#0a1430', '#0a1430', '#0a1430'] },
       draw(P, o) {
         const tl = o.tail || 0, fn = o.fin || 0, op = o.mouth || 0;
@@ -343,7 +368,8 @@ const Pix = (() => {
         P.el(84, 60, 20, 6, 'blue', { rot: 0.35 + fn * 0.2, tone: 1 });
         P.el(76, 40, 47, 20, 'blue');
         P.el(80, 52, 40, 9, 'belly', { inside: ['blue'], ol: false });
-        P.line(46, 30, 70, 25, 'red', 2); P.line(70, 25, 104, 25, 'red', 2); P.line(104, 25, 114, 30, 'red', 2);
+        const rt = (o.glow || 0) > 0.3 ? 3 : 2;
+        P.line(46, 30, 70, 25, 'red', rt); P.line(70, 25, 104, 25, 'red', rt); P.line(104, 25, 114, 30, 'red', rt);
         P.el(60, 36, 4, 4, 'red', { ol: true }); P.el(60, 36, 2, 2, 'blue', { tone: 2, ol: false });
         P.line(40, 44, 58, 46, 'red', 2);
         P.el(66, 62 + fn * 3, 25, 8, 'blue', { rot: 0.22 + fn * 0.15 });
@@ -357,6 +383,7 @@ const Pix = (() => {
     },
     wailord: {
       w: 132, h: 58, ax: 66, ay: 40,
+      anchors: () => ({ mouth: [118, 37], nose: [126, 33], top: [68, 11], blow: [92, 13], head: [110, 26], headTop: [100, 14], eyeN: [112, 26] }),
       pal: { blue: ['#123a78', '#2a64b4', '#3c7ed0', '#78b0f0'], cream: ['#8a8470', '#dcd6bc', '#f2ecd4', '#fffcec'], eye: R.black, shine: R.white, mouth: ['#0a1430', '#0a1430', '#0a1430', '#0a1430'] },
       draw(P, o) {
         P.poly([[12, 30], [0, 16 + (o.tail || 0) * 4], [4, 30], [0, 44]], 'blue');
@@ -408,27 +435,6 @@ const Pix = (() => {
     },
   };
 
-  /* --------------------------- cache & draw --------------------------- */
-  const packed = {};
-  function ramps(name) {
-    if (!packed[name]) { const sp = SP[name]; packed[name] = { keys: Object.keys(sp.pal), r: Object.values(sp.pal).map((a) => a.map(hex)) }; }
-    return packed[name];
-  }
-  const cache = new Map();
-  // tint: {key, fn(c)} scene grading applied to the palette
-  function get(name, pose = {}, tint = null) {
-    const key = name + JSON.stringify(pose) + (tint ? tint.key : '');
-    let b = cache.get(key);
-    if (b) { cache.delete(key); cache.set(key, b); return b; }
-    const sp = SP[name], rp = ramps(name);
-    const P = new Painter(sp.w, sp.h, rp.keys);
-    sp.draw(P, pose);
-    const rr = tint ? rp.r.map((a) => a.map(tint.fn)) : rp.r;
-    b = P.toBuf(rr); b.ax = sp.ax; b.ay = sp.ay;
-    cache.set(key, b);
-    if (cache.size > 900) cache.delete(cache.keys().next().value);
-    return b;
-  }
   // Draw with anchor at (x, y). o: flip, sx, sy, rot, a (0..1 dithered), map(c, x, y)
   function draw(fb, b, x, y, o = {}) {
     const sx = o.sx || 1, sy = o.sy || 1, rot = o.rot || 0, flip = o.flip ? -1 : 1, a = o.a ?? 1;
@@ -462,5 +468,5 @@ const Pix = (() => {
     const left = x - (flip ? b.w - b.ax : b.ax), top = y - b.ay;
     return px >= left - pad && px <= left + b.w + pad && py >= top - pad && py <= top + b.h + pad;
   }
-  return { SP, Painter, get, draw, hit };
+  return { SP, Painter, draw, hit };
 })();

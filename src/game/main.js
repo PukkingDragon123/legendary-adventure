@@ -339,7 +339,7 @@ const Game = (() => {
     if (g > surf && wy > surf && wy < g) { FX.bubbles(wx, wy, 5, World.SEA); sfx('bubble', wx, 0.9); for (const m of G.mons) if (m.bubbleNear) m.bubbleNear(wx, wy); return; }
     const fos = Scene.pokeBuried(wx, wy);
     if (fos) { FX.sparkles(fos.x, fos.y, 8, 24, PX.hex('#ffffff'), PX.hex('#ffe066')); sfx('twinkle', wx, 1); return; }
-    if (wy >= g - 2) { FX.poof(wx, Math.min(wy, g + 2), P.sand[3], P.sand[2], 4, 4); sfx('dust', wx, 0.8); return; }
+    if (wy >= g - 2) { FX.poof(wx, Math.min(wy, g + 2), P.sand[3], P.sand[2], 4, 4); sfx('dust', wx, 0.8); if (G.mudkip && G.mudkip.curious) G.mudkip.curious(wx); return; }
   }
   const cxs = () => G.cx;
   G.poke = poke;

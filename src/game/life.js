@@ -404,6 +404,21 @@ const Life = (() => {
         yield* this.hop(220);
       }
     }
+    // poke the sand and Mudkip trots over to sniff it; sometimes it digs up a sparkle
+    curious(x) {
+      if (this.mode !== 'land' || this.sleeping || this.busy(1.5) || Math.abs(x - this.x) > 800 || wet(x, 4)) return;
+      this.doTask(this.sniff(x), 1.5);
+    }
+    *sniff(x) {
+      const side = this.x < x ? -1 : 1;
+      this.emote('sparkle', 0.9);
+      yield* this.walkTo(x + side * 28, 95);
+      yield* this.faceTo(-side, false);
+      let e = 0;
+      while (e < 1.1) { const dt = yield; e += dt; this.o.headPitch = 0.3 + Math.sin(e * 18) * 0.06; this.o.mouth = 0.2; this.o.eyes = e > 0.8 ? 'happy' : 'open'; if (Math.floor(e * 6) !== Math.floor((e - dt) * 6)) FX.poof(x, gy(x), Game.P.sand[3], Game.P.sand[2], 2, 2); }
+      if (chance(0.35)) { FX.sparkles(x, gy(x) - 6, 8, 18, PX.hex('#ffffff'), PX.hex('#ffe066')); Game.sfx('twinkle', x, 0.8); this.emote('star'); this.happyT = 1.3; yield* this.hop(250); }
+      else { this.emote(pick(['heart', 'note'])); Game.sfx('mud', this.x, 0.8); this.happyT = 1; yield* this.hop(190); }
+    }
     *visit() {
       const who = pick(Game.mons.filter((m) => m !== this && m.mode !== 'fly' && !m.sleeping && Math.abs(m.x - this.x) < 900 && !wet(m.x, 8) && m.kind !== 'luvdisc'));
       if (!who) return yield* this.idleLook();
