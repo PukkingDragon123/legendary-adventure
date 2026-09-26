@@ -4,110 +4,6 @@
    "plates" (fins, gills), toon-shaded into hand-picked colour ramps,
    then finished with sel-out outlines and hand-drawn eye stamps.
 ------------------------------------------------------------------- */
-const M3 = {
-  mul(a, b) {
-    return [
-      a[0] * b[0] + a[1] * b[3] + a[2] * b[6], a[0] * b[1] + a[1] * b[4] + a[2] * b[7], a[0] * b[2] + a[1] * b[5] + a[2] * b[8],
-      a[3] * b[0] + a[4] * b[3] + a[5] * b[6], a[3] * b[1] + a[4] * b[4] + a[5] * b[7], a[3] * b[2] + a[4] * b[5] + a[5] * b[8],
-      a[6] * b[0] + a[7] * b[3] + a[8] * b[6], a[6] * b[1] + a[7] * b[4] + a[8] * b[7], a[6] * b[2] + a[7] * b[5] + a[8] * b[8],
-    ];
-  },
-  v(m, p) {
-    return [m[0] * p[0] + m[1] * p[1] + m[2] * p[2], m[3] * p[0] + m[4] * p[1] + m[5] * p[2], m[6] * p[0] + m[7] * p[1] + m[8] * p[2]];
-  },
-  inv(m) {
-    const [a, b, c, d, e, f, g, h, i] = m;
-    const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
-    const id = 1 / (a * A + b * B + c * C);
-    return [
-      A * id, -(b * i - c * h) * id, (b * f - c * e) * id,
-      B * id, (a * i - c * g) * id, -(a * f - c * d) * id,
-      C * id, -(a * h - b * g) * id, (a * e - b * d) * id,
-    ];
-  },
-  rx(t) { const c = Math.cos(t), s = Math.sin(t); return [1, 0, 0, 0, c, -s, 0, s, c]; },
-  ry(t) { const c = Math.cos(t), s = Math.sin(t); return [c, 0, s, 0, 1, 0, -s, 0, c]; },
-  rz(t) { const c = Math.cos(t), s = Math.sin(t); return [c, -s, 0, s, c, 0, 0, 0, 1]; },
-  diag(x, y, z) { return [x, 0, 0, 0, y, 0, 0, 0, z]; },
-  I() { return [1, 0, 0, 0, 1, 0, 0, 0, 1]; },
-  cols(u, v, w) { return [u[0], v[0], w[0], u[1], v[1], w[1], u[2], v[2], w[2]]; },
-};
-const V3 = {
-  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
-  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
-  scale: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
-  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
-  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
-  norm: (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
-};
-
-/* ---------- 2D shape helpers for plates ---------- */
-const Shape2D = {
-  catmull(pts, closed = true, seg = 8) {
-    const out = [], n = pts.length;
-    const get = (i) => (closed ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))]);
-    const last = closed ? n : n - 1;
-    for (let i = 0; i < last; i++) {
-      const p0 = get(i - 1), p1 = get(i), p2 = get(i + 1), p3 = get(i + 2);
-      for (let s = 0; s < seg; s++) {
-        const t = s / seg, t2 = t * t, t3 = t2 * t;
-        const f = (k) => 0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3);
-        out.push([f(0), f(1)]);
-      }
-    }
-    if (!closed) out.push(pts[n - 1]);
-    return out;
-  },
-  inPoly(x, y, poly) {
-    let inside = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
-      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
-    }
-    return inside;
-  },
-  segDist(x, y, ax, ay, bx, by) {
-    const dx = bx - ax, dy = by - ay;
-    const l2 = dx * dx + dy * dy;
-    let t = l2 ? ((x - ax) * dx + (y - ay) * dy) / l2 : 0;
-    t = Math.max(0, Math.min(1, t));
-    return Math.hypot(x - ax - dx * t, y - ay - dy * t);
-  },
-  polyDist(x, y, pl) {
-    let d = Infinity;
-    for (let i = 0; i < pl.length - 1; i++) d = Math.min(d, Shape2D.segDist(x, y, pl[i][0], pl[i][1], pl[i + 1][0], pl[i + 1][1]));
-    return d;
-  },
-  bbox(poly, pad = 0) {
-    let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
-    for (const [x, y] of poly) { a = Math.min(a, x); b = Math.min(b, y); c = Math.max(c, x); d = Math.max(d, y); }
-    return [a - pad, b - pad, c + pad, d + pad];
-  },
-  inTri(px, py, a, b, c) {
-    const s1 = (b[0] - a[0]) * (py - a[1]) - (b[1] - a[1]) * (px - a[0]);
-    const s2 = (c[0] - b[0]) * (py - b[1]) - (c[1] - b[1]) * (px - b[0]);
-    const s3 = (a[0] - c[0]) * (py - c[1]) - (a[1] - c[1]) * (px - c[0]);
-    return (s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0);
-  },
-};
-
-// Bake a 2D shape test into a lookup grid (0.25 unit cells) so per-pixel tests are O(1)
-function bakeShape(shape, res = 0.25) {
-  const [u0, v0, u1, v1] = shape.bb;
-  const gw = Math.ceil((u1 - u0) / res), gh = Math.ceil((v1 - v0) / res);
-  const g = new Uint8Array(gw * gh);
-  for (let y = 0; y < gh; y++)
-    for (let x = 0; x < gw; x++) g[y * gw + x] = shape.test(u0 + (x + 0.5) * res, v0 + (y + 0.5) * res);
-  return {
-    bb: shape.bb,
-    test(u, v) {
-      const x = Math.floor((u - u0) / res), y = Math.floor((v - v0) / res);
-      if (x < 0 || y < 0 || x >= gw || y >= gh) return 0;
-      return g[y * gw + x];
-    },
-  };
-}
-
 const Mudkip = (() => {
   // material ids
   const BODY = 1, BELLY = 2, JAW = 3, FIN = 4, FINEDGE = 5, TAIL = 6, GILL = 7, MOUTH = 8, TONGUE = 9;
@@ -217,6 +113,7 @@ const Mudkip = (() => {
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT_POSE, pose);
+    if (pose && pose.side !== undefined) { P.finTwist = 0.32 * pose.side; P.tailTwist = -0.85 * pose.side; }
     const prims = [];
     const sq = P.squash;
     const root = F(M3.diag(1 + sq * 0.55, 1 - sq, 1 + sq * 0.55), [0, 0, 0]);
@@ -313,7 +210,20 @@ const Mudkip = (() => {
       head: head.t,
       body: body.t,
     };
-    return { prims, anchors, pose: P, headPrim };
+    return {
+      prims, anchors, pose: P, headPrim,
+      stamps: [
+        { at: Object.assign({ prim: headPrim }, anchors.eyeN), set: EYES_S, colors: EYEC, kind: P.eyes },
+        { at: Object.assign({ prim: headPrim }, anchors.eyeF), set: EYES_S, colors: EYEC, kind: P.eyes },
+      ],
+      dots: P.noNostrils ? [] : [
+        { at: Object.assign({ prim: headPrim }, anchors.nosN), mat: BODY, tone: 0, onlyMat: BODY },
+        { at: Object.assign({ prim: headPrim }, anchors.nosF), mat: BODY, tone: 0, onlyMat: BODY },
+      ],
+      pri: { 1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 2, 7: 1, 8: 2, 9: 3, 10: 3 },
+      glossy: GLOSSY,
+      baseMat: BODY,
+    };
   }
 
   /* ---------- eye stamps ---------- */
@@ -348,302 +258,12 @@ const Mudkip = (() => {
   };
   const EYES = EYES_S;
 
-  /* ---------- renderer ---------- */
+  /* ---------- renderer: shared Creature pipeline with Mudkip's eye stamps ---------- */
+  const EYEC = { k: '#101826', w: '#ffffff', b: '#2e4a78' };
   function render(model, opt) {
-    const { yaw = 1.05, pitch = 0.16, scale = 1, W = 96, H = 96, ox = 48, oy = 82, pal, light } = opt;
-    const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(scale, scale, scale)));
-    const N = W * H;
-    const depth = new Float32Array(N).fill(-1e9);
-    const mat = new Uint8Array(N), part = new Uint8Array(N), grp = new Uint8Array(N), bias = new Int8Array(N);
-    const nxb = new Float32Array(N), nyb = new Float32Array(N), nzb = new Float32Array(N);
-
-    for (const p of model.prims) {
-      p.cv = M3.v(V, p.c);
-      p.Lv = M3.mul(V, p.L);
-      p.Li = M3.inv(p.Lv);
-      const Li = p.Li, cv = p.cv;
-      let x0, y0, x1, y1;
-      if (p.kind === 'ell') {
-        const rx = Math.hypot(p.Lv[0], p.Lv[1], p.Lv[2]), ry = Math.hypot(p.Lv[3], p.Lv[4], p.Lv[5]);
-        x0 = ox + cv[0] - rx; x1 = ox + cv[0] + rx; y0 = oy - cv[1] - ry; y1 = oy - cv[1] + ry;
-      } else {
-        const [a, b, c, d] = p.shape.bb;
-        x0 = y0 = Infinity; x1 = y1 = -Infinity;
-        for (const [u, v] of [[a, b], [a, d], [c, b], [c, d]]) {
-          for (const w of [-p.thick, p.thick]) {
-            const q = V3.add(cv, M3.v(p.Lv, [u, v, w]));
-            x0 = Math.min(x0, ox + q[0]); x1 = Math.max(x1, ox + q[0]);
-            y0 = Math.min(y0, oy - q[1]); y1 = Math.max(y1, oy - q[1]);
-          }
-        }
-      }
-      const px0 = Math.max(0, Math.floor(x0) - 1), px1 = Math.min(W - 1, Math.ceil(x1) + 1);
-      const py0 = Math.max(0, Math.floor(y0) - 1), py1 = Math.min(H - 1, Math.ceil(y1) + 1);
-      if (p.kind === 'ell') {
-        const dx = Li[2], dy = Li[5], dz = Li[8];
-        const a = dx * dx + dy * dy + dz * dz;
-        for (let py = py0; py <= py1; py++) {
-          const Y = oy - (py + 0.5) - cv[1];
-          for (let px = px0; px <= px1; px++) {
-            const X = px + 0.5 - ox - cv[0];
-            const Z0 = -cv[2];
-            const s0x = Li[0] * X + Li[1] * Y + Li[2] * Z0;
-            const s0y = Li[3] * X + Li[4] * Y + Li[5] * Z0;
-            const s0z = Li[6] * X + Li[7] * Y + Li[8] * Z0;
-            const b = 2 * (s0x * dx + s0y * dy + s0z * dz);
-            const c = s0x * s0x + s0y * s0y + s0z * s0z - 1;
-            const disc = b * b - 4 * a * c;
-            if (disc < 0) continue;
-            const t = (-b + Math.sqrt(disc)) / (2 * a);
-            const Z = t;
-            const i = py * W + px;
-            if (Z <= depth[i]) continue;
-            const s = [s0x + t * dx, s0y + t * dy, s0z + t * dz];
-            const m = p.mat(s);
-            if (!m) continue;
-            // normal = Li^T s
-            let nx = Li[0] * s[0] + Li[3] * s[1] + Li[6] * s[2];
-            let ny = Li[1] * s[0] + Li[4] * s[1] + Li[7] * s[2];
-            let nz = Li[2] * s[0] + Li[5] * s[1] + Li[8] * s[2];
-            const l = Math.hypot(nx, ny, nz) || 1;
-            depth[i] = Z; mat[i] = m & 31; bias[i] = (m >> 5) - 2; part[i] = p.part; grp[i] = p.grp;
-            nxb[i] = nx / l; nyb[i] = ny / l; nzb[i] = nz / l;
-          }
-        }
-      } else {
-        // plate: w(Z) = row2 . (p - c)
-        const r2x = Li[6], r2y = Li[7], r2z = Li[8];
-        let nl = Math.hypot(r2x, r2y, r2z);
-        let nx = r2x / nl, ny = r2y / nl, nz = r2z / nl;
-        if (nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
-        const edgeOn = Math.abs(r2z) / nl < 0.45;
-        const samples = edgeOn ? 7 : 1;
-        for (let py = py0; py <= py1; py++) {
-          const Y = oy - (py + 0.5) - cv[1];
-          for (let px = px0; px <= px1; px++) {
-            const X = px + 0.5 - ox - cv[0];
-            const w0 = r2x * X + r2y * Y - r2z * cv[2] * 0; // partial (without Z term)
-            const i = py * W + px;
-            let hitZ = null, hitM = 0;
-            if (!edgeOn) {
-              const Zr = -(r2x * X + r2y * Y) / r2z; // relative Z (to cv)
-              const u = Li[0] * X + Li[1] * Y + Li[2] * Zr;
-              const v = Li[3] * X + Li[4] * Y + Li[5] * Zr;
-              const m = p.shape.test(u, v);
-              if (m) { hitZ = Zr + cv[2]; hitM = m; }
-            } else {
-              // sample across the slab |w| <= thick/2, front to back
-              const half = p.thick / 2;
-              const za = (-half - (r2x * X + r2y * Y)) / r2z, zb = (half - (r2x * X + r2y * Y)) / r2z;
-              const zf = Math.max(za, zb), zk = Math.min(za, zb);
-              for (let k = 0; k < samples; k++) {
-                const Zr = zf + ((zk - zf) * k) / (samples - 1);
-                const u = Li[0] * X + Li[1] * Y + Li[2] * Zr;
-                const v = Li[3] * X + Li[4] * Y + Li[5] * Zr;
-                const m = p.shape.test(u, v);
-                if (m) { hitZ = Zr + cv[2]; hitM = m; break; }
-              }
-            }
-            if (hitZ === null || hitZ <= depth[i]) continue;
-            depth[i] = hitZ; mat[i] = hitM & 31; bias[i] = (hitM >> 5) - 2; part[i] = p.part; grp[i] = p.grp;
-            nxb[i] = nx; nyb[i] = ny; nzb[i] = nz;
-          }
-        }
-      }
-    }
-
-    /* ---- screen-space cast shadows (head over body, gills over cheeks...) ---- */
-    const Lg0 = light || { dir: [-0.5, 0.72, 0.5] };
-    const Ld0 = V3.norm(Lg0.dir);
-    const shadow = new Uint8Array(N);
-    {
-      const st = 1 / Math.max(Math.abs(Ld0[0]), Math.abs(Ld0[1]), 0.2);
-      for (let y = 0; y < H; y++)
-        for (let x = 0; x < W; x++) {
-          const i = y * W + x;
-          if (!mat[i]) continue;
-          const X0 = x + 0.5 - ox, Y0 = oy - (y + 0.5), Z0 = depth[i];
-          for (let k = 2; k < 30; k++) {
-            const qx = X0 + Ld0[0] * st * k, qy = Y0 + Ld0[1] * st * k, qz = Z0 + Ld0[2] * st * k;
-            const sx = Math.floor(ox + qx), sy = Math.floor(oy - qy);
-            if (sx < 0 || sy < 0 || sx >= W || sy >= H) break;
-            const j = sy * W + sx;
-            if (mat[j] && grp[j] !== grp[i] && depth[j] > qz + 1.5 && depth[j] < qz + 26) { shadow[i] = 1; break; }
-          }
-        }
-    }
-
-    /* ---- shading ---- */
-    const Lg = light || { dir: [-0.5, 0.72, 0.5] };
-    const Ld = V3.norm(Lg.dir);
-    const Hh = V3.norm(V3.add(Ld, [0, 0, 1]));
-    const th = Lg.th || [-0.2, 0.18, 0.74];
-    const specT = Lg.spec ?? 0.975;
-    const rim = Lg.rim || null; // {dir2:[x,y], k, color}
-    const out = new Uint32Array(N);
-    const tone = new Int8Array(N).fill(-1);
-    const rimMask = new Uint8Array(N);
-    for (let i = 0; i < N; i++) {
-      const m = mat[i];
-      if (!m) continue;
-      const nx = nxb[i], ny = nyb[i], nz = nzb[i];
-      let d = nx * Ld[0] + ny * Ld[1] + nz * Ld[2];
-      // plates are two-sided & thin: soften
-      let t = d < th[0] ? 0 : d < th[1] ? 1 : d < th[2] ? 2 : 3;
-      if (shadow[i]) t = Math.min(t, d < th[1] ? 0 : 1);
-      t += bias[i];
-      const sp = nx * Hh[0] + ny * Hh[1] + nz * Hh[2];
-      if (GLOSSY[m] && !shadow[i] && sp > specT && t >= 2) t = 4;
-      let rimHit = false;
-      if (rim) {
-        const r = (1 - nz) * Math.max(0, nx * rim.dir[0] + ny * rim.dir[1]);
-        if (r > rim.k && !(rim.noShadow && shadow[i])) { t = Math.max(t, rim.base ?? 3) + (r > rim.k * 1.6 ? 1 : 0); rimHit = true; }
-      }
-      t = Math.max(0, Math.min(4, t));
-      tone[i] = t;
-      out[i] = rimHit && rim.pal ? rim.pal[m].r[t] : pal[m].r[t];
-      if (rimHit && rim.pal) rimMask[i] = 1;
-    }
-
-    /* ---- projected line decals ---- */
-    const proj = (p, q) => {
-      const g = V3.add(p.cv, M3.v(p.Lv, q));
-      return [ox + g[0], oy - g[1], g[2]];
-    };
-    const plotLine = (a, b, color, partId) => {
-      let x0 = Math.floor(a[0]), y0 = Math.floor(a[1]);
-      const x1 = Math.floor(b[0]), y1 = Math.floor(b[1]);
-      const dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1, dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-      let err = dx + dy;
-      for (;;) {
-        if (x0 >= 0 && y0 >= 0 && x0 < W && y0 < H) {
-          const i = y0 * W + x0;
-          if (part[i] === partId) out[i] = color;
-        }
-        if (x0 === x1 && y0 === y1) break;
-        const e2 = 2 * err;
-        if (e2 >= dy) { err += dy; x0 += sx; }
-        if (e2 <= dx) { err += dx; y0 += sy; }
-      }
-    };
-    for (const p of model.prims) {
-      if (!p.lines) continue;
-      for (const ln of p.lines) {
-        const pts = ln.pts.map((q) => proj(p, q));
-        const col = ln.useLn ? pal[ln.mat].ln : pal[ln.mat].r[ln.tone];
-        for (let k = 0; k < pts.length - 1; k++) plotLine(pts[k], pts[k + 1], col, p.part);
-      }
-    }
-
-    /* ---- eyes ---- */
-    const P = model.pose;
-    const hp = model.headPrim;
-    const eyeInfo = [];
-    for (const key of ['eyeN', 'eyeF']) {
-      const an = model.anchors[key];
-      const q = M3.v(V, an.p);
-      // surface normal at anchor
-      const Li = hp.Li;
-      const s = an.s;
-      let n = [Li[0] * s[0] + Li[3] * s[1] + Li[6] * s[2], Li[1] * s[0] + Li[4] * s[1] + Li[7] * s[2], Li[2] * s[0] + Li[5] * s[1] + Li[8] * s[2]];
-      n = V3.norm(n);
-      const X = ox + q[0], Y = oy - q[1];
-      const xi = Math.floor(X), yi = Math.floor(Y);
-      if (n[2] < 0.12) continue;
-      if (xi < 0 || yi < 0 || xi >= W || yi >= H) continue;
-      const i = yi * W + xi;
-      if (part[i] !== hp.part || Math.abs(depth[i] - q[2]) > 3) continue;
-      const kind = P.eyes;
-      const EYES = scale >= 1.2 ? EYES_L : EYES_S;
-      let st = EYES[kind] || EYES.open;
-      if (n[2] < 0.5) st = EYES[kind + 'F'] || EYES.openF;
-      else if (n[2] < 0.78) st = EYES[kind + 'N'] || EYES.openN;
-      eyeInfo.push({ x: xi, y: yi, st, fore: n[2] });
-    }
-    const EYEC = { k: PX.hex('#101826'), w: PX.hex('#ffffff'), b: PX.hex('#2e4a78') };
-    for (const e of eyeInfo) {
-      const sh = e.st.length, sw = e.st[0].length;
-      const x0 = e.x - Math.floor(sw / 2), y0 = e.y - Math.floor(sh / 2);
-      for (let r = 0; r < sh; r++)
-        for (let c = 0; c < sw; c++) {
-          const ch = e.st[r][c];
-          if (ch === '.') continue;
-          const x = x0 + c, y = y0 + r;
-          if (x < 0 || y < 0 || x >= W || y >= H) continue;
-          const i = y * W + x;
-          if (!mat[i]) continue;
-          out[i] = EYEC[ch];
-          mat[i] = 31; // mark as eye so outlines treat it as head
-        }
-    }
-
-    // tiny nostrils
-    for (const key of ['nosN', 'nosF']) {
-      const an = model.anchors[key];
-      const q = M3.v(V, an.p);
-      const Li = hp.Li, s = an.s;
-      const n = V3.norm([Li[0] * s[0] + Li[3] * s[1] + Li[6] * s[2], Li[1] * s[0] + Li[4] * s[1] + Li[7] * s[2], Li[2] * s[0] + Li[5] * s[1] + Li[8] * s[2]]);
-      if (n[2] < 0.35 || P.noNostrils) continue;
-      const xi = Math.floor(ox + q[0]), yi = Math.floor(oy - q[1]);
-      if (xi < 0 || yi < 0 || xi >= W || yi >= H) continue;
-      const i = yi * W + xi;
-      if (part[i] !== hp.part || Math.abs(depth[i] - q[2]) > 3 || mat[i] !== BODY) continue;
-      out[i] = pal[BODY].r[0];
-    }
-
-    /* ---- internal contour lines ----
-       A step in depth puts the line on the occluded side; where two parts sit flush
-       (a gill lying on the cheek) the higher-priority part outlines its own edge. */
-    const PRI = { 1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 2, 7: 1, 8: 2, 9: 3, 10: 3 };
-    const lineCol = new Uint32Array(N);
-    for (let y = 0; y < H; y++)
-      for (let x = 0; x < W; x++) {
-        const i = y * W + x;
-        if (!grp[i]) continue;
-        const nb = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1];
-        for (const j of nb) {
-          if (j < 0 || !grp[j] || grp[j] === grp[i]) continue;
-          const m = mat[i] === 31 ? BODY : mat[i];
-          if (depth[j] > depth[i] + 1.2) { lineCol[i] = pal[m].ln; break; }
-          if (depth[j] >= depth[i] - 1.2 && (PRI[grp[i]] || 0) > (PRI[grp[j]] || 0)) { lineCol[i] = pal[m].ln; break; }
-        }
-      }
-    for (let i = 0; i < N; i++) if (lineCol[i]) out[i] = lineCol[i];
-
-    /* ---- outer outline (1px, sel-out) ---- */
-    const final = new Uint32Array(N);
-    final.set(out);
-    for (let y = 0; y < H; y++)
-      for (let x = 0; x < W; x++) {
-        const i = y * W + x;
-        if (mat[i]) continue;
-        let best = -1, bestTone = 9;
-        const nb = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1];
-        for (const j of nb) {
-          if (j < 0 || !mat[j]) continue;
-          const tj = tone[j] < 0 ? 2 : tone[j];
-          if (best < 0 || depth[j] > depth[best]) { best = j; bestTone = tj; }
-        }
-        if (best < 0) continue;
-        const m = mat[best] === 31 ? BODY : mat[best];
-        // lit side gets the lighter outline
-        const P2 = rimMask[best] && rim && rim.pal ? rim.pal : pal;
-        final[i] = bestTone >= 3 ? P2[m].ol : P2[m].od;
-        depth[i] = depth[best] - 0.01;
-        part[i] = part[best];
-      }
-
-    // screen-space anchors
-    const A = {};
-    for (const k in model.anchors) {
-      const a = model.anchors[k];
-      const p = a.p || a;
-      const q = M3.v(V, p);
-      A[k] = [ox + q[0], oy - q[1], q[2]];
-    }
-    const buf = new PX.Buf(W, H);
-    buf.d = final;
-    return { buf, depth, part, W, H, ox, oy, anchors: A };
+    const set = (opt.scale || 1) >= 1.2 ? EYES_L : EYES_S;
+    for (const st of model.stamps) st.set = set;
+    return Creature.render(model, opt);
   }
 
   // Build a graded palette from BASE_PAL through a colour function
@@ -656,5 +276,5 @@ const Mudkip = (() => {
     return out;
   }
 
-  return { build, render, BASE_PAL, gradePalette, MAT, EYES };
+  return { build, render, BASE_PAL, PAL: BASE_PAL, gradePalette, MAT, EYES, meta: { heightM: 0.4, bw: 112, bh: 112, oy: 0.86 } };
 })();

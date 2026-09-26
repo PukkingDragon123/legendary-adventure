@@ -1,0 +1,84 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#1d2129;color:#cfd6e0;font:11px monospace}
+canvas{image-rendering:pixelated;display:block}
+</style></head><body>
+<canvas id="c"></canvas>
+<script src="../src/px.js"></script>
+<script src="../src/creature.js"></script>
+<script src="../src/mudkip.js"></script>
+<script>
+/* Creature harness.
+   ?sp=spheal                       species file src/species/spheal.js (global const Spheal)
+   &yaws=0,0.6,1.1,1.6,2.2          columns (radians; 0 = profile facing right, PI/2 = facing viewer)
+   &poses=[{},{"mouth":1}]          rows (JSON pose objects passed to build())
+   &scale=1&z=3&pitch=0.16
+   ?lineup=mudkip,spheal,sealeo     size line-up at scale 1 on one ground line (yaw 1.1)
+*/
+const q = new URLSearchParams(location.search);
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+const want = q.get('lineup') ? q.get('lineup').split(',') : [q.get('sp') || 'mudkip'];
+const get = (n) => { try { return (0, eval)(cap(n)); } catch (e) { return null; } };
+const LIGHT = { dir: [-0.5, 0.72, 0.5] };
+function spriteFor(S, pose, yaw, scale, pitch) {
+  const meta = S.meta || { bw: 112, bh: 112, oy: 0.86 };
+  const bw = Math.ceil((meta.bw || 160) * scale), bh = Math.ceil((meta.bh || 160) * scale);
+  const ox = Math.floor(bw / 2), oy = Math.floor(bh * (meta.oy ?? 0.85));
+  const t0 = performance.now();
+  const m = S.build(pose);
+  const r = S.render(m, { yaw, pitch, scale, W: bw, H: bh, ox, oy, pal: S.PAL || S.BASE_PAL, light: q.get('light') ? JSON.parse(q.get('light')) : LIGHT });
+  r.ms = performance.now() - t0;
+  r.box = Creature.bounds(r);
+  return r;
+}
+function run() {
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  const Z = +(q.get('z') || 3), pitch = +(q.get('pitch') || 0.16);
+  const bgA = '#9fd3e6', bgB = '#b3dcea';
+  if (q.get('lineup')) {
+    const sprites = want.map((n) => { const S = n === 'mudkip' ? Mudkip : get(n); return S ? { n, r: spriteFor(S, {}, +(q.get('yaw') || 1.1), 1, pitch) } : null; }).filter(Boolean);
+    const H = Math.max(...sprites.map((s) => s.r.H)) + 20, W = sprites.reduce((a, s) => a + s.r.box.w + 24, 24);
+    cv.width = W * Z; cv.height = H * Z;
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = bgA; ctx.fillRect(0, 0, cv.width, cv.height);
+    const gy = H - 10;
+    ctx.fillStyle = '#d9c28e'; ctx.fillRect(0, gy * Z, cv.width, 10 * Z);
+    let x = 12;
+    for (const s of sprites) {
+      const t = document.createElement('canvas'); s.r.buf.toCanvas(t);
+      const dx = x - s.r.box.x0, dy = gy - s.r.oy;
+      ctx.drawImage(t, dx * Z, dy * Z, s.r.W * Z, s.r.H * Z);
+      ctx.fillStyle = '#123'; ctx.font = `${10 + Z}px monospace`;
+      ctx.fillText(`${s.n} ${s.r.box.h}px`, x * Z, (gy + 8) * Z);
+      x += s.r.box.w + 24;
+    }
+    window.__done = true; return;
+  }
+  const S = get(want[0]) || (want[0] === 'mudkip' ? Mudkip : null);
+  if (!S) { document.body.insertAdjacentHTML('beforeend', `<p>species ${want[0]} not found</p>`); window.__done = true; return; }
+  const yaws = (q.get('yaws') || '0,0.6,1.1,1.6,2.2').split(',').map(Number);
+  const poses = JSON.parse(q.get('poses') || '[{}]');
+  const scale = +(q.get('scale') || 1);
+  const cells = poses.map((p) => yaws.map((y) => spriteFor(S, p, y, scale, pitch)));
+  const cw = cells[0][0].W, ch = cells[0][0].H;
+  cv.width = cw * yaws.length * Z; cv.height = ch * poses.length * Z;
+  ctx.imageSmoothingEnabled = false;
+  cells.forEach((row, ri) => row.forEach((r, ci) => {
+    ctx.fillStyle = (ri + ci) % 2 ? bgA : bgB; ctx.fillRect(ci * cw * Z, ri * ch * Z, cw * Z, ch * Z);
+    ctx.fillStyle = 'rgba(120,90,40,.35)'; ctx.fillRect(ci * cw * Z, (ri * ch + r.oy) * Z, cw * Z, Z);
+    const t = document.createElement('canvas'); r.buf.toCanvas(t);
+    ctx.drawImage(t, ci * cw * Z, ri * ch * Z, cw * Z, ch * Z);
+    ctx.fillStyle = '#123'; ctx.font = '12px monospace';
+    ctx.fillText(`yaw ${yaws[ci]}  ${r.box.w}x${r.box.h}px  ${r.ms.toFixed(1)}ms`, ci * cw * Z + 4, ri * ch * Z + 14);
+  }));
+  window.__done = true;
+}
+let pending = want.filter((n) => n !== 'mudkip').length;
+if (!pending) run();
+for (const n of want) {
+  if (n === 'mudkip') continue;
+  const s = document.createElement('script');
+  s.src = `../src/species/${n}.js`;
+  s.onload = s.onerror = () => { if (--pending === 0) run(); };
+  document.head.appendChild(s);
+}
+</script></body></html>

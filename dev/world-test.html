@@ -1,0 +1,43 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#111} canvas{image-rendering:pixelated;display:block}
+</style></head><body><canvas id="c"></canvas>
+<script src="../src/px.js"></script>
+<script src="../src/creature.js"></script>
+<script src="../src/mudkip.js"></script>
+<script src="../src/ball.js"></script>
+<script src="../src/scenery.js"></script>
+<script src="../src/actors.js"></script>
+<script src="../src/game/world.js"></script>
+<script src="../src/game/render.js"></script>
+<script src="../src/game/props.js"></script>
+<script src="../src/game/scene.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const VW = +(q.get('vw') || 480), VH = +(q.get('vh') || 270), Z = +(q.get('z') || 2);
+const cams = (q.get('cam') || '600,300').split(';').map((s) => s.split(',').map(Number));
+const time = q.get('time') || 'noon', t = +(q.get('t') || 3);
+const P = Times.compile(time);
+Scene.init();
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const cols = +(q.get('cols') || 1);
+cv.width = VW * Z * cols; cv.height = VH * Z * Math.ceil(cams.length / cols);
+ctx.imageSmoothingEnabled = false;
+const perf = [];
+cams.forEach(([cx, cy], k) => {
+  const fb = new PX.Buf(VW, VH), occ = new Uint8Array(VW * VH);
+  const t0 = performance.now();
+  const sw = WorldRender.swashState(t);
+  WorldRender.drawSky(fb, cx, cy, P, t);
+  WorldRender.drawBackdrop(fb, cx, cy, P, t);
+  WorldRender.drawTerrain(fb, cx, cy, P, t, occ, sw);
+  Scene.drawBack(fb, cx, cy, P, t, occ);
+  Scene.drawItems(fb, cx, cy, P, t);
+  Scene.drawFront(fb, cx, cy, P, t);
+  WorldRender.drawWater(fb, cx, cy, P, t, occ, sw);
+  WorldRender.drawSurface(fb, cx, cy, P, t);
+  perf.push((performance.now() - t0).toFixed(1));
+  const tmp = document.createElement('canvas'); fb.toCanvas(tmp);
+  ctx.drawImage(tmp, (k % cols) * VW * Z, Math.floor(k / cols) * VH * Z, VW * Z, VH * Z);
+});
+console.log('frame ms', perf.join(','));
+</script></body></html>

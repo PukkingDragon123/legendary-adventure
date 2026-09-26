@@ -6,7 +6,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const src = (f) => readFileSync(join(root, 'src', f), 'utf8');
-const JS = ['px.js', 'mudkip.js', 'ball.js', 'scenery.js', 'actors.js', 'beach.js', 'paintings.js', 'paintings2.js', 'app.js'];
+const JS = ['px.js', 'creature.js', 'mudkip.js', 'ball.js', 'scenery.js', 'actors.js', 'beach.js', 'paintings.js', 'paintings2.js', 'app.js'];
 const js = JS.map((f) => `// ---- ${f}\n` + src(f)).join('\n');
 const css = src('style.css');
 let page = src('page.html').replace('/*__CSS__*/', () => css).replace('/*__JS__*/', () => js);
