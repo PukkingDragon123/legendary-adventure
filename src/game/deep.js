@@ -26,7 +26,7 @@ const Deep = (() => {
   }
   class LuvdiscMon extends Mon {
     constructor(o) {
-      super(SP.Luvdisc, { kind: 'luvdisc', x: o.x, y: o.y, yaw: 0.35, z: 1.8, qPose: 0.25, qYaw: 0.08, qFields: { wiggle: 0.25, tilt: 0.1, kiss: 0.5, blush: 0.5 }, shadow: false });
+      super(SP.Luvdisc, { kind: 'luvdisc', x: o.x, y: o.y, yaw: 0.35, z: 1.8, scale: 0.6, qPose: 0.25, qYaw: 0.08, qFields: { wiggle: 0.25, tilt: 0.1, kiss: 0.5, blush: 0.5 }, shadow: false });
       this.k = o.k; this.mode = 'dive'; this.vx = 0; this.vy = 0; this.kissT = 0; this.happyT = 0; this.scatter = 0;
     }
     headPt() { return this.at('top', 0, -2); }

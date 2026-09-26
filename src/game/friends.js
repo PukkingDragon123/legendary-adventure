@@ -27,7 +27,7 @@ const Friends = (() => {
   ================================================================ */
   class SphealMon extends Mon {
     constructor(o) {
-      super(sp('Spheal'), { kind: 'spheal', x: o.x, y: gy(o.x), yaw: Math.PI - 1.1, z: 2.2, qPose: 0.05, qFields: { roll: 0.2, clap: 0.2, mouth: 0.25, squash: 0.03 } });
+      super(sp('Spheal'), { kind: 'spheal', x: o.x, y: gy(o.x), yaw: Math.PI - 1.1, z: 2.2, scale: 0.72, qPose: 0.05, qFields: { roll: 0.2, clap: 0.2, mouth: 0.25, squash: 0.03 } });
       this.roll = 0; this.sq = new Spring(220, 10); this.happyT = 0; this.floatT = 0;
     }
     headPt() { return this.at('top', 0, -4); }

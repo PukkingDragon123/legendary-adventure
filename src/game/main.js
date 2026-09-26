@@ -134,6 +134,7 @@ const Game = (() => {
 
   function update(dt) {
     G.rt = (G.rt || 0) + dt;
+    if (G.gallery) { Gallery.update(dt); return; }
     if (G.frozen > 0) {
       // Dialga stopped time: only Dialga (and the magic) keep moving
       G.frozen -= dt;
@@ -166,6 +167,7 @@ const Game = (() => {
   const mark = DEBUG ? (k) => { const n = performance.now(); prof[k] = (prof[k] || 0) * 0.95 + (n - pt) * 0.05; pt = n; } : () => {};
   G.prof = prof;
   function render() {
+    if (G.gallery) { Gallery.draw(fb); Gallery.post(fb); ctx.putImageData(img, 0, 0); return; }
     const P = G.P, t = G.t;
     pt = performance.now();
     const sh = G.shakeA > 0 ? G.shakeA : 0;
@@ -225,6 +227,7 @@ const Game = (() => {
     FX.draw(fb, cx, cy, 3, t);
     FX.draw(fb, cx, cy, 4, t);
     for (const s of G.systems) if (s.post) s.post(fb, cx, cy, P, t);
+    if (typeof Gallery !== 'undefined') Gallery.post(fb);
     mark('fx');
     ctx.putImageData(img, 0, 0);
     mark('put');
@@ -246,6 +249,7 @@ const Game = (() => {
 
   /* ---------- poke ---------- */
   function poke(sx, sy) {
+    if (G.gallery) { Gallery.poke(sx / G.zoom, sy / G.zoom); return; }
     const wx = G.cam.x + sx / G.zoom, wy = G.cam.y + sy / G.zoom;
     const t = G.t, P = G.P, S = Scene.S;
     FX.add({ type: 'ring', x: wx, y: wy, r0: 1, r1: 7, life: 0.3, c: PX.hex('#ffffff'), layer: 4 });

@@ -223,14 +223,26 @@ const Magic = (() => {
       Game.sfx('freeze', this.x, 1);
       Game.sfx('tick', this.x, 0.8);
     }
+    // poke Dialga: he roars and tears open a portal to the Time Gallery
     onPoke() {
-      if (this.mode === 'emerge' || S.shift || this.cool > 0) return;
+      if (this.mode === 'emerge' || S.shift || this.cool > 0 || (S.portal && S.portal.gallery)) return;
       this.cool = 3;
       this.doTask((function* (d) {
         d.roarT = 0.9; Game.sfx('dialga', d.x, 1);
         yield* Life.wait(0.35);
         d.say();
-        yield* Life.wait(0.35);
+        yield* Life.wait(0.3);
+        openGalleryPortal(d);
+        yield* Life.wait(1);
+      })(this), 4);
+    }
+    // the clock button: a plain time shift
+    shiftTime() {
+      if (this.mode === 'emerge' || S.shift || this.cool > 0) return;
+      this.cool = 3;
+      this.doTask((function* (d) {
+        d.roarT = 0.9; Game.sfx('dialga', d.x, 1);
+        yield* Life.wait(0.5);
         timeShift(d);
         yield* Life.wait(2);
       })(this), 4);
@@ -240,6 +252,22 @@ const Magic = (() => {
   }
 
   /* ---- time shift ---- */
+  function openGalleryPortal(d) {
+    const side = d.x < Game.cam.x + Game.VW / 2 ? 1 : -1, px = d.x + side * 110, py = d.y - 90;
+    Game.panTo(d.x + side * 55, py + 20);
+    S.portal = { x: px, y: py, r: 0, t: 0, open: true, parts: [], gallery: true };
+    Game.sfx('portal', px, 1); Game.shake(2);
+    FX.add({ type: 'ring', x: px, y: py, r0: 2, r1: 60, life: 0.6, c: C.w, thick: true, c2: C.cyan, layer: 3 });
+    S.seq = new Life.Task((function* () {
+      let e = 0;
+      while (e < 0.7) { const dt = yield; e += dt; S.portal.r = Ease.outBack(Math.min(1, e / 0.7)); }
+      e = 0;
+      while (e < 9 && S.portal && S.portal.gallery && !S.portal.entered) { const dt = yield; e += dt; if (Math.random() < dt * 10) FX.sparkles(px, py, 1, 40, C.w, C.cyan); }
+      e = 0;
+      while (e < 0.45 && S.portal) { const dt = yield; e += dt; S.portal.r = 1 - Ease.inCubic(Math.min(1, e / 0.45)); }
+      S.portal = null;
+    })(), 5);
+  }
   function timeShift(d) {
     const G = Game;
     const fb = G.fb();
@@ -506,6 +534,12 @@ const Magic = (() => {
     if (Game.frozen > 0) { FX.sparkles(wx, wy, 2, 6, C.w, C.cyan); return true; }
     if ((S.orb === 'float' || S.orb === 'pop') && Math.hypot(wx - S.ox, wy - S.oy) < 16) { summon(); return true; }
     if (S.shift) return true;
+    const p = S.portal;
+    if (p && p.gallery && p.r > 0.6 && !p.entered && ((wx - p.x) / 38) ** 2 + ((wy - p.y) / 54) ** 2 < 1) {
+      p.entered = true; FX.sparkles(p.x, p.y, 16, 40, C.w, C.cyan);
+      Gallery.enter();
+      return true;
+    }
     return false;
   }
   function orbButton() {
@@ -514,7 +548,7 @@ const Magic = (() => {
     else if (S.dialga) Game.panTo(S.dialga.x, S.dialga.y - 40);
   }
   function clockButton() {
-    if (S.dialga) { Game.panTo(S.dialga.x, S.dialga.y - 40); FX.emote('sparkle', () => S.dialga.headPt(), { life: 1 }); }
+    if (S.dialga) { Game.panTo(S.dialga.x, S.dialga.y - 40); S.dialga.shiftTime(); }
     else orbButton();
   }
   function drawMini(m, sx, sy2) {

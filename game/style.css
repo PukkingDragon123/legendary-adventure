@@ -88,3 +88,5 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) {
   #b-start, .tap, #b-orb.pulse svg, #b-orb.hint { animation: none; }
 }
+
+#game.in-gallery .hud-bm, #game.in-gallery #b-zin, #game.in-gallery #b-zout, #game.in-gallery #b-follow, #game.in-gallery .hud-tl { display: none; }
