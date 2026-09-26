@@ -368,7 +368,7 @@
     }
     return {
       meta: {
-        id: 'dawn', no: 'I', title: 'First Light', time: '06:12', place: 'Route 109 shore', poster: 5.2, period: 8.2,
+        id: 'dawn', no: 'I', title: 'First Light', time: '06:12', place: 'Route 109 shore', poster: 7, period: 8.2,
         blurb: 'The sun lifts out of a lavender sea. Mudkip trots the waterline nosing the ball ahead of it, and each wave rubs out another row of pawprints.',
         medium: 'Animated pixels on canvas', size: '384 × 216 px',
         hint: 'Tap the ball to roll it · tap Mudkip · tap the water',
@@ -593,7 +593,7 @@
     }
     return {
       meta: {
-        id: 'dusk', no: 'IV', title: 'Golden Hour', time: '18:47', place: 'Route 109 shore', poster: 2.4, period: 7.4,
+        id: 'dusk', no: 'IV', title: 'Golden Hour', time: '18:47', place: 'Route 109 shore', poster: 2, period: 7.4,
         blurb: 'The sun sinks behind the palms and paints everything orange. Mudkip balances the ball on the tip of its head fin, rim-lit, its shadow reaching across the sand.',
         medium: 'Animated pixels on canvas', size: '384 × 216 px',
         hint: 'Tap the ball to toss it · tap Mudkip for a spin · tap the water',
@@ -854,7 +854,7 @@
     }
     return {
       meta: {
-        id: 'night', no: 'V', title: 'Moonlit Lullaby', time: '23:10', place: 'Route 109 shore', poster: 3.2, period: 7.8,
+        id: 'night', no: 'V', title: 'Moonlit Lullaby', time: '23:10', place: 'Route 109 shore', poster: 7, period: 7.8,
         blurb: 'Tired out, Mudkip sleeps curled against the ball. The breaking waves glow blue-green, the lighthouse beam sweeps the bay and now and then a star falls.',
         medium: 'Animated pixels on canvas', size: '384 × 216 px',
         hint: 'Tap Mudkip to stir it · tap the sky for a falling star · tap the glowing water',
@@ -989,6 +989,9 @@
         S.sink = lerp(19, 56, Math.min(1, S.diveT / 0.45));
         if (Math.random() < dt * 30) parts.add({ type: 'drop', x: mk.x + (Math.random() - 0.5) * 16, y: surfY - 1, vx: 0, vy: -10, g: 0, life: 0.35, c: pal.foam[1], size: 1, layer: 1 });
         if (S.diveT > 0.45 && S.ballMode === 'float') {
+          // turn (unseen, under water) to face the ball, then leap at it
+          S.dir = Math.sign(ball.x - mk.x) || S.dir;
+          mk.yaw = S.dir > 0 ? 1.2 : Math.PI - 1.2;
           const x1 = ball.x - S.dir * 10;
           S.mode = 'leap'; S.u = 0; S.exitDone = false; S.entryDone = false;
           S.leap = { x0: mk.x, x1, dur: 0.85 };
@@ -1044,7 +1047,7 @@
       const pad = Math.sin(t * 10);
       mk.sprite({
         squash: clamp(mk.sq.x * 0.5, -0.15, 0.2),
-        lean: S.mode === 'leap' ? lerp(0.75, -0.85, u) : 0.06,
+        lean: S.mode === 'leap' ? lerp(0.95, -1.05, u) : 0.06,
         headPitch: S.mode === 'leap' ? 0.1 : 0.12,
         legF: S.mode === 'leap' ? -0.7 : pad * 0.6,
         legB: S.mode === 'leap' ? 0.8 : -pad * 0.6,
@@ -1191,7 +1194,7 @@
     }
     return {
       meta: {
-        id: 'surf', no: 'III', title: 'Swell Season', time: '15:30', place: 'Off Route 109', poster: 4.4, period: 5.5,
+        id: 'surf', no: 'III', title: 'Swell Season', time: '15:30', place: 'Off Route 109', poster: 9, period: 5.5,
         blurb: 'Out past the breakers the swell rolls in steadily. Mudkip swims after the ball, flicks it with its fin, and every third throw dives and leaps clear of the water after it.',
         medium: 'Animated pixels on canvas', size: '384 × 216 px',
         hint: 'Tap the ball to throw it · tap Mudkip to make it leap · tap the sea',

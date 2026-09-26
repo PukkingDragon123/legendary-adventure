@@ -441,7 +441,7 @@ const Paintings = (() => {
   }
 
   const NOON_META = {
-    id: 'noon', no: 'II', title: 'High Noon Header', time: '12:04', place: 'Route 109 shore', poster: 3.05, period: 6.6,
+    id: 'noon', no: 'II', title: 'High Noon Header', time: '12:04', place: 'Route 109 shore', poster: 3.5, period: 6.6,
     alt: 'Pixel painting: Mudkip leaps in ankle-deep turquoise water to head a striped beach ball under a bright noon sky, a palm tree on the left and a red-and-white lighthouse on the far headland.',
     blurb: 'Sun straight overhead, water ankle-deep. Mudkip keeps the beach ball airborne with its head fin and lands every hop with a splash.',
     medium: 'Animated pixels on canvas', size: '384 × 216 px',

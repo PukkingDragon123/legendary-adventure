@@ -254,7 +254,11 @@
   };
   const lead = $('#lead'), series = $('#series'), strip = $('#strip');
   const items = WORKS.map((w, i) => {
-    const inst = w.make();
+    const rand = PX.rng(258);
+    const saved = Math.random;
+    Math.random = rand;
+    let inst;
+    try { inst = w.make(); } finally { Math.random = saved; }
     const meta = inst.meta;
     const fig = document.createElement('article');
     fig.className = 'work' + (meta.id === 'noon' ? ' lead' : '');
@@ -278,7 +282,7 @@
     li.innerHTML = `<button type="button" aria-label="Open ${meta.title}"><canvas width="${PW}" height="${PH}"></canvas><span class="t">${meta.no} · ${meta.time}</span><span class="n">${meta.title}</span></button>`;
     strip.appendChild(li);
     const fc = framedCanvas($('canvas', fig));
-    const item = { w, inst, meta, fig, fc, thumb: $('canvas', li), fb: new PX.Buf(PW, PH), ready: false, idx: i };
+    const item = { w, inst, meta, fig, fc, thumb: $('canvas', li), fb: new PX.Buf(PW, PH), ready: false, idx: i, rand };
     const open = (e) => openViewer(i, fc.cv, e);
     $('.frame-btn', fig).addEventListener('click', open);
     $('.enter', fig).addEventListener('click', (e) => openViewer(i, fc.cv, null, e.currentTarget));
@@ -293,26 +297,35 @@
     it.fb.toCanvas(it.thumb);
     it.ready = true;
   }
+  // Warm-up runs on a seeded random stream so every visitor sees the same poster moment
+  function seeded(it, fn) {
+    const saved = Math.random;
+    Math.random = it.rand;
+    try { fn(); } finally { Math.random = saved; }
+  }
   function paintPoster(it) {
     if (it.ready) return;
     const target = it.meta.poster || 3;
-    it.warmT = it.warmT || 0;
-    while (it.warmT < target) { it.inst.step(1 / 30); it.warmT += 1 / 30; }
+    seeded(it, () => { while (it.warmT < target - 1e-6) { it.inst.step(1 / 30); it.warmT += 1 / 30; } });
     finishPoster(it);
   }
   function paintPosterSliced(it, done) {
     const target = it.meta.poster || 3;
-    it.warmT = it.warmT || 0;
     (function slice() {
       if (it.ready) return done();
       const t0 = performance.now();
-      while (it.warmT < target && performance.now() - t0 < 10) { it.inst.step(1 / 30); it.warmT += 1 / 30; }
-      if (it.warmT < target) requestAnimationFrame(slice);
+      seeded(it, () => { while (it.warmT < target - 1e-6 && performance.now() - t0 < 10) { it.inst.step(1 / 30); it.warmT += 1 / 30; } });
+      if (it.warmT < target - 1e-6) requestAnimationFrame(slice);
       else { finishPoster(it); done(); }
     })();
   }
   // placeholder: the still sky & sea of each painting while it warms up
-  for (const it of items) { it.inst.step(1 / 30); it.warmT = 1 / 30; it.inst.draw(it.fb); it.fc.compose(it.fb); }
+  for (const it of items) {
+    it.warmT = 0;
+    seeded(it, () => { it.inst.step(1 / 30); });
+    it.warmT = 1 / 30;
+    it.inst.draw(it.fb); it.fc.compose(it.fb);
+  }
   // paint the lead first, then the rest in clock order
   const queue = [...items].sort((a, b) => (a.meta.id === 'noon' ? -1 : b.meta.id === 'noon' ? 1 : a.idx - b.idx));
   (function next() {
