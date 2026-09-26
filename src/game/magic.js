@@ -143,7 +143,7 @@ const Magic = (() => {
   }
   class DialgaMon extends Life.Mon {
     constructor(o) {
-      super(typeof Dialga !== 'undefined' ? Dialga : Mudkip, { kind: 'dialga', x: o.x, y: o.y, yaw: 1.05, z: 2.6, qPose: 0.05, qFields: { walk: 0.52, gem: 0.25, mouth: 0.1 } });
+      super(typeof Dialga !== 'undefined' ? Dialga : Mudkip, { kind: 'dialga', x: o.x, y: o.y, yaw: 1.05, z: 2.6, scale: 0.75, qPose: 0.05, qFields: { walk: 0.52, gem: 0.25, mouth: 0.1 } });
       this.fake = typeof Dialga === 'undefined';
       this.sq = new Spring(260, 12);
       this.cool = 0; this.hover = 0; this.roarT = 0; this.happyT = 0;

@@ -12,7 +12,7 @@ const files = [
   ...SPECIES.map((s) => `src/species/${s}.js`).filter((p) => existsSync(join(root, p))),
   'src/game/world.js', 'src/game/render.js', 'src/game/props.js', 'src/game/scene.js', 'src/game/fx.js',
   'src/game/critters.js', 'src/game/life.js', 'src/game/audio.js', 'src/game/main.js',
-  ...['src/game/friends.js', 'src/game/deep.js', 'src/game/magic.js', 'src/game/gallery.js'].filter((p) => existsSync(join(root, p))),
+  ...['src/game/friends.js', 'src/game/deep.js', 'src/game/magic.js', 'src/game/fun.js', 'src/game/gallery.js'].filter((p) => existsSync(join(root, p))),
 ];
 const js = files.map((f) => `/* ==== ${f} ==== */\n${read(f)}`).join('\n') + '\nGame.boot();\n';
 // worker: the renderer + species models + a tiny message handler

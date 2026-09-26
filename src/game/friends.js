@@ -27,7 +27,7 @@ const Friends = (() => {
   ================================================================ */
   class SphealMon extends Mon {
     constructor(o) {
-      super(sp('Spheal'), { kind: 'spheal', x: o.x, y: gy(o.x), yaw: Math.PI - 1.1, z: 2.2, scale: 0.72, qPose: 0.05, qFields: { roll: 0.2, clap: 0.2, mouth: 0.25, squash: 0.03 } });
+      super(sp('Spheal'), { kind: 'spheal', x: o.x, y: gy(o.x), yaw: Math.PI - 1.1, z: 2.2, scale: 0.5, qPose: 0.05, qFields: { roll: 0.2, clap: 0.2, mouth: 0.25, squash: 0.03 } });
       this.roll = 0; this.sq = new Spring(220, 10); this.happyT = 0; this.floatT = 0;
     }
     headPt() { return this.at('top', 0, -4); }
@@ -153,7 +153,7 @@ const Friends = (() => {
   ================================================================ */
   class SealeoMon extends Mon {
     constructor(o) {
-      super(sp('Sealeo'), { kind: 'sealeo', x: o.x, y: World.PIER.deck, yaw: Math.PI - 1.05, z: 1.6, qPose: 0.05, qFields: { headPitch: 0.06, clap: 0.2, flipper: 0.2, mouth: 0.25 } });
+      super(sp('Sealeo'), { kind: 'sealeo', x: o.x, y: World.PIER.deck, yaw: Math.PI - 1.05, z: 1.6, scale: 0.55, qPose: 0.05, qFields: { headPitch: 0.06, clap: 0.2, flipper: 0.2, mouth: 0.25 } });
       this.item = null; this.happyT = 0; this.sq = new Spring(240, 11);
     }
     headPt() { return this.at('top', 0, -4); }
@@ -279,7 +279,7 @@ const Friends = (() => {
     constructor(o) {
       const r = Scene.S.walreinRock;
       const x = r.x0 + r.spr.w * 0.5;
-      super(sp('Walrein'), { kind: 'walrein', x, y: rockTop(r, x) + 6, yaw: Math.PI - 0.95, z: 1.2, qPose: 0.05, qFields: { headPitch: 0.06, mouth: 0.2, squash: 0.02, flipper: 0.2 }, solid: true });
+      super(sp('Walrein'), { kind: 'walrein', x, y: rockTop(r, x) + 6, yaw: Math.PI - 0.95, z: 1.2, scale: 0.55, qPose: 0.05, qFields: { headPitch: 0.06, mouth: 0.2, squash: 0.02, flipper: 0.2 }, solid: true });
       this.rock = r; this.roarT = 0; this.sq = new Spring(200, 10); this.happyT = 0; this.angry = 0;
       this.roarAt = rnd(25, 45);
     }
@@ -378,7 +378,7 @@ const Friends = (() => {
   ================================================================ */
   class CorphishMon extends Mon {
     constructor(o) {
-      super(sp('Corphish'), { kind: 'corphish', x: o.x, y: gy(o.x), yaw: 1.3, z: o.under ? 1.4 : 2.4, qPose: 0.05, qFields: { walk: 0.52, clawN: 0.25, clawF: 0.25, armN: 0.2, armF: 0.2, tilt: 0.05, squash: 0.03 } });
+      super(sp('Corphish'), { kind: 'corphish', x: o.x, y: gy(o.x), yaw: 1.3, scale: 0.55, z: o.under ? 1.4 : 2.4, qPose: 0.05, qFields: { walk: 0.52, clawN: 0.25, clawF: 0.25, armN: 0.2, armF: 0.2, tilt: 0.05, squash: 0.03 } });
       this.underwater = !!o.under; this.min = o.min; this.max = o.max; this.angry = 0; this.happyT = 0; this.wantNut = null; this.sq = new Spring(260, 12);
     }
     headPt() { return this.at('top', 0, -4); }
@@ -495,7 +495,7 @@ const Friends = (() => {
   ================================================================ */
   class PelipperMon extends Mon {
     constructor(o) {
-      super(sp('Pelipper'), { kind: 'pelipper', x: o.x, y: o.y, yaw: Math.PI - 1.0, z: 4, qPose: 0.05, qFields: { flap: 0.2, spread: 0.25, bill: 0.2, pitch: 0.1, feet: 0.34, pouch: 0.34 } });
+      super(sp('Pelipper'), { kind: 'pelipper', x: o.x, y: o.y, yaw: Math.PI - 1.0, scale: 0.65, z: 4, qPose: 0.05, qFields: { flap: 0.2, spread: 0.25, bill: 0.2, pitch: 0.1, feet: 0.34, pouch: 0.34 } });
       this.mode = 'perch'; this.layer = 'mid'; this.vx = 0; this.vy = 0; this.flapPh = 0; this.cargo = null; this.happyT = 0; this.perchX = o.x; this.perchY = o.y;
       this.shadow = false;
     }
