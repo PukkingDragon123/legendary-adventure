@@ -36,24 +36,33 @@ const Luvdisc = (() => {
   const E = (c, L, part, grp, mat) => ({ kind: 'ell', part, grp, c, L, mat });
   const ellF = (f, r, part, grp, mat) => E(f.t, M3.mul(f.L, M3.diag(r[0], r[1], r[2])), part, grp, mat);
 
-  // ---- body (heart) geometry, fitted to the official silhouette (side view)
-  const CEN = [0, 52, 0]; // pivot for tilt / wiggle
+  // ---- body (heart) geometry: a heart tilted 120° so its point faces up-front (above the lips),
+  //      the two lobes sit at the back and at the bottom, with the notch between them at the back
+  const R0 = 50, ROT = 2.094;
   const THK = 12; // half-thickness (laterally thin)
-  const LOBES = [
-    { c: [-6, 73, 0], r: [30, 25, THK], a: -0.55 }, // upper lobe (big and round, like the official art)
-    { c: [-7, 31, 0], r: [24, 22, THK], a: 0.5 }, // lower lobe
-    { c: [-6, 52, 0], r: [27, 31, THK + 0.8], a: 0 }, // central filler: keeps the outline convex (a heart, not a bone)
-    { c: [9.5, 66, 0], r: [24, 7, THK * 0.6], a: -0.85 }, // upper front edge (runs into the lips)
-    { c: [9, 35, 0], r: [24, 7, THK * 0.6], a: 0.9 }, // lower front edge
-  ];
-  const LIP_C = [18.4, 49.5, 0]; // centre of the lip blob
+  const CEN = [0, 1.17 * R0, 0]; // heart centre (bottom of the lower lobe sits on y = 0)
+  const cR = Math.cos(ROT), sR = Math.sin(ROT);
+  const HX = (x, y) => [CEN[0] + x * cR - y * sR, CEN[1] + x * sR + y * cR, 0];
+  // the silhouette is a sweep of spheres from each lobe to the heart's point (smooth, no lumps)
+  const L1 = HX(-0.48 * R0, 0.3 * R0), L2 = HX(0.48 * R0, 0.3 * R0), PT = HX(0, -0.86 * R0);
+  const LOBES = [];
+  for (const L of [L1, L2]) for (let k = 0; k <= 22; k++) {
+    const t = k / 22, rr = 0.53 * R0 + (0.11 * R0 - 0.53 * R0) * Math.pow(t, 0.8);
+    LOBES.push({ c: [L[0] + (PT[0] - L[0]) * t, L[1] + (PT[1] - L[1]) * t, 0], r: [rr, rr, THK * Math.sqrt(Math.max(0.25, rr / (0.53 * R0)))], a: 0 });
+  }
+  LOBES.push({ c: HX(0, -0.05 * R0), r: [0.5 * R0, 0.5 * R0, THK + 0.6], a: 0 }); // central filler (stays clear of the notch)
+  const FILL_I = LOBES.length - 1;
+  const LIP_C = [0.86 * R0, CEN[1] - 0.02 * R0, 0]; // centre of the lip blob
 
   // ---- face: eye and cheek positions on the side of the body (model units)
-  const EYE_P = [0.5, 59.5], CHEEK_P = [-4.2, 50];
+  const EYE_P = [0.42 * R0, CEN[1] + 0.2 * R0], CHEEK_P = [0.12 * R0, CEN[1] - 0.06 * R0];
   // unit-sphere direction on the filler's side surface at model (x, y), side ±1
-  const FILL = LOBES[2];
+  const FILL = LOBES[FILL_I];
   function sideDir(x, y, side) {
-    const u = (x - FILL.c[0]) / FILL.r[0], v = (y - FILL.c[1]) / FILL.r[1];
+    // the filler is rotated: bring (x, y) into its local frame first
+    const dx = x - FILL.c[0], dy = y - FILL.c[1];
+    const lx = dx * Math.cos(-FILL.a) - dy * Math.sin(-FILL.a), ly = dx * Math.sin(-FILL.a) + dy * Math.cos(-FILL.a);
+    const u = lx / FILL.r[0], v = ly / FILL.r[1];
     return [u, v, side * Math.sqrt(Math.max(0.02, 1 - u * u - v * v))];
   }
 
@@ -77,15 +86,18 @@ const Luvdisc = (() => {
     const bl = Math.max(0, Math.min(1, P.blush));
     const cheekMat = bl > 0.45 ? M_BLUSH : M_CHEEK;
     const cs = 1 + bl * 0.25;
-    const fillPrim = ellF(chain(back, T(...FILL.c)), FILL.r, 1, 1, M_BODY);
+    const fillPrim = ellF(chain(back, T(...FILL.c), R(M3.rz(FILL.a))), FILL.r, 1, 1, M_BODY);
     for (const side of [1, -1]) {
       const s = sideDir(CHEEK_P[0], CHEEK_P[1], side);
-      const nw = nrm([s[0] / FILL.r[0], s[1] / FILL.r[1], s[2] / FILL.r[2]]);
-      const up = nrm(sub([0, 1, 0], sc(nw, nw[1])));
-      const ax = M3.cols(cross(up, nw), up, nw);
-      const cLoc = sub(add(FILL.c, [FILL.r[0] * s[0], FILL.r[1] * s[1], FILL.r[2] * s[2]]), sc(nw, 1.2));
+      // point on the (rotated) filler surface, and its outward normal, in body space
+      const Lf = M3.mul(M3.rz(FILL.a), M3.diag(FILL.r[0], FILL.r[1], FILL.r[2]));
+      const pLoc = add(FILL.c, M3.v(Lf, s));
+      const nLoc = nrm(M3.v(M3.rz(FILL.a), [s[0] / FILL.r[0], s[1] / FILL.r[1], s[2] / FILL.r[2]]));
+      const up = nrm(sub([0, 1, 0], sc(nLoc, nLoc[1])));
+      const ax = M3.cols(cross(up, nLoc), up, nLoc);
+      const cLoc = sub(pLoc, sc(nLoc, 1.2));
       const id = side > 0 ? 7 : 8;
-      prims.push(E(inF(back, cLoc), M3.mul(back.L, M3.mul(ax, M3.diag(4.1 * cs, 7 * cs, 2))), id, id, cheekMat));
+      prims.push(E(inF(back, cLoc), M3.mul(back.L, M3.mul(ax, M3.diag(4.4 * cs, 6.6 * cs, 2))), id, id, cheekMat));
     }
 
     // --- lips (front-most): a round blob plus two beak halves converging on a point;
@@ -105,7 +117,7 @@ const Luvdisc = (() => {
     prims.push(fillPrim);
     // (the upper front edge is one tone lighter: the official art's highlight along that edge)
     LOBES.forEach((l, i) => {
-      if (i !== 2) prims.push(ellF(chain(back, T(...l.c), R(M3.rz(l.a))), l.r, 1, 1, i === 3 ? M_BODY_L : M_BODY));
+      if (i !== FILL_I) prims.push(ellF(chain(back, T(...l.c), R(M3.rz(l.a))), l.r, 1, 1, M_BODY));
     });
 
     // --- eyes (stamps on the sides; far-side set is mirrored so the highlight stays toward the back)
@@ -116,7 +128,7 @@ const Luvdisc = (() => {
     }
 
     anchors.lips = inF(lipBase, [fx + 6.8 * Math.cos(bt), 0, 0]);
-    anchors.top = inF(back, [-12, 105, 0]);
+    anchors.top = inF(back, [-6, 2.05 * R0, 0]);
     anchors.center = inF(body, CEN);
 
     // uniform scale to the Pokédex height (0.6 m ≈ 105 px heart)
@@ -146,5 +158,5 @@ const Luvdisc = (() => {
 
   const render = (model, opt) => Creature.render(model, opt);
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 94, bh: 118, oy: 0.94 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 130, bh: 132, oy: 0.93 } };
 })();

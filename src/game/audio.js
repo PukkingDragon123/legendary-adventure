@@ -16,7 +16,7 @@ const Sound = (() => {
     comp.threshold.value = -16; comp.ratio.value = 4;
     master.connect(comp).connect(ac.destination);
     sfxBus = ac.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(master);
-    musicBus = ac.createGain(); musicBus.gain.value = 0.55; musicBus.connect(master);
+    musicBus = ac.createGain(); musicBus.gain.value = synthOn ? 0.55 : 0.0001; musicBus.connect(master);
     bedLP = ac.createBiquadFilter(); bedLP.type = 'lowpass'; bedLP.frequency.value = 20000;
     bedBus = ac.createGain(); bedBus.gain.value = 0.8; bedBus.connect(bedLP).connect(master);
     const len = ac.sampleRate * 3;
@@ -251,5 +251,7 @@ const Sound = (() => {
     bedLP.frequency.setTargetAtTime(u > 0.5 ? 380 : 20000, ac.currentTime, 0.3);
     bedBus.gain.setTargetAtTime(u > 0.5 ? 1.2 : 0.8, ac.currentTime, 0.3);
   }
-  return { init, set, play, setHour, setUnder, get on() { return on; }, get ready() { return !!ac; } };
+  let synthOn = true;
+  function synthMusic(v) { synthOn = v; if (musicBus && ac) musicBus.gain.setTargetAtTime(v ? 0.55 : 0.0001, ac.currentTime, 0.4); }
+  return { init, set, play, setHour, setUnder, synthMusic, get on() { return on; }, get ready() { return !!ac; }, ctx: () => ac, sfxBus: () => sfxBus, master: () => master, noise: () => white };
 })();

@@ -1,0 +1,325 @@
+/* ------------------------------------------------------------------
+   DexData — every Pokémon in Mudkip Snap: Pokédex facts, the photo
+   behaviours it can perform (star tier + a clue for the player) and
+   its photo objectives with rewards. Behaviour ids are the `act` tags
+   the creature brains set while performing.
+------------------------------------------------------------------- */
+const DexData = (() => {
+  // obj: { id, t (text), beh | stars | medal | with | face | night, reward }
+  const S = {
+    mudkip: { no: 258, name: 'Mudkip', type: ['Water'], h: 0.4, area: [], player: true,
+      blurb: 'Our photographer! The fin on its head reads ripples in the air, so it always knows where a Pokémon is hiding.', beh: {}, obj: [] },
+    spheal: { no: 363, name: 'Spheal', type: ['Ice', 'Water'], h: 0.8, area: ['beach'], persona: 'curious',
+      blurb: 'Rolling is faster than walking for this round little Pokémon. It claps its flippers whenever it is happy.',
+      beh: {
+        idle: { n: 'Lounging', tier: 1, hint: 'Spheal loves to lounge on warm sand.' },
+        sleep: { n: 'Napping', tier: 1, hint: 'Sleepy Spheal curl up in the shade of the palms.' },
+        curious: { n: 'Curious face', tier: 2, hint: 'Stand still near a Spheal and it may come to sniff your lens.' },
+        clap: { n: 'Clapping', tier: 2, hint: 'Play it a song and see what happens.' },
+        roll: { n: 'Rolling along', tier: 2, hint: 'Spheal roll when they are in a hurry to get somewhere.' },
+        ballnose: { n: 'Nose ball!', tier: 3, hint: 'Kick the beach ball toward a Spheal. Can it keep it up?' },
+        floe: { n: 'Riding an ice floe', tier: 4, hint: 'Walrein can freeze the sea... what would a Spheal do with a raft of ice?' },
+      },
+      obj: [
+        { id: 'spheal.roll', t: 'Photograph a Spheal rolling', beh: 'roll', reward: 'pts:300' },
+        { id: 'spheal.ball', t: 'Catch a Spheal balancing the ball', beh: 'ballnose', reward: 'key.spheal' },
+        { id: 'spheal.floe', t: 'Spheal riding an ice floe', beh: 'floe', reward: 'hat.beanie' },
+        { id: 'spheal.gold', t: 'Earn a Gold photo of Spheal', medal: 3, reward: 'pts:500' },
+      ] },
+    sealeo: { no: 364, name: 'Sealeo', type: ['Ice', 'Water'], h: 1.1, area: ['beach'], persona: 'showoff',
+      blurb: 'It spins things on its nose to check their smell and feel. It will happily balance a Spheal for hours.',
+      beh: {
+        idle: { n: 'Resting', tier: 1, hint: 'Sealeo like to rest near the water.' },
+        swim: { n: 'Swimming', tier: 1, hint: 'Look for Sealeo diving in the shallows.' },
+        pose: { n: 'Showing off', tier: 2, hint: 'Sealeo loves an audience. Point your camera at it.' },
+        spin: { n: 'Nose spin', tier: 3, hint: 'Give it something round to play with.' },
+        tower: { n: 'Spheal tower', tier: 4, hint: 'When the family gathers at dawn, Sealeo lifts a Spheal high.' },
+      },
+      obj: [
+        { id: 'sealeo.spin', t: 'Sealeo spinning something on its nose', beh: 'spin', reward: 'pts:400' },
+        { id: 'sealeo.tower', t: 'Photograph the Spheal tower', beh: 'tower', reward: 'deco.shells' },
+      ] },
+    walrein: { no: 365, name: 'Walrein', type: ['Ice', 'Water'], h: 1.4, area: ['beach'], persona: 'grumpy',
+      blurb: 'The boss of the beach. Its great tusks can shatter ice and its roar at sunrise wakes the whole shore.',
+      beh: {
+        idle: { n: 'Guarding the rock', tier: 1, hint: 'Walrein keeps watch from its rock.' },
+        sleep: { n: 'Snoozing', tier: 1, hint: 'Even bosses need naps.' },
+        roar: { n: 'Mighty roar', tier: 2, hint: 'Walrein roars when the sun comes up.' },
+        icebeam: { n: 'Ice Beam!', tier: 3, hint: 'Something noisy makes Walrein fire an Ice Beam at the sea.' },
+        attack: { n: 'Freezing the camera', tier: 4, hint: 'Pester a grumpy Walrein... if you dare. Shoot right before it strikes!' },
+      },
+      obj: [
+        { id: 'walrein.roar', t: 'Walrein roaring', beh: 'roar', reward: 'pts:300' },
+        { id: 'walrein.beam', t: 'Walrein firing Ice Beam', beh: 'icebeam', reward: 'pts:600' },
+        { id: 'walrein.attack', t: 'Walrein attacking the camera', beh: 'attack', reward: 'deco.frost' },
+      ] },
+    corphish: { no: 341, name: 'Corphish', type: ['Water'], h: 0.6, area: ['beach'], persona: 'grumpy',
+      blurb: 'A tough little crawfish that never lets go once it pinches. It hides in the sand with only its eyes showing.',
+      beh: {
+        idle: { n: 'Snipping about', tier: 1, hint: 'Corphish scuttle sideways along the shore.' },
+        hide: { n: 'Hiding in the sand', tier: 2, hint: 'Watch for two little eyes and bubbles in the sand.' },
+        eat: { n: 'Munching', tier: 2, hint: 'Corphish will eat almost anything. Try throwing a berry.' },
+        duel: { n: 'Claw duel', tier: 3, hint: 'Two Corphish near one berry never ends well.' },
+        attack: { n: 'Crabhammer!', tier: 4, hint: 'Poke a Corphish that is already annoyed. Snap it mid-swing!' },
+      },
+      obj: [
+        { id: 'corphish.hide', t: 'Corphish hiding in the sand', beh: 'hide', reward: 'pts:300' },
+        { id: 'corphish.duel', t: 'Photograph a claw duel', beh: 'duel', reward: 'hat.lobster' },
+        { id: 'corphish.attack', t: 'Corphish attacking the camera', beh: 'attack', reward: 'pts:700' },
+      ] },
+    luvdisc: { no: 370, name: 'Luvdisc', type: ['Water'], h: 0.6, area: ['beach'], persona: 'shy',
+      blurb: 'Couples who spot a Luvdisc are said to be lucky in love. They school together into a big heart at sunset.',
+      beh: {
+        swim: { n: 'Swimming', tier: 1, hint: 'Luvdisc swim around the dock posts.' },
+        sleep: { n: 'Sleeping', tier: 1, hint: 'At night Luvdisc drift quietly.' },
+        kiss: { n: 'Kissing', tier: 2, hint: 'Luvdisc give little kisses to friends. Get close slowly.' },
+        flee: { n: 'Darting away', tier: 1, hint: 'Luvdisc are shy — move slowly near them.' },
+        heart: { n: 'Heart school', tier: 3, hint: 'At sunset the whole school forms a heart. Frame all of them!' },
+        leap: { n: 'Leaping', tier: 4, hint: 'Sing to the Luvdisc while they make their heart...' },
+      },
+      obj: [
+        { id: 'luvdisc.kiss', t: 'Luvdisc giving a kiss', beh: 'kiss', reward: 'key.luvdisc' },
+        { id: 'luvdisc.heart', t: 'Photograph the heart school', beh: 'heart', reward: 'shirt.heart' },
+        { id: 'luvdisc.leap', t: 'Luvdisc leaping out of the sea', beh: 'leap', reward: 'skin.luvdisc' },
+      ] },
+    pelipper: { no: 279, name: 'Pelipper', type: ['Water', 'Flying'], h: 1.2, area: ['beach'], persona: 'calm',
+      blurb: 'A flying delivery service for the seaside. Its huge bill can carry food, eggs and the occasional small Pokémon.',
+      beh: {
+        fly: { n: 'Gliding', tier: 1, hint: 'Pelipper circle high over the dock.' },
+        perch: { n: 'Perching', tier: 1, hint: 'It rests on the tallest dock post.' },
+        scoop: { n: 'Scooping!', tier: 3, hint: 'Pelipper dive when something tasty splashes in the water.' },
+        attack: { n: 'Water Gun at the camera', tier: 4, hint: 'Splash a perched Pelipper and it will splash you back.' },
+      },
+      obj: [
+        { id: 'pelipper.scoop', t: 'Pelipper scooping from the sea', beh: 'scoop', reward: 'hat.bucket' },
+        { id: 'pelipper.attack', t: 'Pelipper splashing the camera', beh: 'attack', reward: 'pts:600' },
+      ] },
+    wingull: { no: 278, name: 'Wingull', type: ['Water', 'Flying'], h: 0.6, area: ['beach', 'canopy'], persona: 'curious',
+      blurb: 'It rides sea breezes on long slim wings and hides food it finds in hollows along the cliffs.',
+      beh: {
+        fly: { n: 'Riding the breeze', tier: 1, hint: 'Wingull soar over the sea.' },
+        glide: { n: 'Gust surfing', tier: 2, hint: 'Strong wind makes Wingull hang in the air.' },
+        dive: { n: 'Diving', tier: 3, hint: 'Wingull dive for bubbles near the surface.' },
+        steal: { n: 'Hat thief!', tier: 4, hint: 'Wingull love shiny, colourful things... like your hat.' },
+      },
+      obj: [
+        { id: 'wingull.dive', t: 'Wingull diving', beh: 'dive', reward: 'pts:400' },
+        { id: 'wingull.steal', t: 'Catch the hat thief', beh: 'steal', reward: 'hat.sailor' },
+      ] },
+    mantine: { no: 226, name: 'Mantine', type: ['Water', 'Flying'], h: 2.1, area: ['beach'], persona: 'calm',
+      blurb: 'It glides through the sea as if flying. With enough speed it leaps above the waves and surfs on them.',
+      beh: {
+        swim: { n: 'Gliding underwater', tier: 1, hint: 'Mantine glide over the reef.' },
+        leap: { n: 'Leaping', tier: 3, hint: 'Mantine leap when they are excited.' },
+        ride: { n: 'Remoraid hitchhiker', tier: 3, hint: 'Remoraid like to ride under Mantine.' },
+        surf: { n: 'Surfing the waves', tier: 4, hint: 'Big waves come when the wind blows hard... or when something enormous splashes.' },
+      },
+      obj: [
+        { id: 'mantine.leap', t: 'Mantine leaping from the sea', beh: 'leap', reward: 'pts:500' },
+        { id: 'mantine.ride', t: 'Mantine with a Remoraid rider', beh: 'ride', reward: 'pts:500' },
+        { id: 'mantine.surf', t: 'Mantine surfing a big wave', beh: 'surf', reward: 'skin.sapphire' },
+      ] },
+    remoraid: { no: 223, name: 'Remoraid', type: ['Water'], h: 0.6, area: ['beach'], persona: 'curious',
+      blurb: 'It shoots down flying prey with jets of water. It sticks close to Mantine to share its meals.',
+      beh: {
+        swim: { n: 'Swimming', tier: 1, hint: 'Remoraid dart around the reef.' },
+        shoot: { n: 'Water Gun', tier: 2, hint: 'Remoraid shoot at things above the water.' },
+        ride: { n: 'Hitching a ride', tier: 3, hint: 'Find Mantine and you will find Remoraid.' },
+      },
+      obj: [{ id: 'remoraid.shoot', t: 'Remoraid using Water Gun', beh: 'shoot', reward: 'pts:300' }] },
+    corsola: { no: 222, name: 'Corsola', type: ['Water', 'Rock'], h: 0.6, area: ['beach'], persona: 'shy',
+      blurb: 'Its branches glow softly in warm, clean seas. Snapped branches grow back overnight.',
+      beh: {
+        idle: { n: 'Coral stroll', tier: 1, hint: 'Corsola wander the reef.' },
+        hide: { n: 'Hiding in the reef', tier: 2, hint: 'Shy Corsola freeze and pretend to be coral.' },
+        glow: { n: 'Night glow', tier: 3, hint: 'Visit the reef at night.' },
+      },
+      obj: [{ id: 'corsola.glow', t: 'Corsola glowing at night', beh: 'glow', reward: 'skin.coral' }] },
+    sharpedo: { no: 319, name: 'Sharpedo', type: ['Water', 'Dark'], h: 1.8, area: ['beach'], persona: 'grumpy',
+      blurb: 'The bully of the sea. It jets forward at high speed, and its teeth grow back as fast as they chip.',
+      beh: {
+        patrol: { n: 'Patrolling', tier: 2, hint: 'Sharpedo patrol the deep water past the reef.' },
+        chase: { n: 'The chase', tier: 3, hint: 'Luvdisc must beware...' },
+        attack: { n: 'Lunge at the camera!', tier: 4, hint: 'Swim too close to Sharpedo... and keep your finger on the shutter.' },
+      },
+      obj: [
+        { id: 'sharpedo.chase', t: 'Sharpedo chasing Luvdisc', beh: 'chase', reward: 'glasses.round' },
+        { id: 'sharpedo.attack', t: 'Sharpedo lunging at the camera', beh: 'attack', reward: 'pts:800' },
+      ] },
+    wailord: { no: 321, name: 'Wailord', type: ['Water'], h: 14.5, area: ['beach'], persona: 'calm', rare: 1,
+      blurb: 'The largest Pokémon ever seen. Its spout can be spotted from the shore, and its breach shakes the whole bay.',
+      beh: {
+        swim: { n: 'Far away giant', tier: 2, hint: 'Look out to sea from the end of the dock.' },
+        spout: { n: 'Water spout', tier: 3, hint: 'Wailord spouts when it comes up for air.' },
+        breach: { n: 'Breaching!', tier: 4, hint: 'Wailord love the old sea song. Play it at the end of the dock at dusk.' },
+      },
+      obj: [
+        { id: 'wailord.spout', t: 'Wailord spouting', beh: 'spout', reward: 'pts:500' },
+        { id: 'wailord.breach', t: 'Wailord breaching', beh: 'breach', reward: 'banner.surf' },
+      ] },
+    kyogre: { no: 382, name: 'Kyogre', type: ['Water'], h: 4.5, area: ['beach'], rare: 2, legendary: 1,
+      blurb: 'A legend of the deep sea that can summon rainstorms. It is said to rest in the dark trench beyond the reef.',
+      beh: {
+        swim: { n: 'Deep sea legend', tier: 3, hint: 'Something enormous sleeps in the trench.' },
+        rise: { n: 'Rising in the storm', tier: 4, hint: 'Rain, night and a glowing blue light in the deep...' },
+      },
+      obj: [{ id: 'kyogre.rise', t: 'Kyogre rising in the storm', beh: 'rise', reward: 'key.orb' }] },
+    dialga: { no: 483, name: 'Dialga', type: ['Steel', 'Dragon'], h: 5.4, area: ['beach'], legendary: 1, rare: 2,
+      blurb: 'Time itself bends around it. This tiny visitor seems to have taken a liking to Mudkip.',
+      beh: { idle: { n: 'Time visitor', tier: 3, hint: 'A crystal hidden under a beach rock hums with time.' }, roar: { n: 'Roar of Time', tier: 4, hint: 'Ask Dialga to change the hour.' } },
+      obj: [{ id: 'dialga.roar', t: 'Dialga using Roar of Time', beh: 'roar', reward: 'banner.legend' }] },
+    palkia: { no: 484, name: 'Palkia', type: ['Water', 'Dragon'], h: 4.2, area: ['beach'], legendary: 1, rare: 2,
+      blurb: 'Space folds wherever it goes. It appears only to those who find the Lustrous Orb.',
+      beh: { blink: { n: 'Space jump', tier: 3, hint: 'The Lustrous Orb is hidden in one of the moored boats.' }, rift: { n: 'Opening a rift', tier: 4, hint: 'Tap Palkia when it is calm.' } },
+      obj: [{ id: 'palkia.rift', t: 'Palkia opening a space rift', beh: 'rift', reward: 'pts:1000' }] },
+
+    /* ---------------- Route 119 rainforest ---------------- */
+    castform: { no: 351, name: 'Castform', type: ['Normal'], h: 0.3, area: ['forest'], persona: 'curious',
+      blurb: 'Made at the Weather Institute, it changes its form to match the weather — sunny, rainy or snowy.',
+      beh: {
+        normal: { n: 'Normal Form', tier: 1, hint: 'Castform floats near the Weather Institute.' },
+        sunny: { n: 'Sunny Form', tier: 2, hint: 'Clear the clouds away.' },
+        rainy: { n: 'Rainy Form', tier: 2, hint: 'Wait for rain — or make some.' },
+        snowy: { n: 'Snowy Form', tier: 3, hint: 'The Institute has a machine for every weather...' },
+        change: { n: 'Changing form', tier: 4, hint: 'Snap Castform at the very moment it transforms.' },
+      },
+      obj: [
+        { id: 'castform.sunny', t: 'Castform in its Sunny Form', beh: 'sunny', reward: 'pts:300' },
+        { id: 'castform.rainy', t: 'Castform in its Rainy Form', beh: 'rainy', reward: 'pts:300' },
+        { id: 'castform.snowy', t: 'Castform in its Snowy Form', beh: 'snowy', reward: 'key.castform' },
+        { id: 'castform.change', t: 'Castform mid-transformation', beh: 'change', reward: 'shirt.hoodie' },
+      ] },
+    kecleon: { no: 352, name: 'Kecleon', type: ['Normal'], h: 1.0, area: ['forest', 'canopy'], persona: 'shy',
+      blurb: 'It blends into any background. Only the zig-zag stripe on its belly never changes colour.',
+      beh: {
+        reveal: { n: 'Revealed!', tier: 2, hint: 'Leaves that move with no wind... scan them with the Pokédex.' },
+        tongue: { n: 'Tongue snap', tier: 3, hint: 'Kecleon cannot resist a thrown berry.' },
+        colors: { n: 'Colour shift', tier: 3, hint: 'Startled Kecleon flash every colour at once.' },
+        attack: { n: 'Licking the lens', tier: 4, hint: 'Get very close to a revealed Kecleon...' },
+      },
+      obj: [
+        { id: 'kecleon.reveal', t: 'Reveal a hidden Kecleon', beh: 'reveal', reward: 'pts:400' },
+        { id: 'kecleon.tongue', t: 'Kecleon catching a berry', beh: 'tongue', reward: 'deco.leaves' },
+        { id: 'kecleon.attack', t: 'Kecleon licking the lens', beh: 'attack', reward: 'pts:700' },
+      ] },
+    tropius: { no: 357, name: 'Tropius', type: ['Grass', 'Flying'], h: 2.0, area: ['forest', 'canopy'], persona: 'calm',
+      blurb: 'The sweet fruit that grows around its neck is a favourite treat of children in the south.',
+      beh: {
+        walk: { n: 'Strolling', tier: 1, hint: 'Tropius wander by the river.' },
+        eat: { n: 'Fruit snack', tier: 2, hint: 'Shake a fruit tree near Tropius.' },
+        fly: { n: 'Taking flight', tier: 3, hint: 'Tropius fly off when startled by a splash.' },
+        share: { n: 'Sharing fruit', tier: 4, hint: 'Tropius shares its own fruit with the hungriest Pokémon around.' },
+      },
+      obj: [
+        { id: 'tropius.eat', t: 'Tropius eating fruit', beh: 'eat', reward: 'hat.straw' },
+        { id: 'tropius.fly', t: 'Tropius in flight', beh: 'fly', reward: 'pts:500' },
+        { id: 'tropius.share', t: 'Tropius sharing its fruit', beh: 'share', reward: 'pts:800' },
+      ] },
+    lotad: { no: 270, name: 'Lotad', type: ['Water', 'Grass'], h: 0.5, area: ['forest'], persona: 'curious',
+      blurb: 'It floats on rivers with its lily pad, which it uses as an umbrella when the sun is strong.',
+      beh: {
+        swim: { n: 'Drifting', tier: 1, hint: 'Lotad drift down the river.' },
+        rain: { n: 'Rain bath', tier: 2, hint: 'Lotad perk up when it rains.' },
+        dance: { n: 'Little dance', tier: 3, hint: 'Lotad bounce along to a good song.' },
+      },
+      obj: [{ id: 'lotad.dance', t: 'Lotad dancing', beh: 'dance', reward: 'pts:400' }] },
+    ludicolo: { no: 272, name: 'Ludicolo', type: ['Water', 'Grass'], h: 1.5, area: ['forest'], persona: 'showoff', rare: 1,
+      blurb: 'The sound of festive music makes its whole body pulse with energy. It cannot help but dance.',
+      beh: {
+        dance: { n: 'Carefree dance', tier: 3, hint: 'Ludicolo only come out for music at the riverside.' },
+        raindance: { n: 'Rain Dance', tier: 4, hint: 'A dance in the rain calls down even more rain...' },
+      },
+      obj: [
+        { id: 'ludicolo.dance', t: 'Ludicolo dancing', beh: 'dance', reward: 'hat.flower' },
+        { id: 'ludicolo.rain', t: 'Ludicolo\'s Rain Dance', beh: 'raindance', reward: 'banner.rain' },
+      ] },
+    feebas: { no: 349, name: 'Feebas', type: ['Water'], h: 0.6, area: ['forest'], persona: 'shy', rare: 1,
+      blurb: 'Shabby and slow, it lives in just a few quiet spots of water. Its true beauty is hidden.',
+      beh: {
+        swim: { n: 'Shy swimmer', tier: 2, hint: 'Only one quiet pool under the bridge hides Feebas. Look for odd ripples.' },
+        splash: { n: 'Splash!', tier: 2, hint: 'Feebas splash when fished out.' },
+        evolve: { n: 'Evolution!', tier: 4, hint: 'A rainbow after the rain can make the plainest Pokémon shine.' },
+      },
+      obj: [{ id: 'feebas.find', t: 'Find the hidden Feebas', beh: 'swim', reward: 'pts:500' }, { id: 'feebas.evolve', t: 'Feebas evolving', beh: 'evolve', reward: 'skin.emerald' }] },
+    milotic: { no: 350, name: 'Milotic', type: ['Water'], h: 6.2, area: ['forest'], rare: 2,
+      blurb: 'Said to be the most beautiful Pokémon of all. The sight of it calms angry hearts.',
+      beh: { swim: { n: 'Graceful swim', tier: 3, hint: 'Help a Feebas become its true self.' }, rainbow: { n: 'Under the rainbow', tier: 4, hint: 'Milotic rises when the rainbow shines.' } },
+      obj: [{ id: 'milotic.rainbow', t: 'Milotic under a rainbow', beh: 'rainbow', reward: 'banner.rainbow' }] },
+    volbeat: { no: 313, name: 'Volbeat', type: ['Bug'], h: 0.7, area: ['forest'], persona: 'showoff',
+      blurb: 'Its tail glows like a lantern. At night groups of Volbeat draw patterns in the sky.',
+      beh: { glow: { n: 'Tail glow', tier: 2, hint: 'Volbeat come out at night.' }, show: { n: 'Light show', tier: 3, hint: 'Illumise leads the dance.' }, heart: { n: 'Sky heart', tier: 4, hint: 'Sing under the stars while they dance.' } },
+      obj: [{ id: 'volbeat.show', t: 'Volbeat light show', beh: 'show', reward: 'pts:500' }, { id: 'volbeat.heart', t: 'Volbeat drawing a heart', beh: 'heart', reward: 'deco.stars' }] },
+    illumise: { no: 314, name: 'Illumise', type: ['Bug'], h: 0.6, area: ['forest'], persona: 'calm',
+      blurb: 'It guides glowing Volbeat with a sweet scent to draw shapes in the night sky.',
+      beh: { fly: { n: 'Night flight', tier: 1, hint: 'Illumise flutter at night.' }, lead: { n: 'Leading the dance', tier: 3, hint: 'Where Volbeat glow, Illumise leads.' } },
+      obj: [{ id: 'illumise.lead', t: 'Illumise leading the dance', beh: 'lead', reward: 'pts:500' }] },
+
+    /* ---------------- Fortree canopy ---------------- */
+    swablu: { no: 333, name: 'Swablu', type: ['Normal', 'Flying'], h: 0.4, area: ['canopy'], persona: 'curious',
+      blurb: 'It loves clean things and will tidy anything with its cotton wings — including your head.',
+      beh: { perch: { n: 'Fluffy perch', tier: 1, hint: 'Swablu perch on branches.' }, hum: { n: 'Humming', tier: 2, hint: 'Swablu hum along to songs.' }, nap: { n: 'Cloud nap', tier: 3, hint: 'Swablu nap in their wings on quiet branches.' }, clean: { n: 'Cleaning Mudkip', tier: 4, hint: 'Stand very still under a Swablu...' } },
+      obj: [{ id: 'swablu.hum', t: 'Swablu humming', beh: 'hum', reward: 'neck.scarf' }, { id: 'swablu.clean', t: 'Swablu tidying Mudkip', beh: 'clean', reward: 'pts:700' }] },
+    altaria: { no: 334, name: 'Altaria', type: ['Dragon', 'Flying'], h: 1.1, area: ['canopy'], persona: 'calm',
+      blurb: 'It hums in a beautiful soprano. Those who hear it feel as if they are dreaming among the clouds.',
+      beh: { fly: { n: 'Cloud flight', tier: 2, hint: 'Altaria drift with the clouds.' }, sing: { n: 'Singing', tier: 3, hint: 'Altaria sing back when someone sings first.' }, duet: { n: 'Duet', tier: 4, hint: 'A Swablu humming nearby makes Altaria join in.' } },
+      obj: [{ id: 'altaria.sing', t: 'Altaria singing', beh: 'sing', reward: 'pts:500' }, { id: 'altaria.duet', t: 'Altaria and Swablu duet', beh: 'duet', reward: 'glasses.star' }] },
+    chatot: { no: 441, name: 'Chatot', type: ['Normal', 'Flying'], h: 0.5, area: ['canopy'], persona: 'showoff',
+      blurb: 'It copies the songs it hears and keeps time with its metronome-shaped tail.',
+      beh: { perch: { n: 'Chattering', tier: 1, hint: 'Chatot chatter on high branches.' }, beat: { n: 'Keeping the beat', tier: 2, hint: 'Its tail ticks like a metronome.' }, mimic: { n: 'Copy-cat song', tier: 3, hint: 'Play a song and Chatot sings it right back.' } },
+      obj: [{ id: 'chatot.mimic', t: 'Chatot copying a song', beh: 'mimic', reward: 'key.note' }] },
+    taillow: { no: 276, name: 'Taillow', type: ['Normal', 'Flying'], h: 0.3, area: ['canopy'], persona: 'grumpy',
+      blurb: 'Plucky and brave, it takes on bigger foes. It is the first to spot a change in the wind.',
+      beh: { fly: { n: 'Swooping', tier: 1, hint: 'Taillow zip between the trees.' }, dive: { n: 'Dive', tier: 2, hint: 'Taillow dive at thrown berries.' }, attack: { n: 'Peck at the camera', tier: 4, hint: 'Taillow does not like cameras pointed at its nest.' } },
+      obj: [{ id: 'taillow.dive', t: 'Taillow diving', beh: 'dive', reward: 'pts:400' }, { id: 'taillow.attack', t: 'Taillow pecking the camera', beh: 'attack', reward: 'banner.sky' }] },
+    meloetta: { no: 648, name: 'Meloetta', type: ['Normal', 'Psychic'], h: 0.6, area: ['canopy', 'stage'], legendary: 1, rare: 2,
+      blurb: 'Its melodies bring joy to everyone who hears them. It appears where beautiful music is played.',
+      beh: { sing: { n: 'Relic Song', tier: 3, hint: 'Play all three songs on the treetop stage.' }, dance: { n: 'Pirouette', tier: 4, hint: 'When the crowd cheers, Meloetta dances.' }, float: { n: 'Floating melody', tier: 2, hint: 'Meloetta hides inside music itself...' } },
+      obj: [{ id: 'meloetta.sing', t: 'Meloetta singing', beh: 'sing', reward: 'skin.melody' }, { id: 'meloetta.dance', t: 'Meloetta\'s pirouette', beh: 'dance', reward: 'shirt.pop' }] },
+
+    /* ---------------- Meteor Falls ---------------- */
+    lunatone: { no: 337, name: 'Lunatone', type: ['Rock', 'Psychic'], h: 1.0, area: ['falls'], persona: 'calm',
+      blurb: 'Found where a meteorite fell long ago. It becomes active on nights of the full moon.',
+      beh: { float: { n: 'Moon float', tier: 1, hint: 'Lunatone drift in the cave at night.' }, glow: { n: 'Moonlight', tier: 2, hint: 'Lunatone glow when the moon is visible.' }, align: { n: 'Cosmic alignment', tier: 4, hint: 'At dawn and dusk, the sun and moon rocks meet.' } },
+      obj: [{ id: 'lunatone.glow', t: 'Lunatone glowing', beh: 'glow', reward: 'pts:400' }, { id: 'lunatone.align', t: 'The cosmic alignment', beh: 'align', reward: 'banner.star' }] },
+    solrock: { no: 338, name: 'Solrock', type: ['Rock', 'Psychic'], h: 1.2, area: ['falls'], persona: 'calm',
+      blurb: 'It soaks up sunlight and spins to give off heat. Its eyes can read the minds of others.',
+      beh: { spin: { n: 'Solar spin', tier: 2, hint: 'Solrock spin in the daylight shaft.' }, flare: { n: 'Solar flare', tier: 3, hint: 'Reflect sunlight at Solrock.' }, align: { n: 'Cosmic alignment', tier: 4, hint: 'At dawn and dusk, the sun and moon rocks meet.' } },
+      obj: [{ id: 'solrock.flare', t: 'Solrock blazing', beh: 'flare', reward: 'pts:500' }] },
+    bagon: { no: 371, name: 'Bagon', type: ['Dragon'], h: 0.6, area: ['falls'], persona: 'grumpy',
+      blurb: 'It dreams of flying one day. To toughen up, it headbutts boulders all day long.',
+      beh: { idle: { n: 'Stomping', tier: 1, hint: 'Bagon patrol the ledges.' }, headbutt: { n: 'Headbutting rocks', tier: 2, hint: 'Bagon headbutt the biggest boulders.' }, fly: { n: 'Trying to fly', tier: 3, hint: 'Bagon leap off ledges hoping to fly... help it with a gust?' }, dream: { n: 'Dreaming of wings', tier: 4, hint: 'A sleeping Bagon dreams about flying.' }, attack: { n: 'Headbutting the camera', tier: 4, hint: 'Bagon headbutt anything that stares at them too long.' } },
+      obj: [{ id: 'bagon.fly', t: 'Bagon trying to fly', beh: 'fly', reward: 'neck.bow' }, { id: 'bagon.dream', t: 'Bagon dreaming of flight', beh: 'dream', reward: 'pts:700' }] },
+    minior: { no: 774, name: 'Minior', type: ['Rock', 'Flying'], h: 0.3, area: ['falls', 'gallery'], persona: 'curious',
+      blurb: 'It falls to the ground in a hard shell. When the shell cracks, its colourful core shines through.',
+      beh: { meteor: { n: 'Meteor Form', tier: 1, hint: 'Minior shells lie where stars fall.' }, fall: { n: 'Falling star', tier: 3, hint: 'Watch the night sky over the falls.' }, core: { n: 'Core Form', tier: 2, hint: 'Crack a Minior shell — carefully.' }, crack: { n: 'Shell cracking', tier: 4, hint: 'Snap the exact moment the shell breaks.' } },
+      obj: [{ id: 'minior.fall', t: 'Minior falling from the sky', beh: 'fall', reward: 'pts:500' }, { id: 'minior.crack', t: 'Minior shell cracking', beh: 'crack', reward: 'key.minior' }, { id: 'minior.core', t: 'Minior Core Form', beh: 'core', reward: 'pts:400' }] },
+    deoxys: { no: 386, name: 'Deoxys', type: ['Psychic'], h: 1.7, area: ['falls', 'gallery'], legendary: 1, rare: 2,
+      blurb: 'A Pokémon born from a virus on a meteorite. It changes its form in the blink of an eye.',
+      beh: { fly: { n: 'Space flight', tier: 3, hint: 'Deoxys came from the stars.' }, forme: { n: 'Forme change', tier: 4, hint: 'Deoxys changes form when it battles.' }, fight: { n: 'Battling Minior', tier: 4, hint: 'In the rift between worlds, Deoxys plays rough with Minior.' }, descend: { n: 'Descent', tier: 4, hint: 'Crack every colour of Minior core... and the meteorite answers.' } },
+      obj: [{ id: 'deoxys.forme', t: 'Deoxys changing forme', beh: 'forme', reward: 'skin.cosmic' }, { id: 'deoxys.descend', t: 'Deoxys descending', beh: 'descend', reward: 'pts:1200' }] },
+    jirachi: { no: 385, name: 'Jirachi', type: ['Steel', 'Psychic'], h: 0.3, area: ['falls'], legendary: 1, rare: 2,
+      blurb: 'It sleeps for a thousand years and wakes for only seven days. The tags on its head grant wishes.',
+      beh: { sleep: { n: 'Thousand-year sleep', tier: 3, hint: 'Something small sleeps in the crystal nest.' }, wish: { n: 'Granting a wish', tier: 4, hint: 'Sing under the meteor shower.' } },
+      obj: [{ id: 'jirachi.wish', t: 'Jirachi granting a wish', beh: 'wish', reward: 'skin.gold' }] },
+  };
+  // band-stage behaviours shared by the performers
+  for (const k of ['chatot', 'swablu', 'altaria', 'pelipper', 'wingull', 'taillow']) {
+    S[k].beh.band = { n: 'Rocking on stage', tier: 3, hint: 'Catch it performing at the concert.' };
+    S[k].area.push('stage');
+  }
+  S.meloetta.beh.encore = { n: 'Encore!', tier: 4, hint: 'The final chorus of the concert.' };
+  S.meloetta.obj.push({ id: 'meloetta.encore', t: 'Meloetta\'s encore', beh: 'encore', reward: 'hat.star' });
+
+  const ORDER = Object.keys(S).filter((k) => !S[k].player).sort((a, b) => S[a].no - S[b].no);
+  const TYPES = { Water: '#4a90e8', Ice: '#78d8e8', Flying: '#a0a8f0', Normal: '#b8b0a0', Rock: '#b8a058', Dark: '#6a5a50', Grass: '#60c050', Bug: '#a8b820', Psychic: '#f06090', Dragon: '#7058e8', Steel: '#a8b8c8', Ground: '#d8b060' };
+  const MEDALS = ['', 'Bronze', 'Silver', 'Gold', 'Diamond'];
+
+  const AREAS = {
+    beach: { name: 'Coral Cove', sub: 'Route 109 Seashore', need: 0, blurb: 'A sunny beach with a long wooden dock, a coral reef and a deep, dark trench.' },
+    forest: { name: 'Weather Woods', sub: 'Route 119 Rainforest', need: 3, blurb: 'Tall grass, a rushing river and the Weather Institute in a rainforest that is rarely dry.' },
+    canopy: { name: 'Treetop Town', sub: 'Fortree Canopy', need: 7, blurb: 'Tree houses and rope bridges high above the forest floor, where bird Pokémon sing.' },
+    falls: { name: 'Starfall Cave', sub: 'Meteor Falls', need: 11, blurb: 'Waterfalls roar in a crystal cave where meteorites fell long ago.' },
+    stage: { name: 'Seaside Stage', sub: 'Lilycove Concert', need: 99, blurb: 'Meloetta\'s concert stage by the sea. The band is waiting for its guitarist!' },
+  };
+  return { S, ORDER, TYPES, MEDALS, AREAS, get: (k) => S[k] };
+})();

@@ -90,8 +90,8 @@ const Critters = (() => {
     },
     nameOf(sp) {
       if (!this.names.size) {
-        const reg = { Mudkip: typeof Mudkip !== 'undefined' ? Mudkip : null, Spheal: typeof Spheal !== 'undefined' ? Spheal : null, Sealeo: typeof Sealeo !== 'undefined' ? Sealeo : null, Walrein: typeof Walrein !== 'undefined' ? Walrein : null, Corphish: typeof Corphish !== 'undefined' ? Corphish : null, Luvdisc: typeof Luvdisc !== 'undefined' ? Luvdisc : null, Pelipper: typeof Pelipper !== 'undefined' ? Pelipper : null, Wailord: typeof Wailord !== 'undefined' ? Wailord : null, Kyogre: typeof Kyogre !== 'undefined' ? Kyogre : null, Dialga: typeof Dialga !== 'undefined' ? Dialga : null, Palkia: typeof Palkia !== 'undefined' ? Palkia : null, Minior: typeof Minior !== 'undefined' ? Minior : null, Deoxys: typeof Deoxys !== 'undefined' ? Deoxys : null };
-        for (const k in reg) if (reg[k]) this.names.set(reg[k], k);
+        const list = typeof SPECIES_LIST !== 'undefined' ? SPECIES_LIST : ['Mudkip'];
+        for (const k of list) { let v = null; try { v = (0, eval)(k); } catch (e) { v = null; } if (v) this.names.set(v, k); }
       }
       return this.names.get(sp);
     },

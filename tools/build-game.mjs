@@ -1,23 +1,44 @@
-// Build the game into a single standalone HTML file (game/index.html) and,
-// optionally, a body-only artifact file: node tools/build-game.mjs [artifactOut]
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+// Build Mudkip Snap into one standalone HTML file (game/index.html) and, optionally,
+// a body-only artifact file: node tools/build-game.mjs [artifactOut]
+// Music (git-ignored, see tools/prep-music.py) is referenced as music/*.mp3 next to the page.
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(root, p), 'utf8');
-const SPECIES = ['spheal', 'sealeo', 'walrein', 'corphish', 'luvdisc', 'pelipper', 'wailord', 'kyogre', 'dialga', 'palkia', 'minior', 'deoxys'];
+const has = (p) => existsSync(join(root, p));
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+// every species model in src/species (global name = capitalised file name)
+// (files that do not parse — e.g. a model still being written — are skipped with a warning)
+const SPECIES = readdirSync(join(root, 'src/species')).filter((f) => f.endsWith('.js')).map((f) => f.slice(0, -3)).sort().filter((s) => {
+  try { new vm.Script(readFileSync(join(root, `src/species/${s}.js`), 'utf8')); return true; } catch (e) { console.warn('skipping species', s, '-', e.message); return false; }
+});
+const speciesFiles = SPECIES.map((s) => `src/species/${s}.js`);
+const opt = (list) => list.filter(has);
+const AREAS = ['beach', 'forest', 'canopy', 'falls', 'stage'];
+const AI = ['base', 'beach', 'forest', 'canopy', 'falls', 'stage'];
 const files = [
-  'src/px.js', 'src/scenery.js', 'src/actors.js', 'src/creature.js', 'src/mudkip.js', 'src/ball.js', 'src/beach.js', 'src/paintings.js', 'src/paintings2.js',
-  ...SPECIES.map((s) => `src/species/${s}.js`).filter((p) => existsSync(join(root, p))),
-  'src/game/world.js', 'src/game/waves.js', 'src/game/render.js', 'src/game/depth.js', 'src/game/props.js', 'src/game/scene.js', 'src/game/fx.js',
-  'src/game/critters.js', 'src/game/life.js', 'src/game/audio.js', 'src/game/main.js',
-  ...['src/game/friends.js', 'src/game/deep.js', 'src/game/magic.js', 'src/game/space.js', 'src/game/post.js', 'src/game/moves.js', 'src/game/fun.js', 'src/game/gallery.js'].filter((p) => existsSync(join(root, p))),
+  'src/px.js', 'src/scenery.js', 'src/actors.js', 'src/creature.js', 'src/mudkip.js', 'src/ball.js',
+  ...speciesFiles,
+  'src/snap/times.js', 'src/snap/util.js', 'src/snap/fontdata.js', 'src/snap/font.js', 'src/snap/pal.js', 'src/snap/paint.js',
+  'src/snap/world.js', 'src/game/waves.js', 'src/game/fx.js', 'src/game/critters.js', 'src/game/audio.js',
+  'src/snap/terrain.js', 'src/snap/stage.js', 'src/snap/props.js',
+  'src/snap/sfx.js', 'src/snap/save.js', 'src/snap/dexdata.js', 'src/snap/ui.js', 'src/snap/mons.js', 'src/snap/player.js',
+  'src/snap/items.js', 'src/snap/weather.js', 'src/snap/hud.js', 'src/snap/photo.js',
+  ...opt(['src/snap/rewards.js', 'src/snap/quests.js', 'src/snap/music.js', 'src/snap/dex.js', 'src/snap/worldmap.js']),
+  ...opt(['src/snap/stubs.js']),
+  'src/snap/areas/index.js',
+  ...opt(AI.map((a) => `src/snap/ai/${a}.js`)),
+  ...opt(AREAS.map((a) => `src/snap/areas/${a}.js`)),
+  ...opt(['src/snap/gallery.js']),
+  'src/snap/main.js',
 ];
-const js = files.map((f) => `/* ==== ${f} ==== */\n${read(f)}`).join('\n') + '\nGame.boot();\n';
+const names = ['Mudkip', ...SPECIES.map(cap)];
+const js = `const SPECIES_LIST = ${JSON.stringify(names)};\n` + files.map((f) => `/* ==== ${f} ==== */\n${read(f)}`).join('\n') + '\nGame.boot();\n';
 // worker: the renderer + species models + a tiny message handler
-const wfiles = ['src/px.js', 'src/creature.js', 'src/mudkip.js', ...SPECIES.map((s) => `src/species/${s}.js`).filter((p) => existsSync(join(root, p)))];
-const names = ['Mudkip', ...SPECIES.filter((s) => existsSync(join(root, `src/species/${s}.js`))).map((s) => s[0].toUpperCase() + s.slice(1))];
+const wfiles = ['src/px.js', 'src/creature.js', 'src/mudkip.js', ...speciesFiles];
 const worker = wfiles.map((f) => read(f)).join('\n') + `
 const SP = { ${names.map((n) => `${n}: typeof ${n} !== 'undefined' ? ${n} : null`).join(', ')} };
 function crop(r) {
@@ -37,14 +58,14 @@ onmessage = (e) => {
 postMessage({ ready: true });
 `;
 if (worker.includes('</script')) throw new Error('worker contains a closing tag');
+if (js.includes('</script')) throw new Error('script contains a closing tag');
 const css = read('game/style.css');
 const page = read('game/page.html');
-const title = (page.match(/<title>(.*?)<\/title>/) || [, 'Mudkip Beach Game'])[1];
+const title = (page.match(/<title>(.*?)<\/title>/) || [, 'Mudkip Snap'])[1];
 const bodyPage = page.replace(/<title>.*?<\/title>\s*/, '');
-if (js.includes('</script')) throw new Error('script contains a closing tag');
 const wtag = `<script type="text/js-worker" id="wk-src">\n${worker}</script>\n`;
 const body = `<title>${title}</title>\n<style>\n${css}</style>\n${bodyPage}\n${wtag}<script>\n${js}</script>\n`;
 const full = `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<title>${title}</title>\n<style>\n${css}</style>\n</head>\n<body>\n${bodyPage}\n${wtag}<script>\n${js}</script>\n</body>\n</html>\n`;
 writeFileSync(join(root, 'game/index.html'), full);
-console.log('game/index.html', (full.length / 1024).toFixed(0) + ' KB', files.length, 'scripts');
+console.log('game/index.html', (full.length / 1024).toFixed(0) + ' KB', files.length, 'scripts,', SPECIES.length, 'species');
 if (process.argv[2]) { writeFileSync(process.argv[2], body); console.log('artifact body →', process.argv[2]); }
