@@ -225,6 +225,7 @@
       } else {
         const target = ball.x - d * (ball.R + noseOff);
         const gap = (target - mk.x) * d; // >0: ball still ahead of the nose
+        if (gap < -10) { S.dir = -d; S.mode = 'pause'; S.pause = 0.25; } // ball got behind us: turn round
         if ((d > 0 && ball.x > 292) || (d < 0 && ball.x < 92)) {
           if (Math.abs(ball.vx) < 8 && gap < 4) {
             S.mode = 'hop'; S.vh = 205; S.vx = d * ((ball.R * 2 + noseOff + 16) / (2 * 205 / GM));

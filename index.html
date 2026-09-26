@@ -302,7 +302,12 @@ footer p { margin: 0; max-width: 70ch; }
 .ctl.icon { width: 40px; padding: 0; justify-content: center; }
 .v-close { position: relative; }
 .v-count { font-family: var(--pixel); font-size: 12px; color: var(--view-soft); font-variant-numeric: tabular-nums; }
-@media (pointer: coarse) { #v-loupe { display: none; } }
+@media (pointer: coarse) { #v-loupe, #v-full { display: none; } }
+.rotate-hint { display: none; margin: 0; font-size: 12.5px; color: var(--view-soft); text-align: center; }
+@media (orientation: portrait) and (max-width: 600px) {
+  .v-stage { align-content: center; gap: 18px; }
+  .rotate-hint { display: block; }
+}
 .loupe {
   position: fixed; width: 168px; height: 168px; border-radius: 50%; pointer-events: none; z-index: 60;
   border: 3px solid #f2d27a; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), inset 0 0 0 2px rgba(0, 0, 0, 0.35);
@@ -396,7 +401,7 @@ footer p { margin: 0; max-width: 70ch; }
       <button class="ctl icon v-close" id="v-close" type="button" aria-label="Close the viewing room"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.8"/></svg></button>
     </div>
   </div>
-  <div class="v-stage" id="v-stage"><canvas id="v-canvas" aria-label="The painting, animated. Tap it to interact."></canvas></div>
+  <div class="v-stage" id="v-stage"><canvas id="v-canvas" aria-label="The painting, animated. Tap it to interact."></canvas><p class="rotate-hint">Turn your phone sideways for a bigger view</p></div>
   <div class="v-bottom">
     <div><p class="v-desc" id="v-desc"></p><p class="v-hint" id="v-hint"></p></div>
     <div class="controls">
@@ -404,6 +409,7 @@ footer p { margin: 0; max-width: 70ch; }
       <button class="ctl" id="v-play" type="button" aria-pressed="false">Pause</button>
       <button class="ctl" id="v-sound" type="button" aria-pressed="false">Sound off</button>
       <button class="ctl" id="v-loupe" type="button" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.8"/></svg>Loupe</button>
+      <button class="ctl" id="v-full" type="button" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Fullscreen</button>
       <button class="ctl" id="v-next" type="button">Next<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
     </div>
   </div>
@@ -1967,13 +1973,15 @@ class MudkipActor {
       if (dist > fadeLen) continue;
       const off = Math.round(Math.sin(ty * 0.9 + t * 5.2) * wobble * (0.5 + dist / fadeLen));
       const fade = dist / fadeLen;
+      // classic water reflection: solid near the surface, then alternating scanlines that thin out
+      if (fade > 0.3 && (ty & 1)) continue;
       for (let sx = 0; sx < W; sx++) {
         const c = d[sy * W + sx];
         if (!c) continue;
         const tx = x0 + sx + off;
         if (tx < 0 || tx >= fb.w) continue;
         if (test && !test(tx, ty)) continue;
-        if (PX.bayer4(tx, ty) < fade * 0.9) continue;
+        if (fade > 0.55 && PX.bayer4(tx, ty) < (fade - 0.55) * 2) continue;
         fb.d[ty * fb.w + tx] = tint(c);
       }
     }
@@ -2020,13 +2028,15 @@ class BallActor {
       const dist = ty - axisY;
       if (ty < 0 || ty >= fb.h || dist > fadeLen) continue;
       const off = Math.round(Math.sin(ty * 0.9 + t * 5.2) * (0.5 + dist / fadeLen));
+      const fade = dist / fadeLen;
+      if (fade > 0.3 && (ty & 1)) continue;
       for (let sx = 0; sx < W; sx++) {
         const c = s.buf.d[sy * W + sx];
         if (!c) continue;
         const tx = x0 + sx + off;
         if (tx < 0 || tx >= fb.w) continue;
         if (test && !test(tx, ty)) continue;
-        if (PX.bayer4(tx, ty) < (dist / fadeLen) * 0.9) continue;
+        if (fade > 0.55 && PX.bayer4(tx, ty) < (fade - 0.55) * 2) continue;
         fb.d[ty * fb.w + tx] = tint(c);
       }
     }
@@ -3034,6 +3044,7 @@ const Paintings = (() => {
       } else {
         const target = ball.x - d * (ball.R + noseOff);
         const gap = (target - mk.x) * d; // >0: ball still ahead of the nose
+        if (gap < -10) { S.dir = -d; S.mode = 'pause'; S.pause = 0.25; } // ball got behind us: turn round
         if ((d > 0 && ball.x > 292) || (d < 0 && ball.x < 92)) {
           if (Math.abs(ball.vx) < 8 && gap < 4) {
             S.mode = 'hop'; S.vh = 205; S.vx = d * ((ball.R * 2 + noseOff + 16) / (2 * 205 / GM));
@@ -4388,7 +4399,7 @@ const Paintings = (() => {
   const viewer = $('#viewer'), stage = $('#v-stage'), vcv = $('#v-canvas');
   const vfc = framedCanvas(vcv);
   const loupe = $('#loupe'), lctx = loupe.getContext('2d');
-  const btn = { prev: $('#v-prev'), next: $('#v-next'), play: $('#v-play'), sound: $('#v-sound'), loupe: $('#v-loupe'), close: $('#v-close') };
+  const btn = { prev: $('#v-prev'), next: $('#v-next'), play: $('#v-play'), sound: $('#v-sound'), loupe: $('#v-loupe'), close: $('#v-close'), full: $('#v-full') };
   const S = { open: false, idx: 0, playing: true, loupe: false, raf: 0, last: 0, reveal: null, poster: null, returnFocus: null, lastPointer: null };
   const vfb = new PX.Buf(PW, PH);
 
@@ -4475,6 +4486,7 @@ const Paintings = (() => {
   function closeViewer() {
     if (!S.open) return;
     S.open = false;
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     cancelAnimationFrame(S.raf);
     viewer.classList.remove('open');
     loupe.style.display = 'none';
@@ -4584,6 +4596,15 @@ const Paintings = (() => {
     setSoundUI();
   });
   btn.loupe.addEventListener('click', () => { S.loupe = !S.loupe; setLoupeUI(); });
+  if (!document.fullscreenEnabled) btn.full.hidden = true;
+  btn.full.addEventListener('click', () => {
+    const p = document.fullscreenElement ? document.exitFullscreen() : viewer.requestFullscreen();
+    if (p && p.catch) p.catch(() => { btn.full.hidden = true; });
+  });
+  document.addEventListener('fullscreenchange', () => {
+    btn.full.setAttribute('aria-pressed', String(!!document.fullscreenElement));
+    if (S.open) requestAnimationFrame(layoutViewer);
+  });
   window.addEventListener('keydown', (e) => {
     if (!S.open) return;
     if (e.key === 'Escape') { e.preventDefault(); closeViewer(); }
@@ -4592,6 +4613,7 @@ const Paintings = (() => {
     else if ((e.key === ' ' || e.code === 'Space') && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); btn.play.click(); }
     else if (e.key === 'm' || e.key === 'M') btn.sound.click();
     else if (e.key === 'l' || e.key === 'L') btn.loupe.click();
+    else if ((e.key === 'f' || e.key === 'F') && !btn.full.hidden) btn.full.click();
     else if (e.key === 'Tab') {
       const f = [...viewer.querySelectorAll('button')].filter((b) => !b.disabled);
       const i = f.indexOf(document.activeElement);

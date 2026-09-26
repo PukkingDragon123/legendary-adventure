@@ -291,7 +291,12 @@ footer p { margin: 0; max-width: 70ch; }
 .ctl.icon { width: 40px; padding: 0; justify-content: center; }
 .v-close { position: relative; }
 .v-count { font-family: var(--pixel); font-size: 12px; color: var(--view-soft); font-variant-numeric: tabular-nums; }
-@media (pointer: coarse) { #v-loupe { display: none; } }
+@media (pointer: coarse) { #v-loupe, #v-full { display: none; } }
+.rotate-hint { display: none; margin: 0; font-size: 12.5px; color: var(--view-soft); text-align: center; }
+@media (orientation: portrait) and (max-width: 600px) {
+  .v-stage { align-content: center; gap: 18px; }
+  .rotate-hint { display: block; }
+}
 .loupe {
   position: fixed; width: 168px; height: 168px; border-radius: 50%; pointer-events: none; z-index: 60;
   border: 3px solid #f2d27a; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), inset 0 0 0 2px rgba(0, 0, 0, 0.35);

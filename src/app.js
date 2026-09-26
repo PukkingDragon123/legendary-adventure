@@ -368,7 +368,7 @@
   const viewer = $('#viewer'), stage = $('#v-stage'), vcv = $('#v-canvas');
   const vfc = framedCanvas(vcv);
   const loupe = $('#loupe'), lctx = loupe.getContext('2d');
-  const btn = { prev: $('#v-prev'), next: $('#v-next'), play: $('#v-play'), sound: $('#v-sound'), loupe: $('#v-loupe'), close: $('#v-close') };
+  const btn = { prev: $('#v-prev'), next: $('#v-next'), play: $('#v-play'), sound: $('#v-sound'), loupe: $('#v-loupe'), close: $('#v-close'), full: $('#v-full') };
   const S = { open: false, idx: 0, playing: true, loupe: false, raf: 0, last: 0, reveal: null, poster: null, returnFocus: null, lastPointer: null };
   const vfb = new PX.Buf(PW, PH);
 
@@ -455,6 +455,7 @@
   function closeViewer() {
     if (!S.open) return;
     S.open = false;
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     cancelAnimationFrame(S.raf);
     viewer.classList.remove('open');
     loupe.style.display = 'none';
@@ -564,6 +565,15 @@
     setSoundUI();
   });
   btn.loupe.addEventListener('click', () => { S.loupe = !S.loupe; setLoupeUI(); });
+  if (!document.fullscreenEnabled) btn.full.hidden = true;
+  btn.full.addEventListener('click', () => {
+    const p = document.fullscreenElement ? document.exitFullscreen() : viewer.requestFullscreen();
+    if (p && p.catch) p.catch(() => { btn.full.hidden = true; });
+  });
+  document.addEventListener('fullscreenchange', () => {
+    btn.full.setAttribute('aria-pressed', String(!!document.fullscreenElement));
+    if (S.open) requestAnimationFrame(layoutViewer);
+  });
   window.addEventListener('keydown', (e) => {
     if (!S.open) return;
     if (e.key === 'Escape') { e.preventDefault(); closeViewer(); }
@@ -572,6 +582,7 @@
     else if ((e.key === ' ' || e.code === 'Space') && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); btn.play.click(); }
     else if (e.key === 'm' || e.key === 'M') btn.sound.click();
     else if (e.key === 'l' || e.key === 'L') btn.loupe.click();
+    else if ((e.key === 'f' || e.key === 'F') && !btn.full.hidden) btn.full.click();
     else if (e.key === 'Tab') {
       const f = [...viewer.querySelectorAll('button')].filter((b) => !b.disabled);
       const i = f.indexOf(document.activeElement);

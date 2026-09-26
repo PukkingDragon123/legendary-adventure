@@ -124,13 +124,15 @@ class MudkipActor {
       if (dist > fadeLen) continue;
       const off = Math.round(Math.sin(ty * 0.9 + t * 5.2) * wobble * (0.5 + dist / fadeLen));
       const fade = dist / fadeLen;
+      // classic water reflection: solid near the surface, then alternating scanlines that thin out
+      if (fade > 0.3 && (ty & 1)) continue;
       for (let sx = 0; sx < W; sx++) {
         const c = d[sy * W + sx];
         if (!c) continue;
         const tx = x0 + sx + off;
         if (tx < 0 || tx >= fb.w) continue;
         if (test && !test(tx, ty)) continue;
-        if (PX.bayer4(tx, ty) < fade * 0.9) continue;
+        if (fade > 0.55 && PX.bayer4(tx, ty) < (fade - 0.55) * 2) continue;
         fb.d[ty * fb.w + tx] = tint(c);
       }
     }
@@ -177,13 +179,15 @@ class BallActor {
       const dist = ty - axisY;
       if (ty < 0 || ty >= fb.h || dist > fadeLen) continue;
       const off = Math.round(Math.sin(ty * 0.9 + t * 5.2) * (0.5 + dist / fadeLen));
+      const fade = dist / fadeLen;
+      if (fade > 0.3 && (ty & 1)) continue;
       for (let sx = 0; sx < W; sx++) {
         const c = s.buf.d[sy * W + sx];
         if (!c) continue;
         const tx = x0 + sx + off;
         if (tx < 0 || tx >= fb.w) continue;
         if (test && !test(tx, ty)) continue;
-        if (PX.bayer4(tx, ty) < (dist / fadeLen) * 0.9) continue;
+        if (fade > 0.55 && PX.bayer4(tx, ty) < (fade - 0.55) * 2) continue;
         fb.d[ty * fb.w + tx] = tint(c);
       }
     }

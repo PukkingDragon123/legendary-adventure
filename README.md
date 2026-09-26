@@ -31,7 +31,7 @@ Open `index.html` in any modern browser. No build step or server is needed to vi
 
 ## Controls in the viewing room
 
-`←` `→` change painting · `Space` pause · `M` sound · `L` pixel loupe · `Esc` close ·
+`←` `→` change painting · `Space` pause · `M` sound · `L` pixel loupe · `F` fullscreen · `Esc` close ·
 swipe left/right on touch screens.
 
 ## Source
