@@ -28,7 +28,6 @@ const Sealeo = (() => {
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp = (a, b, t) => a + (b - a) * t;
   const lerpV = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
-  const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
   /* ---------- moustache fan: five white strips radiating from the snout (u = outward, v = up) ---------- */
   const STRIPS = [
@@ -149,9 +148,11 @@ const Sealeo = (() => {
 
     /* --- snout, nose --- */
     const snout = chain(head, T(37, -2, 0));
+    // the muzzle: a blue pad with a small rounded nose tip on top (same group, so it reads as one
+    // smooth shape); the official design has no dark nose, just two nostril dots
     const snoutPrim = ell(snout, [9.5, 8.5, 12.5], { part: 4, grp: 2, mat: () => code(BODY) });
     prims.push(snoutPrim);
-    const nosePrim = ell(chain(snout, T(6.2, 5, 0)), [3, 2.4, 4.4], { part: 5, grp: 3, mat: () => code(NOSE) });
+    const nosePrim = ell(chain(snout, T(5.2, 4.2, 0)), [4.4, 3.6, 6.4], { part: 4, grp: 2, mat: () => code(BODY) });
     prims.push(nosePrim);
 
     /* --- tusks --- */
@@ -161,8 +162,11 @@ const Sealeo = (() => {
     }
 
     /* --- moustache fans --- */
+    // swept back a little; both fans are also cheated toward the camera by `side` so the
+    // moustache still reads in profile (the game passes side = clamp(3 cos yaw, -1, 1))
+    const cheat = 0.35 * clamp(P.side ?? 1, -1, 1);
     for (const side of [1, -1]) {
-      const sweep = 0.3;
+      const sweep = 0.3 + side * cheat;
       const u = [-Math.sin(sweep), 0, side * Math.cos(sweep)];
       const v = [0, 1, 0];
       const n = V3.cross(u, v);
@@ -174,9 +178,9 @@ const Sealeo = (() => {
     const fl = clamp(P.flipper, 0, 1), cl = clamp(P.clap, 0, 1);
     const ortho = (v, a) => V3.norm(V3.sub(v, V3.scale(a, V3.dot(v, a))));
     for (const side of [1, -1]) {
-      const rootP = lerpV(lerpV([6, -30, side * 44], [8, -12, side * 46], fl), [26, -6, side * 40], cl);
+      const rootP = lerpV(lerpV([6, -30, side * 44], [8, -12, side * 46], fl), [24, 6, side * 40], cl);
       let ax = lerpV([0.56, -0.22, side * 0.8], [0.22, 0.78, side * 0.58], fl);
-      ax = V3.norm(lerpV(V3.norm(ax), [0.62, 0.26, -side * 0.74], cl));
+      ax = V3.norm(lerpV(V3.norm(ax), [0.6, 0.34, -side * 0.72], cl));
       let ay = lerpV(lerpV([0, 1, 0], [1, 0, 0], fl), [0, 0.1, -side], cl);
       ay = ortho(ay, ax);
       const az = V3.cross(ax, ay);
@@ -216,7 +220,7 @@ const Sealeo = (() => {
         { at: onHead(0.5, 0.35), set: EYES, colors: EYEC, kind },
         { at: onHead(-0.5, 0.35), set: EYES, colors: EYEC, kind },
       ],
-      dots: [],
+      dots: [1, -1].map((sd) => ({ at: onEll(nosePrim, V3.norm([0.7, 0.5, sd * 0.5])), mat: NOSE, tone: 1, onlyMat: BODY, minFacing: 0.3 })),
       pri: { 1: 0, 2: 0, 3: 2, 6: 2, 7: 2, 8: 3, 9: 3, 10: 1, 11: 1, 12: 1 },
       glossy: GLOSSY,
       baseMat: BODY,
@@ -277,6 +281,6 @@ const Sealeo = (() => {
 
   return {
     build, render, PAL, MAT, DEFAULT,
-    meta: { heightM: 1.1, bw: 302, bh: 248, oy: 0.9 },
+    meta: { heightM: 1.1, bw: 384, bh: 288, oy: 0.885 },
   };
 })();

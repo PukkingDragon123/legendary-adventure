@@ -85,7 +85,7 @@ const Corphish = (() => {
   }
 
   // ---- body geometry (body frame: origin on the ground, before squash/tilt)
-  const HOOD_C = [-2, 54, 0], HOOD_R = [23, 30, 28.5];
+  const HOOD_C = [-2, 54, 0], HOOD_R = [23, 30, 27];
   const MUZ_C = [7, 52, 0], MUZ_R = [16.5, 13.5, 19];
   const BEL = [
     { c: [6, 41, 0], r: [16, 12.5, 19.5] },
@@ -93,7 +93,7 @@ const Corphish = (() => {
     { c: [3, 24.5, 0], r: [13.5, 8, 15] },
   ];
   const LOW_C = [-4, 29, 0], LOW_R = [18, 11, 18.5]; // lower body under the hood rim
-  const LAM_Y = 63, LAM_K = 0.62; // Λ-shaped top edge of the cream face: y < LAM_Y − LAM_K·|z|
+  const LAM_Y = 65, LAM_K = 0.66; // Λ-shaped top edge of the cream face: y < LAM_Y − LAM_K·|z|
   const RIM_Y = 29; // hood rim height
   // the window follows the cream shells' outlines (so it never shows the hood lining)
   const SHELLS = [{ c: MUZ_C, r: MUZ_R }, ...BEL];
@@ -113,9 +113,9 @@ const Corphish = (() => {
   const lowMat = (s) => (s[1] < 0.3 ? C_CREAM : C_SHELL);
 
   const SPIKES = [
-    pyramid([-2, 78, 0], [-4, 104, 0], 6.8, 6, 0.3),
-    pyramid([-3, 76, 13], [-8, 94, 24], 4.2, 6, 0.3),
-    pyramid([-3, 76, -13], [-8, 94, -24], 4.2, 6, 0.3),
+    pyramid([-2, 79, 0], [-4, 105, 0], 6, 6, 0.3),
+    pyramid([0, 75, 13], [-1, 98, 26], 4.4, 6, 0.3),
+    pyramid([0, 75, -13], [-1, 98, -26], 4.4, 6, 0.3),
   ];
 
   // ---- claw geometry (claw frame: origin at the wrist, x' = toward the tip,
@@ -123,7 +123,7 @@ const Corphish = (() => {
   // The bite surface is a steeply tilted plane s1 = Y0 − KT·s0 (unit-sphere space): the red
   // upper jaw is a wedge over the top and back, hinged low at the back, so the pincer
   // opens like a mouth at the front-top of the claw. The border zigzags (big teeth).
-  const CA = 21.5, CB = 11.5, CC = 15.5; // half-length, half-depth (jaw axis), half-width
+  const CA = 22.5, CB = 11.8, CC = 16; // half-length, half-depth (jaw axis), half-width
   const Y0 = -0.45, KT = 1.4, ZA = 0.5, ZN = 6, ZPH = 0.5;
   const BN = nrm([KT, 1, 0]), BU = nrm([1, -KT, 0]), BOFF = Y0 / Math.hypot(1, KT);
   const BCEN = sc(BN, BOFF);
@@ -147,8 +147,8 @@ const Corphish = (() => {
   // arm keyframes (near side, body frame): wrist position, claw axis, back-of-claw direction
   const ARM_K = [
     { a: -0.5, W: [12, 32, 26], X: [1, 0.35, -0.15], Y: [-0.8, 0.9, 0.1] },
-    { a: 0, W: [-8, 53, 33], X: [0.2, 1, 0.3], Y: [-1, 0.15, 0.25] },
-    { a: 1, W: [-6, 66, 27], X: [0.05, 1, 0.12], Y: [-1, 0.05, 0.15] },
+    { a: 0, W: [-8, 55, 34], X: [0.2, 1, 0.3], Y: [-1, 0.15, -0.35] },
+    { a: 1, W: [-6, 66, 27], X: [0.05, 1, 0.12], Y: [-1, 0.05, -0.3] },
   ];
   function armKey(a) {
     const i = a <= 0 ? 0 : 1;
@@ -158,7 +158,7 @@ const Corphish = (() => {
   }
 
   // ---- eyes
-  const EYE_AZ = 0.57, EYE_V = 0.45, EYE_R = [6.4, 7.9, 3.8];
+  const EYE_AZ = 0.6, EYE_V = 0.44, EYE_R = [6.8, 8.6, 4];
   const lidMat = (s) => (s[1] > 0.42 - 0.62 * s[0] ? C_SHELL : 0);
 
   // ---- legs: hips in the body frame, feet on the ground (tripod gait phases)
@@ -271,11 +271,12 @@ const Corphish = (() => {
     let li = 0;
     for (const side of [1, -1])
       for (const lg of LEGS) {
+        // tripod gait for a sideways scuttle: lifted feet swing along z (and a little along x)
         const ph = P.walk + lg.ph + (side > 0 ? 0 : Math.PI);
         const lift = Math.max(0, Math.sin(ph)) * 5;
-        const swing = Math.cos(ph) * 4;
+        const swing = Math.cos(ph) * 4.5;
         const hip = inF(body, [lg.hip[0], lg.hip[1], lg.hip[2] * side]);
-        const foot = [lg.foot[0] + swing, lift, lg.foot[2] * side * (1 + sq * 0.3)];
+        const foot = [lg.foot[0] + swing * 0.35, lift, lg.foot[2] * side * (1 + sq * 0.3) + swing];
         const d = sub(foot, hip), dl = len3(d);
         const dir = sc(d, 1 / dl);
         const a = Math.min(dl, (L_UP * L_UP - L_LO * L_LO + dl * dl) / (2 * dl));
@@ -296,15 +297,15 @@ const Corphish = (() => {
     // --- tail (flattened overlapping segments trailing back, ending in a fan)
     TAIL.forEach((t, i) => prims.push(ellF(chain(body, T(...t.c), R(M3.rz(t.a))), t.r, 60 + i, 60 + i, M_SHELL)));
 
-    anchors.top = inF(body, [-4, 104, 0]);
+    anchors.top = inF(body, [-4, 105, 0]); // central spike tip
     anchors.head = inF(body, HOOD_C);
     anchors.mouth = inF(body, [MUZ_C[0] + MUZ_R[0] * 0.85, MUZ_C[1] - MUZ_R[1] * 0.5, 0]);
 
     // uniform scale to the Pokédex height (0.6 m ≈ 105 px silhouette at yaw 1.1)
     for (const p of prims) { p.c = sc(p.c, SIZE); p.L = p.L.map((v) => v * SIZE); }
     for (const st of stamps) st.at.p = sc(st.at.p, SIZE);
-    for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
-    return { prims, anchors, pose: P, headPrim: hoodPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: SHELL };
+    for (const key in anchors) anchors[key] = sc(anchors[key], SIZE);
+    return { prims, anchors, pose: P, headPrim: hoodPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: SHELL, shadowSteps: 16 };
   }
 
   /* ---------- eye stamps (pupils and closed-eye marks) ----------
@@ -317,11 +318,11 @@ const Corphish = (() => {
     angry: stampSet(['kk', 'kk'], ['kk', 'kk'], ['k', 'k']),
     dizzy: stampSet(['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kk', 'k.k', 'kkk']),
     happy: stampSet(['..bb..', '.b..b.', 'b....b'], ['.bb.', 'b..b', 'b..b'], ['.b', 'b.', 'b.']),
-    closed: stampSet(['b....b', '.bbbb.'], ['b..b', '.bb.'], ['b.', '.b']),
+    closed: stampSet(['......', '......', 'bbbbbb', '.bbbb.'], ['....', '....', 'bbbb', '.bb.'], ['..', '..', 'bb', '.b']),
   };
   const EYEC = { k: '#1c1012', w: '#ffffff', b: '#58150e' };
 
   const render = (model, opt) => Creature.render(model, opt);
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 126, bh: 142, oy: 0.905 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 130, bh: 144, oy: 0.905 } };
 })();

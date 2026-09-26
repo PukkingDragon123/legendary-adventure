@@ -171,7 +171,7 @@ const Spheal = (() => {
     const snPress = smooth(0.55, 0.97, downness(snDir)) * 0.6;
     const snD = 0.93 - snPress * 0.16;
     const snout = chain(head, T(snDir[0] * BR[0] * snD, snDir[1] * BR[1] * snD, 0), R(M3.rz(snEl * 0.3)));
-    const SN_R = [19 * (1 - snPress * 0.55), 12, 20];
+    const SN_R = [21 * (1 - snPress * 0.55), 12.5, 20];
     const snoutPrim = ell(snout, SN_R, {
       part: 2, grp: 2,
       mat: (s) => (s[1] < -0.66 ? code(LIP) : s[1] < -0.28 && s[0] > -0.3 ? code(BODY, -1) : code(BODY)),
@@ -227,11 +227,11 @@ const Spheal = (() => {
     const tail = (beta) => {
       const tailRoot = sph(Math.PI, -0.55);
       const tr = chain(body, T(tailRoot[0] * BR[0] * 0.8, tailRoot[1] * BR[1] * 0.8, 0), R(M3.ry(tw * (1 - beta / 1.7))), R(M3.rz(0.3 - beta)));
-      const out = [ell(chain(tr, T(-10, -1, 0)), [17, 12, 13.5], { part: 7, grp: 7, mat: () => code(BODY) })];
-      const flukeBase = chain(tr, T(-24, -5.5, 0), R(M3.rz(-0.34 - beta * 0.45)));
+      const out = [ell(chain(tr, T(-12, -1, 0)), [19, 12.5, 14], { part: 7, grp: 7, mat: () => code(BODY) })];
+      const flukeBase = chain(tr, T(-28, -5.5, 0), R(M3.rz(-0.34 - beta * 0.45)));
       for (const side of [1, -1]) {
-        const lobe = chain(flukeBase, R(M3.ry(side * 0.62)), T(-9.5, 0, 0), R(M3.rz(-0.18)));
-        out.push(ell(lobe, [13, 4.4, 9.5], { part: 7, grp: 7, mat: () => code(BODY) }));
+        const lobe = chain(flukeBase, R(M3.ry(side * 0.66)), T(-11, 0, 0), R(M3.rz(-0.18)));
+        out.push(ell(lobe, [15, 4.8, 10.5], { part: 7, grp: 7, mat: () => code(BODY) }));
       }
       return out;
     };
@@ -274,7 +274,7 @@ const Spheal = (() => {
         { at: eyeN, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
         { at: eyeF, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
       ],
-      dots: [],
+      dots: [1, -1].map((sd) => ({ at: onEll(snoutPrim, V3.norm([0.62, 0.55, sd * 0.42])), mat: LIP, tone: 1, onlyMat: BODY, minFacing: 0.45 })),
       pri: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 1, 7: 1, 10: 2, 11: 2 },
       glossy: GLOSSY,
       baseMat: BODY,
@@ -328,6 +328,6 @@ const Spheal = (() => {
 
   return {
     build, render, PAL, MAT, DEFAULT,
-    meta: { heightM: 0.8, bw: 206, bh: 190, oy: 0.97 },
+    meta: { heightM: 0.8, bw: 238, bh: 214, oy: 0.945 },
   };
 })();

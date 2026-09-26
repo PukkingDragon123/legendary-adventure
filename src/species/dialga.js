@@ -1,11 +1,14 @@
 /* ------------------------------------------------------------------
    Dialga — the Temporal Pokémon, as a super small chibi (~95 units
-   tall including the crest) posable 3D model rendered to pixel art by
+   tall at yaw 1.1 including the crest; the player's size exception to
+   the 5.4 m Pokédex height) posable 3D model rendered to pixel art by
    the shared Creature renderer (src/creature.js).
    x = forward, y = up, z = near side at yaw 0; y = 0 is the ground.
-   Navy body with glowing cyan lines, silver armour (crest, visor,
-   shoulder plates with a fan of blades, chest plate, claws, tail fin)
-   and the big Adamant diamond on the chest.
+   Navy body with glowing cyan lines, silver armour (swept crest, visor
+   band across the red eyes, shoulder plates with a fan of blades,
+   chest shield, claws, tail fin) and the big Adamant diamond.
+   The crest and blades are thin ellipsoid "shells" clipped to 2D
+   outlines; an edge-on fallback keeps them solid from every angle.
 ------------------------------------------------------------------- */
 const Dialga = (() => {
   const { chain, T, R, code } = Creature;
@@ -45,20 +48,19 @@ const Dialga = (() => {
   };
 
   // material ids
-  const BODY = 1, SILVER = 2, CYAN = 3, GEM = 4, MOUTH = 5, TONGUE = 6, FANG = 7, DARK = 8, HALO = 9;
-  const MAT = { BODY, SILVER, CYAN, GEM, MOUTH, TONGUE, FANG, DARK, HALO };
+  const BODY = 1, SILVER = 2, CYAN = 3, GEM = 4, MOUTH = 5, TONGUE = 6, FANG = 7, HALO = 8;
+  const MAT = { BODY, SILVER, CYAN, GEM, MOUTH, TONGUE, FANG, HALO };
   const PAL = Creature.palette({
     [BODY]:   { r: ['#0a1f45', '#113463', '#1b4f8a', '#2a6cad', '#5b9bd8'], od: '#06122e', ol: '#0e2b58', ln: '#0c2750' },
-    [DARK]:   { r: ['#07162f', '#0b2247', '#12336a', '#1b4a8a', '#3a74b4'], od: '#040c20', ol: '#0a2148', ln: '#081c3e' },
     [SILVER]: { r: ['#5e6d80', '#8797aa', '#b3c2d0', '#d6e2ec', '#ffffff'], od: '#38465a', ol: '#5c6d82', ln: '#667789' },
     [CYAN]:   { r: ['#0e9cc2', '#1bb8dc', '#3ad6f2', '#93eefc', '#e2fcff'], od: '#0a5f82', ol: '#0e7fa4', ln: '#0e7fa4' },
     [GEM]:    { r: ['#0b3c82', '#125fae', '#2a8de4', '#6ec8ff', '#ffffff'], od: '#082a5c', ol: '#0e4a90', ln: '#0c4282' },
     [HALO]:   { r: ['#3ad6f2', '#6ae4fa', '#9aeefe', '#c8f8ff', '#ffffff'], od: '#0e7fa4', ol: '#1bb8dc', ln: '#1bb8dc' },
-    [MOUTH]:  { r: ['#3a0c1c', '#561428', '#742036', '#943248', '#b44a5c'], od: '#26061a', ol: '#3a0c1c', ln: '#3a0c1c' },
-    [TONGUE]: { r: ['#9a3a4e', '#bc4c62', '#d86478', '#ee8a96', '#ffb4bc'], od: '#5a1428', ol: '#7a2036', ln: '#7a2036' },
+    [MOUTH]:  { r: ['#4a1024', '#6a1a32', '#8c2a44', '#aa3c56', '#c85a6e'], od: '#2a0818', ol: '#4a1024', ln: '#3a0c1c' },
+    [TONGUE]: { r: ['#b04a60', '#d05e74', '#ea7a8c', '#ff9eac', '#ffc4cc'], od: '#6a1a30', ol: '#8a2a40', ln: '#8a2a40' },
     [FANG]:   { r: ['#9aa8b8', '#c4d0dc', '#e8f0f6', '#ffffff', '#ffffff'], od: '#4a5a6e', ol: '#6a7a8e', ln: '#6a7a8e' },
   });
-  const GLOSSY = { [BODY]: 1, [SILVER]: 1, [GEM]: 1, [DARK]: 1 };
+  const GLOSSY = { [BODY]: 1, [SILVER]: 1, [GEM]: 1 };
   const GEM_GLOW = ['#39b4ff', '#6fd4ff', '#a8ecff', '#dcfbff', '#ffffff'].map(PX.hex);
 
   /* ---------- 2D grid helpers ---------- */
@@ -141,14 +143,14 @@ const Dialga = (() => {
     },
   });
   const haloShape = bakeShape({
-    bb: [-GEM_W - 2.5, -GEM_H - 2.5, GEM_W + 2.5, GEM_H + 2.5],
+    bb: [-GEM_W - 4, -GEM_H - 4, GEM_W + 4, GEM_H + 4],
     test(u, v) {
-      const a = Math.abs(u) / (GEM_W + 2) + Math.abs(v) / (GEM_H + 2);
-      return a <= 1 ? code(HALO) : 0;
+      const a = Math.abs(u) / (GEM_W + 3.4) + Math.abs(v) / (GEM_H + 3.4);
+      return a <= 1 ? code(HALO, a > 0.9 ? 0 : 1) : 0;
     },
   });
 
-  /* ---------- back blades, tail fin, fangs, claws (plates) ---------- */
+  /* ---------- back blades (clipped shells) and fangs (plates) ---------- */
   const bladeShape = (L, W) => {
     const g = grid(-4, -W, L + 2, W, 0.25);
     fill(g, smooth([[0, -W * 0.5], [L * 0.35, -W * 0.55], [L * 0.8, -W * 0.3], [L, 0.2 * W], [L * 0.72, W * 0.5], [L * 0.3, W * 0.55], [0, W * 0.45], [-2, 0]], true, 8), 1);
@@ -159,7 +161,6 @@ const Dialga = (() => {
     { a: 0.8, L: 30, W: 9 },
     { a: 1.28, L: 24, W: 7.8 },
   ].map((b) => Object.assign(b, { shape: bladeShape(b.L, b.W) }));
-  const TAILFIN = bakeShape(Shape2D.poly([[0, -3], [6, -5.5], [12, -4], [15.5, 1.5], [12, 5.5], [5, 6], [0, 3]], code(SILVER), 8, (u, v) => code(SILVER, v > 2.5 ? 1 : v < -2.8 ? -1 : 0)));
   const FANGS = bakeShape(Shape2D.poly([[-1.3, 0.6], [1.3, 0.6], [0.2, -3.2]], code(FANG), 6));
 
   /* ---------- eye stamps: k navy outline, w glint, r red, d dark red ---------- */
@@ -211,7 +212,7 @@ const Dialga = (() => {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [];
     const roar = Math.max(0, Math.min(1, P.roar));
-    const mouth = Math.max(P.mouth, roar);
+    const mouth = Math.max(0, Math.min(1, Math.max(P.mouth || 0, roar)));
     const hop = Math.max(-1, Math.min(1, P.hop));
     const wk = P.walk;
     const walking = wk !== 0;
@@ -219,7 +220,7 @@ const Dialga = (() => {
     const sy = 1 + 0.2 * hop, sxz = 1 - 0.1 * hop;
     const root = frame(M3.diag(K * sxz, K * sy, K * sxz), [0, K * bob, 0]);
 
-    const cBODY = code(BODY), cCYAN = code(CYAN), cSILVER = code(SILVER);
+    const cBODY = code(BODY), cCYAN = code(CYAN), cSILVER = code(SILVER), cBODYsh = code(BODY, -1);
     const skin = (X, Y, az) => (az > 0.25 && at(LINES, X, Y, 99) < LWH ? cCYAN : cBODY);
     // navy ellipsoid with side-projected cyan lines (rest centre c, radii r, rest tilt about z)
     const navy = (f, c, r, part, grp, tilt = 0, extra = null) => {
@@ -256,12 +257,13 @@ const Dialga = (() => {
       { hip: [-13, 17, -10], ph: 0, id: 9 },
     ];
     for (const lg of legs) {
-      const sw = walking ? 0.42 * Math.sin(wk + lg.ph) : 0;
-      const lift = walking ? 2.4 * Math.max(0, Math.cos(wk + lg.ph)) : 0;
+      const sw = walking ? 0.5 * Math.sin(wk + lg.ph) : 0;
+      const lift = walking ? 3 * Math.max(0, Math.cos(wk + lg.ph)) : 0;
       const f = chain(root, T(lg.hip[0], lg.hip[1] + lift, lg.hip[2]), R(M3.rz(sw)), T(-lg.hip[0], -lg.hip[1], -lg.hip[2]));
       const [hx, , hz] = lg.hip;
       const sd = Math.sign(hz);
-      prims.push(navy(f, [hx, 10.5, hz], [6.6, 8.5, 6.2], lg.id, lg.id, 0, (s) => (s[2] * sd > 0.55 && Math.abs(s[0]) < 0.28 && s[1] < 0.5 ? cCYAN : 0)));
+      // (tops of the legs get a baked contact shadow from the body)
+      prims.push(navy(f, [hx, 10.5, hz], [6.6, 8.5, 6.2], lg.id, lg.id, 0, (s) => (s[2] * sd > 0.55 && Math.abs(s[0]) < 0.28 && s[1] < 0.5 ? cCYAN : s[1] > 0.5 ? cBODYsh : 0)));
       prims.push(ell(chain(f, T(hx + 1.5, 3.6, hz)), [7.4, 3.9, 6.8], { part: lg.id, grp: lg.id, mat: (s) => (s[1] > 0.62 ? cSILVER : cBODY) }));
       for (const dz of [-3.5, 0, 3.5]) prims.push(ell(chain(f, T(hx + 7.9, 1.7, hz + dz * 0.95), R(M3.ry(-dz * 0.08)), R(M3.rz(-0.3))), [3.1, 1.8, 1.55], { part: lg.id, grp: lg.id, mat: () => cSILVER }));
     }
@@ -285,11 +287,11 @@ const Dialga = (() => {
 
     // --- chest shield + gem (faces forward)
     const chestF = chain(root, T(13, 28, 0), R(M3.rz(0.22)));
-    const shield = { kind: 'ell', part: 16, grp: 16, c: chestF.t, L: M3.mul(chestF.L, M3.cols([SHIELD_E.ru, 0, 0], [0, SHIELD_E.rv, 0], [0, 0, SHIELD_E.rw])), mat: (s) => (s[0] < 0 || !at(SHIELD_G, SHIELD_E.rw * s[2], SHIELD_E.rv * s[1], 0) ? 0 : code(SILVER, s[0] < 0.45 ? -1 : 0)) };
+    const shield = { kind: 'ell', part: 16, grp: 16, c: chestF.t, L: M3.mul(chestF.L, M3.cols([SHIELD_E.ru, 0, 0], [0, SHIELD_E.rv, 0], [0, 0, SHIELD_E.rw])), mat: (s) => (s[0] < 0 || !at(SHIELD_G, SHIELD_E.rw * s[2], SHIELD_E.rv * s[1], 0) ? 0 : code(SILVER, s[0] < 0.45 || SHIELD_E.rv * s[1] > 10.5 ? -1 : 0)) };
     prims.push(shield);
     const gemF = chain(chestF, T(SHIELD_E.ru + 0.4, 1, 0), R(M3.cols([0, 0, 1], [0, 1, 0], [-1, 0, 0])));
     prims.push(plate(gemF, gemShape, { part: 17, grp: 17, thick: 1 }));
-    if (P.gem > 0.35) prims.push(plate(chain(gemF, T(0, 0, 0.3)), haloShape, { part: 18, grp: 16, thick: 1 }));
+    if (P.gem > 0.3) prims.push(plate(chain(gemF, T(0, 0, 0.3)), haloShape, { part: 18, grp: 16, thick: 1 }));
 
     // --- head (pitch/yaw at the neck; roar lifts it)
     const headF = chain(root, pivot([8, 46, 0], M3.mul(M3.rz(P.headPitch + 0.32 * roar), M3.ry(P.headYaw))));
@@ -302,11 +304,12 @@ const Dialga = (() => {
     });
     prims.push(cranium);
     // upper jaw / snout
-    prims.push(navy(headF, [26, 55.5, 0], [10, 7.5, 10], 21, 20, 0, (s) => (s[1] > 0.55 && Math.abs(s[2]) < 0.55 ? cSILVER : 0)));
+    prims.push(navy(headF, [27, 55.5, 0], [11, 8, 10.5], 21, 20, 0, (s) => (s[1] > 0.55 && Math.abs(s[2]) < 0.55 ? cSILVER : 0)));
     // lower jaw
-    const jawF = chain(headF, pivot([14, 52, 0], M3.rz(-0.55 * mouth)));
+    const jawF = chain(headF, pivot([14, 52, 0], M3.rz(-0.68 * mouth)));
     prims.push(ell(chain(jawF, T(24, 49.5, 0)), [9.5, 4, 8.2], { part: 22, grp: 21, mat: (s) => (s[1] < -0.2 ? cSILVER : cBODY) }));
-    if (mouth > 0.03) prims.push(ell(chain(headF, T(23, 52, 0)), [9, 3.6, 7], { part: 23, grp: 22, mat: (s) => (s[1] < 0.1 && Math.abs(s[2]) < 0.6 ? code(TONGUE) : code(MOUTH)) }));
+    // mouth interior: rides halfway down with the jaw and grows with the opening
+    if (mouth > 0.03) prims.push(ell(chain(headF, pivot([14, 52, 0], M3.rz(-0.34 * mouth)), T(24.5, 50.5, 0)), [9.4, 2 + 3.4 * mouth, 7.4], { part: 23, grp: 22, mat: (s) => (s[1] < -0.1 && Math.abs(s[2]) < 0.62 && s[0] > -0.6 ? code(TONGUE) : code(MOUTH)) }));
     // fangs
     for (const sd of [1, -1]) prims.push(plate(chain(headF, T(33, 50.6, 4.2 * sd), R(M3.ry(-sd * 0.9))), FANGS, { part: 24, grp: 23, thick: 1 }));
     // crest (raised by the roar)
@@ -325,13 +328,14 @@ const Dialga = (() => {
     const eN = eyeS(0.62, -0.1), eF = eyeS(-0.62, -0.1);
     const anchors = {
       gem: pt(gemF, [0, 0, 0]),
-      mouth: pt(jawF, [32, 51.5, 0]),
+      mouth: V3.scale(V3.add(pt(headF, [35, 51.5, 0]), pt(jawF, [32.5, 51.5, 0])), 0.5),
       top: pt(crestF, [-23, 95.5, 0]),
       head: pt(headF, [12, 62, 0]),
       eyeN: { p: V3.add(cranium.c, M3.v(cranium.L, eN)), s: eN },
       eyeF: { p: V3.add(cranium.c, M3.v(cranium.L, eF)), s: eF },
     };
     return {
+      autoSide: !pose || pose.side === undefined,
       prims, anchors, pose: P,
       stamps: [
         { at: Object.assign({ prim: cranium }, anchors.eyeN), set: EYES, colors: EYEC, kind: P.eyes },
@@ -339,13 +343,19 @@ const Dialga = (() => {
       ],
       dots: [],
       pri: { 1: 0, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1, 10: 2, 11: 2, 12: 3, 13: 3, 16: 2, 17: 3, 20: 1, 21: 2, 22: 0, 23: 3, 24: 3 },
-      glossy: GLOSSY, baseMat: BODY, shadowSteps: 6,
+      glossy: GLOSSY, baseMat: BODY, shadowSteps: 0, // contact shadows are baked (cheaper first renders)
     };
   }
 
   // Render into a tight buffer around the model's projected bounds (same bbox maths as the
   // renderer, so pixels are identical), then place it in the full sprite buffer.
   function render(model, opt) {
+    // `side` mirrors the camera cheats; when the caller did not pass it, derive it from the yaw
+    // exactly like the game does (side = clamp(3 cos yaw, -1, 1)) and rebuild if it differs
+    if (model.autoSide) {
+      const sd = Math.max(-1, Math.min(1, 3 * Math.cos(opt.yaw ?? 1.05)));
+      if (Math.abs(sd - model.pose.side) > 1e-6) model = build(Object.assign({}, model.pose, { side: sd }));
+    }
     const sc = opt.scale || 1;
     LWH = 0.5 * Math.max(1.7, 1.25 / sc);
     const set = sc >= 1.5 ? EYES_L : EYES;
@@ -354,7 +364,7 @@ const Dialga = (() => {
     const g = Math.min(1, model.pose.gem || 0);
     if (g > 0) {
       const e = pal[GEM];
-      pal = Object.assign({}, pal, { [GEM]: { r: e.r.map((c, i) => PX.mix(c, GEM_GLOW[i], g * 0.85)), od: e.od, ol: PX.mix(e.ol, GEM_GLOW[1], g * 0.5), ln: e.ln } });
+      pal = Object.assign({}, pal, { [GEM]: { r: e.r.map((c, i) => PX.mix(c, GEM_GLOW[i], g)), od: e.od, ol: PX.mix(e.ol, GEM_GLOW[1], g * 0.5), ln: PX.mix(e.ln, GEM_GLOW[0], g * 0.6) } });
     }
     const { yaw = 1.05, pitch = 0.16, W = 96, H = 96, ox = 48, oy = 82 } = opt;
     const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(sc, sc, sc)));
@@ -395,5 +405,6 @@ const Dialga = (() => {
     return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.54, bw: 150, bh: 136, oy: 0.84 } };
+  // heightM is the chibi's rendered height (~95 units); the Pokédex height is 5.4 m
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.54, pokedexM: 5.4, bw: 120, bh: 140, oy: 0.85 } };
 })();

@@ -1262,7 +1262,7 @@ const Spheal = (() => {
     const snPress = smooth(0.55, 0.97, downness(snDir)) * 0.6;
     const snD = 0.93 - snPress * 0.16;
     const snout = chain(head, T(snDir[0] * BR[0] * snD, snDir[1] * BR[1] * snD, 0), R(M3.rz(snEl * 0.3)));
-    const SN_R = [19 * (1 - snPress * 0.55), 12, 20];
+    const SN_R = [21 * (1 - snPress * 0.55), 12.5, 20];
     const snoutPrim = ell(snout, SN_R, {
       part: 2, grp: 2,
       mat: (s) => (s[1] < -0.66 ? code(LIP) : s[1] < -0.28 && s[0] > -0.3 ? code(BODY, -1) : code(BODY)),
@@ -1318,11 +1318,11 @@ const Spheal = (() => {
     const tail = (beta) => {
       const tailRoot = sph(Math.PI, -0.55);
       const tr = chain(body, T(tailRoot[0] * BR[0] * 0.8, tailRoot[1] * BR[1] * 0.8, 0), R(M3.ry(tw * (1 - beta / 1.7))), R(M3.rz(0.3 - beta)));
-      const out = [ell(chain(tr, T(-10, -1, 0)), [17, 12, 13.5], { part: 7, grp: 7, mat: () => code(BODY) })];
-      const flukeBase = chain(tr, T(-24, -5.5, 0), R(M3.rz(-0.34 - beta * 0.45)));
+      const out = [ell(chain(tr, T(-12, -1, 0)), [19, 12.5, 14], { part: 7, grp: 7, mat: () => code(BODY) })];
+      const flukeBase = chain(tr, T(-28, -5.5, 0), R(M3.rz(-0.34 - beta * 0.45)));
       for (const side of [1, -1]) {
-        const lobe = chain(flukeBase, R(M3.ry(side * 0.62)), T(-9.5, 0, 0), R(M3.rz(-0.18)));
-        out.push(ell(lobe, [13, 4.4, 9.5], { part: 7, grp: 7, mat: () => code(BODY) }));
+        const lobe = chain(flukeBase, R(M3.ry(side * 0.66)), T(-11, 0, 0), R(M3.rz(-0.18)));
+        out.push(ell(lobe, [15, 4.8, 10.5], { part: 7, grp: 7, mat: () => code(BODY) }));
       }
       return out;
     };
@@ -1365,7 +1365,7 @@ const Spheal = (() => {
         { at: eyeN, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
         { at: eyeF, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
       ],
-      dots: [],
+      dots: [1, -1].map((sd) => ({ at: onEll(snoutPrim, V3.norm([0.62, 0.55, sd * 0.42])), mat: LIP, tone: 1, onlyMat: BODY, minFacing: 0.45 })),
       pri: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 1, 7: 1, 10: 2, 11: 2 },
       glossy: GLOSSY,
       baseMat: BODY,
@@ -1419,7 +1419,7 @@ const Spheal = (() => {
 
   return {
     build, render, PAL, MAT, DEFAULT,
-    meta: { heightM: 0.8, bw: 206, bh: 190, oy: 0.97 },
+    meta: { heightM: 0.8, bw: 238, bh: 214, oy: 0.945 },
   };
 })();
 
@@ -1453,7 +1453,6 @@ const Sealeo = (() => {
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp = (a, b, t) => a + (b - a) * t;
   const lerpV = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
-  const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
   /* ---------- moustache fan: five white strips radiating from the snout (u = outward, v = up) ---------- */
   const STRIPS = [
@@ -1574,9 +1573,11 @@ const Sealeo = (() => {
 
     /* --- snout, nose --- */
     const snout = chain(head, T(37, -2, 0));
+    // the muzzle: a blue pad with a small rounded nose tip on top (same group, so it reads as one
+    // smooth shape); the official design has no dark nose, just two nostril dots
     const snoutPrim = ell(snout, [9.5, 8.5, 12.5], { part: 4, grp: 2, mat: () => code(BODY) });
     prims.push(snoutPrim);
-    const nosePrim = ell(chain(snout, T(6.2, 5, 0)), [3, 2.4, 4.4], { part: 5, grp: 3, mat: () => code(NOSE) });
+    const nosePrim = ell(chain(snout, T(5.2, 4.2, 0)), [4.4, 3.6, 6.4], { part: 4, grp: 2, mat: () => code(BODY) });
     prims.push(nosePrim);
 
     /* --- tusks --- */
@@ -1586,8 +1587,11 @@ const Sealeo = (() => {
     }
 
     /* --- moustache fans --- */
+    // swept back a little; both fans are also cheated toward the camera by `side` so the
+    // moustache still reads in profile (the game passes side = clamp(3 cos yaw, -1, 1))
+    const cheat = 0.35 * clamp(P.side ?? 1, -1, 1);
     for (const side of [1, -1]) {
-      const sweep = 0.3;
+      const sweep = 0.3 + side * cheat;
       const u = [-Math.sin(sweep), 0, side * Math.cos(sweep)];
       const v = [0, 1, 0];
       const n = V3.cross(u, v);
@@ -1599,9 +1603,9 @@ const Sealeo = (() => {
     const fl = clamp(P.flipper, 0, 1), cl = clamp(P.clap, 0, 1);
     const ortho = (v, a) => V3.norm(V3.sub(v, V3.scale(a, V3.dot(v, a))));
     for (const side of [1, -1]) {
-      const rootP = lerpV(lerpV([6, -30, side * 44], [8, -12, side * 46], fl), [26, -6, side * 40], cl);
+      const rootP = lerpV(lerpV([6, -30, side * 44], [8, -12, side * 46], fl), [24, 6, side * 40], cl);
       let ax = lerpV([0.56, -0.22, side * 0.8], [0.22, 0.78, side * 0.58], fl);
-      ax = V3.norm(lerpV(V3.norm(ax), [0.62, 0.26, -side * 0.74], cl));
+      ax = V3.norm(lerpV(V3.norm(ax), [0.6, 0.34, -side * 0.72], cl));
       let ay = lerpV(lerpV([0, 1, 0], [1, 0, 0], fl), [0, 0.1, -side], cl);
       ay = ortho(ay, ax);
       const az = V3.cross(ax, ay);
@@ -1641,7 +1645,7 @@ const Sealeo = (() => {
         { at: onHead(0.5, 0.35), set: EYES, colors: EYEC, kind },
         { at: onHead(-0.5, 0.35), set: EYES, colors: EYEC, kind },
       ],
-      dots: [],
+      dots: [1, -1].map((sd) => ({ at: onEll(nosePrim, V3.norm([0.7, 0.5, sd * 0.5])), mat: NOSE, tone: 1, onlyMat: BODY, minFacing: 0.3 })),
       pri: { 1: 0, 2: 0, 3: 2, 6: 2, 7: 2, 8: 3, 9: 3, 10: 1, 11: 1, 12: 1 },
       glossy: GLOSSY,
       baseMat: BODY,
@@ -1702,7 +1706,7 @@ const Sealeo = (() => {
 
   return {
     build, render, PAL, MAT, DEFAULT,
-    meta: { heightM: 1.1, bw: 302, bh: 248, oy: 0.9 },
+    meta: { heightM: 1.1, bw: 384, bh: 288, oy: 0.885 },
   };
 })();
 
@@ -1714,9 +1718,10 @@ const Sealeo = (() => {
 const Walrein = (() => {
   const { ell, chain, T, R, F, onEll, sph, code } = Creature;
 
-  const BODY = 1, PATCH = 2, MANE = 3, BAND = 4, TUSK = 5, NOSE = 6, MOUTH = 7, TONGUE = 8, FLIP = 9;
-  const TK0 = 10, TK1 = 11, TK2 = 12, TK3 = 13; // tusk tones (flat ramps, shaded analytically)
-  const MAT = { BODY, PATCH, MANE, BAND, TUSK, NOSE, MOUTH, TONGUE, FLIP, TK0, TK1, TK2, TK3 };
+  const BODY = 1, PATCH = 2, MANE = 3, BAND = 4, NOSE = 6, MOUTH = 7, TONGUE = 8, FLIP = 9;
+  // ivory tusk tones: flat ramps, one per toon band (the tusks are shaded analytically, see build)
+  const TK0 = 10, TK1 = 11, TK2 = 12, TK3 = 13;
+  const MAT = { BODY, PATCH, MANE, BAND, TUSK: TK2, NOSE, MOUTH, TONGUE, FLIP, TK0, TK1, TK2, TK3 };
 
   const PAL = Creature.palette({
     [BODY]:   { r: ['#1f5a86', '#2f78a8', '#4a95c2', '#70b1d8', '#a8d4ee'], od: '#10324f', ol: '#21577f', ln: '#245e88' },
@@ -1724,7 +1729,6 @@ const Walrein = (() => {
     [FLIP]:   { r: ['#1d5580', '#2c719f', '#448cba', '#68a9d2', '#a0cfea'], od: '#10324f', ol: '#21577f', ln: '#1f5a86' },
     [MANE]:   { r: ['#adc3e1', '#cddbef', '#e9f0fa', '#f7fafe', '#ffffff'], od: '#4a6892', ol: '#7a96be', ln: '#93acce' },
     [BAND]:   { r: ['#8fb0d2', '#b8d0e8', '#e6f0fa', '#ffffff', '#ffffff'], od: '#44628c', ol: '#7792ba', ln: '#7896bc' },
-    [TUSK]:   { r: ['#b99a5e', '#d6bb80', '#ecd9a6', '#f8eccb', '#fff8e6'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
     [TK0]:    { r: ['#c2a164', '#c2a164', '#c2a164', '#c2a164', '#c2a164'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
     [TK1]:    { r: ['#dbbf86', '#dbbf86', '#dbbf86', '#dbbf86', '#dbbf86'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
     [TK2]:    { r: ['#eedcab', '#eedcab', '#eedcab', '#eedcab', '#eedcab'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
@@ -1733,7 +1737,7 @@ const Walrein = (() => {
     [MOUTH]:  { r: ['#6a2034', '#8a3046', '#aa4a5e', '#c46676', '#dc8a94'], od: '#40101e', ol: '#62182a', ln: '#62182a' },
     [TONGUE]: { r: ['#b8566c', '#d4728a', '#ea94a4', '#f8b6be', '#ffd6da'], od: '#6e1428', ol: '#8e2038', ln: '#b04450' },
   });
-  const GLOSSY = { [BODY]: 0, [NOSE]: 1, [TUSK]: 0 };
+  const GLOSSY = { [NOSE]: 1 };
 
   const DEFAULT = { headPitch: 0.12, headYaw: 0, mouth: 0, eyes: 'open', squash: 0, flipper: 0, side: 1 };
 
@@ -1766,18 +1770,18 @@ const Walrein = (() => {
   // behind it, a cap on the forehead and a big puff at the back
   const MANE_L = (() => {
     const L = [];
-    const ring = (x, R, r, n, a0, cut) => {
+    const ring = (x, R, r, n, a0, cut, sx = 1.1) => {
       for (let i = 0; i < n; i++) {
         const t = a0 + (i / n) * Math.PI * 2;
         const cy = Math.cos(t), cz = Math.sin(t);
         if (cy < cut) continue;
-        L.push([x - 6 * (1 - cy), R * cy - 2, R * cz * 1.12, r * (cy < -0.3 ? 0.9 : 1)]);
+        L.push([x - 6 * (1 - cy), R * cy + 2, R * cz * sx, r * (cy < -0.3 ? 0.9 : 1)]);
       }
     };
-    ring(-2, 36, 21, 8, 0, -0.8);          // front ring framing the face
-    ring(-32, 36, 27, 6, Math.PI / 6, -2); // second ring
-    L.push([10, 30, 0, 18], [-14, 44, 0, 22]); // forehead cap
-    L.push([-62, 14, 0, 32], [-58, -22, 22, 26], [-58, -22, -22, 26], [-70, -40, 0, 24]); // back puff
+    ring(8, 31, 17, 9, 0, -0.55);           // front ring: forehead and cheeks, around the snout
+    ring(-17, 37, 23, 8, Math.PI / 8, -0.9); // second ring
+    L.push([-8, 46, 0, 20]);                 // crown
+    L.push([-50, 14, 0, 32], [-46, -20, 22, 26], [-46, -20, -22, 26], [-58, -38, 0, 24], [-32, 38, 0, 24]); // back puff
     return L;
   })();
 
@@ -1864,12 +1868,16 @@ const Walrein = (() => {
     const noseP = ell(chain(snout, T(14, 8, 0)), [13.5, 11, 14.5], { part: 5, grp: 3, mat: (s) => (s[1] < -0.55 && Math.abs(s[2]) < 0.6 ? code(NOSE, -1) : code(NOSE)) });
     const mo = clamp(P.mouth, 0, 1);
     const jaw = chain(head, T(8, -15, 0), R(M3.rz(-mo * 0.85)));
-    const jawP = ell(chain(jaw, T(14, -4, 0)), [20, 9, 18], { part: 6, grp: 2, mat: (s) => (s[1] > 0.45 && mo > 0.05 ? code(TONGUE) : code(BODY)) });
+    const jawP = ell(chain(jaw, T(14, -4, 0)), [20, 9, 18], {
+      part: 6, grp: 2,
+      // inside of the lower jaw: pink tongue in the middle, dark gums at the rim
+      mat: (s) => (mo > 0.05 && s[1] > 0.4 ? (s[1] > 0.62 && Math.abs(s[2]) < 0.5 ? code(TONGUE) : code(MOUTH, -1)) : code(BODY)),
+    });
     prims.push(headP, snoutP, noseP, jawP);
     if (mo > 0.05) {
       // dark mouth cavity between the jaws
       const cav = chain(head, T(22, -13 - mo * 5, 0));
-      prims.push(ell(cav, [15, 4 + mo * 8, 14], { part: 7, grp: 2, mat: (s) => (s[1] < -0.3 ? code(TONGUE) : code(MOUTH)) }));
+      prims.push(ell(cav, [15, 4 + mo * 8, 14], { part: 7, grp: 2, mat: (s) => (s[1] < -0.72 && Math.abs(s[2]) < 0.5 ? code(TONGUE) : code(MOUTH, s[0] > 0.5 ? 0 : -1)) }));
     }
 
     /* --- tusks: a dense chain of shrinking spheres along a curve. A union of spheres has rippled
@@ -1937,8 +1945,9 @@ const Walrein = (() => {
     return {
       prims, anchors, pose: P, view,
       stamps: [
-        { at: onHead(0.75, 0.45), set: EYES, colors: EYEC, kind },
-        { at: onHead(-0.75, 0.45), set: EYES, colors: EYEC, kind },
+        { at: onHead(0.6, 0.5), set: EYES, colors: EYEC, kind },
+        // the far-side eye mirrors asymmetric expressions so angry brows slant toward the nose
+        { at: onHead(-0.6, 0.5), set: EYES, colors: EYEC, kind, flipX: kind === 'angry' },
       ],
       dots: [],
       pri: { 1: 0, 2: 1, 3: 2, 8: 3, 9: 3, 10: 2, 11: 1, 12: 1, 20: 1 },
@@ -2001,7 +2010,7 @@ const Walrein = (() => {
 
   return {
     build, render, PAL, MAT, DEFAULT,
-    meta: { heightM: 1.4, bw: 384, bh: 300, oy: 0.923 },
+    meta: { heightM: 1.4, bw: 384, bh: 306, oy: 0.922 },
   };
 })();
 
@@ -2092,7 +2101,7 @@ const Corphish = (() => {
   }
 
   // ---- body geometry (body frame: origin on the ground, before squash/tilt)
-  const HOOD_C = [-2, 54, 0], HOOD_R = [23, 30, 28.5];
+  const HOOD_C = [-2, 54, 0], HOOD_R = [23, 30, 27];
   const MUZ_C = [7, 52, 0], MUZ_R = [16.5, 13.5, 19];
   const BEL = [
     { c: [6, 41, 0], r: [16, 12.5, 19.5] },
@@ -2100,7 +2109,7 @@ const Corphish = (() => {
     { c: [3, 24.5, 0], r: [13.5, 8, 15] },
   ];
   const LOW_C = [-4, 29, 0], LOW_R = [18, 11, 18.5]; // lower body under the hood rim
-  const LAM_Y = 63, LAM_K = 0.62; // Λ-shaped top edge of the cream face: y < LAM_Y − LAM_K·|z|
+  const LAM_Y = 65, LAM_K = 0.66; // Λ-shaped top edge of the cream face: y < LAM_Y − LAM_K·|z|
   const RIM_Y = 29; // hood rim height
   // the window follows the cream shells' outlines (so it never shows the hood lining)
   const SHELLS = [{ c: MUZ_C, r: MUZ_R }, ...BEL];
@@ -2120,9 +2129,9 @@ const Corphish = (() => {
   const lowMat = (s) => (s[1] < 0.3 ? C_CREAM : C_SHELL);
 
   const SPIKES = [
-    pyramid([-2, 78, 0], [-4, 104, 0], 6.8, 6, 0.3),
-    pyramid([-3, 76, 13], [-8, 94, 24], 4.2, 6, 0.3),
-    pyramid([-3, 76, -13], [-8, 94, -24], 4.2, 6, 0.3),
+    pyramid([-2, 79, 0], [-4, 105, 0], 6, 6, 0.3),
+    pyramid([0, 75, 13], [-1, 98, 26], 4.4, 6, 0.3),
+    pyramid([0, 75, -13], [-1, 98, -26], 4.4, 6, 0.3),
   ];
 
   // ---- claw geometry (claw frame: origin at the wrist, x' = toward the tip,
@@ -2130,7 +2139,7 @@ const Corphish = (() => {
   // The bite surface is a steeply tilted plane s1 = Y0 − KT·s0 (unit-sphere space): the red
   // upper jaw is a wedge over the top and back, hinged low at the back, so the pincer
   // opens like a mouth at the front-top of the claw. The border zigzags (big teeth).
-  const CA = 21.5, CB = 11.5, CC = 15.5; // half-length, half-depth (jaw axis), half-width
+  const CA = 22.5, CB = 11.8, CC = 16; // half-length, half-depth (jaw axis), half-width
   const Y0 = -0.45, KT = 1.4, ZA = 0.5, ZN = 6, ZPH = 0.5;
   const BN = nrm([KT, 1, 0]), BU = nrm([1, -KT, 0]), BOFF = Y0 / Math.hypot(1, KT);
   const BCEN = sc(BN, BOFF);
@@ -2154,8 +2163,8 @@ const Corphish = (() => {
   // arm keyframes (near side, body frame): wrist position, claw axis, back-of-claw direction
   const ARM_K = [
     { a: -0.5, W: [12, 32, 26], X: [1, 0.35, -0.15], Y: [-0.8, 0.9, 0.1] },
-    { a: 0, W: [-8, 53, 33], X: [0.2, 1, 0.3], Y: [-1, 0.15, 0.25] },
-    { a: 1, W: [-6, 66, 27], X: [0.05, 1, 0.12], Y: [-1, 0.05, 0.15] },
+    { a: 0, W: [-8, 55, 34], X: [0.2, 1, 0.3], Y: [-1, 0.15, -0.35] },
+    { a: 1, W: [-6, 66, 27], X: [0.05, 1, 0.12], Y: [-1, 0.05, -0.3] },
   ];
   function armKey(a) {
     const i = a <= 0 ? 0 : 1;
@@ -2165,7 +2174,7 @@ const Corphish = (() => {
   }
 
   // ---- eyes
-  const EYE_AZ = 0.57, EYE_V = 0.45, EYE_R = [6.4, 7.9, 3.8];
+  const EYE_AZ = 0.6, EYE_V = 0.44, EYE_R = [6.8, 8.6, 4];
   const lidMat = (s) => (s[1] > 0.42 - 0.62 * s[0] ? C_SHELL : 0);
 
   // ---- legs: hips in the body frame, feet on the ground (tripod gait phases)
@@ -2278,11 +2287,12 @@ const Corphish = (() => {
     let li = 0;
     for (const side of [1, -1])
       for (const lg of LEGS) {
+        // tripod gait for a sideways scuttle: lifted feet swing along z (and a little along x)
         const ph = P.walk + lg.ph + (side > 0 ? 0 : Math.PI);
         const lift = Math.max(0, Math.sin(ph)) * 5;
-        const swing = Math.cos(ph) * 4;
+        const swing = Math.cos(ph) * 4.5;
         const hip = inF(body, [lg.hip[0], lg.hip[1], lg.hip[2] * side]);
-        const foot = [lg.foot[0] + swing, lift, lg.foot[2] * side * (1 + sq * 0.3)];
+        const foot = [lg.foot[0] + swing * 0.35, lift, lg.foot[2] * side * (1 + sq * 0.3) + swing];
         const d = sub(foot, hip), dl = len3(d);
         const dir = sc(d, 1 / dl);
         const a = Math.min(dl, (L_UP * L_UP - L_LO * L_LO + dl * dl) / (2 * dl));
@@ -2303,15 +2313,15 @@ const Corphish = (() => {
     // --- tail (flattened overlapping segments trailing back, ending in a fan)
     TAIL.forEach((t, i) => prims.push(ellF(chain(body, T(...t.c), R(M3.rz(t.a))), t.r, 60 + i, 60 + i, M_SHELL)));
 
-    anchors.top = inF(body, [-4, 104, 0]);
+    anchors.top = inF(body, [-4, 105, 0]); // central spike tip
     anchors.head = inF(body, HOOD_C);
     anchors.mouth = inF(body, [MUZ_C[0] + MUZ_R[0] * 0.85, MUZ_C[1] - MUZ_R[1] * 0.5, 0]);
 
     // uniform scale to the Pokédex height (0.6 m ≈ 105 px silhouette at yaw 1.1)
     for (const p of prims) { p.c = sc(p.c, SIZE); p.L = p.L.map((v) => v * SIZE); }
     for (const st of stamps) st.at.p = sc(st.at.p, SIZE);
-    for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
-    return { prims, anchors, pose: P, headPrim: hoodPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: SHELL };
+    for (const key in anchors) anchors[key] = sc(anchors[key], SIZE);
+    return { prims, anchors, pose: P, headPrim: hoodPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: SHELL, shadowSteps: 16 };
   }
 
   /* ---------- eye stamps (pupils and closed-eye marks) ----------
@@ -2324,13 +2334,13 @@ const Corphish = (() => {
     angry: stampSet(['kk', 'kk'], ['kk', 'kk'], ['k', 'k']),
     dizzy: stampSet(['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kk', 'k.k', 'kkk']),
     happy: stampSet(['..bb..', '.b..b.', 'b....b'], ['.bb.', 'b..b', 'b..b'], ['.b', 'b.', 'b.']),
-    closed: stampSet(['b....b', '.bbbb.'], ['b..b', '.bb.'], ['b.', '.b']),
+    closed: stampSet(['......', '......', 'bbbbbb', '.bbbb.'], ['....', '....', 'bbbb', '.bb.'], ['..', '..', 'bb', '.b']),
   };
   const EYEC = { k: '#1c1012', w: '#ffffff', b: '#58150e' };
 
   const render = (model, opt) => Creature.render(model, opt);
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 126, bh: 142, oy: 0.905 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 130, bh: 144, oy: 0.905 } };
 })();
 
 /* ------------------------------------------------------------------
@@ -2340,10 +2350,11 @@ const Corphish = (() => {
    Model space: x = forward, y = up, z = near side at yaw 0, y = 0 at the
    bottom of the heart.
 
-   Build: a laterally thin heart (upper and lower lobe ellipsoids plus a
-   filler; the cleft is at the back) whose point faces forward and ends in
-   puckered pale lips (two lip ellipsoids meeting at the mouth line).
-   Dark-blue eye stamps and pale cheek patches on both sides.
+   Build: a laterally thin heart, fitted to the official silhouette: upper
+   and lower lobe ellipsoids, a central filler (the cleft is at the back) and
+   two thin front-edge ellipsoids that converge on the puckered pale lips
+   (a round blob plus two beak halves; the mouth line is a mid-plane decal).
+   Dark-blue eye stamps (mirrored on the far side) and pale cheek patches.
 ------------------------------------------------------------------- */
 const Luvdisc = (() => {
   const { chain, T, R, F, code } = Creature;
@@ -2380,8 +2391,7 @@ const Luvdisc = (() => {
     { c: [10.2, 67.6, 0], r: [27, 6, THK * 0.55], a: -1.15 }, // upper front edge (runs into the lips)
     { c: [10, 32, 0], r: [28.8, 6.4, THK * 0.55], a: 1.18 }, // lower front edge
   ];
-  // lips: two small ellipsoids converging at the front (the mouth line is their seam)
-  const LIP_C = [18.4, 49.5, 0];
+  const LIP_C = [18.4, 49.5, 0]; // centre of the lip blob
 
   // ---- face: eye and cheek positions on the side of the body (model units)
   const EYE_P = [0.5, 59.5], CHEEK_P = [-4.2, 50];
@@ -2396,6 +2406,7 @@ const Luvdisc = (() => {
   for (let i = 1; i < 9; i++) PRI[i] = 0;
   Object.assign(PRI, { 5: 3, 7: 4, 8: 4 });
 
+  const SIZE = 0.98;
   const DEFAULT = { wiggle: 0, kiss: 0, eyes: 'open', tilt: 0, blush: 0, side: 1 };
 
   function build(pose) {
@@ -2403,9 +2414,9 @@ const Luvdisc = (() => {
     const prims = [], stamps = [], anchors = {};
     // whole-body pitch about the heart's centre
     const body = chain(F(M3.I(), CEN), R(M3.rz(P.tilt)), T(-CEN[0], -CEN[1], -CEN[2]));
-    // the back of the heart swings sideways (swimming wiggle), pivoting near the snout
+    // the back of the heart swings sideways (swimming wiggle), pivoting at the lips' base
     const wig = Math.max(-1, Math.min(1, P.wiggle));
-    const back = chain(body, T(6, 0, 0), R(M3.ry(wig * 0.32)), T(-6, 0, 0));
+    const back = chain(body, T(14, 0, 0), R(M3.ry(wig * 0.27)), T(-14, 0, 0));
 
     // --- cheeks (patches on the body's sides), in front of the body
     const bl = Math.max(0, Math.min(1, P.blush));
@@ -2452,11 +2463,16 @@ const Luvdisc = (() => {
     anchors.lips = inF(lipBase, [fx + 6.8 * Math.cos(bt), 0, 0]);
     anchors.top = inF(back, [-12, 105, 0]);
     anchors.center = inF(body, CEN);
-    return { prims, anchors, pose: P, headPrim: fillPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: BODY };
+
+    // uniform scale to the Pokédex height (0.6 m ≈ 105 px heart)
+    for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
+    for (const st of stamps) st.at.p = sc(st.at.p, SIZE);
+    for (const key in anchors) anchors[key] = sc(anchors[key], SIZE);
+    return { prims, anchors, pose: P, headPrim: fillPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: BODY, shadowSteps: 12 };
   }
 
   /* ---------- eye stamps (Mudkip's key layout) ----------
-     k = black, b = dark blue, c = blue, w = white highlight (toward the back of the fish) */
+     k = black, b = dark blue, w = white highlight (toward the back of the fish) */
   const mirror = (g) => g.map((row) => row.split('').reverse().join(''));
   const G_OPEN = ['..kkk..', '.kkkkk.', 'kwwkkkk', 'kwwkkkk', 'kwkkkkk', 'kkkkkkk', 'kkkkbbk', 'kkkbbbk', 'kkbbbbk', '.kbbbk.', '..kkk..'];
   const G_OPEN_N = ['.kkkk.', 'kwwkkk', 'kwwkkk', 'kwkkkk', 'kkkkkk', 'kkkkkk', 'kkkbbk', 'kkbbbk', 'kbbbbk', '.kbbk.', '..kk..'];
@@ -2807,8 +2823,8 @@ const Wailord = (() => {
   const { ell, plate, chain, T, R, F, code } = Creature;
 
   // material ids
-  const BODY = 1, BELLY = 2, FIN = 3, MOUTH = 4, TONGUE = 5;
-  const MAT = { BODY, BELLY, FIN, MOUTH, TONGUE };
+  const BODY = 1, BELLY = 2, FIN = 3, MOUTH = 4, TONGUE = 5, EYE = 6, EYEW = 7;
+  const MAT = { BODY, BELLY, FIN, MOUTH, TONGUE, EYE, EYEW };
 
   const PAL = Creature.palette({
     [BODY]:   { r: ['#1f5596', '#2e73b9', '#3c8ad1', '#56a2e0', '#cfeaff'], od: '#10295a', ol: '#1f4b8c', ln: '#1c4788' },
@@ -2816,6 +2832,8 @@ const Wailord = (() => {
     [BELLY]:  { r: ['#9c989b', '#bab6b7', '#d8d5d3', '#eae8e6', '#f8f7f5'], od: '#45404a', ol: '#6f6a70', ln: '#5e5963' },
     [MOUTH]:  { r: ['#3e0c1a', '#5c1426', '#7e2234', '#9c3446', '#b84c5a'], od: '#2a0610', ol: '#420c1a', ln: '#420c1a' },
     [TONGUE]: { r: ['#a43c52', '#c45468', '#de7282', '#ee94a0', '#f8b8c0'], od: '#5c1426', ol: '#7e2234', ln: '#8c2c40' },
+    [EYE]:    { r: ['#0a0f1c', '#0e1422', '#121a2b', '#182236', '#223050'], od: '#070b14', ol: '#070b14', ln: '#070b14' },
+    [EYEW]:   { r: ['#d8e4f4', '#eef4fc', '#ffffff', '#ffffff', '#ffffff'], od: '#070b14', ol: '#070b14', ln: '#070b14' },
   });
 
   const DEFAULT = { tail: 0, fin: 0, mouth: 0, eyes: 'open', blow: 0, roll: 0, side: 1 };
@@ -2831,27 +2849,54 @@ const Wailord = (() => {
     return M3.cols(U, V3.cross(W, U), W);
   }
 
-  /* ---------- body layout (model units), fitted to the official silhouette ----------
-     MAIN (tilted nose-up) forms the domed head and the belly, REAR the long sloping back. */
-  const MAIN = { c: [296, 557, 0], r: [986, 518, 530], a: 0.239 };
-  const REAR = { c: [-373, 534, 0], r: [614, 237, 330], a: 0.021 };
-  const STOCK = { c: [-895, 527, 0], r: [175, 112, 108], a: 0 };
-  const ELLS = [MAIN, REAR, STOCK];
-  for (const E of ELLS) {
-    E.R = M3.rz(E.a);
-    E.L = M3.mul(E.R, M3.diag(...E.r));
-    E.Li = M3.inv(E.L);
+  /* ---------- body: a smooth asymmetric egg made of four quarter-ellipsoids that share one centre and
+     tilt (front/rear lengths, top/bottom heights, common width). Each draws only its own quadrant, so
+     the pieces meet with matching cross-sections and normals: no creases. Fitted to the official
+     silhouette (big domed head, long taper to a mid-height tail). ---------- */
+  const EGG = { c: [683, 0, 0], rxf: 580, rxr: 1657, ryt: 540, ryb: 540, rz: 575, a: 0.1 };
+  {
+    // put the lowest point of the belly on the ground (y = 0)
+    const ca = Math.cos(EGG.a), sa = Math.sin(EGG.a);
+    let lo = Infinity;
+    for (let i = 0; i < 720; i++) {
+      const t = (i / 720) * 2 * Math.PI, ct = Math.cos(t), st = Math.sin(t);
+      const lx = ct * (ct >= 0 ? EGG.rxf : EGG.rxr), ly = st * (st >= 0 ? EGG.ryt : EGG.ryb);
+      lo = Math.min(lo, sa * lx + ca * ly);
+    }
+    EGG.c[1] = -lo;
   }
+  const QUADS = EGG.ryt === EGG.ryb ? [
+    { id: 'F', r: [EGG.rxf, EGG.ryt, EGG.rz], sx: 1, sy: 0 },
+    { id: 'R', r: [EGG.rxr, EGG.ryt, EGG.rz], sx: -1, sy: 0 },
+  ] : [
+    { id: 'FT', r: [EGG.rxf, EGG.ryt, EGG.rz], sx: 1, sy: 1 },
+    { id: 'FB', r: [EGG.rxf, EGG.ryb, EGG.rz], sx: 1, sy: -1 },
+    { id: 'RT', r: [EGG.rxr, EGG.ryt, EGG.rz], sx: -1, sy: 1 },
+    { id: 'RB', r: [EGG.rxr, EGG.ryb, EGG.rz], sx: -1, sy: -1 },
+  ];
+  for (const Q of QUADS) {
+    Q.c = EGG.c; Q.a = EGG.a;
+    Q.R = M3.rz(EGG.a);
+    Q.L = M3.mul(Q.R, M3.diag(...Q.r));
+    Q.Li = M3.inv(Q.L);
+  }
+  const FT = QUADS[0];
   const toLocal = (E, p) => M3.v(E.Li, V3.sub(p, E.c));
   const toModel = (E, q) => V3.add(E.c, M3.v(E.L, q));
-  // unit-sphere direction on MAIN for the near-side surface point at (x, y)
-  function mainDir(x, y, zSign = 1) {
-    const q = toLocal(MAIN, [x, y, 0]);
-    return V3.norm([q[0], q[1], zSign * Math.sqrt(Math.max(0, 1 - q[0] * q[0] - q[1] * q[1]))]);
+  const inQuad = (Q, q) => q[0] * Q.sx >= -1e-6 && q[1] * Q.sy >= -1e-6;
+  // quadrant containing the (in-plane) model point, and its unit-sphere direction there (near side)
+  function quadDir(x, y, zSign = 1) {
+    for (const Q of QUADS) {
+      const q = toLocal(Q, [x, y, 0]);
+      if (!inQuad(Q, q)) continue;
+      return { Q, s: V3.norm([q[0], q[1], zSign * Math.sqrt(Math.max(0, 1 - q[0] * q[0] - q[1] * q[1]))]) };
+    }
+    return { Q: FT, s: [0, 1, 0] };
   }
+  const REAR_POLE = toModel(QUADS.find((Q) => Q.sx < 0), [-1, 0, 0]);
 
   // jaw line / belly boundary: height as a function of x (lookup table, Catmull-Rom through JAW)
-  const JAW = [[-1100, 440], [-700, 450], [-300, 500], [100, 610], [500, 745], [800, 830], [1050, 890], [1320, 940]];
+  const JAW = [[-1100, 455], [-700, 468], [-300, 515], [100, 605], [400, 710], [700, 815], [900, 868], [1100, 915], [1320, 950]];
   const JAW_T = new Float32Array(260);
   for (let i = 0; i < 260; i++) {
     const x = -1100 + i * 10;
@@ -2865,7 +2910,7 @@ const Wailord = (() => {
 
   /* ---------- belly grooves: curves where the body surface meets planes through a tilted axis
      (from the lower rear, where they converge, to a point high in front of the snout, so their
-     front ends fan out below the jaw line). Stored in MAIN's local coordinates + model normals. ---------- */
+     front ends fan out below the jaw line). Stored in FT's local coordinates + model normals. ---------- */
   const GROOVES = (() => {
     const Rp = [-780, 420, 0], Fp = [1450, 1060, 0];
     const a = V3.norm(V3.sub(Fp, Rp)), b1 = [a[1], -a[0], 0], b2 = [0, 0, 1];
@@ -2881,19 +2926,19 @@ const Wailord = (() => {
         for (let t = -200; t <= len; t += 16) {
           const A = V3.add(Rp, V3.scale(a, t));
           let best = -1, bestE = null;
-          for (const E of ELLS) {
+          for (const E of QUADS) {
             const o = toLocal(E, A), dl = M3.v(E.Li, d);
             const qa = V3.dot(dl, dl), qb = 2 * V3.dot(o, dl), qc = V3.dot(o, o) - 1;
             const disc = qb * qb - 4 * qa * qc;
             if (disc < 0) continue;
             const s = (-qb + Math.sqrt(disc)) / (2 * qa);
-            if (s > best) { best = s; bestE = E; }
+            if (s > best && inQuad(E, V3.add(o, V3.scale(dl, s)))) { best = s; bestE = E; }
           }
           if (best <= 0) { flush(); continue; }
           const P = V3.add(A, V3.scale(d, best));
           const ql = toLocal(bestE, P), Li = bestE.Li;
           const n = V3.norm([Li[0] * ql[0] + Li[3] * ql[1] + Li[6] * ql[2], Li[1] * ql[0] + Li[4] * ql[1] + Li[7] * ql[2], Li[2] * ql[0] + Li[5] * ql[1] + Li[8] * ql[2]]);
-          if (P[1] < jawY(P[0]) - 22 && P[0] > Rp[0] + 90 + gi * 30) cur.push({ q: toLocal(MAIN, P), n });
+          if (P[1] < jawY(P[0]) - 22 && P[0] > Rp[0] + 90 + gi * 30) cur.push({ q: toLocal(FT, P), n });
           else flush();
         }
         flush();
@@ -2904,36 +2949,61 @@ const Wailord = (() => {
 
   /* ---------- fins and flukes (plates, baked at 2-unit resolution) ---------- */
   // swept-back dorsal fin: a long low blade (u = forward, v = up; base on the back, tip pointing back)
-  const DORSAL = bakeShape(Shape2D.poly([[140, -40], [80, 14], [-40, 50], [-210, 76], [-390, 86], [-310, 52], [-195, 18], [-80, -40]], code(FIN)), 2);
+  const DORSAL = bakeShape(Shape2D.poly([[135, -40], [112, 22], [45, 82], [-60, 128], [-200, 156], [-335, 166], [-300, 122], [-236, 84], [-165, 40], [-115, -40]], code(FIN)), 2);
   const DORSAL_LINES = [
-    { pts: [[14, 18, 0], [-130, 52, 0], [-325, 76, 0]], mat: FIN, useLn: true },
-    { pts: [[-40, -2, 0], [-156, 29, 0], [-300, 57, 0]], mat: FIN, useLn: true },
+    { pts: [[0, 30, 0], [-130, 88, 0], [-290, 136, 0]], mat: FIN, useLn: true },
   ];
   // pectoral flipper (u = back along the body, v = down)
   const PECT = bakeShape(Shape2D.poly([[-10, -40], [60, -36], [170, -14], [270, 30], [300, 58], [230, 60], [120, 40], [20, 36], [-20, 10]], code(FIN)), 2);
   // tail lobes (u = backward, v = up): long blue upper blade, small grey lower spike
-  const FLUKE_UP = bakeShape(Shape2D.poly([[-40, -60], [70, -40], [200, 10], [330, 60], [420, 96], [310, 100], [170, 82], [50, 62], [-40, 50]], code(FIN)), 2);
-  const FLUKE_LO = bakeShape(Shape2D.poly([[-40, 30], [60, 16], [140, -20], [210, -66], [145, -68], [60, -52], [-40, -40]], code(BELLY)), 2);
+  // both lobes in one plate (no overlapping coplanar plates): blue above the split line, grey below
+  const FLUKE_UP_P = Shape2D.catmull([[-40, -60], [70, -40], [200, 10], [330, 60], [420, 96], [310, 100], [170, 82], [50, 62], [-40, 50]], true, 8);
+  const FLUKE_LO_P = Shape2D.catmull([[-40, 30], [60, 16], [140, -20], [210, -66], [145, -68], [60, -52], [-40, -40]], true, 8);
+  const FLUKES = bakeShape({
+    bb: [-45, -75, 425, 105],
+    test(u, v) {
+      const up = Shape2D.inPoly(u, v, FLUKE_UP_P), lo = Shape2D.inPoly(u, v, FLUKE_LO_P);
+      if (!up && !lo) return 0;
+      if (up && lo) return v > 4 - 0.25 * u ? code(FIN) : code(BELLY);
+      return up ? code(FIN) : code(BELLY);
+    },
+  }, 2);
 
   // body top height at x (for seating the dorsal fins)
   function topAt(x) {
     let best = 0;
-    for (const E of [MAIN, REAR]) {
+    for (const Q of QUADS) {
       for (let i = 0; i <= 400; i++) {
         const th = (i / 400) * Math.PI;
-        const p = toModel(E, [Math.cos(th), Math.sin(th), 0]);
+        const q = [Math.cos(th), Math.sin(th), 0];
+        if (!inQuad(Q, q)) continue;
+        const p = toModel(Q, q);
         if (Math.abs(p[0] - x) < 8) best = Math.max(best, p[1]);
       }
     }
     return best;
   }
-  const FIN_POS = [{ x: -110, s: 1 }, { x: -500, s: 0.82 }].map((d) => Object.assign(d, { y: topAt(d.x) - 34 * d.s }));
+  const FIN_POS = [{ x: -110, s: 1 }, { x: -500, s: 0.84 }].map((d) => Object.assign(d, { y: topAt(d.x) - 12 * d.s }));
 
-  const EYE_S = mainDir(720, 900), EYE_SF = [EYE_S[0], EYE_S[1], -EYE_S[2]];
-  const BLOW_S = mainDir(600, 1080);
-  const PECT_AT = V3.add(toModel(MAIN, mainDir(470, 715)), [0, 0, -12]);
+  const EYE_D = quadDir(700, 895), EYE_S = EYE_D.s, EYE_SF = [EYE_S[0], EYE_S[1], -EYE_S[2]];
+  const EYE_TV = V3.norm(V3.sub([0, 1, 0], V3.scale(EYE_S, EYE_S[1]))), EYE_TU = V3.cross(EYE_TV, EYE_S);
+  let EYE_DECAL = false, EYE_KIND = 'open';
+  const BLOW_D = quadDir(640, 1085);
+  const PECT_D = quadDir(520, 735);
+  const PECT_AT = V3.add(toModel(PECT_D.Q, PECT_D.s), [0, 0, -12]);
 
-  let HL = null; // highlight direction in model space (set per render)
+  let HL = null, HLl = [0, 1, 0]; // highlight direction in model space / in the egg's local frame (set per render)
+  // points covering one octant-pair of the unit sphere (x, y >= 0, both z signs), for bounding quarter prims
+  const QUAD_SAMPLES = [];
+  for (let i = 0; i <= 12; i++) for (let j = 0; j <= 12; j++) {
+    const th = (i / 12) * (Math.PI / 2), ph = (j / 12) * Math.PI; // th: angle in the x-y quadrant, ph: around it
+    const c = Math.cos(th), sn = Math.sin(th);
+    for (const zs of [1, -1]) {
+      const sp = Math.sin(ph), cp = Math.cos(ph);
+      // meridian from the x-y quadrant point toward +/-z
+      QUAD_SAMPLES.push([c * sp, sn * sp, zs * Math.abs(cp)]);
+    }
+  }
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -2957,24 +3027,44 @@ const Wailord = (() => {
           }
           return code(BELLY);
         }
-        if (E === MAIN) {
+        if (E === FT) {
+          // eyes as surface decals when rendered large (stamps are used for small scales)
+          if (EYE_DECAL) {
+            const zs = s[2] < 0 ? -1 : 1, ex = s[0] - EYE_S[0], ey = s[1] - EYE_S[1], ez = s[2] * zs - EYE_S[2];
+            const du = ex * EYE_TU[0] + ey * EYE_TU[1] + ez * EYE_TU[2], dv = ex * EYE_TV[0] + ey * EYE_TV[1] + ez * EYE_TV[2];
+            const ek = EYE_KIND, R0 = 0.03;
+            if (Math.abs(du) < 0.06 && Math.abs(dv) < 0.06) {
+              if (ek === 'happy') { const rr = Math.hypot(du, dv + 0.012); if (dv > -0.012 && rr < R0 * 1.15 && rr > R0 * 0.55) return code(EYE); }
+              else if (ek === 'closed') { if (Math.abs(dv + 0.008 - 12 * du * du) < 0.006 && Math.abs(du) < R0 * 1.1) return code(EYE); }
+              else {
+                const r2 = (du * du) / (R0 * R0 * 0.8) + (dv * dv) / (R0 * R0 * 1.15);
+                if (r2 < 1) { const gu = du - zs * 0.3 * R0, gv = dv - 0.35 * R0; return gu * gu + gv * gv < R0 * R0 * 0.12 ? code(EYEW) : code(EYE); }
+              }
+            }
+          }
           // blowhole on top of the head
-          const bx = (x - 600) / 55, bz = (s[2] * rz) / 30;
+          const bx = (x - 640) / 55, bz = (s[2] * rz) / 30;
           if (y > 1000 && bx * bx + bz * bz < 1) return code(BODY, -2);
         }
         // small glossy highlight on the head (HL = half vector in model space, set per render)
-        if (HL && E === MAIN) {
-          const nx = (ca * s[0]) / rx - (sa * s[1]) / ry, ny = (sa * s[0]) / rx + (ca * s[1]) / ry, nz = s[2] / rz;
-          if ((nx * HL[0] + ny * HL[1] + nz * HL[2]) / Math.hypot(nx, ny, nz) > 0.9965) return code(BODY, 2);
+        if (HL && E.sy >= 0 && x > -250) {
+          // local-frame normal vs local-frame half vector; deviations along the long axis count double so the
+          // spot stays round on this long, gently curved body
+          const ux = s[0] / rx, uy = s[1] / ry, uz = s[2] / rz, ul = Math.hypot(ux, uy, uz);
+          const dx = ux / ul - HLl[0], dy = uy / ul - HLl[1], dz = uz / ul - HLl[2];
+          if (4 * dx * dx + dy * dy + dz * dz < 0.0064) return code(BODY, 2);
         }
         return code(BODY);
       };
     };
     const bodyF = (E) => chain(root, T(...E.c), R(E.R));
-    const mainF = bodyF(MAIN);
-    const mainP = ell(mainF, MAIN.r, { part: 1, grp: 1, mat: bodyMat(MAIN) });
+    const qPrims = QUADS.map((Q) => {
+      const base = bodyMat(Q);
+      return ell(bodyF(Q), Q.r, { part: 1, grp: 1, quad: [Q.sx, Q.sy], mat: (sv) => (sv[0] * Q.sx < 0 || sv[1] * Q.sy < 0 ? 0 : base(sv)) });
+    });
+    const mainF = bodyF(FT), mainP = qPrims[0];
     mainP.grooves = GROOVES;
-    prims.push(mainP, ell(bodyF(REAR), REAR.r, { part: 1, grp: 1, mat: bodyMat(REAR) }), ell(bodyF(STOCK), STOCK.r, { part: 1, grp: 1, mat: bodyMat(STOCK) }));
+    prims.push(...qPrims);
 
     // dorsal fins: two long low blades in a row on the back
     for (const d of FIN_POS) {
@@ -2988,32 +3078,32 @@ const Wailord = (() => {
       prims.push(plate(chain(root, f), PECT, { part: k > 0 ? 3 : 4, grp: k > 0 ? 3 : 4, thick: 14 }, [[1, 0, 0], [0, -1, 0], [0, 0, 1]]));
     }
     // tail lobes hinged at the tail stock, swinging up/down with P.tail
-    const tailF = chain(root, T(-960, 527, 0), R(M3.rz(0.3 * clamp(P.tail, -1, 1))));
+    const tailF = chain(root, T(REAR_POLE[0] + 30, REAR_POLE[1], 0), R(M3.rz(-0.3 * clamp(P.tail, -1, 1))));
     const flip = [[-1, 0, 0], [0, 1, 0], [0, 0, 1]];
-    prims.push(plate(tailF, FLUKE_UP, { part: 5, grp: 5, thick: 16 }, flip));
-    prims.push(plate(tailF, FLUKE_LO, { part: 5, grp: 5, thick: 16 }, flip));
+    prims.push(plate(tailF, FLUKES, { part: 5, grp: 5, thick: 16 }, flip));
 
-    const scl = M3.diag(...MAIN.r);
-    const eyeAt = { p: P2W(mainF, M3.v(scl, EYE_S)), s: EYE_S, prim: mainP };
-    const eyeAtF = { p: P2W(mainF, M3.v(scl, EYE_SF)), s: EYE_SF, prim: mainP };
+    const qP = (D) => qPrims[QUADS.indexOf(D.Q)], qF = (D) => bodyF(D.Q);
+    const eyeAt = { p: P2W(qF(EYE_D), M3.v(M3.diag(...EYE_D.Q.r), EYE_S)), s: EYE_S, prim: qP(EYE_D) };
+    const eyeAtF = { p: P2W(qF(EYE_D), M3.v(M3.diag(...EYE_D.Q.r), EYE_SF)), s: EYE_SF, prim: qP(EYE_D) };
     const anchors = {
-      blowhole: P2W(mainF, M3.v(scl, BLOW_S)),
+      blowhole: P2W(qF(BLOW_D), M3.v(M3.diag(...BLOW_D.Q.r), BLOW_D.s)),
       mouth: P2W(root, [1230, jawY(1230) - 30, 0]),
       eye: eyeAt.p, eyeF: eyeAtF.p,
       tail: P2W(tailF, [-330, 70, 0]),
-      top: P2W(mainF, [0, MAIN.r[1], 0]),
+      top: P2W(mainF, [0, FT.r[1], 0]),
       body: mainF.t,
     };
     return {
       prims, anchors, pose: P, dots: [], rootN: M3.mul(M3.inv(D), M3.rx(roll)),
       stamps: [{ at: eyeAt, set: EYES[0], colors: EYEC, kind: P.eyes, minFacing: 0.15 }, { at: eyeAtF, set: EYES[0], colors: EYEC, kind: P.eyes, minFacing: 0.15, flipX: true }],
       pri: { 1: 0, 2: 1, 3: 1, 4: 1, 5: 1 },
-      glossy: {}, baseMat: BODY, shadowSteps: 12,
+      glossy: {}, baseMat: BODY, shadowSteps: 0,
     };
   }
 
   /* ---------- eyes: pixel stamps sized for the render scale ---------- */
   const EYEC = { k: '#0c1220', w: '#ffffff', b: '#26406e' };
+  const NO_EYE = { open: ['.'] };
   const EYES = [
     { open: ['kk', 'kk', 'kk'], happy: ['.k.', 'k.k'], closed: ['kkk'] }, // tiny (far out at sea)
     { open: ['.kk.', 'kwkk', 'kkkk', '.kk.'], happy: ['.kk.', 'k..k'], closed: ['k..k', '.kk.'] },
@@ -3023,13 +3113,17 @@ const Wailord = (() => {
 
   function render(model, opt) {
     const { yaw = 1.05, pitch = 0.16, scale = 1, W = 96, H = 96, ox = 48, oy = 82 } = opt;
-    const set = scale < 0.16 ? EYES[0] : scale < 0.3 ? EYES[1] : scale < 0.6 ? EYES[2] : EYES[3];
-    for (const st of model.stamps) st.set = set;
+    const set = scale < 0.16 ? EYES[0] : scale < 0.3 ? EYES[1] : EYES[2];
+    EYE_DECAL = scale >= 0.45;
+    EYE_KIND = (model.pose && model.pose.eyes) || 'open';
+    for (const st of model.stamps) st.set = EYE_DECAL ? NO_EYE : set;
     const M = M3.mul(M3.rx(pitch), M3.ry(-yaw));
     const cam = [M[6], M[7], M[8]];
     { // highlight direction (half vector between light and view) in model space
       const Ld = V3.norm((opt.light && opt.light.dir) || [-0.5, 0.72, 0.5]);
       HL = M3.v([M[0], M[3], M[6], M[1], M[4], M[7], M[2], M[5], M[8]], V3.norm(V3.add(Ld, [0, 0, 1])));
+      HL = V3.norm(V3.add(HL, [0, 1.1, 0])); // keep the spot high on the head, as in the official art
+      HLl = M3.v(M3.rz(-EGG.a), HL);
     }
     // grooves: keep only the parts facing the camera
     const RN = model.rootN || M3.I();
@@ -3052,7 +3146,14 @@ const Wailord = (() => {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const p of model.prims) {
       const cv = M3.v(V, p.c), Lv = M3.mul(V, p.L);
-      if (p.kind === 'ell') {
+      if (p.quad) {
+        // quarter-ellipsoid: bound only the quadrant that is drawn
+        for (const ys of p.quad[1] ? [p.quad[1]] : [1, -1]) for (const q of QUAD_SAMPLES) {
+          const sx = q[0] * p.quad[0], sy = q[1] * ys, sz = q[2];
+          const qx = cv[0] + Lv[0] * sx + Lv[1] * sy + Lv[2] * sz, qy = cv[1] + Lv[3] * sx + Lv[4] * sy + Lv[5] * sz;
+          x0 = Math.min(x0, qx); x1 = Math.max(x1, qx); y0 = Math.min(y0, -qy); y1 = Math.max(y1, -qy);
+        }
+      } else if (p.kind === 'ell') {
         const rx = Math.hypot(Lv[0], Lv[1], Lv[2]), ry = Math.hypot(Lv[3], Lv[4], Lv[5]);
         x0 = Math.min(x0, cv[0] - rx); x1 = Math.max(x1, cv[0] + rx); y0 = Math.min(y0, -cv[1] - ry); y1 = Math.max(y1, -cv[1] + ry);
       } else {
@@ -3063,8 +3164,9 @@ const Wailord = (() => {
         }
       }
     }
-    const bx0 = Math.max(0, Math.floor(ox + x0) - 3), bx1 = Math.min(W - 1, Math.ceil(ox + x1) + 3);
-    const by0 = Math.max(0, Math.floor(oy + y0) - 3), by1 = Math.min(H - 1, Math.ceil(oy + y1) + 3);
+    const mg = 3 + 0.01 * Math.max(x1 - x0, y1 - y0);
+    const bx0 = Math.max(0, Math.floor(ox + x0 - mg)), bx1 = Math.min(W - 1, Math.ceil(ox + x1 + mg));
+    const by0 = Math.max(0, Math.floor(oy + y0 - mg)), by1 = Math.min(H - 1, Math.ceil(oy + y1 + mg));
     if (bx1 - bx0 < 4 || by1 - by0 < 4 || (bx1 - bx0 + 1) * (by1 - by0 + 1) > 0.8 * W * H) return Creature.render(model, opt);
     const w = bx1 - bx0 + 1, h = by1 - by0 + 1;
     const r = Creature.render(model, Object.assign({}, opt, { W: w, H: h, ox: ox - bx0, oy: oy - by0 }));
@@ -3086,10 +3188,13 @@ const Wailord = (() => {
 /* ------------------------------------------------------------------
    Kyogre — the Sea Basin Pokémon, as a posable 3D model rendered to
    pixel art by the shared Creature renderer (src/creature.js).
-   Model units: 175 = 1 m, Kyogre is ~790 long (4.5 m). x = forward,
-   y = up, z = near side at yaw 0; y = 0 is the lowest belly point.
+   Model units: 175 = 1 m, Kyogre is ~790 long (4.5 m); the game draws
+   it at scale ~0.55. x = forward, y = up, z = near side at yaw 0;
+   y = 0 is the lowest belly point (fins hang below it).
    Fins, claws, dorsal and tail streamers are thin ellipsoid "shells"
-   clipped to 2D outlines, so they keep real curvature shading.
+   clipped to 2D outlines (curvature shading + an edge-on fallback);
+   red lines, eyes and white patches are decals baked into grids in the
+   rest pose, so they stick to the skin while the model animates.
 ------------------------------------------------------------------- */
 const Kyogre = (() => {
   const { chain, T, R, code } = Creature;
@@ -3108,7 +3213,7 @@ const Kyogre = (() => {
     [FIN]:    { r: ['#0a2052', '#0e2b6b', '#16479a', '#1f66c2', '#4a94e2'], od: '#081a48', ol: '#12378a', ln: '#0f3078' },
     [TAILF]:  { r: BLUE, od: '#081a48', ol: '#12378a', ln: '#0f3078' },
     [BELLY]:  { r: ['#1a4690', '#255cae', '#3679cc', '#5a9ce6', '#b8dcff'], od: '#0a2052', ol: '#1a4592', ln: '#173f88' },
-    [FINU]:   { r: ['#173f84', '#2154a4', '#2f6ec2', '#4e8fdc', '#a6ceff'], od: '#081a48', ol: '#12378a', ln: '#123580' },
+    [FINU]:   { r: ['#081a48', '#0b2458', '#0f2f72', '#16469a', '#2462b8'], od: '#061238', ol: '#0e2a6c', ln: '#0d2a6a' },
     [RED]:    { r: ['#7c0f25', '#b51b35', '#e3334a', '#ff6166', '#ffaea4'], od: '#4c0716', ol: '#8a1428', ln: '#7a1024' },
     [PALE]:   { r: ['#6a8cb6', '#95b4d6', '#c4daee', '#e5f0fa', '#ffffff'], od: '#27487a', ol: '#5379aa', ln: '#567cae' },
     [CLAW]:   { r: ['#7b8fac', '#a4b5cc', '#d0dbea', '#edf3fa', '#ffffff'], od: '#34476a', ol: '#62789a', ln: '#5d7398' },
@@ -3120,7 +3225,7 @@ const Kyogre = (() => {
   });
   const GLOSSY = { [BODY]: 1, [FIN]: 1, [TAILF]: 1, [BELLY]: 1, [PALE]: 1, [CLAW]: 1, [RED]: 0, [FINU]: 0 };
   // brighter ramp for the `glow` pose (Primal-style energy in the lines)
-  const GLOW = ['#f02a44', '#ff4c5c', '#ff8078', '#ffbcae', '#fff2ea'].map(PX.hex);
+  const GLOW = ['#ff2440', '#ff3c52', '#ff5a66', '#ff8f8a', '#ffd6cc'].map(PX.hex);
 
   /* ---------- 2D grid helpers (baked once at load, O(1) lookups) ---------- */
   function grid(u0, v0, u1, v1, res, Type = Uint8Array, init = 0) {
@@ -3202,6 +3307,24 @@ const Kyogre = (() => {
   const bbox = (poly) => Shape2D.bbox(poly, 0);
   // emboss: +1 near the edge facing direction d, -1 near the opposite edge
   const bevel = (g, u, v, dx, dy) => (!at(g, u + dx, v + dy, 0) ? 1 : !at(g, u - dx, v - dy, 0) ? -1 : 0);
+  // Pack a shape into one Uint16 grid: bit 0 inside, bits 1-2 bevel+1, bits 3-15 line distance*8,
+  // so a fin pixel costs a single array read (cheap even before the JIT warms up).
+  function pack(inG, lnG, bdx, bdy, bevelG) {
+    const g = { u0: inG.u0, v0: inG.v0, res: inG.res, ir: 1 / inG.res, gw: inG.gw, gh: inG.gh, a: new Uint16Array(inG.gw * inG.gh) };
+    for (let y = 0; y < g.gh; y++)
+      for (let x = 0; x < g.gw; x++) {
+        const i = y * g.gw + x;
+        if (!inG.a[i]) continue;
+        const bv = bevel(bevelG || inG, g.u0 + (x + 0.5) * g.res, g.v0 + (y + 0.5) * g.res, bdx, bdy);
+        const d = lnG ? Math.min(8191, Math.round(lnG.a[i] * 8)) : 8191;
+        g.a[i] = 1 | ((bv + 1) << 1) | (d << 3);
+      }
+    return g;
+  }
+  const pk = (g, u, v) => {
+    const x = Math.floor((u - g.u0) * g.ir), y = Math.floor((v - g.v0) * g.ir);
+    return x < 0 || y < 0 || x >= g.gw || y >= g.gh ? 0 : g.a[y * g.gw + x];
+  };
 
   /* ---------- body decals, drawn in the rest-pose side view (x, y) ---------- */
   // lower jaw region seen from the side (the head is cut away here; the jaw prim shows)
@@ -3211,14 +3334,15 @@ const Kyogre = (() => {
   const JAWG = grid(-220, -60, 430, 320, 1);
   fill(JAWG, JAW_REGION, 1);
   const LIP_LINE = LIP.concat([[206, 56], [201, 46], [199, 32]]);
-  const LIPG = grid(150, -20, 430, 140, 1, Float32Array, 99);
+  const LIPG = grid(-220, -60, 430, 320, 1, Float32Array, 99);
   stroke(LIPG, smooth(LIP_LINE, false, 6), 12);
+  const SG = SIDE, SIDEA = SIDE.a, LIPA = LIPG.a, JAWA = JAWG.a;
   // flank chevron, hook and the ridge behind the head
   stroke(SIDE, smooth([[8, 190], [44, 150], [92, 108], [84, 72], [72, 34]], false, 6), 10);
   stroke(SIDE, smooth([[26, 146], [-4, 152], [-36, 150], [-44, 118], [-46, 92]], false, 6), 10);
   // volumes (x,y,z centre, radii, z-rotation) for white patches and slits; mirrored in z
   const PATCHES = [
-    { c: [258, 134, 70], r: [62, 25, 34], rot: -0.26 },
+    { c: [258, 136, 72], r: [72, 30, 36], rot: -0.26 },
     { c: [176, 124, 86], r: [24, 13, 30], rot: -0.2 },
   ];
   const SLITS = [
@@ -3235,32 +3359,34 @@ const Kyogre = (() => {
   };
   // eye (side-view ellipse decal on the head; both sides)
   const EYE = { x: 318, y: 80, ax: 20, ay: 12 };
-  const HEAD = { c: [178, 94, 0], r: [218, 106, 114], tilt: -0.1 };
+  const HEAD = { c: [186, 92, 0], r: [208, 114, 116], tilt: -0.1 };
 
   /* ---------- pectoral fin: outline + line pattern in fin space (u root->tip, v across) ---------- */
-  const FIN_OUT = smooth([[0, 44], [60, 60], [130, 80], [196, 98], [236, 104], [256, 80], [266, 40], [268, -8], [260, -56], [242, -98], [200, -108], [130, -90], [60, -62], [0, -46], [-30, 0]], true, 8);
-  const FIN_IN = grid(-40, -130, 290, 130, 1);
+  const FIN_OUT = smooth([[0, 40], [50, 62], [110, 96], [170, 118], [220, 124], [250, 102], [266, 56], [270, 0], [264, -54], [248, -102], [214, -124], [164, -118], [104, -92], [50, -60], [0, -42], [-30, 0]], true, 8);
+  const FIN_IN = grid(-40, -140, 290, 140, 1);
   fill(FIN_IN, FIN_OUT, 1);
-  const FIN_LN = grid(-40, -130, 290, 130, 1, Float32Array, 99);
-  stroke(FIN_LN, ellipsePts(112, -4, 52, 42), 10);
+  const FIN_LN = grid(-40, -140, 290, 140, 1, Float32Array, 99);
+  stroke(FIN_LN, ellipsePts(108, -2, 56, 48), 10);
   for (const l of [
-    [[140, 30], [160, 46], [198, 60], [240, 80]],
-    [[162, 12], [210, 20], [258, 28]],
-    [[162, -18], [210, -22], [260, -24]],
-    [[140, -40], [160, -58], [198, -68], [240, -82]],
-    [[206, 19], [214, -21]],
+    [[138, 38], [160, 58], [200, 72], [242, 94]],
+    [[162, 16], [212, 26], [262, 32]],
+    [[162, -20], [212, -28], [262, -32]],
+    [[138, -44], [160, -64], [200, -76], [242, -96]],
+    [[208, 25], [216, -27]],
   ]) stroke(FIN_LN, l, 10);
-  const FIN_E = { cu: 150, cv: -2, ru: 190, rv: 132, rw: 14 };
+  const FIN_PK = pack(FIN_IN, FIN_LN, 0, 7);
+  const FIN_E = { cu: 145, cv: 0, ru: 200, rv: 150, rw: 14 };
   const CLAWS = [
-    { u: 238, v: 84, a: 0.42 },
-    { u: 260, v: 32, a: 0.14 },
-    { u: 262, v: -20, a: -0.14 },
-    { u: 242, v: -78, a: -0.42 },
+    { u: 238, v: 96, a: 0.46 },
+    { u: 262, v: 34, a: 0.15 },
+    { u: 262, v: -34, a: -0.15 },
+    { u: 240, v: -98, a: -0.46 },
   ];
-  const CLAW_OUT = smooth([[-22, 13], [10, 15.5], [23, 13.5], [28, 5], [28, -5], [23, -13.5], [10, -15.5], [-22, -13]], true, 6);
-  const CLAW_G = grid(-26, -18, 32, 18, 0.5);
+  const CLAW_OUT = smooth([[-24, 15], [12, 17.5], [26, 15.5], [31, 6], [31, -6], [26, -15.5], [12, -17.5], [-24, -15]], true, 6);
+  const CLAW_G = grid(-28, -20, 35, 20, 0.5);
   fill(CLAW_G, CLAW_OUT, 1);
-  const CLAW_E = { ru: 40, rv: 23, rw: 8 };
+  const CLAW_PK = pack(CLAW_G, null, 0, 4.5);
+  const CLAW_E = { ru: 45, rv: 26, rw: 8.5 };
 
   /* ---------- dorsal fin (side view, x back.., y up), thin axis = z ---------- */
   const DORSAL_OUT = smooth([[168, 150], [150, 196], [118, 232], [78, 262], [62, 266], [66, 240], [70, 212], [62, 186], [40, 150]], true, 8);
@@ -3268,6 +3394,7 @@ const Kyogre = (() => {
   fill(DORSAL_G, DORSAL_OUT, 1);
   const DORSAL_LN = grid(20, 130, 190, 280, 1, Float32Array, 99);
   stroke(DORSAL_LN, smooth([[164, 176], [148, 200], [118, 232], [82, 258]], false, 6), 10);
+  const DORSAL_PK = pack(DORSAL_G, DORSAL_LN, -4, 3);
   const DORSAL_E = { cx: 104, cy: 205, rx: 96, ry: 78, rz: 9 };
 
   /* ---------- tail streamers (fin space: u back, v up) ---------- */
@@ -3285,15 +3412,16 @@ const Kyogre = (() => {
     for (const p of parts) p.full = g;
   }
   // upper (hooked) fins: rising part + backward part; lower streamers: root + tip
-  const UP_A = shellOf(ribbon([[0, -22], [4, 18], [18, 52], [44, 78]], 56, 46), 8);
-  const UP_B = shellOf(ribbon([[36, 74], [78, 88], [122, 94], [158, 96]], 46, 32, { a: 22, d: 13, b: 6 }), 7);
-  const LO_A = shellOf(ribbon([[-24, 0], [40, -2], [125, -6]], 50, 38), 8);
-  const LO_B = shellOf(ribbon([[115, -6], [180, -8], [238, -6]], 38, 30, { a: 24, d: 14, b: 8 }), 7);
+  const UP_A = shellOf(ribbon([[0, -22], [4, 18], [18, 52], [44, 78]], 64, 52), 8);
+  const UP_B = shellOf(ribbon([[36, 74], [80, 89], [126, 95], [164, 97]], 52, 36, { a: 24, d: 14, b: 7 }), 7);
+  const LO_A = shellOf(ribbon([[-24, 0], [40, -2], [125, -6]], 56, 42), 8);
+  const LO_B = shellOf(ribbon([[115, -6], [182, -8], [244, -6]], 42, 33, { a: 26, d: 15, b: 9 }), 7);
   unionOf(UP_A, UP_B);
   unionOf(LO_A, LO_B);
+  for (const E of [UP_A, UP_B, LO_A, LO_B]) E.pk = pack(E.g, null, -2.2, 5, E.full);
 
   const DEFAULT = { fin: 0, tail: 0, mouth: 0, eyes: 'open', glow: 0, headPitch: 0, roll: 0, side: 1 };
-  let LWH = 2.8; // half line width (model units), set per render from the scale
+  let LWH = 2.8, LW8 = 22.4; // half line width (model units, and *8 for packed grids), set per render
 
   const MZ = M3.diag(1, 1, -1);
   const mirrorF = (f) => ({ L: M3.mul(MZ, f.L), t: M3.v(MZ, f.t) });
@@ -3345,7 +3473,8 @@ const Kyogre = (() => {
     // --- skin: shared decal logic in rest-pose coordinates
     const eyeK = P.eyes;
     const cRED = code(RED), cRED2 = code(RED, -2), cEYEK = code(EYEK), cEYEY = code(EYEY), cEYEW = code(EYEW);
-    const cPALE = code(PALE), cBELLY = code(BELLY), cBODY = code(BODY);
+    const cPALE = code(PALE), cBELLY = code(BELLY), cBODY = code(BODY), cCORE = code(RED, 1);
+    const glow = P.glow > 0.25;
     const eyeMat = (X, Y) => {
       const ex = (X - EYE.x) / EYE.ax, ey = (Y - EYE.y) / EYE.ay;
       const e2 = ex * ex + ey * ey;
@@ -3366,16 +3495,18 @@ const Kyogre = (() => {
       return cRED;
     };
     // shared skin decals in rest-pose coordinates; vols = the white volumes this ellipsoid can touch
-    const skin = (X, Y, Z, ny, az, head, vols) => {
-      if (az > 0.1) {
+    const skin = (X, Y, Z, ny, az, head, vols, gi) => {
+      if (az > 0.1 && gi >= 0) {
         if (head) {
           if (az > 0.3 && X > EYE.x - 26 && X < EYE.x + 26 && Y > EYE.y - 14 && Y < EYE.y + 22) {
             const e = eyeMat(X, Y);
             if (e) return e;
           }
-          if (at(LIPG, X, Y, 99) < 2 * LWH) return cRED;
+          const dl = LIPA[gi];
+          if (dl < 2 * LWH) return glow && dl > 0.4 * LWH && dl < 1.3 * LWH ? cCORE : cRED;
         }
-        if (at(SIDE, X, Y, 99) < LWH) return cRED;
+        const d = SIDEA[gi];
+        if (d < LWH) return glow && d < 0.45 * LWH ? cCORE : cRED;
       }
       for (let i = 0; i < vols.length; i++) if (inVol(vols[i], X, Y, Z)) return cPALE;
       return ny < -0.55 ? cBELLY : cBODY;
@@ -3392,27 +3523,30 @@ const Kyogre = (() => {
         mat: (s) => {
           const lx = rx * s[0], ly = ry * s[1];
           const X = cx + lx * ct - ly * st, Y = cy + lx * st + ly * ct;
-          if (head && at(JAWG, X, Y, 0)) return 0;
+          const gx = Math.floor(X - SG.u0), gy = Math.floor(Y - SG.v0);
+          const gi = gx >= 0 && gy >= 0 && gx < SG.gw && gy < SG.gh ? gy * SG.gw + gx : -1;
+          if (head && gi >= 0 && JAWA[gi]) return 0;
           const ax = s[0] / rx, ay = s[1] / ry, nz = s[2] / rz;
           const ny = ax * st + ay * ct, nx = ax * ct - ay * st;
           const il = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz);
-          return skin(X, Y, cz + rz * s[2], ny * il, Math.abs(nz) * il, head, vols);
+          return skin(X, Y, cz + rz * s[2], ny * il, Math.abs(nz) * il, head, vols, gi);
         },
       });
     };
 
     // --- head group (pitches about the neck): the big front ellipsoid carries the head
+    const mouthK = Math.max(0, Math.min(1, P.mouth || 0));
     const headF = chain(root, pivot([150, 96, 0], M3.rz(P.headPitch)));
     const headPrim = bodyEll(headF, HEAD.c, HEAD.r, 1, true, HEAD.tilt);
     prims.push(headPrim);
     // lower jaw hinged behind the mouth corner
-    const jawF = chain(headF, pivot([208, 70, 0], M3.rz(-0.34 * P.mouth)));
-    prims.push(ell(chain(jawF, T(294, 52, 0)), [104, 44, 76], {
+    const jawF = chain(headF, pivot([208, 70, 0], M3.rz(-0.34 * mouthK)));
+    prims.push(ell(chain(jawF, T(292, 50, 0)), [106, 48, 78], {
       part: 3, grp: 2,
       mat: (s) => (s[1] < -0.72 ? code(PALE, -1) : code(PALE)),
     }));
     // mouth interior (only needed while the jaw is open)
-    if (P.mouth > 0.02) prims.push(ell(chain(headF, T(290, 62, 0)), [96, 26, 70], {
+    if (mouthK > 0.02) prims.push(ell(chain(headF, T(290, 62, 0)), [96, 26, 70], {
       part: 4, grp: 3,
       mat: (s) => (s[1] < 0.1 && Math.abs(s[2]) < 0.6 && s[0] > -0.5 ? code(TONGUE) : code(MOUTH)),
     }));
@@ -3429,12 +3563,15 @@ const Kyogre = (() => {
     {
       const E = DORSAL_E;
       const cEdge = code(FIN, -1);
+      const DB = [code(FIN, -1), code(FIN, 0), code(FIN, 1)];
       prims.push(clipped(ell(chain(root, T(E.cx, E.cy, 0)), [E.rx, E.ry, E.rz], { part: 9, grp: 4, mat: null }), (a, b, c) => {
-        const X = E.cx + E.rx * a, Y = E.cy + E.ry * b;
-        if (!at(DORSAL_G, X, Y, 0)) return 0;
-        if (at(DORSAL_LN, X, Y, 99) < LWH) return code(RED);
-        return code(FIN, Math.max(-1, bevel(DORSAL_G, X, Y, -4, 3) - (Math.abs(c) < 0.3 ? 1 : 0)));
-      }, (a, b) => (at(DORSAL_G, E.cx + E.rx * a, E.cy + E.ry * b, 0) ? cEdge : 0), 2, E.rx));
+        const v = pk(DORSAL_PK, E.cx + E.rx * a, E.cy + E.ry * b);
+        if (!v) return 0;
+        const d = v >> 3;
+        if (d < LW8) return glow && d < 0.45 * LW8 ? cCORE : cRED;
+        const bv = ((v >> 1) & 3) - (c > -0.3 && c < 0.3 ? 1 : 0);
+        return DB[bv < 0 ? 0 : bv];
+      }, (a, b) => (pk(DORSAL_PK, E.cx + E.rx * a, E.cy + E.ry * b) ? cEdge : 0), 2, E.rx));
     }
 
     // --- pectoral fins (near, far = mirror); sweep: fin=+1 up/forward, -1 down/back
@@ -3455,25 +3592,27 @@ const Kyogre = (() => {
       const E = FIN_E;
       const gid = sd > 0 ? 5 : 6;
       const cFinEdge = code(FIN, -1);
+      const FB = [code(FIN, -1), code(FIN, 0), code(FIN, 1)], cFINU = code(FINU);
       prims.push(clipped(shell(fr, V3.add(V3.scale(u, E.cu), V3.scale(v, E.cv)), u, w, v, [E.ru, E.rw, E.rv], { part: 10 + (sd < 0 ? 1 : 0), grp: gid, mat: null }), (a, b, c) => {
-        const uu = E.cu + E.ru * a, vv = E.cv + E.rv * c;
-        if (!at(FIN_IN, uu, vv, 0)) return 0;
-        if (b < 0) return code(FINU);
-        if (at(FIN_LN, uu, vv, 99) < LWH) return code(RED);
-        return code(FIN, bevel(FIN_IN, uu, vv, 0, 7));
-      }, (a, b, c) => (at(FIN_IN, E.cu + E.ru * a, E.cv + E.rv * c, 0) ? cFinEdge : 0), 1, E.ru));
+        const pv = pk(FIN_PK, E.cu + E.ru * a, E.cv + E.rv * c);
+        if (!pv) return 0;
+        if (b < 0) return cFINU;
+        const d = pv >> 3;
+        if (d < LW8) return glow && d < 0.45 * LW8 ? cCORE : cRED;
+        return FB[(pv >> 1) & 3];
+      }, (a, b, c) => (pk(FIN_PK, E.cu + E.ru * a, E.cv + E.rv * c) ? cFinEdge : 0), 1, E.ru));
       // claws
       CLAWS.forEach((c, k) => {
         const ca = Math.cos(c.a), sa = Math.sin(c.a);
         const cu = V3.add(V3.scale(u, ca), V3.scale(v, sa));
         const cv = V3.add(V3.scale(u, -sa), V3.scale(v, ca));
         const ctr = V3.add(V3.add(V3.scale(u, c.u), V3.scale(v, c.v)), V3.add(V3.scale(cu, 16), V3.scale(w, -3)));
-        const cClawEdge = code(CLAW, -1);
+        const cClawEdge = code(CLAW, -1), CB = [code(CLAW, -1), code(CLAW, 0), code(CLAW, 1)];
         prims.push(clipped(shell(fr, ctr, cu, w, cv, [CLAW_E.ru, CLAW_E.rw, CLAW_E.rv], { part: 12 + k + (sd < 0 ? 4 : 0), grp: 7 + (sd < 0 ? 1 : 0), mat: null }), (a, b, c) => {
-          const uu = CLAW_E.ru * a, vv = CLAW_E.rv * c;
-          if (!at(CLAW_G, uu, vv, 0)) return 0;
-          return b < 0 ? code(CLAW, -1) : code(CLAW, bevel(CLAW_G, uu, vv, 0, 4.5));
-        }, (a, b, c) => (at(CLAW_G, CLAW_E.ru * a, CLAW_E.rv * c, 0) ? cClawEdge : 0), 1, CLAW_E.ru));
+          const pv = pk(CLAW_PK, CLAW_E.ru * a, CLAW_E.rv * c);
+          if (!pv) return 0;
+          return b < 0 ? cClawEdge : CB[(pv >> 1) & 3];
+        }, (a, b, c) => (pk(CLAW_PK, CLAW_E.ru * a, CLAW_E.rv * c) ? cClawEdge : 0), 1, CLAW_E.ru));
       });
       finParts.push(fr);
     }
@@ -3486,12 +3625,11 @@ const Kyogre = (() => {
         if (k > 0) fr = chain(fr, pivot([sg.j[0], sg.j[1], 0], M3.rz(0.14 * Math.sin(ph - 2.1 - k * 0.5))));
         const E = sg.e;
         // fin space: u back (-x), v up (+y), w = z
-        const cTailEdge = code(TAILF);
+        const cTailEdge = code(TAILF), TB = [code(TAILF, -1), code(TAILF, 0), code(TAILF, 1)];
         prims.push(clipped(shell(fr, [-E.cu, E.cv, 0], [-1, 0, 0], [0, 0, 1], [0, 1, 0], [E.ru, E.rw, E.rv], { part: partBase + k, grp: gid, mat: null }), (a, b, c) => {
-          const uu = E.cu + E.ru * a, vv = E.cv + E.rv * c;
-          if (!at(E.g, uu, vv, 0)) return 0;
-          return code(TAILF, bevel(E.full, uu, vv, -2.2, 5));
-        }, (a, b, c) => (at(E.g, E.cu + E.ru * a, E.cv + E.rv * c, 0) ? cTailEdge : 0), 1, E.ru));
+          const pv = pk(E.pk, E.cu + E.ru * a, E.cv + E.rv * c);
+          return pv ? TB[(pv >> 1) & 3] : 0;
+        }, (a, b, c) => (pk(E.pk, E.cu + E.ru * a, E.cv + E.rv * c) ? cTailEdge : 0), 1, E.ru));
       });
       return fr;
     };
@@ -3511,13 +3649,14 @@ const Kyogre = (() => {
     })();
     const anchors = {
       eye: { p: V3.add(headPrim.c, M3.v(headPrim.L, eyeS)), s: eyeS },
-      mouth: V3.add(jawF.t, M3.v(jawF.L, [392, 66, 0])),
+      mouth: V3.scale(V3.add(V3.add(headF.t, M3.v(headF.L, [394, 70, 0])), V3.add(jawF.t, M3.v(jawF.L, [392, 66, 0]))), 0.5),
       finTipN: V3.add(finParts[0].t, M3.v(finParts[0].L, [-280, 0, 0])),
       finTipF: V3.add(finParts[1].t, M3.v(finParts[1].L, [-280, 0, 0])),
       tail: V3.add(loN.t, M3.v(loN.L, [-250, -6, 0])),
       head: V3.add(headF.t, M3.v(headF.L, [300, 110, 0])),
     };
     return {
+      autoSide: !pose || pose.side === undefined,
       prims, anchors, pose: P, headPrim, stamps: [], dots: [],
       pri: { 1: 1, 2: 2, 3: 0, 4: 2, 5: 3, 6: 3, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2, 12: 2 },
       glossy: GLOSSY, baseMat: BODY, shadowSteps: 0,
@@ -3528,8 +3667,15 @@ const Kyogre = (() => {
   // renderer, so the pixels are identical), then place it in the full sprite buffer. The shared
   // renderer's full-buffer passes then only touch pixels near Kyogre, not the whole big buffer.
   function render(model, opt) {
+    // `side` mirrors the camera cheats; when the caller did not pass it, derive it from the yaw
+    // exactly like the game does (side = clamp(3 cos yaw, -1, 1)) and rebuild if it differs
+    if (model.autoSide) {
+      const sd = Math.max(-1, Math.min(1, 3 * Math.cos(opt.yaw ?? 1.05)));
+      if (Math.abs(sd - model.pose.side) > 1e-6) model = build(Object.assign({}, model.pose, { side: sd }));
+    }
     const sc = opt.scale || 1;
-    LWH = 0.5 * Math.max(5.4, 1.7 / sc);
+    LWH = 0.5 * Math.max(5.4, 1.7 / sc) * (1 + 0.3 * Math.min(1, model.pose.glow || 0));
+    LW8 = LWH * 8;
     let pal = opt.pal || PAL;
     const g = Math.min(1, model.pose.glow || 0);
     if (g > 0) {
@@ -3567,17 +3713,21 @@ const Kyogre = (() => {
     return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.3, lengthM: 4.5, bw: 832, bh: 572, oy: 0.594 } };
+  // Pokédex 4.5 m = the model's length (~790 units); its body is ~1.2 m tall without fins
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 4.5, lengthM: 4.5, bw: 880, bh: 650, oy: 0.575 } };
 })();
 
 /* ------------------------------------------------------------------
    Dialga — the Temporal Pokémon, as a super small chibi (~95 units
-   tall including the crest) posable 3D model rendered to pixel art by
+   tall at yaw 1.1 including the crest; the player's size exception to
+   the 5.4 m Pokédex height) posable 3D model rendered to pixel art by
    the shared Creature renderer (src/creature.js).
    x = forward, y = up, z = near side at yaw 0; y = 0 is the ground.
-   Navy body with glowing cyan lines, silver armour (crest, visor,
-   shoulder plates with a fan of blades, chest plate, claws, tail fin)
-   and the big Adamant diamond on the chest.
+   Navy body with glowing cyan lines, silver armour (swept crest, visor
+   band across the red eyes, shoulder plates with a fan of blades,
+   chest shield, claws, tail fin) and the big Adamant diamond.
+   The crest and blades are thin ellipsoid "shells" clipped to 2D
+   outlines; an edge-on fallback keeps them solid from every angle.
 ------------------------------------------------------------------- */
 const Dialga = (() => {
   const { chain, T, R, code } = Creature;
@@ -3617,20 +3767,19 @@ const Dialga = (() => {
   };
 
   // material ids
-  const BODY = 1, SILVER = 2, CYAN = 3, GEM = 4, MOUTH = 5, TONGUE = 6, FANG = 7, DARK = 8, HALO = 9;
-  const MAT = { BODY, SILVER, CYAN, GEM, MOUTH, TONGUE, FANG, DARK, HALO };
+  const BODY = 1, SILVER = 2, CYAN = 3, GEM = 4, MOUTH = 5, TONGUE = 6, FANG = 7, HALO = 8;
+  const MAT = { BODY, SILVER, CYAN, GEM, MOUTH, TONGUE, FANG, HALO };
   const PAL = Creature.palette({
     [BODY]:   { r: ['#0a1f45', '#113463', '#1b4f8a', '#2a6cad', '#5b9bd8'], od: '#06122e', ol: '#0e2b58', ln: '#0c2750' },
-    [DARK]:   { r: ['#07162f', '#0b2247', '#12336a', '#1b4a8a', '#3a74b4'], od: '#040c20', ol: '#0a2148', ln: '#081c3e' },
     [SILVER]: { r: ['#5e6d80', '#8797aa', '#b3c2d0', '#d6e2ec', '#ffffff'], od: '#38465a', ol: '#5c6d82', ln: '#667789' },
     [CYAN]:   { r: ['#0e9cc2', '#1bb8dc', '#3ad6f2', '#93eefc', '#e2fcff'], od: '#0a5f82', ol: '#0e7fa4', ln: '#0e7fa4' },
     [GEM]:    { r: ['#0b3c82', '#125fae', '#2a8de4', '#6ec8ff', '#ffffff'], od: '#082a5c', ol: '#0e4a90', ln: '#0c4282' },
     [HALO]:   { r: ['#3ad6f2', '#6ae4fa', '#9aeefe', '#c8f8ff', '#ffffff'], od: '#0e7fa4', ol: '#1bb8dc', ln: '#1bb8dc' },
-    [MOUTH]:  { r: ['#3a0c1c', '#561428', '#742036', '#943248', '#b44a5c'], od: '#26061a', ol: '#3a0c1c', ln: '#3a0c1c' },
-    [TONGUE]: { r: ['#9a3a4e', '#bc4c62', '#d86478', '#ee8a96', '#ffb4bc'], od: '#5a1428', ol: '#7a2036', ln: '#7a2036' },
+    [MOUTH]:  { r: ['#4a1024', '#6a1a32', '#8c2a44', '#aa3c56', '#c85a6e'], od: '#2a0818', ol: '#4a1024', ln: '#3a0c1c' },
+    [TONGUE]: { r: ['#b04a60', '#d05e74', '#ea7a8c', '#ff9eac', '#ffc4cc'], od: '#6a1a30', ol: '#8a2a40', ln: '#8a2a40' },
     [FANG]:   { r: ['#9aa8b8', '#c4d0dc', '#e8f0f6', '#ffffff', '#ffffff'], od: '#4a5a6e', ol: '#6a7a8e', ln: '#6a7a8e' },
   });
-  const GLOSSY = { [BODY]: 1, [SILVER]: 1, [GEM]: 1, [DARK]: 1 };
+  const GLOSSY = { [BODY]: 1, [SILVER]: 1, [GEM]: 1 };
   const GEM_GLOW = ['#39b4ff', '#6fd4ff', '#a8ecff', '#dcfbff', '#ffffff'].map(PX.hex);
 
   /* ---------- 2D grid helpers ---------- */
@@ -3713,14 +3862,14 @@ const Dialga = (() => {
     },
   });
   const haloShape = bakeShape({
-    bb: [-GEM_W - 2.5, -GEM_H - 2.5, GEM_W + 2.5, GEM_H + 2.5],
+    bb: [-GEM_W - 4, -GEM_H - 4, GEM_W + 4, GEM_H + 4],
     test(u, v) {
-      const a = Math.abs(u) / (GEM_W + 2) + Math.abs(v) / (GEM_H + 2);
-      return a <= 1 ? code(HALO) : 0;
+      const a = Math.abs(u) / (GEM_W + 3.4) + Math.abs(v) / (GEM_H + 3.4);
+      return a <= 1 ? code(HALO, a > 0.9 ? 0 : 1) : 0;
     },
   });
 
-  /* ---------- back blades, tail fin, fangs, claws (plates) ---------- */
+  /* ---------- back blades (clipped shells) and fangs (plates) ---------- */
   const bladeShape = (L, W) => {
     const g = grid(-4, -W, L + 2, W, 0.25);
     fill(g, smooth([[0, -W * 0.5], [L * 0.35, -W * 0.55], [L * 0.8, -W * 0.3], [L, 0.2 * W], [L * 0.72, W * 0.5], [L * 0.3, W * 0.55], [0, W * 0.45], [-2, 0]], true, 8), 1);
@@ -3731,7 +3880,6 @@ const Dialga = (() => {
     { a: 0.8, L: 30, W: 9 },
     { a: 1.28, L: 24, W: 7.8 },
   ].map((b) => Object.assign(b, { shape: bladeShape(b.L, b.W) }));
-  const TAILFIN = bakeShape(Shape2D.poly([[0, -3], [6, -5.5], [12, -4], [15.5, 1.5], [12, 5.5], [5, 6], [0, 3]], code(SILVER), 8, (u, v) => code(SILVER, v > 2.5 ? 1 : v < -2.8 ? -1 : 0)));
   const FANGS = bakeShape(Shape2D.poly([[-1.3, 0.6], [1.3, 0.6], [0.2, -3.2]], code(FANG), 6));
 
   /* ---------- eye stamps: k navy outline, w glint, r red, d dark red ---------- */
@@ -3783,7 +3931,7 @@ const Dialga = (() => {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [];
     const roar = Math.max(0, Math.min(1, P.roar));
-    const mouth = Math.max(P.mouth, roar);
+    const mouth = Math.max(0, Math.min(1, Math.max(P.mouth || 0, roar)));
     const hop = Math.max(-1, Math.min(1, P.hop));
     const wk = P.walk;
     const walking = wk !== 0;
@@ -3791,7 +3939,7 @@ const Dialga = (() => {
     const sy = 1 + 0.2 * hop, sxz = 1 - 0.1 * hop;
     const root = frame(M3.diag(K * sxz, K * sy, K * sxz), [0, K * bob, 0]);
 
-    const cBODY = code(BODY), cCYAN = code(CYAN), cSILVER = code(SILVER);
+    const cBODY = code(BODY), cCYAN = code(CYAN), cSILVER = code(SILVER), cBODYsh = code(BODY, -1);
     const skin = (X, Y, az) => (az > 0.25 && at(LINES, X, Y, 99) < LWH ? cCYAN : cBODY);
     // navy ellipsoid with side-projected cyan lines (rest centre c, radii r, rest tilt about z)
     const navy = (f, c, r, part, grp, tilt = 0, extra = null) => {
@@ -3828,12 +3976,13 @@ const Dialga = (() => {
       { hip: [-13, 17, -10], ph: 0, id: 9 },
     ];
     for (const lg of legs) {
-      const sw = walking ? 0.42 * Math.sin(wk + lg.ph) : 0;
-      const lift = walking ? 2.4 * Math.max(0, Math.cos(wk + lg.ph)) : 0;
+      const sw = walking ? 0.5 * Math.sin(wk + lg.ph) : 0;
+      const lift = walking ? 3 * Math.max(0, Math.cos(wk + lg.ph)) : 0;
       const f = chain(root, T(lg.hip[0], lg.hip[1] + lift, lg.hip[2]), R(M3.rz(sw)), T(-lg.hip[0], -lg.hip[1], -lg.hip[2]));
       const [hx, , hz] = lg.hip;
       const sd = Math.sign(hz);
-      prims.push(navy(f, [hx, 10.5, hz], [6.6, 8.5, 6.2], lg.id, lg.id, 0, (s) => (s[2] * sd > 0.55 && Math.abs(s[0]) < 0.28 && s[1] < 0.5 ? cCYAN : 0)));
+      // (tops of the legs get a baked contact shadow from the body)
+      prims.push(navy(f, [hx, 10.5, hz], [6.6, 8.5, 6.2], lg.id, lg.id, 0, (s) => (s[2] * sd > 0.55 && Math.abs(s[0]) < 0.28 && s[1] < 0.5 ? cCYAN : s[1] > 0.5 ? cBODYsh : 0)));
       prims.push(ell(chain(f, T(hx + 1.5, 3.6, hz)), [7.4, 3.9, 6.8], { part: lg.id, grp: lg.id, mat: (s) => (s[1] > 0.62 ? cSILVER : cBODY) }));
       for (const dz of [-3.5, 0, 3.5]) prims.push(ell(chain(f, T(hx + 7.9, 1.7, hz + dz * 0.95), R(M3.ry(-dz * 0.08)), R(M3.rz(-0.3))), [3.1, 1.8, 1.55], { part: lg.id, grp: lg.id, mat: () => cSILVER }));
     }
@@ -3857,11 +4006,11 @@ const Dialga = (() => {
 
     // --- chest shield + gem (faces forward)
     const chestF = chain(root, T(13, 28, 0), R(M3.rz(0.22)));
-    const shield = { kind: 'ell', part: 16, grp: 16, c: chestF.t, L: M3.mul(chestF.L, M3.cols([SHIELD_E.ru, 0, 0], [0, SHIELD_E.rv, 0], [0, 0, SHIELD_E.rw])), mat: (s) => (s[0] < 0 || !at(SHIELD_G, SHIELD_E.rw * s[2], SHIELD_E.rv * s[1], 0) ? 0 : code(SILVER, s[0] < 0.45 ? -1 : 0)) };
+    const shield = { kind: 'ell', part: 16, grp: 16, c: chestF.t, L: M3.mul(chestF.L, M3.cols([SHIELD_E.ru, 0, 0], [0, SHIELD_E.rv, 0], [0, 0, SHIELD_E.rw])), mat: (s) => (s[0] < 0 || !at(SHIELD_G, SHIELD_E.rw * s[2], SHIELD_E.rv * s[1], 0) ? 0 : code(SILVER, s[0] < 0.45 || SHIELD_E.rv * s[1] > 10.5 ? -1 : 0)) };
     prims.push(shield);
     const gemF = chain(chestF, T(SHIELD_E.ru + 0.4, 1, 0), R(M3.cols([0, 0, 1], [0, 1, 0], [-1, 0, 0])));
     prims.push(plate(gemF, gemShape, { part: 17, grp: 17, thick: 1 }));
-    if (P.gem > 0.35) prims.push(plate(chain(gemF, T(0, 0, 0.3)), haloShape, { part: 18, grp: 16, thick: 1 }));
+    if (P.gem > 0.3) prims.push(plate(chain(gemF, T(0, 0, 0.3)), haloShape, { part: 18, grp: 16, thick: 1 }));
 
     // --- head (pitch/yaw at the neck; roar lifts it)
     const headF = chain(root, pivot([8, 46, 0], M3.mul(M3.rz(P.headPitch + 0.32 * roar), M3.ry(P.headYaw))));
@@ -3874,11 +4023,12 @@ const Dialga = (() => {
     });
     prims.push(cranium);
     // upper jaw / snout
-    prims.push(navy(headF, [26, 55.5, 0], [10, 7.5, 10], 21, 20, 0, (s) => (s[1] > 0.55 && Math.abs(s[2]) < 0.55 ? cSILVER : 0)));
+    prims.push(navy(headF, [27, 55.5, 0], [11, 8, 10.5], 21, 20, 0, (s) => (s[1] > 0.55 && Math.abs(s[2]) < 0.55 ? cSILVER : 0)));
     // lower jaw
-    const jawF = chain(headF, pivot([14, 52, 0], M3.rz(-0.55 * mouth)));
+    const jawF = chain(headF, pivot([14, 52, 0], M3.rz(-0.68 * mouth)));
     prims.push(ell(chain(jawF, T(24, 49.5, 0)), [9.5, 4, 8.2], { part: 22, grp: 21, mat: (s) => (s[1] < -0.2 ? cSILVER : cBODY) }));
-    if (mouth > 0.03) prims.push(ell(chain(headF, T(23, 52, 0)), [9, 3.6, 7], { part: 23, grp: 22, mat: (s) => (s[1] < 0.1 && Math.abs(s[2]) < 0.6 ? code(TONGUE) : code(MOUTH)) }));
+    // mouth interior: rides halfway down with the jaw and grows with the opening
+    if (mouth > 0.03) prims.push(ell(chain(headF, pivot([14, 52, 0], M3.rz(-0.34 * mouth)), T(24.5, 50.5, 0)), [9.4, 2 + 3.4 * mouth, 7.4], { part: 23, grp: 22, mat: (s) => (s[1] < -0.1 && Math.abs(s[2]) < 0.62 && s[0] > -0.6 ? code(TONGUE) : code(MOUTH)) }));
     // fangs
     for (const sd of [1, -1]) prims.push(plate(chain(headF, T(33, 50.6, 4.2 * sd), R(M3.ry(-sd * 0.9))), FANGS, { part: 24, grp: 23, thick: 1 }));
     // crest (raised by the roar)
@@ -3897,13 +4047,14 @@ const Dialga = (() => {
     const eN = eyeS(0.62, -0.1), eF = eyeS(-0.62, -0.1);
     const anchors = {
       gem: pt(gemF, [0, 0, 0]),
-      mouth: pt(jawF, [32, 51.5, 0]),
+      mouth: V3.scale(V3.add(pt(headF, [35, 51.5, 0]), pt(jawF, [32.5, 51.5, 0])), 0.5),
       top: pt(crestF, [-23, 95.5, 0]),
       head: pt(headF, [12, 62, 0]),
       eyeN: { p: V3.add(cranium.c, M3.v(cranium.L, eN)), s: eN },
       eyeF: { p: V3.add(cranium.c, M3.v(cranium.L, eF)), s: eF },
     };
     return {
+      autoSide: !pose || pose.side === undefined,
       prims, anchors, pose: P,
       stamps: [
         { at: Object.assign({ prim: cranium }, anchors.eyeN), set: EYES, colors: EYEC, kind: P.eyes },
@@ -3911,13 +4062,19 @@ const Dialga = (() => {
       ],
       dots: [],
       pri: { 1: 0, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1, 10: 2, 11: 2, 12: 3, 13: 3, 16: 2, 17: 3, 20: 1, 21: 2, 22: 0, 23: 3, 24: 3 },
-      glossy: GLOSSY, baseMat: BODY, shadowSteps: 6,
+      glossy: GLOSSY, baseMat: BODY, shadowSteps: 0, // contact shadows are baked (cheaper first renders)
     };
   }
 
   // Render into a tight buffer around the model's projected bounds (same bbox maths as the
   // renderer, so pixels are identical), then place it in the full sprite buffer.
   function render(model, opt) {
+    // `side` mirrors the camera cheats; when the caller did not pass it, derive it from the yaw
+    // exactly like the game does (side = clamp(3 cos yaw, -1, 1)) and rebuild if it differs
+    if (model.autoSide) {
+      const sd = Math.max(-1, Math.min(1, 3 * Math.cos(opt.yaw ?? 1.05)));
+      if (Math.abs(sd - model.pose.side) > 1e-6) model = build(Object.assign({}, model.pose, { side: sd }));
+    }
     const sc = opt.scale || 1;
     LWH = 0.5 * Math.max(1.7, 1.25 / sc);
     const set = sc >= 1.5 ? EYES_L : EYES;
@@ -3926,7 +4083,7 @@ const Dialga = (() => {
     const g = Math.min(1, model.pose.gem || 0);
     if (g > 0) {
       const e = pal[GEM];
-      pal = Object.assign({}, pal, { [GEM]: { r: e.r.map((c, i) => PX.mix(c, GEM_GLOW[i], g * 0.85)), od: e.od, ol: PX.mix(e.ol, GEM_GLOW[1], g * 0.5), ln: e.ln } });
+      pal = Object.assign({}, pal, { [GEM]: { r: e.r.map((c, i) => PX.mix(c, GEM_GLOW[i], g)), od: e.od, ol: PX.mix(e.ol, GEM_GLOW[1], g * 0.5), ln: PX.mix(e.ln, GEM_GLOW[0], g * 0.6) } });
     }
     const { yaw = 1.05, pitch = 0.16, W = 96, H = 96, ox = 48, oy = 82 } = opt;
     const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(sc, sc, sc)));
@@ -3967,7 +4124,8 @@ const Dialga = (() => {
     return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.54, bw: 150, bh: 136, oy: 0.84 } };
+  // heightM is the chibi's rendered height (~95 units); the Pokédex height is 5.4 m
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.54, pokedexM: 5.4, bw: 120, bh: 140, oy: 0.85 } };
 })();
 
 const SP = { Mudkip: typeof Mudkip !== 'undefined' ? Mudkip : null, Spheal: typeof Spheal !== 'undefined' ? Spheal : null, Sealeo: typeof Sealeo !== 'undefined' ? Sealeo : null, Walrein: typeof Walrein !== 'undefined' ? Walrein : null, Corphish: typeof Corphish !== 'undefined' ? Corphish : null, Luvdisc: typeof Luvdisc !== 'undefined' ? Luvdisc : null, Pelipper: typeof Pelipper !== 'undefined' ? Pelipper : null, Wailord: typeof Wailord !== 'undefined' ? Wailord : null, Kyogre: typeof Kyogre !== 'undefined' ? Kyogre : null, Dialga: typeof Dialga !== 'undefined' ? Dialga : null };
@@ -5919,7 +6077,7 @@ const Spheal = (() => {
     const snPress = smooth(0.55, 0.97, downness(snDir)) * 0.6;
     const snD = 0.93 - snPress * 0.16;
     const snout = chain(head, T(snDir[0] * BR[0] * snD, snDir[1] * BR[1] * snD, 0), R(M3.rz(snEl * 0.3)));
-    const SN_R = [19 * (1 - snPress * 0.55), 12, 20];
+    const SN_R = [21 * (1 - snPress * 0.55), 12.5, 20];
     const snoutPrim = ell(snout, SN_R, {
       part: 2, grp: 2,
       mat: (s) => (s[1] < -0.66 ? code(LIP) : s[1] < -0.28 && s[0] > -0.3 ? code(BODY, -1) : code(BODY)),
@@ -5975,11 +6133,11 @@ const Spheal = (() => {
     const tail = (beta) => {
       const tailRoot = sph(Math.PI, -0.55);
       const tr = chain(body, T(tailRoot[0] * BR[0] * 0.8, tailRoot[1] * BR[1] * 0.8, 0), R(M3.ry(tw * (1 - beta / 1.7))), R(M3.rz(0.3 - beta)));
-      const out = [ell(chain(tr, T(-10, -1, 0)), [17, 12, 13.5], { part: 7, grp: 7, mat: () => code(BODY) })];
-      const flukeBase = chain(tr, T(-24, -5.5, 0), R(M3.rz(-0.34 - beta * 0.45)));
+      const out = [ell(chain(tr, T(-12, -1, 0)), [19, 12.5, 14], { part: 7, grp: 7, mat: () => code(BODY) })];
+      const flukeBase = chain(tr, T(-28, -5.5, 0), R(M3.rz(-0.34 - beta * 0.45)));
       for (const side of [1, -1]) {
-        const lobe = chain(flukeBase, R(M3.ry(side * 0.62)), T(-9.5, 0, 0), R(M3.rz(-0.18)));
-        out.push(ell(lobe, [13, 4.4, 9.5], { part: 7, grp: 7, mat: () => code(BODY) }));
+        const lobe = chain(flukeBase, R(M3.ry(side * 0.66)), T(-11, 0, 0), R(M3.rz(-0.18)));
+        out.push(ell(lobe, [15, 4.8, 10.5], { part: 7, grp: 7, mat: () => code(BODY) }));
       }
       return out;
     };
@@ -6022,7 +6180,7 @@ const Spheal = (() => {
         { at: eyeN, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
         { at: eyeF, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
       ],
-      dots: [],
+      dots: [1, -1].map((sd) => ({ at: onEll(snoutPrim, V3.norm([0.62, 0.55, sd * 0.42])), mat: LIP, tone: 1, onlyMat: BODY, minFacing: 0.45 })),
       pri: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 1, 7: 1, 10: 2, 11: 2 },
       glossy: GLOSSY,
       baseMat: BODY,
@@ -6076,7 +6234,7 @@ const Spheal = (() => {
 
   return {
     build, render, PAL, MAT, DEFAULT,
-    meta: { heightM: 0.8, bw: 206, bh: 190, oy: 0.97 },
+    meta: { heightM: 0.8, bw: 238, bh: 214, oy: 0.945 },
   };
 })();
 
@@ -6111,7 +6269,6 @@ const Sealeo = (() => {
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp = (a, b, t) => a + (b - a) * t;
   const lerpV = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
-  const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
   /* ---------- moustache fan: five white strips radiating from the snout (u = outward, v = up) ---------- */
   const STRIPS = [
@@ -6232,9 +6389,11 @@ const Sealeo = (() => {
 
     /* --- snout, nose --- */
     const snout = chain(head, T(37, -2, 0));
+    // the muzzle: a blue pad with a small rounded nose tip on top (same group, so it reads as one
+    // smooth shape); the official design has no dark nose, just two nostril dots
     const snoutPrim = ell(snout, [9.5, 8.5, 12.5], { part: 4, grp: 2, mat: () => code(BODY) });
     prims.push(snoutPrim);
-    const nosePrim = ell(chain(snout, T(6.2, 5, 0)), [3, 2.4, 4.4], { part: 5, grp: 3, mat: () => code(NOSE) });
+    const nosePrim = ell(chain(snout, T(5.2, 4.2, 0)), [4.4, 3.6, 6.4], { part: 4, grp: 2, mat: () => code(BODY) });
     prims.push(nosePrim);
 
     /* --- tusks --- */
@@ -6244,8 +6403,11 @@ const Sealeo = (() => {
     }
 
     /* --- moustache fans --- */
+    // swept back a little; both fans are also cheated toward the camera by `side` so the
+    // moustache still reads in profile (the game passes side = clamp(3 cos yaw, -1, 1))
+    const cheat = 0.35 * clamp(P.side ?? 1, -1, 1);
     for (const side of [1, -1]) {
-      const sweep = 0.3;
+      const sweep = 0.3 + side * cheat;
       const u = [-Math.sin(sweep), 0, side * Math.cos(sweep)];
       const v = [0, 1, 0];
       const n = V3.cross(u, v);
@@ -6257,9 +6419,9 @@ const Sealeo = (() => {
     const fl = clamp(P.flipper, 0, 1), cl = clamp(P.clap, 0, 1);
     const ortho = (v, a) => V3.norm(V3.sub(v, V3.scale(a, V3.dot(v, a))));
     for (const side of [1, -1]) {
-      const rootP = lerpV(lerpV([6, -30, side * 44], [8, -12, side * 46], fl), [26, -6, side * 40], cl);
+      const rootP = lerpV(lerpV([6, -30, side * 44], [8, -12, side * 46], fl), [24, 6, side * 40], cl);
       let ax = lerpV([0.56, -0.22, side * 0.8], [0.22, 0.78, side * 0.58], fl);
-      ax = V3.norm(lerpV(V3.norm(ax), [0.62, 0.26, -side * 0.74], cl));
+      ax = V3.norm(lerpV(V3.norm(ax), [0.6, 0.34, -side * 0.72], cl));
       let ay = lerpV(lerpV([0, 1, 0], [1, 0, 0], fl), [0, 0.1, -side], cl);
       ay = ortho(ay, ax);
       const az = V3.cross(ax, ay);
@@ -6299,7 +6461,7 @@ const Sealeo = (() => {
         { at: onHead(0.5, 0.35), set: EYES, colors: EYEC, kind },
         { at: onHead(-0.5, 0.35), set: EYES, colors: EYEC, kind },
       ],
-      dots: [],
+      dots: [1, -1].map((sd) => ({ at: onEll(nosePrim, V3.norm([0.7, 0.5, sd * 0.5])), mat: NOSE, tone: 1, onlyMat: BODY, minFacing: 0.3 })),
       pri: { 1: 0, 2: 0, 3: 2, 6: 2, 7: 2, 8: 3, 9: 3, 10: 1, 11: 1, 12: 1 },
       glossy: GLOSSY,
       baseMat: BODY,
@@ -6360,7 +6522,7 @@ const Sealeo = (() => {
 
   return {
     build, render, PAL, MAT, DEFAULT,
-    meta: { heightM: 1.1, bw: 302, bh: 248, oy: 0.9 },
+    meta: { heightM: 1.1, bw: 384, bh: 288, oy: 0.885 },
   };
 })();
 
@@ -6373,9 +6535,10 @@ const Sealeo = (() => {
 const Walrein = (() => {
   const { ell, chain, T, R, F, onEll, sph, code } = Creature;
 
-  const BODY = 1, PATCH = 2, MANE = 3, BAND = 4, TUSK = 5, NOSE = 6, MOUTH = 7, TONGUE = 8, FLIP = 9;
-  const TK0 = 10, TK1 = 11, TK2 = 12, TK3 = 13; // tusk tones (flat ramps, shaded analytically)
-  const MAT = { BODY, PATCH, MANE, BAND, TUSK, NOSE, MOUTH, TONGUE, FLIP, TK0, TK1, TK2, TK3 };
+  const BODY = 1, PATCH = 2, MANE = 3, BAND = 4, NOSE = 6, MOUTH = 7, TONGUE = 8, FLIP = 9;
+  // ivory tusk tones: flat ramps, one per toon band (the tusks are shaded analytically, see build)
+  const TK0 = 10, TK1 = 11, TK2 = 12, TK3 = 13;
+  const MAT = { BODY, PATCH, MANE, BAND, TUSK: TK2, NOSE, MOUTH, TONGUE, FLIP, TK0, TK1, TK2, TK3 };
 
   const PAL = Creature.palette({
     [BODY]:   { r: ['#1f5a86', '#2f78a8', '#4a95c2', '#70b1d8', '#a8d4ee'], od: '#10324f', ol: '#21577f', ln: '#245e88' },
@@ -6383,7 +6546,6 @@ const Walrein = (() => {
     [FLIP]:   { r: ['#1d5580', '#2c719f', '#448cba', '#68a9d2', '#a0cfea'], od: '#10324f', ol: '#21577f', ln: '#1f5a86' },
     [MANE]:   { r: ['#adc3e1', '#cddbef', '#e9f0fa', '#f7fafe', '#ffffff'], od: '#4a6892', ol: '#7a96be', ln: '#93acce' },
     [BAND]:   { r: ['#8fb0d2', '#b8d0e8', '#e6f0fa', '#ffffff', '#ffffff'], od: '#44628c', ol: '#7792ba', ln: '#7896bc' },
-    [TUSK]:   { r: ['#b99a5e', '#d6bb80', '#ecd9a6', '#f8eccb', '#fff8e6'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
     [TK0]:    { r: ['#c2a164', '#c2a164', '#c2a164', '#c2a164', '#c2a164'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
     [TK1]:    { r: ['#dbbf86', '#dbbf86', '#dbbf86', '#dbbf86', '#dbbf86'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
     [TK2]:    { r: ['#eedcab', '#eedcab', '#eedcab', '#eedcab', '#eedcab'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
@@ -6392,7 +6554,7 @@ const Walrein = (() => {
     [MOUTH]:  { r: ['#6a2034', '#8a3046', '#aa4a5e', '#c46676', '#dc8a94'], od: '#40101e', ol: '#62182a', ln: '#62182a' },
     [TONGUE]: { r: ['#b8566c', '#d4728a', '#ea94a4', '#f8b6be', '#ffd6da'], od: '#6e1428', ol: '#8e2038', ln: '#b04450' },
   });
-  const GLOSSY = { [BODY]: 0, [NOSE]: 1, [TUSK]: 0 };
+  const GLOSSY = { [NOSE]: 1 };
 
   const DEFAULT = { headPitch: 0.12, headYaw: 0, mouth: 0, eyes: 'open', squash: 0, flipper: 0, side: 1 };
 
@@ -6425,18 +6587,18 @@ const Walrein = (() => {
   // behind it, a cap on the forehead and a big puff at the back
   const MANE_L = (() => {
     const L = [];
-    const ring = (x, R, r, n, a0, cut) => {
+    const ring = (x, R, r, n, a0, cut, sx = 1.1) => {
       for (let i = 0; i < n; i++) {
         const t = a0 + (i / n) * Math.PI * 2;
         const cy = Math.cos(t), cz = Math.sin(t);
         if (cy < cut) continue;
-        L.push([x - 6 * (1 - cy), R * cy - 2, R * cz * 1.12, r * (cy < -0.3 ? 0.9 : 1)]);
+        L.push([x - 6 * (1 - cy), R * cy + 2, R * cz * sx, r * (cy < -0.3 ? 0.9 : 1)]);
       }
     };
-    ring(-2, 36, 21, 8, 0, -0.8);          // front ring framing the face
-    ring(-32, 36, 27, 6, Math.PI / 6, -2); // second ring
-    L.push([10, 30, 0, 18], [-14, 44, 0, 22]); // forehead cap
-    L.push([-62, 14, 0, 32], [-58, -22, 22, 26], [-58, -22, -22, 26], [-70, -40, 0, 24]); // back puff
+    ring(8, 31, 17, 9, 0, -0.55);           // front ring: forehead and cheeks, around the snout
+    ring(-17, 37, 23, 8, Math.PI / 8, -0.9); // second ring
+    L.push([-8, 46, 0, 20]);                 // crown
+    L.push([-50, 14, 0, 32], [-46, -20, 22, 26], [-46, -20, -22, 26], [-58, -38, 0, 24], [-32, 38, 0, 24]); // back puff
     return L;
   })();
 
@@ -6523,12 +6685,16 @@ const Walrein = (() => {
     const noseP = ell(chain(snout, T(14, 8, 0)), [13.5, 11, 14.5], { part: 5, grp: 3, mat: (s) => (s[1] < -0.55 && Math.abs(s[2]) < 0.6 ? code(NOSE, -1) : code(NOSE)) });
     const mo = clamp(P.mouth, 0, 1);
     const jaw = chain(head, T(8, -15, 0), R(M3.rz(-mo * 0.85)));
-    const jawP = ell(chain(jaw, T(14, -4, 0)), [20, 9, 18], { part: 6, grp: 2, mat: (s) => (s[1] > 0.45 && mo > 0.05 ? code(TONGUE) : code(BODY)) });
+    const jawP = ell(chain(jaw, T(14, -4, 0)), [20, 9, 18], {
+      part: 6, grp: 2,
+      // inside of the lower jaw: pink tongue in the middle, dark gums at the rim
+      mat: (s) => (mo > 0.05 && s[1] > 0.4 ? (s[1] > 0.62 && Math.abs(s[2]) < 0.5 ? code(TONGUE) : code(MOUTH, -1)) : code(BODY)),
+    });
     prims.push(headP, snoutP, noseP, jawP);
     if (mo > 0.05) {
       // dark mouth cavity between the jaws
       const cav = chain(head, T(22, -13 - mo * 5, 0));
-      prims.push(ell(cav, [15, 4 + mo * 8, 14], { part: 7, grp: 2, mat: (s) => (s[1] < -0.3 ? code(TONGUE) : code(MOUTH)) }));
+      prims.push(ell(cav, [15, 4 + mo * 8, 14], { part: 7, grp: 2, mat: (s) => (s[1] < -0.72 && Math.abs(s[2]) < 0.5 ? code(TONGUE) : code(MOUTH, s[0] > 0.5 ? 0 : -1)) }));
     }
 
     /* --- tusks: a dense chain of shrinking spheres along a curve. A union of spheres has rippled
@@ -6596,8 +6762,9 @@ const Walrein = (() => {
     return {
       prims, anchors, pose: P, view,
       stamps: [
-        { at: onHead(0.75, 0.45), set: EYES, colors: EYEC, kind },
-        { at: onHead(-0.75, 0.45), set: EYES, colors: EYEC, kind },
+        { at: onHead(0.6, 0.5), set: EYES, colors: EYEC, kind },
+        // the far-side eye mirrors asymmetric expressions so angry brows slant toward the nose
+        { at: onHead(-0.6, 0.5), set: EYES, colors: EYEC, kind, flipX: kind === 'angry' },
       ],
       dots: [],
       pri: { 1: 0, 2: 1, 3: 2, 8: 3, 9: 3, 10: 2, 11: 1, 12: 1, 20: 1 },
@@ -6660,7 +6827,7 @@ const Walrein = (() => {
 
   return {
     build, render, PAL, MAT, DEFAULT,
-    meta: { heightM: 1.4, bw: 384, bh: 300, oy: 0.923 },
+    meta: { heightM: 1.4, bw: 384, bh: 306, oy: 0.922 },
   };
 })();
 
@@ -6752,7 +6919,7 @@ const Corphish = (() => {
   }
 
   // ---- body geometry (body frame: origin on the ground, before squash/tilt)
-  const HOOD_C = [-2, 54, 0], HOOD_R = [23, 30, 28.5];
+  const HOOD_C = [-2, 54, 0], HOOD_R = [23, 30, 27];
   const MUZ_C = [7, 52, 0], MUZ_R = [16.5, 13.5, 19];
   const BEL = [
     { c: [6, 41, 0], r: [16, 12.5, 19.5] },
@@ -6760,7 +6927,7 @@ const Corphish = (() => {
     { c: [3, 24.5, 0], r: [13.5, 8, 15] },
   ];
   const LOW_C = [-4, 29, 0], LOW_R = [18, 11, 18.5]; // lower body under the hood rim
-  const LAM_Y = 63, LAM_K = 0.62; // Λ-shaped top edge of the cream face: y < LAM_Y − LAM_K·|z|
+  const LAM_Y = 65, LAM_K = 0.66; // Λ-shaped top edge of the cream face: y < LAM_Y − LAM_K·|z|
   const RIM_Y = 29; // hood rim height
   // the window follows the cream shells' outlines (so it never shows the hood lining)
   const SHELLS = [{ c: MUZ_C, r: MUZ_R }, ...BEL];
@@ -6780,9 +6947,9 @@ const Corphish = (() => {
   const lowMat = (s) => (s[1] < 0.3 ? C_CREAM : C_SHELL);
 
   const SPIKES = [
-    pyramid([-2, 78, 0], [-4, 104, 0], 6.8, 6, 0.3),
-    pyramid([-3, 76, 13], [-8, 94, 24], 4.2, 6, 0.3),
-    pyramid([-3, 76, -13], [-8, 94, -24], 4.2, 6, 0.3),
+    pyramid([-2, 79, 0], [-4, 105, 0], 6, 6, 0.3),
+    pyramid([0, 75, 13], [-1, 98, 26], 4.4, 6, 0.3),
+    pyramid([0, 75, -13], [-1, 98, -26], 4.4, 6, 0.3),
   ];
 
   // ---- claw geometry (claw frame: origin at the wrist, x' = toward the tip,
@@ -6790,7 +6957,7 @@ const Corphish = (() => {
   // The bite surface is a steeply tilted plane s1 = Y0 − KT·s0 (unit-sphere space): the red
   // upper jaw is a wedge over the top and back, hinged low at the back, so the pincer
   // opens like a mouth at the front-top of the claw. The border zigzags (big teeth).
-  const CA = 21.5, CB = 11.5, CC = 15.5; // half-length, half-depth (jaw axis), half-width
+  const CA = 22.5, CB = 11.8, CC = 16; // half-length, half-depth (jaw axis), half-width
   const Y0 = -0.45, KT = 1.4, ZA = 0.5, ZN = 6, ZPH = 0.5;
   const BN = nrm([KT, 1, 0]), BU = nrm([1, -KT, 0]), BOFF = Y0 / Math.hypot(1, KT);
   const BCEN = sc(BN, BOFF);
@@ -6814,8 +6981,8 @@ const Corphish = (() => {
   // arm keyframes (near side, body frame): wrist position, claw axis, back-of-claw direction
   const ARM_K = [
     { a: -0.5, W: [12, 32, 26], X: [1, 0.35, -0.15], Y: [-0.8, 0.9, 0.1] },
-    { a: 0, W: [-8, 53, 33], X: [0.2, 1, 0.3], Y: [-1, 0.15, 0.25] },
-    { a: 1, W: [-6, 66, 27], X: [0.05, 1, 0.12], Y: [-1, 0.05, 0.15] },
+    { a: 0, W: [-8, 55, 34], X: [0.2, 1, 0.3], Y: [-1, 0.15, -0.35] },
+    { a: 1, W: [-6, 66, 27], X: [0.05, 1, 0.12], Y: [-1, 0.05, -0.3] },
   ];
   function armKey(a) {
     const i = a <= 0 ? 0 : 1;
@@ -6825,7 +6992,7 @@ const Corphish = (() => {
   }
 
   // ---- eyes
-  const EYE_AZ = 0.57, EYE_V = 0.45, EYE_R = [6.4, 7.9, 3.8];
+  const EYE_AZ = 0.6, EYE_V = 0.44, EYE_R = [6.8, 8.6, 4];
   const lidMat = (s) => (s[1] > 0.42 - 0.62 * s[0] ? C_SHELL : 0);
 
   // ---- legs: hips in the body frame, feet on the ground (tripod gait phases)
@@ -6938,11 +7105,12 @@ const Corphish = (() => {
     let li = 0;
     for (const side of [1, -1])
       for (const lg of LEGS) {
+        // tripod gait for a sideways scuttle: lifted feet swing along z (and a little along x)
         const ph = P.walk + lg.ph + (side > 0 ? 0 : Math.PI);
         const lift = Math.max(0, Math.sin(ph)) * 5;
-        const swing = Math.cos(ph) * 4;
+        const swing = Math.cos(ph) * 4.5;
         const hip = inF(body, [lg.hip[0], lg.hip[1], lg.hip[2] * side]);
-        const foot = [lg.foot[0] + swing, lift, lg.foot[2] * side * (1 + sq * 0.3)];
+        const foot = [lg.foot[0] + swing * 0.35, lift, lg.foot[2] * side * (1 + sq * 0.3) + swing];
         const d = sub(foot, hip), dl = len3(d);
         const dir = sc(d, 1 / dl);
         const a = Math.min(dl, (L_UP * L_UP - L_LO * L_LO + dl * dl) / (2 * dl));
@@ -6963,15 +7131,15 @@ const Corphish = (() => {
     // --- tail (flattened overlapping segments trailing back, ending in a fan)
     TAIL.forEach((t, i) => prims.push(ellF(chain(body, T(...t.c), R(M3.rz(t.a))), t.r, 60 + i, 60 + i, M_SHELL)));
 
-    anchors.top = inF(body, [-4, 104, 0]);
+    anchors.top = inF(body, [-4, 105, 0]); // central spike tip
     anchors.head = inF(body, HOOD_C);
     anchors.mouth = inF(body, [MUZ_C[0] + MUZ_R[0] * 0.85, MUZ_C[1] - MUZ_R[1] * 0.5, 0]);
 
     // uniform scale to the Pokédex height (0.6 m ≈ 105 px silhouette at yaw 1.1)
     for (const p of prims) { p.c = sc(p.c, SIZE); p.L = p.L.map((v) => v * SIZE); }
     for (const st of stamps) st.at.p = sc(st.at.p, SIZE);
-    for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
-    return { prims, anchors, pose: P, headPrim: hoodPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: SHELL };
+    for (const key in anchors) anchors[key] = sc(anchors[key], SIZE);
+    return { prims, anchors, pose: P, headPrim: hoodPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: SHELL, shadowSteps: 16 };
   }
 
   /* ---------- eye stamps (pupils and closed-eye marks) ----------
@@ -6984,13 +7152,13 @@ const Corphish = (() => {
     angry: stampSet(['kk', 'kk'], ['kk', 'kk'], ['k', 'k']),
     dizzy: stampSet(['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kk', 'k.k', 'kkk']),
     happy: stampSet(['..bb..', '.b..b.', 'b....b'], ['.bb.', 'b..b', 'b..b'], ['.b', 'b.', 'b.']),
-    closed: stampSet(['b....b', '.bbbb.'], ['b..b', '.bb.'], ['b.', '.b']),
+    closed: stampSet(['......', '......', 'bbbbbb', '.bbbb.'], ['....', '....', 'bbbb', '.bb.'], ['..', '..', 'bb', '.b']),
   };
   const EYEC = { k: '#1c1012', w: '#ffffff', b: '#58150e' };
 
   const render = (model, opt) => Creature.render(model, opt);
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 126, bh: 142, oy: 0.905 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 130, bh: 144, oy: 0.905 } };
 })();
 
 /* ==== src/species/luvdisc.js ==== */
@@ -7001,10 +7169,11 @@ const Corphish = (() => {
    Model space: x = forward, y = up, z = near side at yaw 0, y = 0 at the
    bottom of the heart.
 
-   Build: a laterally thin heart (upper and lower lobe ellipsoids plus a
-   filler; the cleft is at the back) whose point faces forward and ends in
-   puckered pale lips (two lip ellipsoids meeting at the mouth line).
-   Dark-blue eye stamps and pale cheek patches on both sides.
+   Build: a laterally thin heart, fitted to the official silhouette: upper
+   and lower lobe ellipsoids, a central filler (the cleft is at the back) and
+   two thin front-edge ellipsoids that converge on the puckered pale lips
+   (a round blob plus two beak halves; the mouth line is a mid-plane decal).
+   Dark-blue eye stamps (mirrored on the far side) and pale cheek patches.
 ------------------------------------------------------------------- */
 const Luvdisc = (() => {
   const { chain, T, R, F, code } = Creature;
@@ -7041,8 +7210,7 @@ const Luvdisc = (() => {
     { c: [10.2, 67.6, 0], r: [27, 6, THK * 0.55], a: -1.15 }, // upper front edge (runs into the lips)
     { c: [10, 32, 0], r: [28.8, 6.4, THK * 0.55], a: 1.18 }, // lower front edge
   ];
-  // lips: two small ellipsoids converging at the front (the mouth line is their seam)
-  const LIP_C = [18.4, 49.5, 0];
+  const LIP_C = [18.4, 49.5, 0]; // centre of the lip blob
 
   // ---- face: eye and cheek positions on the side of the body (model units)
   const EYE_P = [0.5, 59.5], CHEEK_P = [-4.2, 50];
@@ -7057,6 +7225,7 @@ const Luvdisc = (() => {
   for (let i = 1; i < 9; i++) PRI[i] = 0;
   Object.assign(PRI, { 5: 3, 7: 4, 8: 4 });
 
+  const SIZE = 0.98;
   const DEFAULT = { wiggle: 0, kiss: 0, eyes: 'open', tilt: 0, blush: 0, side: 1 };
 
   function build(pose) {
@@ -7064,9 +7233,9 @@ const Luvdisc = (() => {
     const prims = [], stamps = [], anchors = {};
     // whole-body pitch about the heart's centre
     const body = chain(F(M3.I(), CEN), R(M3.rz(P.tilt)), T(-CEN[0], -CEN[1], -CEN[2]));
-    // the back of the heart swings sideways (swimming wiggle), pivoting near the snout
+    // the back of the heart swings sideways (swimming wiggle), pivoting at the lips' base
     const wig = Math.max(-1, Math.min(1, P.wiggle));
-    const back = chain(body, T(6, 0, 0), R(M3.ry(wig * 0.32)), T(-6, 0, 0));
+    const back = chain(body, T(14, 0, 0), R(M3.ry(wig * 0.27)), T(-14, 0, 0));
 
     // --- cheeks (patches on the body's sides), in front of the body
     const bl = Math.max(0, Math.min(1, P.blush));
@@ -7113,11 +7282,16 @@ const Luvdisc = (() => {
     anchors.lips = inF(lipBase, [fx + 6.8 * Math.cos(bt), 0, 0]);
     anchors.top = inF(back, [-12, 105, 0]);
     anchors.center = inF(body, CEN);
-    return { prims, anchors, pose: P, headPrim: fillPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: BODY };
+
+    // uniform scale to the Pokédex height (0.6 m ≈ 105 px heart)
+    for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
+    for (const st of stamps) st.at.p = sc(st.at.p, SIZE);
+    for (const key in anchors) anchors[key] = sc(anchors[key], SIZE);
+    return { prims, anchors, pose: P, headPrim: fillPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: BODY, shadowSteps: 12 };
   }
 
   /* ---------- eye stamps (Mudkip's key layout) ----------
-     k = black, b = dark blue, c = blue, w = white highlight (toward the back of the fish) */
+     k = black, b = dark blue, w = white highlight (toward the back of the fish) */
   const mirror = (g) => g.map((row) => row.split('').reverse().join(''));
   const G_OPEN = ['..kkk..', '.kkkkk.', 'kwwkkkk', 'kwwkkkk', 'kwkkkkk', 'kkkkkkk', 'kkkkbbk', 'kkkbbbk', 'kkbbbbk', '.kbbbk.', '..kkk..'];
   const G_OPEN_N = ['.kkkk.', 'kwwkkk', 'kwwkkk', 'kwkkkk', 'kkkkkk', 'kkkkkk', 'kkkbbk', 'kkbbbk', 'kbbbbk', '.kbbk.', '..kk..'];
@@ -7470,8 +7644,8 @@ const Wailord = (() => {
   const { ell, plate, chain, T, R, F, code } = Creature;
 
   // material ids
-  const BODY = 1, BELLY = 2, FIN = 3, MOUTH = 4, TONGUE = 5;
-  const MAT = { BODY, BELLY, FIN, MOUTH, TONGUE };
+  const BODY = 1, BELLY = 2, FIN = 3, MOUTH = 4, TONGUE = 5, EYE = 6, EYEW = 7;
+  const MAT = { BODY, BELLY, FIN, MOUTH, TONGUE, EYE, EYEW };
 
   const PAL = Creature.palette({
     [BODY]:   { r: ['#1f5596', '#2e73b9', '#3c8ad1', '#56a2e0', '#cfeaff'], od: '#10295a', ol: '#1f4b8c', ln: '#1c4788' },
@@ -7479,6 +7653,8 @@ const Wailord = (() => {
     [BELLY]:  { r: ['#9c989b', '#bab6b7', '#d8d5d3', '#eae8e6', '#f8f7f5'], od: '#45404a', ol: '#6f6a70', ln: '#5e5963' },
     [MOUTH]:  { r: ['#3e0c1a', '#5c1426', '#7e2234', '#9c3446', '#b84c5a'], od: '#2a0610', ol: '#420c1a', ln: '#420c1a' },
     [TONGUE]: { r: ['#a43c52', '#c45468', '#de7282', '#ee94a0', '#f8b8c0'], od: '#5c1426', ol: '#7e2234', ln: '#8c2c40' },
+    [EYE]:    { r: ['#0a0f1c', '#0e1422', '#121a2b', '#182236', '#223050'], od: '#070b14', ol: '#070b14', ln: '#070b14' },
+    [EYEW]:   { r: ['#d8e4f4', '#eef4fc', '#ffffff', '#ffffff', '#ffffff'], od: '#070b14', ol: '#070b14', ln: '#070b14' },
   });
 
   const DEFAULT = { tail: 0, fin: 0, mouth: 0, eyes: 'open', blow: 0, roll: 0, side: 1 };
@@ -7494,27 +7670,54 @@ const Wailord = (() => {
     return M3.cols(U, V3.cross(W, U), W);
   }
 
-  /* ---------- body layout (model units), fitted to the official silhouette ----------
-     MAIN (tilted nose-up) forms the domed head and the belly, REAR the long sloping back. */
-  const MAIN = { c: [296, 557, 0], r: [986, 518, 530], a: 0.239 };
-  const REAR = { c: [-373, 534, 0], r: [614, 237, 330], a: 0.021 };
-  const STOCK = { c: [-895, 527, 0], r: [175, 112, 108], a: 0 };
-  const ELLS = [MAIN, REAR, STOCK];
-  for (const E of ELLS) {
-    E.R = M3.rz(E.a);
-    E.L = M3.mul(E.R, M3.diag(...E.r));
-    E.Li = M3.inv(E.L);
+  /* ---------- body: a smooth asymmetric egg made of four quarter-ellipsoids that share one centre and
+     tilt (front/rear lengths, top/bottom heights, common width). Each draws only its own quadrant, so
+     the pieces meet with matching cross-sections and normals: no creases. Fitted to the official
+     silhouette (big domed head, long taper to a mid-height tail). ---------- */
+  const EGG = { c: [683, 0, 0], rxf: 580, rxr: 1657, ryt: 540, ryb: 540, rz: 575, a: 0.1 };
+  {
+    // put the lowest point of the belly on the ground (y = 0)
+    const ca = Math.cos(EGG.a), sa = Math.sin(EGG.a);
+    let lo = Infinity;
+    for (let i = 0; i < 720; i++) {
+      const t = (i / 720) * 2 * Math.PI, ct = Math.cos(t), st = Math.sin(t);
+      const lx = ct * (ct >= 0 ? EGG.rxf : EGG.rxr), ly = st * (st >= 0 ? EGG.ryt : EGG.ryb);
+      lo = Math.min(lo, sa * lx + ca * ly);
+    }
+    EGG.c[1] = -lo;
   }
+  const QUADS = EGG.ryt === EGG.ryb ? [
+    { id: 'F', r: [EGG.rxf, EGG.ryt, EGG.rz], sx: 1, sy: 0 },
+    { id: 'R', r: [EGG.rxr, EGG.ryt, EGG.rz], sx: -1, sy: 0 },
+  ] : [
+    { id: 'FT', r: [EGG.rxf, EGG.ryt, EGG.rz], sx: 1, sy: 1 },
+    { id: 'FB', r: [EGG.rxf, EGG.ryb, EGG.rz], sx: 1, sy: -1 },
+    { id: 'RT', r: [EGG.rxr, EGG.ryt, EGG.rz], sx: -1, sy: 1 },
+    { id: 'RB', r: [EGG.rxr, EGG.ryb, EGG.rz], sx: -1, sy: -1 },
+  ];
+  for (const Q of QUADS) {
+    Q.c = EGG.c; Q.a = EGG.a;
+    Q.R = M3.rz(EGG.a);
+    Q.L = M3.mul(Q.R, M3.diag(...Q.r));
+    Q.Li = M3.inv(Q.L);
+  }
+  const FT = QUADS[0];
   const toLocal = (E, p) => M3.v(E.Li, V3.sub(p, E.c));
   const toModel = (E, q) => V3.add(E.c, M3.v(E.L, q));
-  // unit-sphere direction on MAIN for the near-side surface point at (x, y)
-  function mainDir(x, y, zSign = 1) {
-    const q = toLocal(MAIN, [x, y, 0]);
-    return V3.norm([q[0], q[1], zSign * Math.sqrt(Math.max(0, 1 - q[0] * q[0] - q[1] * q[1]))]);
+  const inQuad = (Q, q) => q[0] * Q.sx >= -1e-6 && q[1] * Q.sy >= -1e-6;
+  // quadrant containing the (in-plane) model point, and its unit-sphere direction there (near side)
+  function quadDir(x, y, zSign = 1) {
+    for (const Q of QUADS) {
+      const q = toLocal(Q, [x, y, 0]);
+      if (!inQuad(Q, q)) continue;
+      return { Q, s: V3.norm([q[0], q[1], zSign * Math.sqrt(Math.max(0, 1 - q[0] * q[0] - q[1] * q[1]))]) };
+    }
+    return { Q: FT, s: [0, 1, 0] };
   }
+  const REAR_POLE = toModel(QUADS.find((Q) => Q.sx < 0), [-1, 0, 0]);
 
   // jaw line / belly boundary: height as a function of x (lookup table, Catmull-Rom through JAW)
-  const JAW = [[-1100, 440], [-700, 450], [-300, 500], [100, 610], [500, 745], [800, 830], [1050, 890], [1320, 940]];
+  const JAW = [[-1100, 455], [-700, 468], [-300, 515], [100, 605], [400, 710], [700, 815], [900, 868], [1100, 915], [1320, 950]];
   const JAW_T = new Float32Array(260);
   for (let i = 0; i < 260; i++) {
     const x = -1100 + i * 10;
@@ -7528,7 +7731,7 @@ const Wailord = (() => {
 
   /* ---------- belly grooves: curves where the body surface meets planes through a tilted axis
      (from the lower rear, where they converge, to a point high in front of the snout, so their
-     front ends fan out below the jaw line). Stored in MAIN's local coordinates + model normals. ---------- */
+     front ends fan out below the jaw line). Stored in FT's local coordinates + model normals. ---------- */
   const GROOVES = (() => {
     const Rp = [-780, 420, 0], Fp = [1450, 1060, 0];
     const a = V3.norm(V3.sub(Fp, Rp)), b1 = [a[1], -a[0], 0], b2 = [0, 0, 1];
@@ -7544,19 +7747,19 @@ const Wailord = (() => {
         for (let t = -200; t <= len; t += 16) {
           const A = V3.add(Rp, V3.scale(a, t));
           let best = -1, bestE = null;
-          for (const E of ELLS) {
+          for (const E of QUADS) {
             const o = toLocal(E, A), dl = M3.v(E.Li, d);
             const qa = V3.dot(dl, dl), qb = 2 * V3.dot(o, dl), qc = V3.dot(o, o) - 1;
             const disc = qb * qb - 4 * qa * qc;
             if (disc < 0) continue;
             const s = (-qb + Math.sqrt(disc)) / (2 * qa);
-            if (s > best) { best = s; bestE = E; }
+            if (s > best && inQuad(E, V3.add(o, V3.scale(dl, s)))) { best = s; bestE = E; }
           }
           if (best <= 0) { flush(); continue; }
           const P = V3.add(A, V3.scale(d, best));
           const ql = toLocal(bestE, P), Li = bestE.Li;
           const n = V3.norm([Li[0] * ql[0] + Li[3] * ql[1] + Li[6] * ql[2], Li[1] * ql[0] + Li[4] * ql[1] + Li[7] * ql[2], Li[2] * ql[0] + Li[5] * ql[1] + Li[8] * ql[2]]);
-          if (P[1] < jawY(P[0]) - 22 && P[0] > Rp[0] + 90 + gi * 30) cur.push({ q: toLocal(MAIN, P), n });
+          if (P[1] < jawY(P[0]) - 22 && P[0] > Rp[0] + 90 + gi * 30) cur.push({ q: toLocal(FT, P), n });
           else flush();
         }
         flush();
@@ -7567,36 +7770,61 @@ const Wailord = (() => {
 
   /* ---------- fins and flukes (plates, baked at 2-unit resolution) ---------- */
   // swept-back dorsal fin: a long low blade (u = forward, v = up; base on the back, tip pointing back)
-  const DORSAL = bakeShape(Shape2D.poly([[140, -40], [80, 14], [-40, 50], [-210, 76], [-390, 86], [-310, 52], [-195, 18], [-80, -40]], code(FIN)), 2);
+  const DORSAL = bakeShape(Shape2D.poly([[135, -40], [112, 22], [45, 82], [-60, 128], [-200, 156], [-335, 166], [-300, 122], [-236, 84], [-165, 40], [-115, -40]], code(FIN)), 2);
   const DORSAL_LINES = [
-    { pts: [[14, 18, 0], [-130, 52, 0], [-325, 76, 0]], mat: FIN, useLn: true },
-    { pts: [[-40, -2, 0], [-156, 29, 0], [-300, 57, 0]], mat: FIN, useLn: true },
+    { pts: [[0, 30, 0], [-130, 88, 0], [-290, 136, 0]], mat: FIN, useLn: true },
   ];
   // pectoral flipper (u = back along the body, v = down)
   const PECT = bakeShape(Shape2D.poly([[-10, -40], [60, -36], [170, -14], [270, 30], [300, 58], [230, 60], [120, 40], [20, 36], [-20, 10]], code(FIN)), 2);
   // tail lobes (u = backward, v = up): long blue upper blade, small grey lower spike
-  const FLUKE_UP = bakeShape(Shape2D.poly([[-40, -60], [70, -40], [200, 10], [330, 60], [420, 96], [310, 100], [170, 82], [50, 62], [-40, 50]], code(FIN)), 2);
-  const FLUKE_LO = bakeShape(Shape2D.poly([[-40, 30], [60, 16], [140, -20], [210, -66], [145, -68], [60, -52], [-40, -40]], code(BELLY)), 2);
+  // both lobes in one plate (no overlapping coplanar plates): blue above the split line, grey below
+  const FLUKE_UP_P = Shape2D.catmull([[-40, -60], [70, -40], [200, 10], [330, 60], [420, 96], [310, 100], [170, 82], [50, 62], [-40, 50]], true, 8);
+  const FLUKE_LO_P = Shape2D.catmull([[-40, 30], [60, 16], [140, -20], [210, -66], [145, -68], [60, -52], [-40, -40]], true, 8);
+  const FLUKES = bakeShape({
+    bb: [-45, -75, 425, 105],
+    test(u, v) {
+      const up = Shape2D.inPoly(u, v, FLUKE_UP_P), lo = Shape2D.inPoly(u, v, FLUKE_LO_P);
+      if (!up && !lo) return 0;
+      if (up && lo) return v > 4 - 0.25 * u ? code(FIN) : code(BELLY);
+      return up ? code(FIN) : code(BELLY);
+    },
+  }, 2);
 
   // body top height at x (for seating the dorsal fins)
   function topAt(x) {
     let best = 0;
-    for (const E of [MAIN, REAR]) {
+    for (const Q of QUADS) {
       for (let i = 0; i <= 400; i++) {
         const th = (i / 400) * Math.PI;
-        const p = toModel(E, [Math.cos(th), Math.sin(th), 0]);
+        const q = [Math.cos(th), Math.sin(th), 0];
+        if (!inQuad(Q, q)) continue;
+        const p = toModel(Q, q);
         if (Math.abs(p[0] - x) < 8) best = Math.max(best, p[1]);
       }
     }
     return best;
   }
-  const FIN_POS = [{ x: -110, s: 1 }, { x: -500, s: 0.82 }].map((d) => Object.assign(d, { y: topAt(d.x) - 34 * d.s }));
+  const FIN_POS = [{ x: -110, s: 1 }, { x: -500, s: 0.84 }].map((d) => Object.assign(d, { y: topAt(d.x) - 12 * d.s }));
 
-  const EYE_S = mainDir(720, 900), EYE_SF = [EYE_S[0], EYE_S[1], -EYE_S[2]];
-  const BLOW_S = mainDir(600, 1080);
-  const PECT_AT = V3.add(toModel(MAIN, mainDir(470, 715)), [0, 0, -12]);
+  const EYE_D = quadDir(700, 895), EYE_S = EYE_D.s, EYE_SF = [EYE_S[0], EYE_S[1], -EYE_S[2]];
+  const EYE_TV = V3.norm(V3.sub([0, 1, 0], V3.scale(EYE_S, EYE_S[1]))), EYE_TU = V3.cross(EYE_TV, EYE_S);
+  let EYE_DECAL = false, EYE_KIND = 'open';
+  const BLOW_D = quadDir(640, 1085);
+  const PECT_D = quadDir(520, 735);
+  const PECT_AT = V3.add(toModel(PECT_D.Q, PECT_D.s), [0, 0, -12]);
 
-  let HL = null; // highlight direction in model space (set per render)
+  let HL = null, HLl = [0, 1, 0]; // highlight direction in model space / in the egg's local frame (set per render)
+  // points covering one octant-pair of the unit sphere (x, y >= 0, both z signs), for bounding quarter prims
+  const QUAD_SAMPLES = [];
+  for (let i = 0; i <= 12; i++) for (let j = 0; j <= 12; j++) {
+    const th = (i / 12) * (Math.PI / 2), ph = (j / 12) * Math.PI; // th: angle in the x-y quadrant, ph: around it
+    const c = Math.cos(th), sn = Math.sin(th);
+    for (const zs of [1, -1]) {
+      const sp = Math.sin(ph), cp = Math.cos(ph);
+      // meridian from the x-y quadrant point toward +/-z
+      QUAD_SAMPLES.push([c * sp, sn * sp, zs * Math.abs(cp)]);
+    }
+  }
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -7620,24 +7848,44 @@ const Wailord = (() => {
           }
           return code(BELLY);
         }
-        if (E === MAIN) {
+        if (E === FT) {
+          // eyes as surface decals when rendered large (stamps are used for small scales)
+          if (EYE_DECAL) {
+            const zs = s[2] < 0 ? -1 : 1, ex = s[0] - EYE_S[0], ey = s[1] - EYE_S[1], ez = s[2] * zs - EYE_S[2];
+            const du = ex * EYE_TU[0] + ey * EYE_TU[1] + ez * EYE_TU[2], dv = ex * EYE_TV[0] + ey * EYE_TV[1] + ez * EYE_TV[2];
+            const ek = EYE_KIND, R0 = 0.03;
+            if (Math.abs(du) < 0.06 && Math.abs(dv) < 0.06) {
+              if (ek === 'happy') { const rr = Math.hypot(du, dv + 0.012); if (dv > -0.012 && rr < R0 * 1.15 && rr > R0 * 0.55) return code(EYE); }
+              else if (ek === 'closed') { if (Math.abs(dv + 0.008 - 12 * du * du) < 0.006 && Math.abs(du) < R0 * 1.1) return code(EYE); }
+              else {
+                const r2 = (du * du) / (R0 * R0 * 0.8) + (dv * dv) / (R0 * R0 * 1.15);
+                if (r2 < 1) { const gu = du - zs * 0.3 * R0, gv = dv - 0.35 * R0; return gu * gu + gv * gv < R0 * R0 * 0.12 ? code(EYEW) : code(EYE); }
+              }
+            }
+          }
           // blowhole on top of the head
-          const bx = (x - 600) / 55, bz = (s[2] * rz) / 30;
+          const bx = (x - 640) / 55, bz = (s[2] * rz) / 30;
           if (y > 1000 && bx * bx + bz * bz < 1) return code(BODY, -2);
         }
         // small glossy highlight on the head (HL = half vector in model space, set per render)
-        if (HL && E === MAIN) {
-          const nx = (ca * s[0]) / rx - (sa * s[1]) / ry, ny = (sa * s[0]) / rx + (ca * s[1]) / ry, nz = s[2] / rz;
-          if ((nx * HL[0] + ny * HL[1] + nz * HL[2]) / Math.hypot(nx, ny, nz) > 0.9965) return code(BODY, 2);
+        if (HL && E.sy >= 0 && x > -250) {
+          // local-frame normal vs local-frame half vector; deviations along the long axis count double so the
+          // spot stays round on this long, gently curved body
+          const ux = s[0] / rx, uy = s[1] / ry, uz = s[2] / rz, ul = Math.hypot(ux, uy, uz);
+          const dx = ux / ul - HLl[0], dy = uy / ul - HLl[1], dz = uz / ul - HLl[2];
+          if (4 * dx * dx + dy * dy + dz * dz < 0.0064) return code(BODY, 2);
         }
         return code(BODY);
       };
     };
     const bodyF = (E) => chain(root, T(...E.c), R(E.R));
-    const mainF = bodyF(MAIN);
-    const mainP = ell(mainF, MAIN.r, { part: 1, grp: 1, mat: bodyMat(MAIN) });
+    const qPrims = QUADS.map((Q) => {
+      const base = bodyMat(Q);
+      return ell(bodyF(Q), Q.r, { part: 1, grp: 1, quad: [Q.sx, Q.sy], mat: (sv) => (sv[0] * Q.sx < 0 || sv[1] * Q.sy < 0 ? 0 : base(sv)) });
+    });
+    const mainF = bodyF(FT), mainP = qPrims[0];
     mainP.grooves = GROOVES;
-    prims.push(mainP, ell(bodyF(REAR), REAR.r, { part: 1, grp: 1, mat: bodyMat(REAR) }), ell(bodyF(STOCK), STOCK.r, { part: 1, grp: 1, mat: bodyMat(STOCK) }));
+    prims.push(...qPrims);
 
     // dorsal fins: two long low blades in a row on the back
     for (const d of FIN_POS) {
@@ -7651,32 +7899,32 @@ const Wailord = (() => {
       prims.push(plate(chain(root, f), PECT, { part: k > 0 ? 3 : 4, grp: k > 0 ? 3 : 4, thick: 14 }, [[1, 0, 0], [0, -1, 0], [0, 0, 1]]));
     }
     // tail lobes hinged at the tail stock, swinging up/down with P.tail
-    const tailF = chain(root, T(-960, 527, 0), R(M3.rz(0.3 * clamp(P.tail, -1, 1))));
+    const tailF = chain(root, T(REAR_POLE[0] + 30, REAR_POLE[1], 0), R(M3.rz(-0.3 * clamp(P.tail, -1, 1))));
     const flip = [[-1, 0, 0], [0, 1, 0], [0, 0, 1]];
-    prims.push(plate(tailF, FLUKE_UP, { part: 5, grp: 5, thick: 16 }, flip));
-    prims.push(plate(tailF, FLUKE_LO, { part: 5, grp: 5, thick: 16 }, flip));
+    prims.push(plate(tailF, FLUKES, { part: 5, grp: 5, thick: 16 }, flip));
 
-    const scl = M3.diag(...MAIN.r);
-    const eyeAt = { p: P2W(mainF, M3.v(scl, EYE_S)), s: EYE_S, prim: mainP };
-    const eyeAtF = { p: P2W(mainF, M3.v(scl, EYE_SF)), s: EYE_SF, prim: mainP };
+    const qP = (D) => qPrims[QUADS.indexOf(D.Q)], qF = (D) => bodyF(D.Q);
+    const eyeAt = { p: P2W(qF(EYE_D), M3.v(M3.diag(...EYE_D.Q.r), EYE_S)), s: EYE_S, prim: qP(EYE_D) };
+    const eyeAtF = { p: P2W(qF(EYE_D), M3.v(M3.diag(...EYE_D.Q.r), EYE_SF)), s: EYE_SF, prim: qP(EYE_D) };
     const anchors = {
-      blowhole: P2W(mainF, M3.v(scl, BLOW_S)),
+      blowhole: P2W(qF(BLOW_D), M3.v(M3.diag(...BLOW_D.Q.r), BLOW_D.s)),
       mouth: P2W(root, [1230, jawY(1230) - 30, 0]),
       eye: eyeAt.p, eyeF: eyeAtF.p,
       tail: P2W(tailF, [-330, 70, 0]),
-      top: P2W(mainF, [0, MAIN.r[1], 0]),
+      top: P2W(mainF, [0, FT.r[1], 0]),
       body: mainF.t,
     };
     return {
       prims, anchors, pose: P, dots: [], rootN: M3.mul(M3.inv(D), M3.rx(roll)),
       stamps: [{ at: eyeAt, set: EYES[0], colors: EYEC, kind: P.eyes, minFacing: 0.15 }, { at: eyeAtF, set: EYES[0], colors: EYEC, kind: P.eyes, minFacing: 0.15, flipX: true }],
       pri: { 1: 0, 2: 1, 3: 1, 4: 1, 5: 1 },
-      glossy: {}, baseMat: BODY, shadowSteps: 12,
+      glossy: {}, baseMat: BODY, shadowSteps: 0,
     };
   }
 
   /* ---------- eyes: pixel stamps sized for the render scale ---------- */
   const EYEC = { k: '#0c1220', w: '#ffffff', b: '#26406e' };
+  const NO_EYE = { open: ['.'] };
   const EYES = [
     { open: ['kk', 'kk', 'kk'], happy: ['.k.', 'k.k'], closed: ['kkk'] }, // tiny (far out at sea)
     { open: ['.kk.', 'kwkk', 'kkkk', '.kk.'], happy: ['.kk.', 'k..k'], closed: ['k..k', '.kk.'] },
@@ -7686,13 +7934,17 @@ const Wailord = (() => {
 
   function render(model, opt) {
     const { yaw = 1.05, pitch = 0.16, scale = 1, W = 96, H = 96, ox = 48, oy = 82 } = opt;
-    const set = scale < 0.16 ? EYES[0] : scale < 0.3 ? EYES[1] : scale < 0.6 ? EYES[2] : EYES[3];
-    for (const st of model.stamps) st.set = set;
+    const set = scale < 0.16 ? EYES[0] : scale < 0.3 ? EYES[1] : EYES[2];
+    EYE_DECAL = scale >= 0.45;
+    EYE_KIND = (model.pose && model.pose.eyes) || 'open';
+    for (const st of model.stamps) st.set = EYE_DECAL ? NO_EYE : set;
     const M = M3.mul(M3.rx(pitch), M3.ry(-yaw));
     const cam = [M[6], M[7], M[8]];
     { // highlight direction (half vector between light and view) in model space
       const Ld = V3.norm((opt.light && opt.light.dir) || [-0.5, 0.72, 0.5]);
       HL = M3.v([M[0], M[3], M[6], M[1], M[4], M[7], M[2], M[5], M[8]], V3.norm(V3.add(Ld, [0, 0, 1])));
+      HL = V3.norm(V3.add(HL, [0, 1.1, 0])); // keep the spot high on the head, as in the official art
+      HLl = M3.v(M3.rz(-EGG.a), HL);
     }
     // grooves: keep only the parts facing the camera
     const RN = model.rootN || M3.I();
@@ -7715,7 +7967,14 @@ const Wailord = (() => {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const p of model.prims) {
       const cv = M3.v(V, p.c), Lv = M3.mul(V, p.L);
-      if (p.kind === 'ell') {
+      if (p.quad) {
+        // quarter-ellipsoid: bound only the quadrant that is drawn
+        for (const ys of p.quad[1] ? [p.quad[1]] : [1, -1]) for (const q of QUAD_SAMPLES) {
+          const sx = q[0] * p.quad[0], sy = q[1] * ys, sz = q[2];
+          const qx = cv[0] + Lv[0] * sx + Lv[1] * sy + Lv[2] * sz, qy = cv[1] + Lv[3] * sx + Lv[4] * sy + Lv[5] * sz;
+          x0 = Math.min(x0, qx); x1 = Math.max(x1, qx); y0 = Math.min(y0, -qy); y1 = Math.max(y1, -qy);
+        }
+      } else if (p.kind === 'ell') {
         const rx = Math.hypot(Lv[0], Lv[1], Lv[2]), ry = Math.hypot(Lv[3], Lv[4], Lv[5]);
         x0 = Math.min(x0, cv[0] - rx); x1 = Math.max(x1, cv[0] + rx); y0 = Math.min(y0, -cv[1] - ry); y1 = Math.max(y1, -cv[1] + ry);
       } else {
@@ -7726,8 +7985,9 @@ const Wailord = (() => {
         }
       }
     }
-    const bx0 = Math.max(0, Math.floor(ox + x0) - 3), bx1 = Math.min(W - 1, Math.ceil(ox + x1) + 3);
-    const by0 = Math.max(0, Math.floor(oy + y0) - 3), by1 = Math.min(H - 1, Math.ceil(oy + y1) + 3);
+    const mg = 3 + 0.01 * Math.max(x1 - x0, y1 - y0);
+    const bx0 = Math.max(0, Math.floor(ox + x0 - mg)), bx1 = Math.min(W - 1, Math.ceil(ox + x1 + mg));
+    const by0 = Math.max(0, Math.floor(oy + y0 - mg)), by1 = Math.min(H - 1, Math.ceil(oy + y1 + mg));
     if (bx1 - bx0 < 4 || by1 - by0 < 4 || (bx1 - bx0 + 1) * (by1 - by0 + 1) > 0.8 * W * H) return Creature.render(model, opt);
     const w = bx1 - bx0 + 1, h = by1 - by0 + 1;
     const r = Creature.render(model, Object.assign({}, opt, { W: w, H: h, ox: ox - bx0, oy: oy - by0 }));
@@ -7750,10 +8010,13 @@ const Wailord = (() => {
 /* ------------------------------------------------------------------
    Kyogre — the Sea Basin Pokémon, as a posable 3D model rendered to
    pixel art by the shared Creature renderer (src/creature.js).
-   Model units: 175 = 1 m, Kyogre is ~790 long (4.5 m). x = forward,
-   y = up, z = near side at yaw 0; y = 0 is the lowest belly point.
+   Model units: 175 = 1 m, Kyogre is ~790 long (4.5 m); the game draws
+   it at scale ~0.55. x = forward, y = up, z = near side at yaw 0;
+   y = 0 is the lowest belly point (fins hang below it).
    Fins, claws, dorsal and tail streamers are thin ellipsoid "shells"
-   clipped to 2D outlines, so they keep real curvature shading.
+   clipped to 2D outlines (curvature shading + an edge-on fallback);
+   red lines, eyes and white patches are decals baked into grids in the
+   rest pose, so they stick to the skin while the model animates.
 ------------------------------------------------------------------- */
 const Kyogre = (() => {
   const { chain, T, R, code } = Creature;
@@ -7772,7 +8035,7 @@ const Kyogre = (() => {
     [FIN]:    { r: ['#0a2052', '#0e2b6b', '#16479a', '#1f66c2', '#4a94e2'], od: '#081a48', ol: '#12378a', ln: '#0f3078' },
     [TAILF]:  { r: BLUE, od: '#081a48', ol: '#12378a', ln: '#0f3078' },
     [BELLY]:  { r: ['#1a4690', '#255cae', '#3679cc', '#5a9ce6', '#b8dcff'], od: '#0a2052', ol: '#1a4592', ln: '#173f88' },
-    [FINU]:   { r: ['#173f84', '#2154a4', '#2f6ec2', '#4e8fdc', '#a6ceff'], od: '#081a48', ol: '#12378a', ln: '#123580' },
+    [FINU]:   { r: ['#081a48', '#0b2458', '#0f2f72', '#16469a', '#2462b8'], od: '#061238', ol: '#0e2a6c', ln: '#0d2a6a' },
     [RED]:    { r: ['#7c0f25', '#b51b35', '#e3334a', '#ff6166', '#ffaea4'], od: '#4c0716', ol: '#8a1428', ln: '#7a1024' },
     [PALE]:   { r: ['#6a8cb6', '#95b4d6', '#c4daee', '#e5f0fa', '#ffffff'], od: '#27487a', ol: '#5379aa', ln: '#567cae' },
     [CLAW]:   { r: ['#7b8fac', '#a4b5cc', '#d0dbea', '#edf3fa', '#ffffff'], od: '#34476a', ol: '#62789a', ln: '#5d7398' },
@@ -7784,7 +8047,7 @@ const Kyogre = (() => {
   });
   const GLOSSY = { [BODY]: 1, [FIN]: 1, [TAILF]: 1, [BELLY]: 1, [PALE]: 1, [CLAW]: 1, [RED]: 0, [FINU]: 0 };
   // brighter ramp for the `glow` pose (Primal-style energy in the lines)
-  const GLOW = ['#f02a44', '#ff4c5c', '#ff8078', '#ffbcae', '#fff2ea'].map(PX.hex);
+  const GLOW = ['#ff2440', '#ff3c52', '#ff5a66', '#ff8f8a', '#ffd6cc'].map(PX.hex);
 
   /* ---------- 2D grid helpers (baked once at load, O(1) lookups) ---------- */
   function grid(u0, v0, u1, v1, res, Type = Uint8Array, init = 0) {
@@ -7866,6 +8129,24 @@ const Kyogre = (() => {
   const bbox = (poly) => Shape2D.bbox(poly, 0);
   // emboss: +1 near the edge facing direction d, -1 near the opposite edge
   const bevel = (g, u, v, dx, dy) => (!at(g, u + dx, v + dy, 0) ? 1 : !at(g, u - dx, v - dy, 0) ? -1 : 0);
+  // Pack a shape into one Uint16 grid: bit 0 inside, bits 1-2 bevel+1, bits 3-15 line distance*8,
+  // so a fin pixel costs a single array read (cheap even before the JIT warms up).
+  function pack(inG, lnG, bdx, bdy, bevelG) {
+    const g = { u0: inG.u0, v0: inG.v0, res: inG.res, ir: 1 / inG.res, gw: inG.gw, gh: inG.gh, a: new Uint16Array(inG.gw * inG.gh) };
+    for (let y = 0; y < g.gh; y++)
+      for (let x = 0; x < g.gw; x++) {
+        const i = y * g.gw + x;
+        if (!inG.a[i]) continue;
+        const bv = bevel(bevelG || inG, g.u0 + (x + 0.5) * g.res, g.v0 + (y + 0.5) * g.res, bdx, bdy);
+        const d = lnG ? Math.min(8191, Math.round(lnG.a[i] * 8)) : 8191;
+        g.a[i] = 1 | ((bv + 1) << 1) | (d << 3);
+      }
+    return g;
+  }
+  const pk = (g, u, v) => {
+    const x = Math.floor((u - g.u0) * g.ir), y = Math.floor((v - g.v0) * g.ir);
+    return x < 0 || y < 0 || x >= g.gw || y >= g.gh ? 0 : g.a[y * g.gw + x];
+  };
 
   /* ---------- body decals, drawn in the rest-pose side view (x, y) ---------- */
   // lower jaw region seen from the side (the head is cut away here; the jaw prim shows)
@@ -7875,14 +8156,15 @@ const Kyogre = (() => {
   const JAWG = grid(-220, -60, 430, 320, 1);
   fill(JAWG, JAW_REGION, 1);
   const LIP_LINE = LIP.concat([[206, 56], [201, 46], [199, 32]]);
-  const LIPG = grid(150, -20, 430, 140, 1, Float32Array, 99);
+  const LIPG = grid(-220, -60, 430, 320, 1, Float32Array, 99);
   stroke(LIPG, smooth(LIP_LINE, false, 6), 12);
+  const SG = SIDE, SIDEA = SIDE.a, LIPA = LIPG.a, JAWA = JAWG.a;
   // flank chevron, hook and the ridge behind the head
   stroke(SIDE, smooth([[8, 190], [44, 150], [92, 108], [84, 72], [72, 34]], false, 6), 10);
   stroke(SIDE, smooth([[26, 146], [-4, 152], [-36, 150], [-44, 118], [-46, 92]], false, 6), 10);
   // volumes (x,y,z centre, radii, z-rotation) for white patches and slits; mirrored in z
   const PATCHES = [
-    { c: [258, 134, 70], r: [62, 25, 34], rot: -0.26 },
+    { c: [258, 136, 72], r: [72, 30, 36], rot: -0.26 },
     { c: [176, 124, 86], r: [24, 13, 30], rot: -0.2 },
   ];
   const SLITS = [
@@ -7899,32 +8181,34 @@ const Kyogre = (() => {
   };
   // eye (side-view ellipse decal on the head; both sides)
   const EYE = { x: 318, y: 80, ax: 20, ay: 12 };
-  const HEAD = { c: [178, 94, 0], r: [218, 106, 114], tilt: -0.1 };
+  const HEAD = { c: [186, 92, 0], r: [208, 114, 116], tilt: -0.1 };
 
   /* ---------- pectoral fin: outline + line pattern in fin space (u root->tip, v across) ---------- */
-  const FIN_OUT = smooth([[0, 44], [60, 60], [130, 80], [196, 98], [236, 104], [256, 80], [266, 40], [268, -8], [260, -56], [242, -98], [200, -108], [130, -90], [60, -62], [0, -46], [-30, 0]], true, 8);
-  const FIN_IN = grid(-40, -130, 290, 130, 1);
+  const FIN_OUT = smooth([[0, 40], [50, 62], [110, 96], [170, 118], [220, 124], [250, 102], [266, 56], [270, 0], [264, -54], [248, -102], [214, -124], [164, -118], [104, -92], [50, -60], [0, -42], [-30, 0]], true, 8);
+  const FIN_IN = grid(-40, -140, 290, 140, 1);
   fill(FIN_IN, FIN_OUT, 1);
-  const FIN_LN = grid(-40, -130, 290, 130, 1, Float32Array, 99);
-  stroke(FIN_LN, ellipsePts(112, -4, 52, 42), 10);
+  const FIN_LN = grid(-40, -140, 290, 140, 1, Float32Array, 99);
+  stroke(FIN_LN, ellipsePts(108, -2, 56, 48), 10);
   for (const l of [
-    [[140, 30], [160, 46], [198, 60], [240, 80]],
-    [[162, 12], [210, 20], [258, 28]],
-    [[162, -18], [210, -22], [260, -24]],
-    [[140, -40], [160, -58], [198, -68], [240, -82]],
-    [[206, 19], [214, -21]],
+    [[138, 38], [160, 58], [200, 72], [242, 94]],
+    [[162, 16], [212, 26], [262, 32]],
+    [[162, -20], [212, -28], [262, -32]],
+    [[138, -44], [160, -64], [200, -76], [242, -96]],
+    [[208, 25], [216, -27]],
   ]) stroke(FIN_LN, l, 10);
-  const FIN_E = { cu: 150, cv: -2, ru: 190, rv: 132, rw: 14 };
+  const FIN_PK = pack(FIN_IN, FIN_LN, 0, 7);
+  const FIN_E = { cu: 145, cv: 0, ru: 200, rv: 150, rw: 14 };
   const CLAWS = [
-    { u: 238, v: 84, a: 0.42 },
-    { u: 260, v: 32, a: 0.14 },
-    { u: 262, v: -20, a: -0.14 },
-    { u: 242, v: -78, a: -0.42 },
+    { u: 238, v: 96, a: 0.46 },
+    { u: 262, v: 34, a: 0.15 },
+    { u: 262, v: -34, a: -0.15 },
+    { u: 240, v: -98, a: -0.46 },
   ];
-  const CLAW_OUT = smooth([[-22, 13], [10, 15.5], [23, 13.5], [28, 5], [28, -5], [23, -13.5], [10, -15.5], [-22, -13]], true, 6);
-  const CLAW_G = grid(-26, -18, 32, 18, 0.5);
+  const CLAW_OUT = smooth([[-24, 15], [12, 17.5], [26, 15.5], [31, 6], [31, -6], [26, -15.5], [12, -17.5], [-24, -15]], true, 6);
+  const CLAW_G = grid(-28, -20, 35, 20, 0.5);
   fill(CLAW_G, CLAW_OUT, 1);
-  const CLAW_E = { ru: 40, rv: 23, rw: 8 };
+  const CLAW_PK = pack(CLAW_G, null, 0, 4.5);
+  const CLAW_E = { ru: 45, rv: 26, rw: 8.5 };
 
   /* ---------- dorsal fin (side view, x back.., y up), thin axis = z ---------- */
   const DORSAL_OUT = smooth([[168, 150], [150, 196], [118, 232], [78, 262], [62, 266], [66, 240], [70, 212], [62, 186], [40, 150]], true, 8);
@@ -7932,6 +8216,7 @@ const Kyogre = (() => {
   fill(DORSAL_G, DORSAL_OUT, 1);
   const DORSAL_LN = grid(20, 130, 190, 280, 1, Float32Array, 99);
   stroke(DORSAL_LN, smooth([[164, 176], [148, 200], [118, 232], [82, 258]], false, 6), 10);
+  const DORSAL_PK = pack(DORSAL_G, DORSAL_LN, -4, 3);
   const DORSAL_E = { cx: 104, cy: 205, rx: 96, ry: 78, rz: 9 };
 
   /* ---------- tail streamers (fin space: u back, v up) ---------- */
@@ -7949,15 +8234,16 @@ const Kyogre = (() => {
     for (const p of parts) p.full = g;
   }
   // upper (hooked) fins: rising part + backward part; lower streamers: root + tip
-  const UP_A = shellOf(ribbon([[0, -22], [4, 18], [18, 52], [44, 78]], 56, 46), 8);
-  const UP_B = shellOf(ribbon([[36, 74], [78, 88], [122, 94], [158, 96]], 46, 32, { a: 22, d: 13, b: 6 }), 7);
-  const LO_A = shellOf(ribbon([[-24, 0], [40, -2], [125, -6]], 50, 38), 8);
-  const LO_B = shellOf(ribbon([[115, -6], [180, -8], [238, -6]], 38, 30, { a: 24, d: 14, b: 8 }), 7);
+  const UP_A = shellOf(ribbon([[0, -22], [4, 18], [18, 52], [44, 78]], 64, 52), 8);
+  const UP_B = shellOf(ribbon([[36, 74], [80, 89], [126, 95], [164, 97]], 52, 36, { a: 24, d: 14, b: 7 }), 7);
+  const LO_A = shellOf(ribbon([[-24, 0], [40, -2], [125, -6]], 56, 42), 8);
+  const LO_B = shellOf(ribbon([[115, -6], [182, -8], [244, -6]], 42, 33, { a: 26, d: 15, b: 9 }), 7);
   unionOf(UP_A, UP_B);
   unionOf(LO_A, LO_B);
+  for (const E of [UP_A, UP_B, LO_A, LO_B]) E.pk = pack(E.g, null, -2.2, 5, E.full);
 
   const DEFAULT = { fin: 0, tail: 0, mouth: 0, eyes: 'open', glow: 0, headPitch: 0, roll: 0, side: 1 };
-  let LWH = 2.8; // half line width (model units), set per render from the scale
+  let LWH = 2.8, LW8 = 22.4; // half line width (model units, and *8 for packed grids), set per render
 
   const MZ = M3.diag(1, 1, -1);
   const mirrorF = (f) => ({ L: M3.mul(MZ, f.L), t: M3.v(MZ, f.t) });
@@ -8009,7 +8295,8 @@ const Kyogre = (() => {
     // --- skin: shared decal logic in rest-pose coordinates
     const eyeK = P.eyes;
     const cRED = code(RED), cRED2 = code(RED, -2), cEYEK = code(EYEK), cEYEY = code(EYEY), cEYEW = code(EYEW);
-    const cPALE = code(PALE), cBELLY = code(BELLY), cBODY = code(BODY);
+    const cPALE = code(PALE), cBELLY = code(BELLY), cBODY = code(BODY), cCORE = code(RED, 1);
+    const glow = P.glow > 0.25;
     const eyeMat = (X, Y) => {
       const ex = (X - EYE.x) / EYE.ax, ey = (Y - EYE.y) / EYE.ay;
       const e2 = ex * ex + ey * ey;
@@ -8030,16 +8317,18 @@ const Kyogre = (() => {
       return cRED;
     };
     // shared skin decals in rest-pose coordinates; vols = the white volumes this ellipsoid can touch
-    const skin = (X, Y, Z, ny, az, head, vols) => {
-      if (az > 0.1) {
+    const skin = (X, Y, Z, ny, az, head, vols, gi) => {
+      if (az > 0.1 && gi >= 0) {
         if (head) {
           if (az > 0.3 && X > EYE.x - 26 && X < EYE.x + 26 && Y > EYE.y - 14 && Y < EYE.y + 22) {
             const e = eyeMat(X, Y);
             if (e) return e;
           }
-          if (at(LIPG, X, Y, 99) < 2 * LWH) return cRED;
+          const dl = LIPA[gi];
+          if (dl < 2 * LWH) return glow && dl > 0.4 * LWH && dl < 1.3 * LWH ? cCORE : cRED;
         }
-        if (at(SIDE, X, Y, 99) < LWH) return cRED;
+        const d = SIDEA[gi];
+        if (d < LWH) return glow && d < 0.45 * LWH ? cCORE : cRED;
       }
       for (let i = 0; i < vols.length; i++) if (inVol(vols[i], X, Y, Z)) return cPALE;
       return ny < -0.55 ? cBELLY : cBODY;
@@ -8056,27 +8345,30 @@ const Kyogre = (() => {
         mat: (s) => {
           const lx = rx * s[0], ly = ry * s[1];
           const X = cx + lx * ct - ly * st, Y = cy + lx * st + ly * ct;
-          if (head && at(JAWG, X, Y, 0)) return 0;
+          const gx = Math.floor(X - SG.u0), gy = Math.floor(Y - SG.v0);
+          const gi = gx >= 0 && gy >= 0 && gx < SG.gw && gy < SG.gh ? gy * SG.gw + gx : -1;
+          if (head && gi >= 0 && JAWA[gi]) return 0;
           const ax = s[0] / rx, ay = s[1] / ry, nz = s[2] / rz;
           const ny = ax * st + ay * ct, nx = ax * ct - ay * st;
           const il = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz);
-          return skin(X, Y, cz + rz * s[2], ny * il, Math.abs(nz) * il, head, vols);
+          return skin(X, Y, cz + rz * s[2], ny * il, Math.abs(nz) * il, head, vols, gi);
         },
       });
     };
 
     // --- head group (pitches about the neck): the big front ellipsoid carries the head
+    const mouthK = Math.max(0, Math.min(1, P.mouth || 0));
     const headF = chain(root, pivot([150, 96, 0], M3.rz(P.headPitch)));
     const headPrim = bodyEll(headF, HEAD.c, HEAD.r, 1, true, HEAD.tilt);
     prims.push(headPrim);
     // lower jaw hinged behind the mouth corner
-    const jawF = chain(headF, pivot([208, 70, 0], M3.rz(-0.34 * P.mouth)));
-    prims.push(ell(chain(jawF, T(294, 52, 0)), [104, 44, 76], {
+    const jawF = chain(headF, pivot([208, 70, 0], M3.rz(-0.34 * mouthK)));
+    prims.push(ell(chain(jawF, T(292, 50, 0)), [106, 48, 78], {
       part: 3, grp: 2,
       mat: (s) => (s[1] < -0.72 ? code(PALE, -1) : code(PALE)),
     }));
     // mouth interior (only needed while the jaw is open)
-    if (P.mouth > 0.02) prims.push(ell(chain(headF, T(290, 62, 0)), [96, 26, 70], {
+    if (mouthK > 0.02) prims.push(ell(chain(headF, T(290, 62, 0)), [96, 26, 70], {
       part: 4, grp: 3,
       mat: (s) => (s[1] < 0.1 && Math.abs(s[2]) < 0.6 && s[0] > -0.5 ? code(TONGUE) : code(MOUTH)),
     }));
@@ -8093,12 +8385,15 @@ const Kyogre = (() => {
     {
       const E = DORSAL_E;
       const cEdge = code(FIN, -1);
+      const DB = [code(FIN, -1), code(FIN, 0), code(FIN, 1)];
       prims.push(clipped(ell(chain(root, T(E.cx, E.cy, 0)), [E.rx, E.ry, E.rz], { part: 9, grp: 4, mat: null }), (a, b, c) => {
-        const X = E.cx + E.rx * a, Y = E.cy + E.ry * b;
-        if (!at(DORSAL_G, X, Y, 0)) return 0;
-        if (at(DORSAL_LN, X, Y, 99) < LWH) return code(RED);
-        return code(FIN, Math.max(-1, bevel(DORSAL_G, X, Y, -4, 3) - (Math.abs(c) < 0.3 ? 1 : 0)));
-      }, (a, b) => (at(DORSAL_G, E.cx + E.rx * a, E.cy + E.ry * b, 0) ? cEdge : 0), 2, E.rx));
+        const v = pk(DORSAL_PK, E.cx + E.rx * a, E.cy + E.ry * b);
+        if (!v) return 0;
+        const d = v >> 3;
+        if (d < LW8) return glow && d < 0.45 * LW8 ? cCORE : cRED;
+        const bv = ((v >> 1) & 3) - (c > -0.3 && c < 0.3 ? 1 : 0);
+        return DB[bv < 0 ? 0 : bv];
+      }, (a, b) => (pk(DORSAL_PK, E.cx + E.rx * a, E.cy + E.ry * b) ? cEdge : 0), 2, E.rx));
     }
 
     // --- pectoral fins (near, far = mirror); sweep: fin=+1 up/forward, -1 down/back
@@ -8119,25 +8414,27 @@ const Kyogre = (() => {
       const E = FIN_E;
       const gid = sd > 0 ? 5 : 6;
       const cFinEdge = code(FIN, -1);
+      const FB = [code(FIN, -1), code(FIN, 0), code(FIN, 1)], cFINU = code(FINU);
       prims.push(clipped(shell(fr, V3.add(V3.scale(u, E.cu), V3.scale(v, E.cv)), u, w, v, [E.ru, E.rw, E.rv], { part: 10 + (sd < 0 ? 1 : 0), grp: gid, mat: null }), (a, b, c) => {
-        const uu = E.cu + E.ru * a, vv = E.cv + E.rv * c;
-        if (!at(FIN_IN, uu, vv, 0)) return 0;
-        if (b < 0) return code(FINU);
-        if (at(FIN_LN, uu, vv, 99) < LWH) return code(RED);
-        return code(FIN, bevel(FIN_IN, uu, vv, 0, 7));
-      }, (a, b, c) => (at(FIN_IN, E.cu + E.ru * a, E.cv + E.rv * c, 0) ? cFinEdge : 0), 1, E.ru));
+        const pv = pk(FIN_PK, E.cu + E.ru * a, E.cv + E.rv * c);
+        if (!pv) return 0;
+        if (b < 0) return cFINU;
+        const d = pv >> 3;
+        if (d < LW8) return glow && d < 0.45 * LW8 ? cCORE : cRED;
+        return FB[(pv >> 1) & 3];
+      }, (a, b, c) => (pk(FIN_PK, E.cu + E.ru * a, E.cv + E.rv * c) ? cFinEdge : 0), 1, E.ru));
       // claws
       CLAWS.forEach((c, k) => {
         const ca = Math.cos(c.a), sa = Math.sin(c.a);
         const cu = V3.add(V3.scale(u, ca), V3.scale(v, sa));
         const cv = V3.add(V3.scale(u, -sa), V3.scale(v, ca));
         const ctr = V3.add(V3.add(V3.scale(u, c.u), V3.scale(v, c.v)), V3.add(V3.scale(cu, 16), V3.scale(w, -3)));
-        const cClawEdge = code(CLAW, -1);
+        const cClawEdge = code(CLAW, -1), CB = [code(CLAW, -1), code(CLAW, 0), code(CLAW, 1)];
         prims.push(clipped(shell(fr, ctr, cu, w, cv, [CLAW_E.ru, CLAW_E.rw, CLAW_E.rv], { part: 12 + k + (sd < 0 ? 4 : 0), grp: 7 + (sd < 0 ? 1 : 0), mat: null }), (a, b, c) => {
-          const uu = CLAW_E.ru * a, vv = CLAW_E.rv * c;
-          if (!at(CLAW_G, uu, vv, 0)) return 0;
-          return b < 0 ? code(CLAW, -1) : code(CLAW, bevel(CLAW_G, uu, vv, 0, 4.5));
-        }, (a, b, c) => (at(CLAW_G, CLAW_E.ru * a, CLAW_E.rv * c, 0) ? cClawEdge : 0), 1, CLAW_E.ru));
+          const pv = pk(CLAW_PK, CLAW_E.ru * a, CLAW_E.rv * c);
+          if (!pv) return 0;
+          return b < 0 ? cClawEdge : CB[(pv >> 1) & 3];
+        }, (a, b, c) => (pk(CLAW_PK, CLAW_E.ru * a, CLAW_E.rv * c) ? cClawEdge : 0), 1, CLAW_E.ru));
       });
       finParts.push(fr);
     }
@@ -8150,12 +8447,11 @@ const Kyogre = (() => {
         if (k > 0) fr = chain(fr, pivot([sg.j[0], sg.j[1], 0], M3.rz(0.14 * Math.sin(ph - 2.1 - k * 0.5))));
         const E = sg.e;
         // fin space: u back (-x), v up (+y), w = z
-        const cTailEdge = code(TAILF);
+        const cTailEdge = code(TAILF), TB = [code(TAILF, -1), code(TAILF, 0), code(TAILF, 1)];
         prims.push(clipped(shell(fr, [-E.cu, E.cv, 0], [-1, 0, 0], [0, 0, 1], [0, 1, 0], [E.ru, E.rw, E.rv], { part: partBase + k, grp: gid, mat: null }), (a, b, c) => {
-          const uu = E.cu + E.ru * a, vv = E.cv + E.rv * c;
-          if (!at(E.g, uu, vv, 0)) return 0;
-          return code(TAILF, bevel(E.full, uu, vv, -2.2, 5));
-        }, (a, b, c) => (at(E.g, E.cu + E.ru * a, E.cv + E.rv * c, 0) ? cTailEdge : 0), 1, E.ru));
+          const pv = pk(E.pk, E.cu + E.ru * a, E.cv + E.rv * c);
+          return pv ? TB[(pv >> 1) & 3] : 0;
+        }, (a, b, c) => (pk(E.pk, E.cu + E.ru * a, E.cv + E.rv * c) ? cTailEdge : 0), 1, E.ru));
       });
       return fr;
     };
@@ -8175,13 +8471,14 @@ const Kyogre = (() => {
     })();
     const anchors = {
       eye: { p: V3.add(headPrim.c, M3.v(headPrim.L, eyeS)), s: eyeS },
-      mouth: V3.add(jawF.t, M3.v(jawF.L, [392, 66, 0])),
+      mouth: V3.scale(V3.add(V3.add(headF.t, M3.v(headF.L, [394, 70, 0])), V3.add(jawF.t, M3.v(jawF.L, [392, 66, 0]))), 0.5),
       finTipN: V3.add(finParts[0].t, M3.v(finParts[0].L, [-280, 0, 0])),
       finTipF: V3.add(finParts[1].t, M3.v(finParts[1].L, [-280, 0, 0])),
       tail: V3.add(loN.t, M3.v(loN.L, [-250, -6, 0])),
       head: V3.add(headF.t, M3.v(headF.L, [300, 110, 0])),
     };
     return {
+      autoSide: !pose || pose.side === undefined,
       prims, anchors, pose: P, headPrim, stamps: [], dots: [],
       pri: { 1: 1, 2: 2, 3: 0, 4: 2, 5: 3, 6: 3, 7: 2, 8: 2, 9: 2, 10: 2, 11: 2, 12: 2 },
       glossy: GLOSSY, baseMat: BODY, shadowSteps: 0,
@@ -8192,8 +8489,15 @@ const Kyogre = (() => {
   // renderer, so the pixels are identical), then place it in the full sprite buffer. The shared
   // renderer's full-buffer passes then only touch pixels near Kyogre, not the whole big buffer.
   function render(model, opt) {
+    // `side` mirrors the camera cheats; when the caller did not pass it, derive it from the yaw
+    // exactly like the game does (side = clamp(3 cos yaw, -1, 1)) and rebuild if it differs
+    if (model.autoSide) {
+      const sd = Math.max(-1, Math.min(1, 3 * Math.cos(opt.yaw ?? 1.05)));
+      if (Math.abs(sd - model.pose.side) > 1e-6) model = build(Object.assign({}, model.pose, { side: sd }));
+    }
     const sc = opt.scale || 1;
-    LWH = 0.5 * Math.max(5.4, 1.7 / sc);
+    LWH = 0.5 * Math.max(5.4, 1.7 / sc) * (1 + 0.3 * Math.min(1, model.pose.glow || 0));
+    LW8 = LWH * 8;
     let pal = opt.pal || PAL;
     const g = Math.min(1, model.pose.glow || 0);
     if (g > 0) {
@@ -8231,18 +8535,22 @@ const Kyogre = (() => {
     return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.3, lengthM: 4.5, bw: 832, bh: 572, oy: 0.594 } };
+  // Pokédex 4.5 m = the model's length (~790 units); its body is ~1.2 m tall without fins
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 4.5, lengthM: 4.5, bw: 880, bh: 650, oy: 0.575 } };
 })();
 
 /* ==== src/species/dialga.js ==== */
 /* ------------------------------------------------------------------
    Dialga — the Temporal Pokémon, as a super small chibi (~95 units
-   tall including the crest) posable 3D model rendered to pixel art by
+   tall at yaw 1.1 including the crest; the player's size exception to
+   the 5.4 m Pokédex height) posable 3D model rendered to pixel art by
    the shared Creature renderer (src/creature.js).
    x = forward, y = up, z = near side at yaw 0; y = 0 is the ground.
-   Navy body with glowing cyan lines, silver armour (crest, visor,
-   shoulder plates with a fan of blades, chest plate, claws, tail fin)
-   and the big Adamant diamond on the chest.
+   Navy body with glowing cyan lines, silver armour (swept crest, visor
+   band across the red eyes, shoulder plates with a fan of blades,
+   chest shield, claws, tail fin) and the big Adamant diamond.
+   The crest and blades are thin ellipsoid "shells" clipped to 2D
+   outlines; an edge-on fallback keeps them solid from every angle.
 ------------------------------------------------------------------- */
 const Dialga = (() => {
   const { chain, T, R, code } = Creature;
@@ -8282,20 +8590,19 @@ const Dialga = (() => {
   };
 
   // material ids
-  const BODY = 1, SILVER = 2, CYAN = 3, GEM = 4, MOUTH = 5, TONGUE = 6, FANG = 7, DARK = 8, HALO = 9;
-  const MAT = { BODY, SILVER, CYAN, GEM, MOUTH, TONGUE, FANG, DARK, HALO };
+  const BODY = 1, SILVER = 2, CYAN = 3, GEM = 4, MOUTH = 5, TONGUE = 6, FANG = 7, HALO = 8;
+  const MAT = { BODY, SILVER, CYAN, GEM, MOUTH, TONGUE, FANG, HALO };
   const PAL = Creature.palette({
     [BODY]:   { r: ['#0a1f45', '#113463', '#1b4f8a', '#2a6cad', '#5b9bd8'], od: '#06122e', ol: '#0e2b58', ln: '#0c2750' },
-    [DARK]:   { r: ['#07162f', '#0b2247', '#12336a', '#1b4a8a', '#3a74b4'], od: '#040c20', ol: '#0a2148', ln: '#081c3e' },
     [SILVER]: { r: ['#5e6d80', '#8797aa', '#b3c2d0', '#d6e2ec', '#ffffff'], od: '#38465a', ol: '#5c6d82', ln: '#667789' },
     [CYAN]:   { r: ['#0e9cc2', '#1bb8dc', '#3ad6f2', '#93eefc', '#e2fcff'], od: '#0a5f82', ol: '#0e7fa4', ln: '#0e7fa4' },
     [GEM]:    { r: ['#0b3c82', '#125fae', '#2a8de4', '#6ec8ff', '#ffffff'], od: '#082a5c', ol: '#0e4a90', ln: '#0c4282' },
     [HALO]:   { r: ['#3ad6f2', '#6ae4fa', '#9aeefe', '#c8f8ff', '#ffffff'], od: '#0e7fa4', ol: '#1bb8dc', ln: '#1bb8dc' },
-    [MOUTH]:  { r: ['#3a0c1c', '#561428', '#742036', '#943248', '#b44a5c'], od: '#26061a', ol: '#3a0c1c', ln: '#3a0c1c' },
-    [TONGUE]: { r: ['#9a3a4e', '#bc4c62', '#d86478', '#ee8a96', '#ffb4bc'], od: '#5a1428', ol: '#7a2036', ln: '#7a2036' },
+    [MOUTH]:  { r: ['#4a1024', '#6a1a32', '#8c2a44', '#aa3c56', '#c85a6e'], od: '#2a0818', ol: '#4a1024', ln: '#3a0c1c' },
+    [TONGUE]: { r: ['#b04a60', '#d05e74', '#ea7a8c', '#ff9eac', '#ffc4cc'], od: '#6a1a30', ol: '#8a2a40', ln: '#8a2a40' },
     [FANG]:   { r: ['#9aa8b8', '#c4d0dc', '#e8f0f6', '#ffffff', '#ffffff'], od: '#4a5a6e', ol: '#6a7a8e', ln: '#6a7a8e' },
   });
-  const GLOSSY = { [BODY]: 1, [SILVER]: 1, [GEM]: 1, [DARK]: 1 };
+  const GLOSSY = { [BODY]: 1, [SILVER]: 1, [GEM]: 1 };
   const GEM_GLOW = ['#39b4ff', '#6fd4ff', '#a8ecff', '#dcfbff', '#ffffff'].map(PX.hex);
 
   /* ---------- 2D grid helpers ---------- */
@@ -8378,14 +8685,14 @@ const Dialga = (() => {
     },
   });
   const haloShape = bakeShape({
-    bb: [-GEM_W - 2.5, -GEM_H - 2.5, GEM_W + 2.5, GEM_H + 2.5],
+    bb: [-GEM_W - 4, -GEM_H - 4, GEM_W + 4, GEM_H + 4],
     test(u, v) {
-      const a = Math.abs(u) / (GEM_W + 2) + Math.abs(v) / (GEM_H + 2);
-      return a <= 1 ? code(HALO) : 0;
+      const a = Math.abs(u) / (GEM_W + 3.4) + Math.abs(v) / (GEM_H + 3.4);
+      return a <= 1 ? code(HALO, a > 0.9 ? 0 : 1) : 0;
     },
   });
 
-  /* ---------- back blades, tail fin, fangs, claws (plates) ---------- */
+  /* ---------- back blades (clipped shells) and fangs (plates) ---------- */
   const bladeShape = (L, W) => {
     const g = grid(-4, -W, L + 2, W, 0.25);
     fill(g, smooth([[0, -W * 0.5], [L * 0.35, -W * 0.55], [L * 0.8, -W * 0.3], [L, 0.2 * W], [L * 0.72, W * 0.5], [L * 0.3, W * 0.55], [0, W * 0.45], [-2, 0]], true, 8), 1);
@@ -8396,7 +8703,6 @@ const Dialga = (() => {
     { a: 0.8, L: 30, W: 9 },
     { a: 1.28, L: 24, W: 7.8 },
   ].map((b) => Object.assign(b, { shape: bladeShape(b.L, b.W) }));
-  const TAILFIN = bakeShape(Shape2D.poly([[0, -3], [6, -5.5], [12, -4], [15.5, 1.5], [12, 5.5], [5, 6], [0, 3]], code(SILVER), 8, (u, v) => code(SILVER, v > 2.5 ? 1 : v < -2.8 ? -1 : 0)));
   const FANGS = bakeShape(Shape2D.poly([[-1.3, 0.6], [1.3, 0.6], [0.2, -3.2]], code(FANG), 6));
 
   /* ---------- eye stamps: k navy outline, w glint, r red, d dark red ---------- */
@@ -8448,7 +8754,7 @@ const Dialga = (() => {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [];
     const roar = Math.max(0, Math.min(1, P.roar));
-    const mouth = Math.max(P.mouth, roar);
+    const mouth = Math.max(0, Math.min(1, Math.max(P.mouth || 0, roar)));
     const hop = Math.max(-1, Math.min(1, P.hop));
     const wk = P.walk;
     const walking = wk !== 0;
@@ -8456,7 +8762,7 @@ const Dialga = (() => {
     const sy = 1 + 0.2 * hop, sxz = 1 - 0.1 * hop;
     const root = frame(M3.diag(K * sxz, K * sy, K * sxz), [0, K * bob, 0]);
 
-    const cBODY = code(BODY), cCYAN = code(CYAN), cSILVER = code(SILVER);
+    const cBODY = code(BODY), cCYAN = code(CYAN), cSILVER = code(SILVER), cBODYsh = code(BODY, -1);
     const skin = (X, Y, az) => (az > 0.25 && at(LINES, X, Y, 99) < LWH ? cCYAN : cBODY);
     // navy ellipsoid with side-projected cyan lines (rest centre c, radii r, rest tilt about z)
     const navy = (f, c, r, part, grp, tilt = 0, extra = null) => {
@@ -8493,12 +8799,13 @@ const Dialga = (() => {
       { hip: [-13, 17, -10], ph: 0, id: 9 },
     ];
     for (const lg of legs) {
-      const sw = walking ? 0.42 * Math.sin(wk + lg.ph) : 0;
-      const lift = walking ? 2.4 * Math.max(0, Math.cos(wk + lg.ph)) : 0;
+      const sw = walking ? 0.5 * Math.sin(wk + lg.ph) : 0;
+      const lift = walking ? 3 * Math.max(0, Math.cos(wk + lg.ph)) : 0;
       const f = chain(root, T(lg.hip[0], lg.hip[1] + lift, lg.hip[2]), R(M3.rz(sw)), T(-lg.hip[0], -lg.hip[1], -lg.hip[2]));
       const [hx, , hz] = lg.hip;
       const sd = Math.sign(hz);
-      prims.push(navy(f, [hx, 10.5, hz], [6.6, 8.5, 6.2], lg.id, lg.id, 0, (s) => (s[2] * sd > 0.55 && Math.abs(s[0]) < 0.28 && s[1] < 0.5 ? cCYAN : 0)));
+      // (tops of the legs get a baked contact shadow from the body)
+      prims.push(navy(f, [hx, 10.5, hz], [6.6, 8.5, 6.2], lg.id, lg.id, 0, (s) => (s[2] * sd > 0.55 && Math.abs(s[0]) < 0.28 && s[1] < 0.5 ? cCYAN : s[1] > 0.5 ? cBODYsh : 0)));
       prims.push(ell(chain(f, T(hx + 1.5, 3.6, hz)), [7.4, 3.9, 6.8], { part: lg.id, grp: lg.id, mat: (s) => (s[1] > 0.62 ? cSILVER : cBODY) }));
       for (const dz of [-3.5, 0, 3.5]) prims.push(ell(chain(f, T(hx + 7.9, 1.7, hz + dz * 0.95), R(M3.ry(-dz * 0.08)), R(M3.rz(-0.3))), [3.1, 1.8, 1.55], { part: lg.id, grp: lg.id, mat: () => cSILVER }));
     }
@@ -8522,11 +8829,11 @@ const Dialga = (() => {
 
     // --- chest shield + gem (faces forward)
     const chestF = chain(root, T(13, 28, 0), R(M3.rz(0.22)));
-    const shield = { kind: 'ell', part: 16, grp: 16, c: chestF.t, L: M3.mul(chestF.L, M3.cols([SHIELD_E.ru, 0, 0], [0, SHIELD_E.rv, 0], [0, 0, SHIELD_E.rw])), mat: (s) => (s[0] < 0 || !at(SHIELD_G, SHIELD_E.rw * s[2], SHIELD_E.rv * s[1], 0) ? 0 : code(SILVER, s[0] < 0.45 ? -1 : 0)) };
+    const shield = { kind: 'ell', part: 16, grp: 16, c: chestF.t, L: M3.mul(chestF.L, M3.cols([SHIELD_E.ru, 0, 0], [0, SHIELD_E.rv, 0], [0, 0, SHIELD_E.rw])), mat: (s) => (s[0] < 0 || !at(SHIELD_G, SHIELD_E.rw * s[2], SHIELD_E.rv * s[1], 0) ? 0 : code(SILVER, s[0] < 0.45 || SHIELD_E.rv * s[1] > 10.5 ? -1 : 0)) };
     prims.push(shield);
     const gemF = chain(chestF, T(SHIELD_E.ru + 0.4, 1, 0), R(M3.cols([0, 0, 1], [0, 1, 0], [-1, 0, 0])));
     prims.push(plate(gemF, gemShape, { part: 17, grp: 17, thick: 1 }));
-    if (P.gem > 0.35) prims.push(plate(chain(gemF, T(0, 0, 0.3)), haloShape, { part: 18, grp: 16, thick: 1 }));
+    if (P.gem > 0.3) prims.push(plate(chain(gemF, T(0, 0, 0.3)), haloShape, { part: 18, grp: 16, thick: 1 }));
 
     // --- head (pitch/yaw at the neck; roar lifts it)
     const headF = chain(root, pivot([8, 46, 0], M3.mul(M3.rz(P.headPitch + 0.32 * roar), M3.ry(P.headYaw))));
@@ -8539,11 +8846,12 @@ const Dialga = (() => {
     });
     prims.push(cranium);
     // upper jaw / snout
-    prims.push(navy(headF, [26, 55.5, 0], [10, 7.5, 10], 21, 20, 0, (s) => (s[1] > 0.55 && Math.abs(s[2]) < 0.55 ? cSILVER : 0)));
+    prims.push(navy(headF, [27, 55.5, 0], [11, 8, 10.5], 21, 20, 0, (s) => (s[1] > 0.55 && Math.abs(s[2]) < 0.55 ? cSILVER : 0)));
     // lower jaw
-    const jawF = chain(headF, pivot([14, 52, 0], M3.rz(-0.55 * mouth)));
+    const jawF = chain(headF, pivot([14, 52, 0], M3.rz(-0.68 * mouth)));
     prims.push(ell(chain(jawF, T(24, 49.5, 0)), [9.5, 4, 8.2], { part: 22, grp: 21, mat: (s) => (s[1] < -0.2 ? cSILVER : cBODY) }));
-    if (mouth > 0.03) prims.push(ell(chain(headF, T(23, 52, 0)), [9, 3.6, 7], { part: 23, grp: 22, mat: (s) => (s[1] < 0.1 && Math.abs(s[2]) < 0.6 ? code(TONGUE) : code(MOUTH)) }));
+    // mouth interior: rides halfway down with the jaw and grows with the opening
+    if (mouth > 0.03) prims.push(ell(chain(headF, pivot([14, 52, 0], M3.rz(-0.34 * mouth)), T(24.5, 50.5, 0)), [9.4, 2 + 3.4 * mouth, 7.4], { part: 23, grp: 22, mat: (s) => (s[1] < -0.1 && Math.abs(s[2]) < 0.62 && s[0] > -0.6 ? code(TONGUE) : code(MOUTH)) }));
     // fangs
     for (const sd of [1, -1]) prims.push(plate(chain(headF, T(33, 50.6, 4.2 * sd), R(M3.ry(-sd * 0.9))), FANGS, { part: 24, grp: 23, thick: 1 }));
     // crest (raised by the roar)
@@ -8562,13 +8870,14 @@ const Dialga = (() => {
     const eN = eyeS(0.62, -0.1), eF = eyeS(-0.62, -0.1);
     const anchors = {
       gem: pt(gemF, [0, 0, 0]),
-      mouth: pt(jawF, [32, 51.5, 0]),
+      mouth: V3.scale(V3.add(pt(headF, [35, 51.5, 0]), pt(jawF, [32.5, 51.5, 0])), 0.5),
       top: pt(crestF, [-23, 95.5, 0]),
       head: pt(headF, [12, 62, 0]),
       eyeN: { p: V3.add(cranium.c, M3.v(cranium.L, eN)), s: eN },
       eyeF: { p: V3.add(cranium.c, M3.v(cranium.L, eF)), s: eF },
     };
     return {
+      autoSide: !pose || pose.side === undefined,
       prims, anchors, pose: P,
       stamps: [
         { at: Object.assign({ prim: cranium }, anchors.eyeN), set: EYES, colors: EYEC, kind: P.eyes },
@@ -8576,13 +8885,19 @@ const Dialga = (() => {
       ],
       dots: [],
       pri: { 1: 0, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1, 10: 2, 11: 2, 12: 3, 13: 3, 16: 2, 17: 3, 20: 1, 21: 2, 22: 0, 23: 3, 24: 3 },
-      glossy: GLOSSY, baseMat: BODY, shadowSteps: 6,
+      glossy: GLOSSY, baseMat: BODY, shadowSteps: 0, // contact shadows are baked (cheaper first renders)
     };
   }
 
   // Render into a tight buffer around the model's projected bounds (same bbox maths as the
   // renderer, so pixels are identical), then place it in the full sprite buffer.
   function render(model, opt) {
+    // `side` mirrors the camera cheats; when the caller did not pass it, derive it from the yaw
+    // exactly like the game does (side = clamp(3 cos yaw, -1, 1)) and rebuild if it differs
+    if (model.autoSide) {
+      const sd = Math.max(-1, Math.min(1, 3 * Math.cos(opt.yaw ?? 1.05)));
+      if (Math.abs(sd - model.pose.side) > 1e-6) model = build(Object.assign({}, model.pose, { side: sd }));
+    }
     const sc = opt.scale || 1;
     LWH = 0.5 * Math.max(1.7, 1.25 / sc);
     const set = sc >= 1.5 ? EYES_L : EYES;
@@ -8591,7 +8906,7 @@ const Dialga = (() => {
     const g = Math.min(1, model.pose.gem || 0);
     if (g > 0) {
       const e = pal[GEM];
-      pal = Object.assign({}, pal, { [GEM]: { r: e.r.map((c, i) => PX.mix(c, GEM_GLOW[i], g * 0.85)), od: e.od, ol: PX.mix(e.ol, GEM_GLOW[1], g * 0.5), ln: e.ln } });
+      pal = Object.assign({}, pal, { [GEM]: { r: e.r.map((c, i) => PX.mix(c, GEM_GLOW[i], g)), od: e.od, ol: PX.mix(e.ol, GEM_GLOW[1], g * 0.5), ln: PX.mix(e.ln, GEM_GLOW[0], g * 0.6) } });
     }
     const { yaw = 1.05, pitch = 0.16, W = 96, H = 96, ox = 48, oy = 82 } = opt;
     const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(sc, sc, sc)));
@@ -8632,7 +8947,8 @@ const Dialga = (() => {
     return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.54, bw: 150, bh: 136, oy: 0.84 } };
+  // heightM is the chibi's rendered height (~95 units); the Pokédex height is 5.4 m
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.54, pokedexM: 5.4, bw: 120, bh: 140, oy: 0.85 } };
 })();
 
 /* ==== src/game/world.js ==== */

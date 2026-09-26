@@ -5,10 +5,11 @@
    Model space: x = forward, y = up, z = near side at yaw 0, y = 0 at the
    bottom of the heart.
 
-   Build: a laterally thin heart (upper and lower lobe ellipsoids plus a
-   filler; the cleft is at the back) whose point faces forward and ends in
-   puckered pale lips (two lip ellipsoids meeting at the mouth line).
-   Dark-blue eye stamps and pale cheek patches on both sides.
+   Build: a laterally thin heart, fitted to the official silhouette: upper
+   and lower lobe ellipsoids, a central filler (the cleft is at the back) and
+   two thin front-edge ellipsoids that converge on the puckered pale lips
+   (a round blob plus two beak halves; the mouth line is a mid-plane decal).
+   Dark-blue eye stamps (mirrored on the far side) and pale cheek patches.
 ------------------------------------------------------------------- */
 const Luvdisc = (() => {
   const { chain, T, R, F, code } = Creature;
@@ -45,8 +46,7 @@ const Luvdisc = (() => {
     { c: [10.2, 67.6, 0], r: [27, 6, THK * 0.55], a: -1.15 }, // upper front edge (runs into the lips)
     { c: [10, 32, 0], r: [28.8, 6.4, THK * 0.55], a: 1.18 }, // lower front edge
   ];
-  // lips: two small ellipsoids converging at the front (the mouth line is their seam)
-  const LIP_C = [18.4, 49.5, 0];
+  const LIP_C = [18.4, 49.5, 0]; // centre of the lip blob
 
   // ---- face: eye and cheek positions on the side of the body (model units)
   const EYE_P = [0.5, 59.5], CHEEK_P = [-4.2, 50];
@@ -61,6 +61,7 @@ const Luvdisc = (() => {
   for (let i = 1; i < 9; i++) PRI[i] = 0;
   Object.assign(PRI, { 5: 3, 7: 4, 8: 4 });
 
+  const SIZE = 0.98;
   const DEFAULT = { wiggle: 0, kiss: 0, eyes: 'open', tilt: 0, blush: 0, side: 1 };
 
   function build(pose) {
@@ -68,9 +69,9 @@ const Luvdisc = (() => {
     const prims = [], stamps = [], anchors = {};
     // whole-body pitch about the heart's centre
     const body = chain(F(M3.I(), CEN), R(M3.rz(P.tilt)), T(-CEN[0], -CEN[1], -CEN[2]));
-    // the back of the heart swings sideways (swimming wiggle), pivoting near the snout
+    // the back of the heart swings sideways (swimming wiggle), pivoting at the lips' base
     const wig = Math.max(-1, Math.min(1, P.wiggle));
-    const back = chain(body, T(6, 0, 0), R(M3.ry(wig * 0.32)), T(-6, 0, 0));
+    const back = chain(body, T(14, 0, 0), R(M3.ry(wig * 0.27)), T(-14, 0, 0));
 
     // --- cheeks (patches on the body's sides), in front of the body
     const bl = Math.max(0, Math.min(1, P.blush));
@@ -117,11 +118,16 @@ const Luvdisc = (() => {
     anchors.lips = inF(lipBase, [fx + 6.8 * Math.cos(bt), 0, 0]);
     anchors.top = inF(back, [-12, 105, 0]);
     anchors.center = inF(body, CEN);
-    return { prims, anchors, pose: P, headPrim: fillPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: BODY };
+
+    // uniform scale to the Pokédex height (0.6 m ≈ 105 px heart)
+    for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
+    for (const st of stamps) st.at.p = sc(st.at.p, SIZE);
+    for (const key in anchors) anchors[key] = sc(anchors[key], SIZE);
+    return { prims, anchors, pose: P, headPrim: fillPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: BODY, shadowSteps: 12 };
   }
 
   /* ---------- eye stamps (Mudkip's key layout) ----------
-     k = black, b = dark blue, c = blue, w = white highlight (toward the back of the fish) */
+     k = black, b = dark blue, w = white highlight (toward the back of the fish) */
   const mirror = (g) => g.map((row) => row.split('').reverse().join(''));
   const G_OPEN = ['..kkk..', '.kkkkk.', 'kwwkkkk', 'kwwkkkk', 'kwkkkkk', 'kkkkkkk', 'kkkkbbk', 'kkkbbbk', 'kkbbbbk', '.kbbbk.', '..kkk..'];
   const G_OPEN_N = ['.kkkk.', 'kwwkkk', 'kwwkkk', 'kwkkkk', 'kkkkkk', 'kkkkkk', 'kkkbbk', 'kkbbbk', 'kbbbbk', '.kbbk.', '..kk..'];
