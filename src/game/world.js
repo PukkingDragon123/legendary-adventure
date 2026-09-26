@@ -8,12 +8,13 @@ const World = (() => {
   const HORIZON = 468;   // far horizon line of the backdrop sea
 
   // terrain profile (x, ground y) — dunes, beach, reef slope, deep trench
-  // dunes and beach, the dock's shallows, a wide coral reef flat, a cliff drop-off and the dark abyss
+  // a palm beach, a long dock out over a clear turquoise lagoon and its reef, a palm island,
+  // then the outer reef falls away into the dark deep
   const GP = [
-    [-40, 500], [120, 497], [300, 506], [470, 522], [700, 536], [920, 548], [1080, 556], [1180, 566],
-    [1300, 592], [1420, 640], [1560, 700], [1700, 742], [1850, 760], [2000, 752], [2150, 772], [2300, 788],
-    [2450, 778], [2600, 796], [2750, 812], [2900, 822], [3000, 838], [3070, 900], [3140, 1090], [3210, 1320],
-    [3320, 1468], [3500, 1520], [3800, 1540], [4100, 1528], [4400, 1550], [4660, 1552],
+    [-40, 490], [150, 494], [330, 504], [520, 516], [720, 530], [900, 545], [1000, 556], [1080, 574],
+    [1180, 640], [1320, 700], [1500, 735], [1700, 752], [1900, 740], [2080, 718], [2220, 668], [2330, 600],
+    [2420, 556], [2520, 530], [2640, 518], [2760, 525], [2880, 548], [2960, 572], [3040, 640], [3120, 760],
+    [3180, 900], [3240, 1150], [3320, 1400], [3450, 1500], [3800, 1530], [4200, 1520], [4660, 1540],
   ];
   const ground = new Float32Array(W + 2);
   (() => {
@@ -38,15 +39,15 @@ const World = (() => {
   const slopeAt = (x) => groundAt(x + 2) - groundAt(x - 2);
 
   // placements
-  const PALMS = [{ x: 150, h: 430, lean: -0.18, seed: 3 }, { x: 402, h: 470, lean: 0.12, seed: 8 }, { x: 668, h: 400, lean: -0.08, seed: 14 }];
+  const PALMS = [{ x: 150, h: 430, lean: -0.18, seed: 3 }, { x: 402, h: 470, lean: 0.12, seed: 8 }, { x: 668, h: 400, lean: -0.08, seed: 14 }, { x: 2560, h: 380, lean: 0.16, seed: 21 }, { x: 2770, h: 420, lean: -0.12, seed: 27 }];
   const BEACH_ROCKS = [
     { x: 842, w: 58, h: 34, seed: 1 }, { x: 896, w: 92, h: 56, seed: 2 }, { x: 962, w: 50, h: 30, seed: 3 },
-    { x: 1004, w: 70, h: 42, seed: 4 }, { x: 790, w: 40, h: 24, seed: 5 },
+    { x: 790, w: 40, h: 24, seed: 5 }, { x: 2470, w: 70, h: 42, seed: 4 }, { x: 2860, w: 64, h: 38, seed: 11 },
   ];
-  const WALREIN_ROCK = { x: 1190, w: 170, h: 104, seed: 6 };
-  const REEF_ROCKS = [{ x: 1780, w: 110, h: 70, seed: 7 }, { x: 2360, w: 140, h: 80, seed: 8 }, { x: 2580, w: 90, h: 60, seed: 9 }, { x: 2870, w: 130, h: 76, seed: 10 }];
+  const WALREIN_ROCK = { x: 2360, w: 170, h: 104, seed: 6 };
+  const REEF_ROCKS = [{ x: 1400, w: 110, h: 70, seed: 7 }, { x: 1790, w: 140, h: 80, seed: 8 }, { x: 2060, w: 90, h: 60, seed: 9 }, { x: 3070, w: 130, h: 76, seed: 10 }];
   // a low wooden dock over the shallows (deck just above the water, like a harbour jetty)
-  const PIER = { x0: 1300, x1: 2060, deck: 528, posts: [1310, 1385, 1460, 1535, 1610, 1685, 1760, 1835, 1910, 1985, 2050] };
+  const PIER = { x0: 900, x1: 1760, deck: 528, posts: [910, 985, 1060, 1135, 1210, 1285, 1360, 1435, 1510, 1585, 1660, 1750] };
 
   return { W, H, SEA, HORIZON, ground, groundAt, slopeAt, shoreX, PALMS, BEACH_ROCKS, WALREIN_ROCK, REEF_ROCKS, PIER };
 })();

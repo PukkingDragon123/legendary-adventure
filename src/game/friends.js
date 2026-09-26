@@ -737,9 +737,9 @@ const Friends = (() => {
   function init(G) {
     const add = (m) => { G.mons.push(m); return m; };
     if (sp('Spheal')) add(new SphealMon({ x: 880 }));
-    if (sp('Sealeo')) add(new SealeoMon({ x: 1600 }));
+    if (sp('Sealeo')) add(new SealeoMon({ x: 1300 }));
     if (sp('Walrein')) add(new WalreinMon({}));
-    if (sp('Corphish')) { add(new CorphishMon({ x: 1010, min: 700, max: 1140 })); add(new CorphishMon({ x: 1760, min: 1560, max: 2050, under: true })); }
+    if (sp('Corphish')) { add(new CorphishMon({ x: 760, min: 560, max: 960 })); add(new CorphishMon({ x: 1760, min: 1400, max: 2050, under: true })); add(new CorphishMon({ x: 2680, min: 2480, max: 2840 })); }
     if (sp('Pelipper')) { const post = World.PIER.posts[5]; add(new PelipperMon({ x: post, y: World.PIER.deck - 31 })); }
   }
   const sys = { init, rockTop, lob, SphealMon, SealeoMon, WalreinMon, CorphishMon, PelipperMon };

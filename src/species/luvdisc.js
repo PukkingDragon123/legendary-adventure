@@ -129,15 +129,16 @@ const Luvdisc = (() => {
   /* ---------- eye stamps (Mudkip's key layout) ----------
      k = black, b = dark blue, w = white highlight (toward the back of the fish) */
   const mirror = (g) => g.map((row) => row.split('').reverse().join(''));
-  const G_OPEN = ['..kkk..', '.kkkkk.', 'kwwkkkk', 'kwwkkkk', 'kwkkkkk', 'kkkkkkk', 'kkkkbbk', 'kkkbbbk', 'kkbbbbk', '.kbbbk.', '..kkk..'];
-  const G_OPEN_N = ['.kkkk.', 'kwwkkk', 'kwwkkk', 'kwkkkk', 'kkkkkk', 'kkkkkk', 'kkkbbk', 'kkbbbk', 'kbbbbk', '.kbbk.', '..kk..'];
-  const G_OPEN_F = ['.kkk.', 'kwkkk', 'kwkkk', 'kkkkk', 'kkkkk', 'kkkbk', 'kkbbk', 'kbbbk', '.kbk.'];
-  const G_HAPPY = ['...k...', '..kkk..', '.kk.kk.', 'kk...kk', 'k.....k'];
-  const G_BLINK = ['.......', '.......', '.......', '.......', 'kkkkkkk', '.kkkkk.'];
+  // small eyes, like the official art
+  const G_OPEN = ['.kkk.', 'kwkkk', 'kkkkk', 'kkbbk', '.kbk.'];
+  const G_OPEN_N = ['.kk.', 'kwkk', 'kkbk', '.kk.'];
+  const G_OPEN_F = ['.k.', 'kwk', 'kbk', '.k.'];
+  const G_HAPPY = ['..k..', '.k.k.', 'k...k'];
+  const G_BLINK = ['.....', '.....', 'kkkkk', '.kkk.'];
   const mk = (tr) => ({
     open: tr(G_OPEN), openN: tr(G_OPEN_N), openF: tr(G_OPEN_F),
-    happy: tr(G_HAPPY), happyN: tr(['..kk..', '.kkkk.', 'kk..kk', 'k....k']), happyF: tr(['..k..', '.kkk.', 'kk.kk', 'k...k']),
-    blink: tr(G_BLINK), blinkN: tr(['......', '......', '......', '......', 'kkkkkk', '.kkkk.']), blinkF: tr(['.....', '.....', '.....', 'kkkkk', '.kkk.']),
+    happy: tr(G_HAPPY), happyN: tr(['.kk.', 'k..k']), happyF: tr(['.k.', 'k.k']),
+    blink: tr(G_BLINK), blinkN: tr(['....', '....', 'kkkk', '.kk.']), blinkF: tr(['...', '...', 'kkk']),
     sleep: tr(['k...k', '.kkk.']), sleepN: tr(['k..k', '.kk.']), sleepF: tr(['k..', '.kk']),
   });
   const EYES = mk((g) => g), EYES_M = mk(mirror);

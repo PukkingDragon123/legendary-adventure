@@ -30,6 +30,7 @@ const Game = (() => {
     devW = Math.max(160, Math.round(r.width * dpr)); devH = Math.max(120, Math.round(r.height * dpr));
     zMin = 1;
     while ((devW / zMin) * (devH / zMin) > MAXPIX && !qs.has('zmin')) zMin++;
+    G.zMin = zMin;
     zMax = zMin + 4;
     if (!G.zoomSet) { G.zoom = clamp(Math.round(devH / 460), zMin, zMin + 1); G.zoomSet = true; }
     G.zoom = clamp(G.zoom, zMin, zMax);
@@ -191,6 +192,7 @@ const Game = (() => {
     // far swimmers sit behind the seabed cross-section
     for (const m of G.mons) if (m.layer === 'far' && m.visible) m.draw(fb, cx, cy, occ);
     WorldRender.drawTerrain(fb, cx, cy, P, t, occ, swash);
+    Depth.drawNear(fb, cx, cy, P, t, occ);
     mark('terrain');
     Scene.drawBack(fb, cx, cy, P, t, occ);
     for (const s of G.systems) if (s.drawBack) s.drawBack(fb, cx, cy, P, t, occ);
@@ -224,6 +226,7 @@ const Game = (() => {
     mark('scene');
     WorldRender.drawWater(fb, cx, cy, P, t, occ, swash);
     WorldRender.drawSurface(fb, cx, cy, P, t);
+    Depth.drawSheen(fb, cx, cy, P, t);
     mark('water');
     FX.draw(fb, cx, cy, 1, t);
     FX.draw(fb, cx, cy, 2, t);
@@ -231,7 +234,8 @@ const Game = (() => {
     FX.draw(fb, cx, cy, 3, t);
     FX.draw(fb, cx, cy, 4, t);
     for (const s of G.systems) if (s.post) s.post(fb, cx, cy, P, t);
-    if (typeof Post !== 'undefined') Post.apply(fb, P, cx, cy, t, G);
+    Depth.drawFore(fb, cx, cy, P, t);
+    if (typeof Post !== 'undefined') Post.apply(fb, P, cx, cy, t, G, occ);
     if (typeof Gallery !== 'undefined') Gallery.post(fb);
     mark('fx');
     ctx.putImageData(img, 0, 0);

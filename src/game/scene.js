@@ -44,9 +44,10 @@ const Scene = (() => {
     const kinds = [['branch', 3], ['brain', 2], ['fan', 2], ['tube', 2], ['anemone', 1.6], ['table', 1.2], ['sponge', 1.2], ['stag', 1.4]];
     const bases = [I.CORA, I.CORB, I.CORC, I.CORD, I.CORE, I.CORF, I.CORG, I.SPONGE, I.ANEM];
     const pickKind = () => { let tot = kinds.reduce((a, k) => a + k[1], 0), r = cr() * tot; for (const [k, w] of kinds) { r -= w; if (r <= 0) return k; } return 'branch'; };
-    for (let x = 1470; x < 3070; x += 9 + Math.floor(cr() * 17)) {
+    for (let x = 1090; x < 3160; x += 9 + Math.floor(cr() * 17)) {
+      if (x > 2250 && x < 2980) continue; // the island
       const gy = World.groundAt(x), deep = Math.min(1, (gy - World.SEA) / 260);
-      if (gy < World.SEA + 40) continue;
+      if (gy < World.SEA + 40 || gy > World.SEA + 420) continue;
       const kind = pickKind(), base = kind === 'sponge' ? I.SPONGE : kind === 'anemone' ? I.ANEM : bases[Math.floor(cr() * 7)];
       const size = +(0.35 + deep * 0.55 + cr() * 0.35).toFixed(1);
       const key = kind + base + size + (Math.floor(cr() * 3));
@@ -55,10 +56,10 @@ const Scene = (() => {
       S.corals.push({ x, spr, x0: Math.round(x - spr.w / 2 + (cr() - 0.5) * 6), y0: Math.round(gy - spr.h + 3 + cr() * 3) });
     }
     // sea grass and kelp on the sandy slope and between the heads
-    for (let x = 1320; x < 3000; x += 18 + Math.floor(cr() * 30)) S.kelp.push({ x, len: Math.max(20, Math.min(40 + Math.floor(cr() * 120), World.groundAt(x) - World.SEA - 24)), seed: x });
+    for (let x = 1120; x < 2240; x += 18 + Math.floor(cr() * 30)) S.kelp.push({ x, len: Math.max(20, Math.min(40 + Math.floor(cr() * 120), World.groundAt(x) - World.SEA - 24)), seed: x });
     // the abyss: nothing but tall dark rock spires
     S.deepRocks = [];
-    for (let x = 3180; x < 4600; x += 50 + Math.floor(cr() * 120)) {
+    for (let x = 3260; x < 4600; x += 50 + Math.floor(cr() * 120)) {
       const h = 60 + Math.floor(cr() * 240), w = 40 + Math.floor(cr() * 70);
       const spr = Props.makeRock(w, h, 100 + x, { moss: false, barnacles: false, dark: true });
       const gy = World.groundAt(x);
@@ -74,7 +75,7 @@ const Scene = (() => {
     S.towel = { spr: Props.makeTowel(), x: 300 };
     S.towel.y0 = Math.round(World.groundAt(300) - 7);
     S.chestSpr = [Props.makeChest(false), Props.makeChest(true)];
-    S.chest = { x: 2960, y0: Math.round(World.groundAt(2960) - 46) };
+    S.chest = { x: 1880, y0: Math.round(World.groundAt(1880) - 46) };
     // under the sand: palm roots, pebbles, shells, two fossils and a bottle
     S.buried = [];
     for (const p of S.palms) S.buried.push({ kind: 'roots', x: p.gx, seed: p.seed });
@@ -160,7 +161,6 @@ const Scene = (() => {
     const pal = Props.palette(P);
     const VW = fb.w, VH = fb.h;
     const inView = (x0, y0, w, h) => x0 - cx < VW && x0 + w - cx > 0 && y0 - cy < VH && y0 + h - cy > 0;
-    drawBuried(fb, cx, cy, P, pal, t);
     for (const sh of S.shells) if (sh.x - cx > -8 && sh.x - cx < VW + 8) drawShell(fb, cx, cy, sh, P);
     // pier (posts in the water get tinted later by the water pass)
     if (inView(S.pier.x, S.pier.y, S.pier.s.w, S.pier.s.h)) Props.blit(fb, S.pier.s, S.pier.x - cx, S.pier.y - cy, pal, occ, 2);

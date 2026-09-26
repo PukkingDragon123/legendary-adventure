@@ -216,12 +216,13 @@ const Props = (() => {
     const wood = (x, y, tn) => s.set(x, y, I.WOOD + Math.max(0, Math.min(3, tn)));
     // diagonal cross-bracing between the posts, under the deck
     for (let i = 0; i < posts.length - 1; i++) {
+      if (World.groundAt(posts[i]) < World.SEA + 20) continue; // bracing only out over the water
       const a = X(posts[i]), b = X(posts[i + 1]), yA = Y(deck + 14), yB = Y(World.SEA + 30);
       for (let k = 0; k <= b - a; k++) { const u = k / (b - a); s.set(a + k, Math.round(yA + (yB - yA) * u), I.WOOD); s.set(a + k, Math.round(yB + (yA - yB) * u), I.WOOD + 1); }
     }
     // posts: round logs with a lit left edge, growth rings, dark caps
     for (const px of posts) {
-      const gy = Math.min(World.groundAt(px) + 8, bottom);
+      const gy = Math.min(World.groundAt(px) + (World.groundAt(px) < World.SEA ? 3 : 8), bottom);
       for (let y = Y(deck - 40); y < Y(gy); y++)
         for (let k = -6; k <= 6; k++) {
           let tn = k < -3 ? 3 : k < 0 ? 2 : k < 4 ? 1 : 0;

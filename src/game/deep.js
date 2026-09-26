@@ -17,7 +17,7 @@ const Deep = (() => {
   /* ================================================================
      LUVDISC school
   ================================================================ */
-  const HEART = { cx: 2400, cy: 690, sx: 10.5, sy: 6.2 };
+  const HEART = { cx: 1520, cy: 650, sx: 10.5, sy: 6.2 };
   function heartAt(u) {
     const s = Math.sin(u), c = Math.cos(u);
     const x = 16 * s * s * s;
@@ -93,7 +93,7 @@ const Deep = (() => {
         const sp2 = Math.hypot(f.vx, f.vy), mx = this.scatterT > 0 ? 260 : 120;
         if (sp2 > mx) { f.vx *= mx / sp2; f.vy *= mx / sp2; }
         f.x += f.vx * dt; f.y += f.vy * dt;
-        f.y = clamp(f.y, World.SEA + 150, gy(f.x) - 12);
+        f.y = clamp(f.y, World.SEA + 50, gy(f.x) - 12);
         sx += f.x; sy2 += f.y;
       }
       this.cx = sx / this.fish.length; this.cy = sy2 / this.fish.length;

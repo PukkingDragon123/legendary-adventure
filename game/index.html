@@ -1170,18 +1170,18 @@ const Spheal = (() => {
 
   /* ---------- eye stamps (k = pupil, w = shine, b = glint) ---------- */
   const EYES = {
-    open: ['..kkkk..', '.kwwkkk.', 'kwwwkkkk', 'kwwkkkkk', 'kkkkkkkk', 'kkkkkkwk', '.kkkkbk.', '..kkkk..'],
-    openN: ['..kkk..', '.kwwkk.', 'kwwkkkk', 'kkkkkkk', 'kkkkkwk', '.kkkbk.', '..kkk..'],
-    openF: ['.kkk.', 'kwkkk', 'kkkkk', 'kkkwk', '.kkk.'],
-    happy: ['..kkkk..', '.kk..kk.', 'kk....kk'],
-    happyN: ['.kkkkk.', 'kk...kk', 'k.....k'],
-    happyF: ['.kkk.', 'k...k'],
-    blink: ['kkkkkkkk', '.kkkkkk.'],
-    blinkN: ['kkkkkkk', '.kkkkk.'],
-    blinkF: ['kkkkk'],
-    closed: ['k......k', '.kk..kk.', '..kkkk..'],
-    closedN: ['k.....k', '.kk.kk.', '..kkk..'],
-    closedF: ['k...k', '.kkk.'],
+    open: ['.kkk.', 'kwkkk', 'kkkkk', 'kkkbk', '.kkk.'],
+    openN: ['.kk.', 'kwkk', 'kkbk', '.kk.'],
+    openF: ['.k.', 'kwk', 'kkk', '.k.'],
+    happy: ['.kkk.', 'k...k'],
+    happyN: ['.kk.', 'k..k'],
+    happyF: ['.k.', 'k.k'],
+    blink: ['kkkkk', '.kkk.'],
+    blinkN: ['kkkk', '.kk.'],
+    blinkF: ['kkk'],
+    closed: ['k...k', '.kkk.'],
+    closedN: ['k..k', '.kk.'],
+    closedF: ['k.k', '.k.'],
     dizzy: ['..kkkkkk..', '.k......k.', 'k..kkkk..k', 'k.k....k.k', 'k.k.kk.k.k', 'k.k.k..k.k', 'k.k..kk..k', 'k..k.....k', '.k..kkkkk.', '..kk......'],
     dizzyN: ['.kkkkkk.', 'k......k', 'k.kkkk.k', 'k.k..k.k', 'k.k.kk.k', 'k..k...k', '.k..kkk.', '..k.....'],
     dizzyF: ['.kkkk.', 'k....k', 'k.kk.k', 'k.k..k', '.k.kk.', '..k...'],
@@ -1348,7 +1348,7 @@ const Spheal = (() => {
     prims.push(flipper(1, bf.n), flipper(-1, bf.f), ...tail(bf.t));
 
     /* --- anchors --- */
-    const eyeN = onBallH(0.42, 0.67), eyeF = onBallH(-0.42, 0.67);
+    const eyeN = onBallH(0.56, 0.68), eyeF = onBallH(-0.56, 0.68);
     const lipMid = onBallH(0, faceLip(0));
     const snoutTip = V3.add(snoutPrim.c, M3.v(snoutPrim.L, [1, 0.1, 0]));
     const anchors = {
@@ -2478,15 +2478,16 @@ const Luvdisc = (() => {
   /* ---------- eye stamps (Mudkip's key layout) ----------
      k = black, b = dark blue, w = white highlight (toward the back of the fish) */
   const mirror = (g) => g.map((row) => row.split('').reverse().join(''));
-  const G_OPEN = ['..kkk..', '.kkkkk.', 'kwwkkkk', 'kwwkkkk', 'kwkkkkk', 'kkkkkkk', 'kkkkbbk', 'kkkbbbk', 'kkbbbbk', '.kbbbk.', '..kkk..'];
-  const G_OPEN_N = ['.kkkk.', 'kwwkkk', 'kwwkkk', 'kwkkkk', 'kkkkkk', 'kkkkkk', 'kkkbbk', 'kkbbbk', 'kbbbbk', '.kbbk.', '..kk..'];
-  const G_OPEN_F = ['.kkk.', 'kwkkk', 'kwkkk', 'kkkkk', 'kkkkk', 'kkkbk', 'kkbbk', 'kbbbk', '.kbk.'];
-  const G_HAPPY = ['...k...', '..kkk..', '.kk.kk.', 'kk...kk', 'k.....k'];
-  const G_BLINK = ['.......', '.......', '.......', '.......', 'kkkkkkk', '.kkkkk.'];
+  // small eyes, like the official art
+  const G_OPEN = ['.kkk.', 'kwkkk', 'kkkkk', 'kkbbk', '.kbk.'];
+  const G_OPEN_N = ['.kk.', 'kwkk', 'kkbk', '.kk.'];
+  const G_OPEN_F = ['.k.', 'kwk', 'kbk', '.k.'];
+  const G_HAPPY = ['..k..', '.k.k.', 'k...k'];
+  const G_BLINK = ['.....', '.....', 'kkkkk', '.kkk.'];
   const mk = (tr) => ({
     open: tr(G_OPEN), openN: tr(G_OPEN_N), openF: tr(G_OPEN_F),
-    happy: tr(G_HAPPY), happyN: tr(['..kk..', '.kkkk.', 'kk..kk', 'k....k']), happyF: tr(['..k..', '.kkk.', 'kk.kk', 'k...k']),
-    blink: tr(G_BLINK), blinkN: tr(['......', '......', '......', '......', 'kkkkkk', '.kkkk.']), blinkF: tr(['.....', '.....', '.....', 'kkkkk', '.kkk.']),
+    happy: tr(G_HAPPY), happyN: tr(['.kk.', 'k..k']), happyF: tr(['.k.', 'k.k']),
+    blink: tr(G_BLINK), blinkN: tr(['....', '....', 'kkkk', '.kk.']), blinkF: tr(['...', '...', 'kkk']),
     sleep: tr(['k...k', '.kkk.']), sleepN: tr(['k..k', '.kk.']), sleepF: tr(['k..', '.kk']),
   });
   const EYES = mk((g) => g), EYES_M = mk(mirror);
@@ -8512,18 +8513,18 @@ const Spheal = (() => {
 
   /* ---------- eye stamps (k = pupil, w = shine, b = glint) ---------- */
   const EYES = {
-    open: ['..kkkk..', '.kwwkkk.', 'kwwwkkkk', 'kwwkkkkk', 'kkkkkkkk', 'kkkkkkwk', '.kkkkbk.', '..kkkk..'],
-    openN: ['..kkk..', '.kwwkk.', 'kwwkkkk', 'kkkkkkk', 'kkkkkwk', '.kkkbk.', '..kkk..'],
-    openF: ['.kkk.', 'kwkkk', 'kkkkk', 'kkkwk', '.kkk.'],
-    happy: ['..kkkk..', '.kk..kk.', 'kk....kk'],
-    happyN: ['.kkkkk.', 'kk...kk', 'k.....k'],
-    happyF: ['.kkk.', 'k...k'],
-    blink: ['kkkkkkkk', '.kkkkkk.'],
-    blinkN: ['kkkkkkk', '.kkkkk.'],
-    blinkF: ['kkkkk'],
-    closed: ['k......k', '.kk..kk.', '..kkkk..'],
-    closedN: ['k.....k', '.kk.kk.', '..kkk..'],
-    closedF: ['k...k', '.kkk.'],
+    open: ['.kkk.', 'kwkkk', 'kkkkk', 'kkkbk', '.kkk.'],
+    openN: ['.kk.', 'kwkk', 'kkbk', '.kk.'],
+    openF: ['.k.', 'kwk', 'kkk', '.k.'],
+    happy: ['.kkk.', 'k...k'],
+    happyN: ['.kk.', 'k..k'],
+    happyF: ['.k.', 'k.k'],
+    blink: ['kkkkk', '.kkk.'],
+    blinkN: ['kkkk', '.kk.'],
+    blinkF: ['kkk'],
+    closed: ['k...k', '.kkk.'],
+    closedN: ['k..k', '.kk.'],
+    closedF: ['k.k', '.k.'],
     dizzy: ['..kkkkkk..', '.k......k.', 'k..kkkk..k', 'k.k....k.k', 'k.k.kk.k.k', 'k.k.k..k.k', 'k.k..kk..k', 'k..k.....k', '.k..kkkkk.', '..kk......'],
     dizzyN: ['.kkkkkk.', 'k......k', 'k.kkkk.k', 'k.k..k.k', 'k.k.kk.k', 'k..k...k', '.k..kkk.', '..k.....'],
     dizzyF: ['.kkkk.', 'k....k', 'k.kk.k', 'k.k..k', '.k.kk.', '..k...'],
@@ -8690,7 +8691,7 @@ const Spheal = (() => {
     prims.push(flipper(1, bf.n), flipper(-1, bf.f), ...tail(bf.t));
 
     /* --- anchors --- */
-    const eyeN = onBallH(0.42, 0.67), eyeF = onBallH(-0.42, 0.67);
+    const eyeN = onBallH(0.56, 0.68), eyeF = onBallH(-0.56, 0.68);
     const lipMid = onBallH(0, faceLip(0));
     const snoutTip = V3.add(snoutPrim.c, M3.v(snoutPrim.L, [1, 0.1, 0]));
     const anchors = {
@@ -9824,15 +9825,16 @@ const Luvdisc = (() => {
   /* ---------- eye stamps (Mudkip's key layout) ----------
      k = black, b = dark blue, w = white highlight (toward the back of the fish) */
   const mirror = (g) => g.map((row) => row.split('').reverse().join(''));
-  const G_OPEN = ['..kkk..', '.kkkkk.', 'kwwkkkk', 'kwwkkkk', 'kwkkkkk', 'kkkkkkk', 'kkkkbbk', 'kkkbbbk', 'kkbbbbk', '.kbbbk.', '..kkk..'];
-  const G_OPEN_N = ['.kkkk.', 'kwwkkk', 'kwwkkk', 'kwkkkk', 'kkkkkk', 'kkkkkk', 'kkkbbk', 'kkbbbk', 'kbbbbk', '.kbbk.', '..kk..'];
-  const G_OPEN_F = ['.kkk.', 'kwkkk', 'kwkkk', 'kkkkk', 'kkkkk', 'kkkbk', 'kkbbk', 'kbbbk', '.kbk.'];
-  const G_HAPPY = ['...k...', '..kkk..', '.kk.kk.', 'kk...kk', 'k.....k'];
-  const G_BLINK = ['.......', '.......', '.......', '.......', 'kkkkkkk', '.kkkkk.'];
+  // small eyes, like the official art
+  const G_OPEN = ['.kkk.', 'kwkkk', 'kkkkk', 'kkbbk', '.kbk.'];
+  const G_OPEN_N = ['.kk.', 'kwkk', 'kkbk', '.kk.'];
+  const G_OPEN_F = ['.k.', 'kwk', 'kbk', '.k.'];
+  const G_HAPPY = ['..k..', '.k.k.', 'k...k'];
+  const G_BLINK = ['.....', '.....', 'kkkkk', '.kkk.'];
   const mk = (tr) => ({
     open: tr(G_OPEN), openN: tr(G_OPEN_N), openF: tr(G_OPEN_F),
-    happy: tr(G_HAPPY), happyN: tr(['..kk..', '.kkkk.', 'kk..kk', 'k....k']), happyF: tr(['..k..', '.kkk.', 'kk.kk', 'k...k']),
-    blink: tr(G_BLINK), blinkN: tr(['......', '......', '......', '......', 'kkkkkk', '.kkkk.']), blinkF: tr(['.....', '.....', '.....', 'kkkkk', '.kkk.']),
+    happy: tr(G_HAPPY), happyN: tr(['.kk.', 'k..k']), happyF: tr(['.k.', 'k.k']),
+    blink: tr(G_BLINK), blinkN: tr(['....', '....', 'kkkk', '.kk.']), blinkF: tr(['...', '...', 'kkk']),
     sleep: tr(['k...k', '.kkk.']), sleepN: tr(['k..k', '.kk.']), sleepF: tr(['k..', '.kk']),
   });
   const EYES = mk((g) => g), EYES_M = mk(mirror);
@@ -12085,12 +12087,13 @@ const World = (() => {
   const HORIZON = 468;   // far horizon line of the backdrop sea
 
   // terrain profile (x, ground y) — dunes, beach, reef slope, deep trench
-  // dunes and beach, the dock's shallows, a wide coral reef flat, a cliff drop-off and the dark abyss
+  // a palm beach, a long dock out over a clear turquoise lagoon and its reef, a palm island,
+  // then the outer reef falls away into the dark deep
   const GP = [
-    [-40, 500], [120, 497], [300, 506], [470, 522], [700, 536], [920, 548], [1080, 556], [1180, 566],
-    [1300, 592], [1420, 640], [1560, 700], [1700, 742], [1850, 760], [2000, 752], [2150, 772], [2300, 788],
-    [2450, 778], [2600, 796], [2750, 812], [2900, 822], [3000, 838], [3070, 900], [3140, 1090], [3210, 1320],
-    [3320, 1468], [3500, 1520], [3800, 1540], [4100, 1528], [4400, 1550], [4660, 1552],
+    [-40, 490], [150, 494], [330, 504], [520, 516], [720, 530], [900, 545], [1000, 556], [1080, 574],
+    [1180, 640], [1320, 700], [1500, 735], [1700, 752], [1900, 740], [2080, 718], [2220, 668], [2330, 600],
+    [2420, 556], [2520, 530], [2640, 518], [2760, 525], [2880, 548], [2960, 572], [3040, 640], [3120, 760],
+    [3180, 900], [3240, 1150], [3320, 1400], [3450, 1500], [3800, 1530], [4200, 1520], [4660, 1540],
   ];
   const ground = new Float32Array(W + 2);
   (() => {
@@ -12115,15 +12118,15 @@ const World = (() => {
   const slopeAt = (x) => groundAt(x + 2) - groundAt(x - 2);
 
   // placements
-  const PALMS = [{ x: 150, h: 430, lean: -0.18, seed: 3 }, { x: 402, h: 470, lean: 0.12, seed: 8 }, { x: 668, h: 400, lean: -0.08, seed: 14 }];
+  const PALMS = [{ x: 150, h: 430, lean: -0.18, seed: 3 }, { x: 402, h: 470, lean: 0.12, seed: 8 }, { x: 668, h: 400, lean: -0.08, seed: 14 }, { x: 2560, h: 380, lean: 0.16, seed: 21 }, { x: 2770, h: 420, lean: -0.12, seed: 27 }];
   const BEACH_ROCKS = [
     { x: 842, w: 58, h: 34, seed: 1 }, { x: 896, w: 92, h: 56, seed: 2 }, { x: 962, w: 50, h: 30, seed: 3 },
-    { x: 1004, w: 70, h: 42, seed: 4 }, { x: 790, w: 40, h: 24, seed: 5 },
+    { x: 790, w: 40, h: 24, seed: 5 }, { x: 2470, w: 70, h: 42, seed: 4 }, { x: 2860, w: 64, h: 38, seed: 11 },
   ];
-  const WALREIN_ROCK = { x: 1190, w: 170, h: 104, seed: 6 };
-  const REEF_ROCKS = [{ x: 1780, w: 110, h: 70, seed: 7 }, { x: 2360, w: 140, h: 80, seed: 8 }, { x: 2580, w: 90, h: 60, seed: 9 }, { x: 2870, w: 130, h: 76, seed: 10 }];
+  const WALREIN_ROCK = { x: 2360, w: 170, h: 104, seed: 6 };
+  const REEF_ROCKS = [{ x: 1400, w: 110, h: 70, seed: 7 }, { x: 1790, w: 140, h: 80, seed: 8 }, { x: 2060, w: 90, h: 60, seed: 9 }, { x: 3070, w: 130, h: 76, seed: 10 }];
   // a low wooden dock over the shallows (deck just above the water, like a harbour jetty)
-  const PIER = { x0: 1300, x1: 2060, deck: 528, posts: [1310, 1385, 1460, 1535, 1610, 1685, 1760, 1835, 1910, 1985, 2050] };
+  const PIER = { x0: 900, x1: 1760, deck: 528, posts: [910, 985, 1060, 1135, 1210, 1285, 1360, 1435, 1510, 1585, 1660, 1750] };
 
   return { W, H, SEA, HORIZON, ground, groundAt, slopeAt, shoreX, PALMS, BEACH_ROCKS, WALREIN_ROCK, REEF_ROCKS, PIER };
 })();
@@ -12574,44 +12577,20 @@ const WorldRender = (() => {
   // camera tilt: the horizon (and everything on it) drifts at a slower parallax than the beach
   let TILT = 0;
   function setTilt(v) { TILT = Math.max(-44, Math.min(80, v)); }
+  const tilt = () => TILT;
   function drawBackdrop(fb, cx, cy, P, t, extras) {
     const VW = fb.w, VH = fb.h, d = fb.d;
-    const HZ = HORIZON + Math.round(TILT), band = (SEA - HORIZON) / (SEA - HZ);
+    const HZ = HORIZON + Math.round(TILT);
     const y0 = Math.max(0, HZ - cy), y1 = Math.min(VH, SEA - cy + 6);
-    for (let sy = y0; sy < y1; sy++) {
-      const wy = cy + sy;
-      const s = P.farRow[clamp(Math.round((wy - HZ) * band), 0, P.farRow.length - 1)];
-      const row = sy * VW;
-      const p = (wy - HZ) / (SEA - HZ);
-      for (let sx = 0; sx < VW; sx++) {
-        const ux = Math.floor(sx + cx * BX);
-        let c = bayer8(ux, wy) < s.f ? s.b : s.a;
-        const g = hash2(ux >> (p < 0.3 ? 0 : 1), wy, 3);
-        if (g < 0.004 + p * 0.01) {
-          const tw = Math.sin(t * (1.5 + g * 40) + g * 300);
-          if (tw > 0.5) c = tw > 0.85 ? P.glint[0] : P.glint[1];
-        }
-        d[row + sx] = c;
-      }
-    }
+    Depth.setup(cx, cy, VW, VH);
+    Depth.drawPlane(fb, cx, cy, P, t);
     if (y1 <= y0) return;
     const bd = backdropBuf(P);
     const bx = -Math.round(cx * BX) + 900 - 1240 + Math.round(VW * 0.1);
     const byy = HZ - cy - bd.base + 1;
     fb.blit(bd.strip, bx + 1100, byy, { test: (x, y) => cy + y < SEA });
     if (extras) extras(fb, bx + 1100, byy, bd);
-    const hzs = HZ - cy;
-    for (let sy = Math.max(0, hzs + 1); sy < y1; sy++) {
-      const k = (sy - hzs) / Math.max(1, SEA - cy - hzs), src = Math.round(hzs - (sy - hzs) * 1.7);
-      if (src < 0) continue;
-      const a = Math.round((0.42 - k * 0.3) * 256), wob = Math.sin(sy * 0.9 + t * 1.7) * (1 + k * 3), row = sy * VW, srow = src * VW;
-      if (a <= 8) continue;
-      for (let sx = 0; sx < VW; sx++) {
-        const xs = clamp(Math.round(sx + wob), 0, VW - 1), c = d[srow + xs], b = d[row + sx];
-        const it = 256 - a;
-        d[row + sx] = (0xff000000 | ((((b & 0xff00ff) * it + (c & 0xff00ff) * a) >>> 8) & 0xff00ff) | ((((b & 0xff00) * it + (c & 0xff00) * a) >>> 8) & 0xff00)) >>> 0;
-      }
-    }
+    Depth.drawFar(fb, cx, cy, P, t);
   }
 
   /* ---------------- terrain ---------------- */
@@ -12640,7 +12619,8 @@ const WorldRender = (() => {
       const under = g > SEA + 2, abyssK = clamp((g - SEA - 520) / 300, 0, 1);
       const ripple = Math.sin(wx * 0.62 + STRAT[wx] * 0.3) > 0.72;
       let sy = Math.max(0, gTop - cy);
-      for (; sy < VH; sy++) {
+      const syEnd = Math.min(VH, gTop - cy + 6);
+      for (; sy < syEnd; sy++) {
         const wy = cy + sy;
         const dep = wy - g;
         const i = sy * VW + sx;
@@ -12720,8 +12700,10 @@ const WorldRender = (() => {
   /* ---------------- water pass ---------------- */
   const RAY = new Float32Array(1024), ROWBUF = new Uint32Array(8192);
   let SILH = new Float32Array(0), WETCOL = new Uint8Array(0);
+  let CAMUNDER = false;
   function drawWater(fb, cx, cy, P, t, occ, swash) {
     const VW = fb.w, VH = fb.h, d = fb.d;
+    CAMUNDER = cy + VH * 0.5 > SEA + 30;
     for (let sx = 0; sx < VW; sx++) surf[sx] = surfaceAt(cx + sx, t);
     let top = Infinity;
     for (let sx = 0; sx < VW; sx++) top = Math.min(top, surf[sx]);
@@ -12828,7 +12810,7 @@ const WorldRender = (() => {
         }
       }
       const bk = clamp((dep - 160) / 520, 0, 0.6);
-      if (bk > 0.05 && dep < 1000) {
+      if (bk > 0.05 && dep < 1000 && !CAMUNDER) {
         const bt = Math.round(bk * 200);
         let prev = d[row];
         for (let sx = 1; sx < VW - 1; sx++) {
@@ -12870,7 +12852,274 @@ const WorldRender = (() => {
     }
   }
 
-  return { setTilt, drawSky, drawBackdrop, drawTerrain, drawWater, drawSurface, surfaceAt, swashState, waves, cloudAt, rainOn, CLOUDS };
+  return { setTilt, tilt, drawSky, drawBackdrop, drawTerrain, drawWater, drawSurface, surfaceAt, swashState, waves, cloudAt, rainOn, CLOUDS };
+})();
+
+/* ==== src/game/depth.js ==== */
+/* ------------------------------------------------------------------
+   Depth — the multi-plane camera that makes the side-on world feel
+   3D. Between the horizon and the path a real perspective plane
+   carries the far beaches, the lagoon and the island toward the
+   horizon, with palms, rocks, boats and a second dock arm standing
+   on it. Below the path the ground is sand (or seabed) stretching
+   toward the viewer, and big blurred foreground pieces slide past in
+   front. Zooming in exaggerates the depth, so the camera dollies.
+------------------------------------------------------------------- */
+const Depth = (() => {
+  const { hex, mix, hash2, fbm, bayer4 } = PX;
+  const SEA = World.SEA;
+  let K = 1, hs = 0;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  // integer colour blend, t in 0..1 (no allocations in the hot loops)
+  const mixi = (a, b, t) => { const t8 = (t * 256) | 0, it = 256 - t8; return (0xff000000 | ((((a & 0xff00ff) * it + (b & 0xff00ff) * t8) >>> 8) & 0xff00ff) | ((((a & 0xff00) * it + (b & 0xff00) * t8) >>> 8) & 0xff00)) >>> 0; };
+  function setup(cx, cy, VW, VH) {
+    K = Math.max(0.8, 1 + (Game.zoom - (Game.zMin || 2)) * 0.22);
+    hs = World.HORIZON + Math.round(WorldRender.tilt()) - cy;
+  }
+  // project a point standing on the world at depth z (lane = 1, farther > 1, nearer < 1)
+  function proj(wx, wy, z, cx, cy, VW) {
+    const zz = 1 + (z - 1) * K, iz = 1 / zz, lx = wx - cx, ly = wy - cy;
+    return [lx * iz + (VW / 2) * (1 - iz), ly + (hs - ly) * (1 - iz), iz];
+  }
+  const LAND = new Uint8Array((World.W >> 1) + 2);
+  for (let i = 0; i < LAND.length; i++) LAND[i] = World.groundAt(Math.min(World.W, i * 2)) < SEA - 1 ? 1 : 0;
+  const isLand = (wx) => wx < 0 || (wx <= World.W && LAND[wx >> 1] === 1);
+  const NOISE = new Float32Array(4096);
+  for (let i = 0; i < 4096; i++) NOISE[i] = fbm(i * 0.02, 3, 3, 2);
+  // the coast bends as it recedes, so beaches curve away like a bay
+  const bend = (zz) => Math.sin(zz * 0.45) * 60 + (zz - 1) * 22;
+
+  /* ---------------- far plane: horizon -> path ---------------- */
+  function drawPlane(fb, cx, cy, P, t) {
+    const VW = fb.w, VH = fb.h, d = fb.d;
+    const ref = SEA - cy;
+    if (hs >= ref - 2) return;
+    const y0 = Math.max(0, Math.ceil(hs) + 1), y1 = Math.min(VH, ref);
+    const sd = P.sand, wc = P.waterC, sunX = Math.round(P.sun.px * VW);
+    const skyAt = (y) => P.skyRow[Math.max(0, Math.min(P.skyRow.length - 1, y + cy))].a;
+    const haze = P.farC[P.farC.length - 1] || wc[0];
+    const shal = P.shallow ? P.shallow[2] : hex('#5ad8d0'), white = hex('#ffffff');
+    for (let y = y0; y < y1; y++) {
+      const iz0 = 1 - (y - ref) / (hs - ref);      // 0 at the horizon, 1 at the path
+      const iz = iz0 / K + (1 - 1 / K) * iz0 * iz0;
+      const zz = 1 / Math.max(0.02, iz), row = y * VW;
+      const fog = Math.pow(1 - iz0, 2.2), F = (c) => (fog > 0.02 ? mix(c, haze, fog) : c);
+      const refl = skyAt(Math.round(hs - (y - hs) * 1.3));
+      const wBase = mix(mix(wc[0], wc[Math.min(1, wc.length - 1)], iz0), refl, 0.25 + 0.45 * (1 - iz0));
+      // this row's palette, already fogged
+      const cS = [F(sd[2]), F(sd[1]), F(sd[3]), F(mix(sd[3], P.sandWet[2], 0.6))], cW = [F(wBase), F(mix(wBase, shal, 0.35)), F(mix(wBase, white, 0.28)), F(mix(wBase, white, 0.7))];
+      const streak = Math.sin(zz * 5.5 - t * 1.6) > 0.9, rimD = 26 / iz, shD = 60 / iz, bz = bend(zz), fz = Math.floor(zz * 14), sunW = 30 * (1 - iz0) + 4;
+      const a0 = cx - (VW / 2) * (1 - iz) / iz + bz, step = 1 / iz;
+      let wx = a0;
+      for (let x = 0; x < VW; x++, wx += step) {
+        let c;
+        if (isLand(wx)) {
+          const g = hash2(Math.floor(wx * iz * 0.6), fz, 5);
+          c = !isLand(wx + rimD) || !isLand(wx - rimD) ? cS[3] : g < 0.3 ? cS[0] : g > 0.93 ? cS[1] : cS[2];
+        } else {
+          c = isLand(wx + shD) || isLand(wx - shD) ? cW[1] : cW[0];
+          if (streak && hash2(Math.floor(wx * iz * 0.2), fz, 2) > 0.4) c = cW[2];
+          if (Math.abs(x - sunX) < sunW && hash2(x, Math.floor(y + t * 8), 9) > 0.93) c = cW[3];
+        }
+        d[row + x] = c;
+      }
+    }
+  }
+
+  /* ---------------- things standing on the far plane ---------------- */
+  let built = {};
+  function assets(P) {
+    if (built[P.key]) return built[P.key];
+    const pal = Props.palette(P);
+    const toBuf = (spr) => { const b = new PX.Buf(spr.w, spr.h); for (let y = 0; y < spr.h; y++) for (let x = 0; x < spr.w; x++) { const v = spr.get(x, y); if (v) b.d[y * spr.w + x] = pal[v]; } return b; };
+    // each distant palm: trunk and crown merged into one buffer, anchored at the trunk base
+    const palms = [260, 190, 140, 100].map((h, i) => {
+      const m = Props.makePalm({ h, lean: [0.1, -0.12, 0.15, -0.05][i], seed: 40 + i });
+      const tr = m.trunk, cr = m.frames[0], ox = Math.round(m.crownX - m.ccx), oy = Math.round(m.crownY - m.ccy);
+      const x0 = Math.min(0, ox), y0 = Math.min(0, oy), x1 = Math.max(tr.w, ox + cr.w), y1 = Math.max(tr.h, oy + cr.h);
+      const b = new PX.Buf(x1 - x0, y1 - y0);
+      const put = (spr, dx, dy) => { for (let y = 0; y < spr.h; y++) for (let x = 0; x < spr.w; x++) { const v = spr.get(x, y); if (v) b.d[(y + dy - y0) * b.w + x + dx - x0] = pal[v]; } };
+      put(tr, 0, 0); put(cr, ox, oy);
+      b.ax = m.bx - x0; b.ay = m.by - y0;
+      return b;
+    });
+    const rocks = [[60, 36], [40, 24], [26, 16]].map(([w, h], i) => toBuf(Props.makeRock(w, h, 60 + i, { moss: true })));
+    built[P.key] = { palms, rocks, pal };
+    return built[P.key];
+  }
+  // placements on the plane: (world x, depth z)
+  const FAR = [];
+  (() => {
+    let s = 7;
+    const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 11; i++) FAR.push({ k: 'palm', x: 40 + r() * 900, z: 1.25 + r() * 2.4, v: Math.floor(r() * 4) });
+    for (let i = 0; i < 5; i++) FAR.push({ k: 'palm', x: 2440 + r() * 480, z: 1.3 + r() * 2.2, v: Math.floor(r() * 4) });
+    for (let i = 0; i < 12; i++) FAR.push({ k: 'rock', x: 300 + r() * 2700, z: 1.2 + r() * 2.5, v: Math.floor(r() * 3) });
+    for (let i = 0; i < 4; i++) FAR.push({ k: 'boat', x: 1150 + r() * 1100, z: 1.6 + r() * 2.5, v: i });
+  })();
+  function blitScaled(fb, b, X, Y, s, fog, fogC) {
+    // nearest-neighbour scale of a pixel sprite anchored at (ax, ay) — bottom centre by default
+    const w = Math.max(1, Math.round(b.w * s)), h = Math.max(1, Math.round(b.h * s));
+    const x0 = Math.round(X - (b.ax ?? b.w / 2) * s), y0 = Math.round(Y - (b.ay ?? b.h) * s);
+    const W = fb.w, H = fb.h, d = fb.d;
+    for (let y = Math.max(0, y0); y < Math.min(H, y0 + h); y++) {
+      const sy = Math.min(b.h - 1, Math.floor((y - y0) / s));
+      for (let x = Math.max(0, x0); x < Math.min(W, x0 + w); x++) {
+        const c = b.d[sy * b.w + Math.min(b.w - 1, Math.floor((x - x0) / s))];
+        if (c) d[y * W + x] = fog > 0.02 ? mix(c, fogC, fog) : c;
+      }
+    }
+  }
+  function drawFar(fb, cx, cy, P, t) {
+    const VW = fb.w, VH = fb.h, A = assets(P);
+    if (hs >= SEA - cy - 2) return;
+    const haze = P.farC[P.farC.length - 1] || P.waterC[0];
+    const list = FAR.map((o) => ({ o, zz: 1 + (o.z - 1) * K })).sort((a, b) => b.zz - a.zz);
+    for (const { o, zz } of list) {
+      const wx = o.x + bend(zz);
+      const [X, Y, iz] = proj(wx, SEA - 2, o.z, cx, cy, VW);
+      if (X < -120 || X > VW + 120 || Y < hs) continue;
+      if (o.k !== 'boat' && !isLand(wx)) continue;
+      if (o.k === 'boat' && isLand(wx)) continue;
+      const fog = Math.pow(1 - iz, 2) * 0.8;
+      if (o.k === 'palm') {
+        blitScaled(fb, A.palms[o.v], X, Y, iz * 0.8, fog, haze);
+      } else if (o.k === 'rock') blitScaled(fb, A.rocks[o.v], X, Y + 2 * iz, iz, fog, haze);
+      else drawBoat(fb, X, Y + Math.sin(t * 1.2 + o.v) * iz, iz, o.v, fog, haze);
+    }
+    drawDockArm(fb, cx, cy, P, t, haze);
+  }
+  function drawBoat(fb, X, Y, s, v, fog, haze) {
+    const hull = [hex('#b43a2a'), hex('#f2ece0'), hex('#2e5a8e'), hex('#f0c040')][v % 4], W = Math.round(46 * s), H = Math.round(9 * s) + 1;
+    for (let x = -W / 2; x < W / 2; x++) {
+      const u = x / (W / 2), top = Math.round(Y - H - (u > 0.6 ? (u - 0.6) * 10 * s : 0)), bot = Math.round(Y - H * 0.2 * (1 - u * u));
+      for (let y = top; y <= bot; y++) { const c = y === top ? hex('#fff8ea') : y > bot - 2 ? mix(hull, hex('#000000'), 0.3) : hull; setF(fb, X + x, y, c, fog, haze); }
+    }
+    if (v % 2 === 0) { // a little cabin and mast
+      for (let y = 0; y < 8 * s; y++) for (let x = -6 * s; x < 6 * s; x++) setF(fb, X + x, Y - H - y, hex('#ffffff'), fog, haze);
+      for (let y = 0; y < 26 * s; y++) setF(fb, X - 2 * s, Y - H - y, hex('#5a4a3a'), fog, haze);
+    }
+  }
+  function setF(fb, x, y, c, fog, haze) { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < fb.w && y < fb.h) fb.d[y * fb.w + x] = fog > 0.02 ? mix(c, haze, fog) : c; }
+  // a second dock arm running off into the distance, like the reference picture
+  function drawDockArm(fb, cx, cy, P, t, haze) {
+    const VW = fb.w, pal = Props.palette(P), wood = [pal[Props.I.WOOD], pal[Props.I.WOOD + 1], pal[Props.I.WOOD + 2], pal[Props.I.WOOD + 3]], ink = pal[Props.I.INK];
+    const X0 = World.PIER.x1 - 40, deck = World.PIER.deck;
+    const pts = [];
+    for (let i = 0; i < 12; i++) { const z = 1.12 * Math.pow(1.22, i); pts.push({ z, p: proj(X0 + i * 18, deck, z, cx, cy, VW), b: proj(X0 + i * 18, SEA + 2, z, cx, cy, VW), top: proj(X0 + i * 18, deck - 40, z, cx, cy, VW) }); }
+    for (let i = pts.length - 2; i >= 0; i--) {
+      const a = pts[i], b = pts[i + 1], fog = Math.pow(1 - a.p[2], 2) * 0.75;
+      // deck span
+      const th = Math.max(1, 10 * a.p[2]);
+      for (let k = 0; k <= 1; k += 1 / Math.max(2, Math.abs(a.p[0] - b.p[0]) + 2)) {
+        const x = lerp(b.p[0], a.p[0], k), y = lerp(b.p[1], a.p[1], k), tk = lerp(10 * b.p[2], th, k);
+        for (let j = 0; j < tk; j++) setF(fb, x, y + j, j < 2 ? wood[3] : j < tk * 0.6 ? wood[2] : wood[1], fog, haze);
+      }
+      // post and chain
+      const w = Math.max(1, Math.round(6 * a.p[2]));
+      for (let y = Math.round(a.top[1]); y < a.b[1]; y++) for (let k = -w; k <= w; k++) setF(fb, a.p[0] + k, y, k < 0 ? wood[3] : wood[1], fog, haze);
+      const ct = b.top, ca = a.top;
+      for (let k = 0; k <= 1; k += 0.04) { const x = lerp(ca[0], ct[0], k), y = lerp(ca[1], ct[1], k) + Math.sin(k * Math.PI) * 8 * a.p[2] + 6 * a.p[2]; setF(fb, x, y, ink, fog, haze); }
+    }
+  }
+
+  /* ---------------- near plane: below the path ---------------- */
+  function drawNear(fb, cx, cy, P, t, occ) {
+    const VW = fb.w, VH = fb.h, d = fb.d, sd = P.sand, sw = P.sandWet, sb = P.seabed;
+    for (let x = 0; x < VW; x++) {
+      const wx = cx + x;
+      if (wx < 0 || wx > World.W) continue;
+      const g = World.groundAt(wx), under = g > SEA + 2;
+      const top = Math.ceil(g) - cy + 6;
+      const ref = g - cy, span = Math.max(40, ref - hs);
+      const wetK = Math.max(0, Math.min(1, (wx - (World.shoreX - 140)) / 140));
+      const R = wetK > 0.5 ? sw : sd, deepK = g > SEA + 560;
+      // fade the hard edge where the sand in front meets the water
+      const ds = wx - World.shoreX, shoreK = under ? Math.max(0, 0.6 - ds / 100) : Math.max(0, Math.min(0.45, (ds + 70) / 70 * 0.45)), waterC = P.waterC[0];
+      const dark = under ? sb[0] : P.cut[0];
+      for (let y = Math.max(0, top); y < VH; y++) {
+        const iz = 1 + (y - ref) / span * 1.4, zz = 1 / iz;       // nearer toward the bottom
+        const u = (x - VW / 2) * zz + cx + VW / 2;
+        const ph = zz * 70 + NOISE[(Math.floor(u * 0.4) & 4095)] * 5;
+        const rip = Math.sin(ph) > 0.55, grain = hash2(Math.floor(u * 0.7), Math.floor(zz * 60), 3);
+        let c;
+        if (under) {
+          c = rip ? sb[3] : grain < 0.12 ? sb[1] : sb[2];
+          if (grain > 0.99) c = SHELL;
+          if (deepK) c = dark;
+          else if (shoreK > 0) c = mixi(c, R[2], shoreK);
+        } else {
+          c = rip ? R[3] : grain < 0.2 ? R[1] : R[2];
+          if (grain > 0.992) c = SHELL;
+          if (shoreK > 0) c = mixi(c, waterC, shoreK);
+        }
+        // closer = darker and softer (depth of field)
+        const dk = Math.min(under ? 0.25 : 0.4, (iz - 1) * 0.3);
+        if (dk > 0.03 && bayer4(x, y) < dk * 1.4) c = mixi(c, dark, 0.35);
+        const i = y * VW + x;
+        d[i] = c; occ[i] = 1;
+      }
+    }
+  }
+  const SHELL = hex('#f4e8e0');
+
+  /* ---------------- surface sheen: looking down into clear water ---------------- */
+  function drawSheen(fb, cx, cy, P, t) {
+    const VW = fb.w, VH = fb.h, d = fb.d;
+    const under = cy + VH * 0.5 > SEA + 40;
+    if (under) return;
+    for (let x = 0; x < VW; x++) {
+      const wx = cx + x, g = World.groundAt(Math.max(0, Math.min(World.W, wx)));
+      const s0 = Math.floor(WorldRender.surfaceAt(wx, t)) - cy;
+      if (g <= s0 + cy) continue;
+      for (let k = 1; k < 26; k++) {
+        const y = s0 + k;
+        if (y < 0 || y >= VH) continue;
+        const a = (1 - k / 26) * 0.5, refl = P.skyRow[Math.max(0, Math.min(P.skyRow.length - 1, s0 + cy - k * 3))].a;
+        let c = mixi(d[y * VW + x], refl, a);
+        if (Math.sin(k * 1.9 + wx * 0.05 - t * 2) > 0.94) c = mixi(c, 0xffffffff, 0.4 * (1 - k / 26));
+        d[y * VW + x] = c;
+      }
+    }
+  }
+
+  /* ---------------- foreground: big blurred pieces sliding past ---------------- */
+  let fore = {};
+  function foreAssets(P) {
+    if (fore[P.key]) return fore[P.key];
+    const pal = Props.palette(P);
+    const blurBuf = (spr, scale) => {
+      const w = spr.w * scale, h = spr.h * scale, b = new PX.Buf(w, h), tmp = new Uint32Array(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = spr.get(Math.floor(x / scale), Math.floor(y / scale)); if (v) tmp[y * w + x] = mix(pal[v], hex('#101828'), 0.35); }
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const c = tmp[y * w + x]; if (!c) continue;
+        let n = 0, r = 0, g = 0, bb = 0;
+        for (let k = -2; k <= 2; k++) for (let j = -2; j <= 2; j++) { const q = tmp[Math.min(h - 1, Math.max(0, y + k)) * w + Math.min(w - 1, Math.max(0, x + j))]; if (q) { n++; r += q & 255; g += (q >> 8) & 255; bb += (q >> 16) & 255; } }
+        b.d[y * w + x] = (0xff000000 | ((bb / n) << 16) | ((g / n) << 8) | (r / n)) >>> 0;
+      }
+      return b;
+    };
+    fore[P.key] = {
+      rock: blurBuf(Props.makeRock(70, 40, 91, { moss: true }), 2),
+      rock2: blurBuf(Props.makeRock(46, 28, 92, { moss: false }), 2),
+      coral: blurBuf(Props.makeCoral('fan', 93, 0.9, { base: Props.I.CORF }), 2),
+      coral2: blurBuf(Props.makeCoral('branch', 94, 0.8, { base: Props.I.CORE }), 2),
+    };
+    return fore[P.key];
+  }
+  const FORE = [];
+  (() => { let s = 11; const r = () => (s = (s * 16807) % 2147483647) / 2147483647; for (let x = 60; x < World.W; x += 260 + r() * 380) FORE.push({ x, v: Math.floor(r() * 4) }); })();
+  function drawFore(fb, cx, cy, P, t) {
+    const VW = fb.w, VH = fb.h, A = foreAssets(P), z = 0.45;
+    for (const o of FORE) {
+      const g = World.groundAt(Math.max(0, Math.min(World.W, o.x))), under = g > SEA + 2;
+      const [X, Y] = proj(o.x, g + 70, z, cx, cy, VW);
+      if (X < -200 || X > VW + 200 || Y < VH * 0.6) continue;
+      const b = under ? (o.v % 2 ? A.coral : A.coral2) : (o.v % 2 ? A.rock : A.rock2);
+      blitScaled(fb, b, X, Math.max(Y, VH + 12), 1, 0, 0);
+    }
+  }
+  return { setup, proj, drawPlane, drawFar, drawNear, drawSheen, drawFore, K: () => K };
 })();
 
 /* ==== src/game/props.js ==== */
@@ -13092,12 +13341,13 @@ const Props = (() => {
     const wood = (x, y, tn) => s.set(x, y, I.WOOD + Math.max(0, Math.min(3, tn)));
     // diagonal cross-bracing between the posts, under the deck
     for (let i = 0; i < posts.length - 1; i++) {
+      if (World.groundAt(posts[i]) < World.SEA + 20) continue; // bracing only out over the water
       const a = X(posts[i]), b = X(posts[i + 1]), yA = Y(deck + 14), yB = Y(World.SEA + 30);
       for (let k = 0; k <= b - a; k++) { const u = k / (b - a); s.set(a + k, Math.round(yA + (yB - yA) * u), I.WOOD); s.set(a + k, Math.round(yB + (yA - yB) * u), I.WOOD + 1); }
     }
     // posts: round logs with a lit left edge, growth rings, dark caps
     for (const px of posts) {
-      const gy = Math.min(World.groundAt(px) + 8, bottom);
+      const gy = Math.min(World.groundAt(px) + (World.groundAt(px) < World.SEA ? 3 : 8), bottom);
       for (let y = Y(deck - 40); y < Y(gy); y++)
         for (let k = -6; k <= 6; k++) {
           let tn = k < -3 ? 3 : k < 0 ? 2 : k < 4 ? 1 : 0;
@@ -13396,9 +13646,10 @@ const Scene = (() => {
     const kinds = [['branch', 3], ['brain', 2], ['fan', 2], ['tube', 2], ['anemone', 1.6], ['table', 1.2], ['sponge', 1.2], ['stag', 1.4]];
     const bases = [I.CORA, I.CORB, I.CORC, I.CORD, I.CORE, I.CORF, I.CORG, I.SPONGE, I.ANEM];
     const pickKind = () => { let tot = kinds.reduce((a, k) => a + k[1], 0), r = cr() * tot; for (const [k, w] of kinds) { r -= w; if (r <= 0) return k; } return 'branch'; };
-    for (let x = 1470; x < 3070; x += 9 + Math.floor(cr() * 17)) {
+    for (let x = 1090; x < 3160; x += 9 + Math.floor(cr() * 17)) {
+      if (x > 2250 && x < 2980) continue; // the island
       const gy = World.groundAt(x), deep = Math.min(1, (gy - World.SEA) / 260);
-      if (gy < World.SEA + 40) continue;
+      if (gy < World.SEA + 40 || gy > World.SEA + 420) continue;
       const kind = pickKind(), base = kind === 'sponge' ? I.SPONGE : kind === 'anemone' ? I.ANEM : bases[Math.floor(cr() * 7)];
       const size = +(0.35 + deep * 0.55 + cr() * 0.35).toFixed(1);
       const key = kind + base + size + (Math.floor(cr() * 3));
@@ -13407,10 +13658,10 @@ const Scene = (() => {
       S.corals.push({ x, spr, x0: Math.round(x - spr.w / 2 + (cr() - 0.5) * 6), y0: Math.round(gy - spr.h + 3 + cr() * 3) });
     }
     // sea grass and kelp on the sandy slope and between the heads
-    for (let x = 1320; x < 3000; x += 18 + Math.floor(cr() * 30)) S.kelp.push({ x, len: Math.max(20, Math.min(40 + Math.floor(cr() * 120), World.groundAt(x) - World.SEA - 24)), seed: x });
+    for (let x = 1120; x < 2240; x += 18 + Math.floor(cr() * 30)) S.kelp.push({ x, len: Math.max(20, Math.min(40 + Math.floor(cr() * 120), World.groundAt(x) - World.SEA - 24)), seed: x });
     // the abyss: nothing but tall dark rock spires
     S.deepRocks = [];
-    for (let x = 3180; x < 4600; x += 50 + Math.floor(cr() * 120)) {
+    for (let x = 3260; x < 4600; x += 50 + Math.floor(cr() * 120)) {
       const h = 60 + Math.floor(cr() * 240), w = 40 + Math.floor(cr() * 70);
       const spr = Props.makeRock(w, h, 100 + x, { moss: false, barnacles: false, dark: true });
       const gy = World.groundAt(x);
@@ -13426,7 +13677,7 @@ const Scene = (() => {
     S.towel = { spr: Props.makeTowel(), x: 300 };
     S.towel.y0 = Math.round(World.groundAt(300) - 7);
     S.chestSpr = [Props.makeChest(false), Props.makeChest(true)];
-    S.chest = { x: 2960, y0: Math.round(World.groundAt(2960) - 46) };
+    S.chest = { x: 1880, y0: Math.round(World.groundAt(1880) - 46) };
     // under the sand: palm roots, pebbles, shells, two fossils and a bottle
     S.buried = [];
     for (const p of S.palms) S.buried.push({ kind: 'roots', x: p.gx, seed: p.seed });
@@ -13512,7 +13763,6 @@ const Scene = (() => {
     const pal = Props.palette(P);
     const VW = fb.w, VH = fb.h;
     const inView = (x0, y0, w, h) => x0 - cx < VW && x0 + w - cx > 0 && y0 - cy < VH && y0 + h - cy > 0;
-    drawBuried(fb, cx, cy, P, pal, t);
     for (const sh of S.shells) if (sh.x - cx > -8 && sh.x - cx < VW + 8) drawShell(fb, cx, cy, sh, P);
     // pier (posts in the water get tinted later by the water pass)
     if (inView(S.pier.x, S.pier.y, S.pier.s.w, S.pier.s.h)) Props.blit(fb, S.pier.s, S.pier.x - cx, S.pier.y - cy, pal, occ, 2);
@@ -15318,6 +15568,7 @@ const Game = (() => {
     devW = Math.max(160, Math.round(r.width * dpr)); devH = Math.max(120, Math.round(r.height * dpr));
     zMin = 1;
     while ((devW / zMin) * (devH / zMin) > MAXPIX && !qs.has('zmin')) zMin++;
+    G.zMin = zMin;
     zMax = zMin + 4;
     if (!G.zoomSet) { G.zoom = clamp(Math.round(devH / 460), zMin, zMin + 1); G.zoomSet = true; }
     G.zoom = clamp(G.zoom, zMin, zMax);
@@ -15479,6 +15730,7 @@ const Game = (() => {
     // far swimmers sit behind the seabed cross-section
     for (const m of G.mons) if (m.layer === 'far' && m.visible) m.draw(fb, cx, cy, occ);
     WorldRender.drawTerrain(fb, cx, cy, P, t, occ, swash);
+    Depth.drawNear(fb, cx, cy, P, t, occ);
     mark('terrain');
     Scene.drawBack(fb, cx, cy, P, t, occ);
     for (const s of G.systems) if (s.drawBack) s.drawBack(fb, cx, cy, P, t, occ);
@@ -15512,6 +15764,7 @@ const Game = (() => {
     mark('scene');
     WorldRender.drawWater(fb, cx, cy, P, t, occ, swash);
     WorldRender.drawSurface(fb, cx, cy, P, t);
+    Depth.drawSheen(fb, cx, cy, P, t);
     mark('water');
     FX.draw(fb, cx, cy, 1, t);
     FX.draw(fb, cx, cy, 2, t);
@@ -15519,7 +15772,8 @@ const Game = (() => {
     FX.draw(fb, cx, cy, 3, t);
     FX.draw(fb, cx, cy, 4, t);
     for (const s of G.systems) if (s.post) s.post(fb, cx, cy, P, t);
-    if (typeof Post !== 'undefined') Post.apply(fb, P, cx, cy, t, G);
+    Depth.drawFore(fb, cx, cy, P, t);
+    if (typeof Post !== 'undefined') Post.apply(fb, P, cx, cy, t, G, occ);
     if (typeof Gallery !== 'undefined') Gallery.post(fb);
     mark('fx');
     ctx.putImageData(img, 0, 0);
@@ -16711,9 +16965,9 @@ const Friends = (() => {
   function init(G) {
     const add = (m) => { G.mons.push(m); return m; };
     if (sp('Spheal')) add(new SphealMon({ x: 880 }));
-    if (sp('Sealeo')) add(new SealeoMon({ x: 1600 }));
+    if (sp('Sealeo')) add(new SealeoMon({ x: 1300 }));
     if (sp('Walrein')) add(new WalreinMon({}));
-    if (sp('Corphish')) { add(new CorphishMon({ x: 1010, min: 700, max: 1140 })); add(new CorphishMon({ x: 1760, min: 1560, max: 2050, under: true })); }
+    if (sp('Corphish')) { add(new CorphishMon({ x: 760, min: 560, max: 960 })); add(new CorphishMon({ x: 1760, min: 1400, max: 2050, under: true })); add(new CorphishMon({ x: 2680, min: 2480, max: 2840 })); }
     if (sp('Pelipper')) { const post = World.PIER.posts[5]; add(new PelipperMon({ x: post, y: World.PIER.deck - 31 })); }
   }
   const sys = { init, rockTop, lob, SphealMon, SealeoMon, WalreinMon, CorphishMon, PelipperMon };
@@ -16741,7 +16995,7 @@ const Deep = (() => {
   /* ================================================================
      LUVDISC school
   ================================================================ */
-  const HEART = { cx: 2400, cy: 690, sx: 10.5, sy: 6.2 };
+  const HEART = { cx: 1520, cy: 650, sx: 10.5, sy: 6.2 };
   function heartAt(u) {
     const s = Math.sin(u), c = Math.cos(u);
     const x = 16 * s * s * s;
@@ -16817,7 +17071,7 @@ const Deep = (() => {
         const sp2 = Math.hypot(f.vx, f.vy), mx = this.scatterT > 0 ? 260 : 120;
         if (sp2 > mx) { f.vx *= mx / sp2; f.vy *= mx / sp2; }
         f.x += f.vx * dt; f.y += f.vy * dt;
-        f.y = clamp(f.y, World.SEA + 150, gy(f.x) - 12);
+        f.y = clamp(f.y, World.SEA + 50, gy(f.x) - 12);
         sx += f.x; sy2 += f.y;
       }
       this.cx = sx / this.fish.length; this.cy = sy2 / this.fish.length;
@@ -18020,7 +18274,7 @@ const Post = (() => {
       d[i] = (0xff000000 | Math.min(255, ((c >> 16) & 255) + cb * f) << 16 | Math.min(255, ((c >> 8) & 255) + cg * f) << 8 | Math.min(255, (c & 255) + cr * f)) >>> 0;
     }
   }
-  function apply(fb, P, cx, cy, t, G) {
+  function apply(fb, P, cx, cy, t, G, occ) {
     const h = P.key, night = h === 'night' ? 1 : h === 'dusk' ? 0.6 : 0;
     // dock lamp: warm halo, and a broken column of light on the water below it
     const lamp = Scene.S.pier && Scene.S.pier.lamp;
@@ -18041,6 +18295,21 @@ const Post = (() => {
     bloom(fb, night ? 0.9 : 0.42, night ? 150 : 228);
     // underwater camera: a gentle cool wash and light shafts dancing across the view
     const under = G.cam.y + fb.h * 0.5 - World.SEA;
+    // underwater the whole view goes soft (Pokémon stay a little crisper)
+    if (under > 30 && occ) {
+      const W = fb.w, H = fb.h, d = fb.d, k = Math.min(1, (under - 30) / 160);
+      const kb = Math.round(k * 150), ks = Math.round(k * 70);
+      const mixi = (a, b, t8) => { const it = 256 - t8; return (0xff000000 | ((((a & 0xff00ff) * it + (b & 0xff00ff) * t8) >>> 8) & 0xff00ff) | ((((a & 0xff00) * it + (b & 0xff00) * t8) >>> 8) & 0xff00)) >>> 0; };
+      const surfRow = World.SEA - cy;
+      for (let y = Math.max(1, surfRow + 3); y < H - 1; y++) {
+        const row = y * W;
+        for (let x = 1; x < W - 1; x++) {
+          const i = row + x, c = d[i], n = d[i + 1];
+          if (c === n && c === d[i + W]) continue;
+          d[i] = mixi(c, mixi(n, d[i + W], 128), occ[i] === 2 ? ks : kb);
+        }
+      }
+    }
     if (under > 40) {
       const k = Math.min(1, (under - 40) / 200) * 0.12, d = fb.d;
       for (let i = 0; i < d.length; i += 1) {

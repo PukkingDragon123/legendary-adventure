@@ -230,44 +230,20 @@ const WorldRender = (() => {
   // camera tilt: the horizon (and everything on it) drifts at a slower parallax than the beach
   let TILT = 0;
   function setTilt(v) { TILT = Math.max(-44, Math.min(80, v)); }
+  const tilt = () => TILT;
   function drawBackdrop(fb, cx, cy, P, t, extras) {
     const VW = fb.w, VH = fb.h, d = fb.d;
-    const HZ = HORIZON + Math.round(TILT), band = (SEA - HORIZON) / (SEA - HZ);
+    const HZ = HORIZON + Math.round(TILT);
     const y0 = Math.max(0, HZ - cy), y1 = Math.min(VH, SEA - cy + 6);
-    for (let sy = y0; sy < y1; sy++) {
-      const wy = cy + sy;
-      const s = P.farRow[clamp(Math.round((wy - HZ) * band), 0, P.farRow.length - 1)];
-      const row = sy * VW;
-      const p = (wy - HZ) / (SEA - HZ);
-      for (let sx = 0; sx < VW; sx++) {
-        const ux = Math.floor(sx + cx * BX);
-        let c = bayer8(ux, wy) < s.f ? s.b : s.a;
-        const g = hash2(ux >> (p < 0.3 ? 0 : 1), wy, 3);
-        if (g < 0.004 + p * 0.01) {
-          const tw = Math.sin(t * (1.5 + g * 40) + g * 300);
-          if (tw > 0.5) c = tw > 0.85 ? P.glint[0] : P.glint[1];
-        }
-        d[row + sx] = c;
-      }
-    }
+    Depth.setup(cx, cy, VW, VH);
+    Depth.drawPlane(fb, cx, cy, P, t);
     if (y1 <= y0) return;
     const bd = backdropBuf(P);
     const bx = -Math.round(cx * BX) + 900 - 1240 + Math.round(VW * 0.1);
     const byy = HZ - cy - bd.base + 1;
     fb.blit(bd.strip, bx + 1100, byy, { test: (x, y) => cy + y < SEA });
     if (extras) extras(fb, bx + 1100, byy, bd);
-    const hzs = HZ - cy;
-    for (let sy = Math.max(0, hzs + 1); sy < y1; sy++) {
-      const k = (sy - hzs) / Math.max(1, SEA - cy - hzs), src = Math.round(hzs - (sy - hzs) * 1.7);
-      if (src < 0) continue;
-      const a = Math.round((0.42 - k * 0.3) * 256), wob = Math.sin(sy * 0.9 + t * 1.7) * (1 + k * 3), row = sy * VW, srow = src * VW;
-      if (a <= 8) continue;
-      for (let sx = 0; sx < VW; sx++) {
-        const xs = clamp(Math.round(sx + wob), 0, VW - 1), c = d[srow + xs], b = d[row + sx];
-        const it = 256 - a;
-        d[row + sx] = (0xff000000 | ((((b & 0xff00ff) * it + (c & 0xff00ff) * a) >>> 8) & 0xff00ff) | ((((b & 0xff00) * it + (c & 0xff00) * a) >>> 8) & 0xff00)) >>> 0;
-      }
-    }
+    Depth.drawFar(fb, cx, cy, P, t);
   }
 
   /* ---------------- terrain ---------------- */
@@ -296,7 +272,8 @@ const WorldRender = (() => {
       const under = g > SEA + 2, abyssK = clamp((g - SEA - 520) / 300, 0, 1);
       const ripple = Math.sin(wx * 0.62 + STRAT[wx] * 0.3) > 0.72;
       let sy = Math.max(0, gTop - cy);
-      for (; sy < VH; sy++) {
+      const syEnd = Math.min(VH, gTop - cy + 6);
+      for (; sy < syEnd; sy++) {
         const wy = cy + sy;
         const dep = wy - g;
         const i = sy * VW + sx;
@@ -376,8 +353,10 @@ const WorldRender = (() => {
   /* ---------------- water pass ---------------- */
   const RAY = new Float32Array(1024), ROWBUF = new Uint32Array(8192);
   let SILH = new Float32Array(0), WETCOL = new Uint8Array(0);
+  let CAMUNDER = false;
   function drawWater(fb, cx, cy, P, t, occ, swash) {
     const VW = fb.w, VH = fb.h, d = fb.d;
+    CAMUNDER = cy + VH * 0.5 > SEA + 30;
     for (let sx = 0; sx < VW; sx++) surf[sx] = surfaceAt(cx + sx, t);
     let top = Infinity;
     for (let sx = 0; sx < VW; sx++) top = Math.min(top, surf[sx]);
@@ -484,7 +463,7 @@ const WorldRender = (() => {
         }
       }
       const bk = clamp((dep - 160) / 520, 0, 0.6);
-      if (bk > 0.05 && dep < 1000) {
+      if (bk > 0.05 && dep < 1000 && !CAMUNDER) {
         const bt = Math.round(bk * 200);
         let prev = d[row];
         for (let sx = 1; sx < VW - 1; sx++) {
@@ -526,5 +505,5 @@ const WorldRender = (() => {
     }
   }
 
-  return { setTilt, drawSky, drawBackdrop, drawTerrain, drawWater, drawSurface, surfaceAt, swashState, waves, cloudAt, rainOn, CLOUDS };
+  return { setTilt, tilt, drawSky, drawBackdrop, drawTerrain, drawWater, drawSurface, surfaceAt, swashState, waves, cloudAt, rainOn, CLOUDS };
 })();

@@ -68,7 +68,7 @@ const Post = (() => {
       d[i] = (0xff000000 | Math.min(255, ((c >> 16) & 255) + cb * f) << 16 | Math.min(255, ((c >> 8) & 255) + cg * f) << 8 | Math.min(255, (c & 255) + cr * f)) >>> 0;
     }
   }
-  function apply(fb, P, cx, cy, t, G) {
+  function apply(fb, P, cx, cy, t, G, occ) {
     const h = P.key, night = h === 'night' ? 1 : h === 'dusk' ? 0.6 : 0;
     // dock lamp: warm halo, and a broken column of light on the water below it
     const lamp = Scene.S.pier && Scene.S.pier.lamp;
@@ -89,6 +89,21 @@ const Post = (() => {
     bloom(fb, night ? 0.9 : 0.42, night ? 150 : 228);
     // underwater camera: a gentle cool wash and light shafts dancing across the view
     const under = G.cam.y + fb.h * 0.5 - World.SEA;
+    // underwater the whole view goes soft (Pokémon stay a little crisper)
+    if (under > 30 && occ) {
+      const W = fb.w, H = fb.h, d = fb.d, k = Math.min(1, (under - 30) / 160);
+      const kb = Math.round(k * 150), ks = Math.round(k * 70);
+      const mixi = (a, b, t8) => { const it = 256 - t8; return (0xff000000 | ((((a & 0xff00ff) * it + (b & 0xff00ff) * t8) >>> 8) & 0xff00ff) | ((((a & 0xff00) * it + (b & 0xff00) * t8) >>> 8) & 0xff00)) >>> 0; };
+      const surfRow = World.SEA - cy;
+      for (let y = Math.max(1, surfRow + 3); y < H - 1; y++) {
+        const row = y * W;
+        for (let x = 1; x < W - 1; x++) {
+          const i = row + x, c = d[i], n = d[i + 1];
+          if (c === n && c === d[i + W]) continue;
+          d[i] = mixi(c, mixi(n, d[i + W], 128), occ[i] === 2 ? ks : kb);
+        }
+      }
+    }
     if (under > 40) {
       const k = Math.min(1, (under - 40) / 200) * 0.12, d = fb.d;
       for (let i = 0; i < d.length; i += 1) {
