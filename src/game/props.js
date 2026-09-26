@@ -46,11 +46,12 @@ const Props = (() => {
     TRUNK: 1, LEAF: 5, SPINE: 9, POL: 10, NUT: 11, ROCK: 14, ROL: 19, WOOD: 20, WOL: 24, SAND: 25, SOL: 29,
     CORA: 30, CORB: 34, CORC: 38, KELP: 42, KOL: 46, RED: 47, WHITE: 51, GOLD: 52, CHEST: 56, MOSS: 60, BARN: 61, SHELL: 62, STAR: 63,
     ROPE: 64, INK: 65, GLASS: 66, FLAG: 67, POL2: 68, CORAL_OL: 69, LAMP: 70,
+    CORD: 71, CORE: 75, CORF: 79, CORG: 83, SPONGE: 87, ANEM: 91, TIP: 95, ABYSS: 96,
   };
   const palCache = {};
   function palette(P) {
     if (palCache[P.key]) return palCache[P.key];
-    const p = new Uint32Array(80);
+    const p = new Uint32Array(128);
     const g = P.grader || ((c) => c);
     const put = (base, arr) => arr.forEach((c, k) => { p[base + k] = c; });
     put(I.TRUNK, P.palm.trunk); put(I.LEAF, P.palm.leaf); p[I.SPINE] = P.palm.spine; p[I.POL] = P.palm.outline; put(I.NUT, P.palm.nut);
@@ -71,6 +72,11 @@ const Props = (() => {
     p[I.ROPE] = mix(P.wood[3], P.sand[3], 0.5); p[I.INK] = mix(P.rock[0], hex('#000000'), 0.5); p[I.GLASS] = g(hex('#9fd9f2'), 3);
     p[I.FLAG] = g(hex('#e84a4a'), 2); p[I.POL2] = mix(P.palm.outline, P.palm.leaf[0], 0.5); p[I.CORAL_OL] = mix(cor[0], hex('#100420'), 0.6);
     p[I.LAMP] = hex('#ffe9a0');
+    // extra reef colours (yellow, teal, red, violet), sponge orange and anemone pink, graded to the hour
+    const gr = (hx) => { const c = g(hex(hx), 2); return ramp(mix(c, cor[1], 0.15)); };
+    put(I.CORD, gr('#ffd24a')); put(I.CORE, gr('#3ad0c0')); put(I.CORF, gr('#ff5a4a')); put(I.CORG, gr('#8a6aff')); put(I.SPONGE, gr('#ff9a3a')); put(I.ANEM, gr('#ff8ad0'));
+    p[I.TIP] = g(hex('#fff4e0'), 3);
+    put(I.ABYSS, [hex('#05070e'), hex('#0a0e1a'), hex('#121a2a'), hex('#1c2638')]);
     palCache[P.key] = p;
     return p;
   }
@@ -182,7 +188,7 @@ const Props = (() => {
         if (dd > 0.9 && tn > 1) tn -= 1;
         // cracks
         if (Math.abs(vnoise(x * 0.09, y * 0.09, seed + 9) - 0.5) < 0.018 && tn > 0) tn = 0;
-        s.set(x, y, I.ROCK + tn);
+        s.set(x, y, (opts.dark ? I.ABYSS : I.ROCK) + tn);
       }
     // moss / algae on top, barnacles near the base
     if (opts.moss) for (let x = 0; x < W; x++) for (let y = 0; y < Hh; y++) {
@@ -198,58 +204,119 @@ const Props = (() => {
     return s;
   }
 
-  /* ---- pier: deck with planks, posts into the sea, rope rail ---- */
+  /* ---- dock: a low harbour jetty — tiled plank deck, fat round posts rising above it
+     with iron chains slung between them, cross-bracing below, steps down to the water and
+     a lamp post (its globe glows at dusk and night, see Scene.lampAt) ---- */
   function makePier() {
     const { x0, x1, deck, posts } = World.PIER;
-    const W = x1 - x0 + 20, top = deck - 36, bottom = World.SEA + 180;
+    const W = x1 - x0 + 40, top = deck - 70, bottom = World.SEA + 220;
     const Hh = bottom - top;
     const s = new ISprite(W, Hh);
-    const X = (wx) => wx - x0 + 10, Y = (wy) => wy - top;
-    // posts
-    for (const px of posts) {
-      const gy = Math.min(World.groundAt(px) + 6, bottom);
-      for (let y = Y(deck - 30); y < Y(gy); y++)
-        for (let k = -4; k <= 4; k++) {
-          const tone = k < -2 ? 3 : k < 1 ? 2 : k < 3 ? 1 : 0;
-          const ring = (y % 26) < 2;
-          s.set(X(px) + k, y, ring ? I.WOOD : I.WOOD + tone);
-        }
-      // post cap
-      for (let k = -5; k <= 5; k++) s.set(X(px) + k, Y(deck - 31), I.WOOD + 3);
-    }
-    // deck planks
-    for (let x = 0; x < W; x++)
-      for (let y = Y(deck); y < Y(deck + 9); y++) {
-        const plank = (x % 14) === 0;
-        let tone = y === Y(deck) ? 3 : y < Y(deck + 3) ? 2 : y < Y(deck + 7) ? 1 : 0;
-        if (!plank && tone > 0 && ((x * 7 + y * 13) % 29 === 0)) tone -= 1; // grain and knots
-        s.set(x, y, plank ? I.WOOD : I.WOOD + tone);
-      }
-    // cross beams under the deck
-    for (let x = 0; x < W; x++) if (((x / 30) | 0) % 2 === 0) s.set(x, Y(deck + 10), I.WOOD);
-    // rope railing sagging between posts
+    const X = (wx) => wx - x0 + 20, Y = (wy) => wy - top;
+    const wood = (x, y, tn) => s.set(x, y, I.WOOD + Math.max(0, Math.min(3, tn)));
+    // diagonal cross-bracing between the posts, under the deck
     for (let i = 0; i < posts.length - 1; i++) {
-      const a = X(posts[i]), b = X(posts[i + 1]);
+      const a = X(posts[i]), b = X(posts[i + 1]), yA = Y(deck + 14), yB = Y(World.SEA + 30);
+      for (let k = 0; k <= b - a; k++) { const u = k / (b - a); s.set(a + k, Math.round(yA + (yB - yA) * u), I.WOOD); s.set(a + k, Math.round(yB + (yA - yB) * u), I.WOOD + 1); }
+    }
+    // posts: round logs with a lit left edge, growth rings, dark caps
+    for (const px of posts) {
+      const gy = Math.min(World.groundAt(px) + 8, bottom);
+      for (let y = Y(deck - 40); y < Y(gy); y++)
+        for (let k = -6; k <= 6; k++) {
+          let tn = k < -3 ? 3 : k < 0 ? 2 : k < 4 ? 1 : 0;
+          if ((y * 5 + k * 3) % 23 === 0) tn -= 1;
+          if (y % 38 < 2) tn = 0;
+          wood(X(px) + k, y, tn);
+        }
+      for (let k = -6; k <= 6; k++) { wood(X(px) + k, Y(deck - 41), 3); wood(X(px) + k, Y(deck - 40), k < 0 ? 3 : 2); }
+      for (let k = -5; k <= 5; k++) s.set(X(px) + k, Y(deck - 42), I.WOOD + 2);
+    }
+    // deck: a tiled top face (planks seen at a low angle) above a thick front beam
+    for (let x = 0; x < W; x++) {
+      for (let y = Y(deck); y < Y(deck + 5); y++) {
+        const row = y - Y(deck), off = row % 2 ? 9 : 0, seam = (x + off) % 18 === 0;
+        let tn = row === 0 ? 3 : 2;
+        if (seam) tn = 0; else if (((x + off) * 13 + row * 7) % 31 === 0) tn = 1;
+        wood(x, y, tn);
+      }
+      for (let y = Y(deck + 5); y < Y(deck + 14); y++) {
+        const plank = x % 26 === 0, bolt = x % 26 === 4 && (y === Y(deck + 7) || y === Y(deck + 11));
+        const tn = y === Y(deck + 5) ? 1 : y < Y(deck + 9) ? 2 : 1;
+        s.set(x, y, bolt ? I.INK : plank ? I.WOOD : I.WOOD + tn);
+      }
+      s.set(x, Y(deck + 14), I.WOOD);
+    }
+    // iron chains slung between post tops
+    for (let i = 0; i < posts.length - 1; i++) {
+      const a = X(posts[i]) + 6, b = X(posts[i + 1]) - 6;
       for (let x = a; x <= b; x++) {
-        const u = (x - a) / (b - a);
-        const y = Math.round(Y(deck - 24) + Math.sin(u * Math.PI) * 9);
-        // iron chain: alternating open and side-on links
-        const ph = (x - a) % 6;
-        if (ph < 3) { s.set(x, y - 1, I.WOL); s.set(x, y + 1, I.WOL); if (ph === 0 || ph === 2) s.set(x, y, I.WOL); }
-        else s.set(x, y, I.WOL);
+        const u = (x - a) / (b - a), y = Math.round(Y(deck - 34) + Math.sin(u * Math.PI) * 16), ph = (x - a) % 6;
+        if (ph < 3) { s.set(x, y - 1, I.INK); s.set(x, y + 1, I.INK); if (ph !== 1) s.set(x, y, I.INK); }
+        else s.set(x, y, I.INK);
       }
     }
+    // steps down to the water at the far end
+    for (let k = 0; k < 4; k++) for (let x = 0; x < 14; x++) for (let y = 0; y < 3; y++) wood(X(x1) + 6 + x + k * 4, Y(deck + 16 + k * 9) + y, y === 0 ? 3 : 1);
+    // lamp post with a glass globe
+    const lx = X(x0 + 245);
+    for (let y = Y(deck - 58); y < Y(deck); y++) { s.set(lx, y, I.INK); s.set(lx + 1, y, I.INK); }
+    for (let yy = -5; yy <= 5; yy++) for (let xx = -5; xx <= 5; xx++) if (xx * xx + yy * yy <= 25) s.set(lx + xx, Y(deck - 64) + yy, xx * xx + yy * yy > 16 ? I.INK : (xx < -1 && yy < -1 ? I.WHITE : I.LAMP));
+    // a mooring bollard and a crate
+    for (let y = Y(deck - 10); y < Y(deck); y++) for (let k = -3; k <= 3; k++) s.set(X(x0 + 150) + k, y, I.INK);
+    for (let y = Y(deck - 16); y < Y(deck); y++) for (let k = 0; k < 18; k++) s.set(X(x0 + 560) + k, y, I.CHEST + ((k % 6 === 0 || y === Y(deck - 16)) ? 0 : k < 6 ? 3 : 2));
     s.outline(I.WOL);
-    return { s, x: x0 - 10, y: top };
+    return { s, x: x0 - 20, y: top, lamp: [x0 + 245, deck - 64] };
   }
 
   /* ---- corals ---- */
-  function makeCoral(kind, seed, size = 1) {
+  function makeCoral(kind, seed, size = 1, o = {}) {
     const r = rng(seed);
     const W = Math.round(90 * size), Hh = Math.round(80 * size);
     const s = new ISprite(W, Hh);
-    const base = kind === 'fan' ? I.CORC : kind === 'brain' ? I.CORB : I.CORA;
-    if (kind === 'branch' || kind === 'fan') {
+    const bases = { fan: I.CORC, brain: I.CORB, branch: I.CORA };
+    const base = o.base ?? bases[kind] ?? I.CORA;
+    if (kind === 'tube') {
+      // a cluster of hollow tubes with bright rims
+      const n = 3 + Math.floor(r() * 4);
+      for (let k = 0; k < n; k++) {
+        const x0 = Math.round(W / 2 + (k - (n - 1) / 2) * 7 * size + (r() - 0.5) * 4), h = Math.round((24 + r() * 34) * size), w = Math.max(2, Math.round((3 + r() * 2) * size));
+        for (let y = Hh - 2; y > Hh - 2 - h; y--) for (let x = -w; x <= w; x++) s.set(x0 + x, y, base + (x < -w / 2 ? 3 : x < w / 3 ? 2 : 1));
+        for (let x = -w; x <= w; x++) { s.set(x0 + x, Hh - 2 - h, I.TIP); if (Math.abs(x) < w) s.set(x0 + x, Hh - 1 - h, base); }
+      }
+      s.outline(I.CORAL_OL); return s;
+    }
+    if (kind === 'anemone') {
+      // round foot with a crown of fat wavy tentacles
+      const cx = W / 2, top = Hh - 10 * size;
+      for (let y = Math.round(top); y < Hh - 1; y++) for (let x = Math.round(cx - 9 * size); x < cx + 9 * size; x++) s.set(x, y, base + (x < cx - 3 ? 2 : 1));
+      const n = 11;
+      for (let k = 0; k < n; k++) {
+        const a = -Math.PI * (0.1 + 0.8 * k / (n - 1)), len = (14 + r() * 8) * size;
+        for (let j = 0; j < len; j++) {
+          const X = cx + Math.cos(a) * j + Math.sin(j * 0.4 + k) * 1.5, Y = top + Math.sin(a) * j;
+          s.set(X, Y, base + (j > len - 2 ? 3 : 2)); s.set(X + 1, Y, base + 1);
+        }
+        s.set(cx + Math.cos(a) * len, top + Math.sin(a) * len, I.TIP);
+      }
+      s.outline(I.CORAL_OL); return s;
+    }
+    if (kind === 'table') {
+      // flat plate coral on a short stalk
+      const cx = W / 2, stem = Math.round(14 * size), pw = Math.round(34 * size), py = Hh - 2 - stem;
+      for (let y = py; y < Hh - 1; y++) for (let x = -2; x <= 2; x++) s.set(cx + x, y, base + 1);
+      for (let x = -pw; x <= pw; x++) { const th = Math.max(1, Math.round((1 - Math.abs(x / pw)) * 4)); for (let y = 0; y < th; y++) s.set(cx + x, py - y + Math.round((x / pw) ** 2 * 3), base + (y === th - 1 ? 3 : 2 - (x > pw / 2 ? 1 : 0))); }
+      s.outline(I.CORAL_OL); return s;
+    }
+    if (kind === 'sponge') {
+      // barrel sponge: a tall cup with ridges and a dark mouth
+      const cx = W / 2, h = Math.round(40 * size), w0 = 8 * size;
+      for (let y = 0; y < h; y++) { const w = w0 + y * 0.12 * size; for (let x = -w; x <= w; x++) { const ridge = Math.sin(y * 0.8) > 0.6; s.set(cx + x, Hh - 2 - y, base + (x < -w / 2 ? 3 : ridge ? 1 : 2)); } }
+      const wt = w0 + h * 0.12 * size;
+      for (let x = -wt + 2; x <= wt - 2; x++) s.set(cx + x, Hh - 1 - h, I.INK);
+      s.outline(I.CORAL_OL); return s;
+    }
+    if (kind === 'branch' || kind === 'fan' || kind === 'stag') {
       const grow = (x, y, a, len, wdt, depth) => {
         for (let k = 0; k < len; k++) {
           const X = x + Math.cos(a) * k, Y = y + Math.sin(a) * k;
@@ -261,6 +328,7 @@ const Props = (() => {
         if (depth <= 0) { s.set(x + Math.cos(a) * len, y + Math.sin(a) * len - 1, base + 3); return; }
         const ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len;
         const n = kind === 'fan' ? 3 : 2;
+        if (kind === 'stag' && depth > 0) wdt = Math.max(wdt, 1);
         for (let i = 0; i < n; i++) grow(ex, ey, a + (i - (n - 1) / 2) * (kind === 'fan' ? 0.45 : 0.6) + (r() - 0.5) * 0.3, len * (0.62 + r() * 0.2), Math.max(0, wdt - 1), depth - 1);
       };
       const d0 = kind === 'fan' ? 4 : 4;

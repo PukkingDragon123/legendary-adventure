@@ -4569,8 +4569,8 @@ const Minior = (() => {
     ['#6a1a90', '#9030c0', '#b858e8', '#d8a0ff', '#f4e0ff'],
   ];
   const base = {
-    [SHELL]: { r: ['#6e4a4c', '#8e6668', '#b08a88', '#caa8a4', '#e2c8c2'], od: '#3a2426', ol: '#6e4a4c', ln: '#5a3a3c' },
-    [MARK]: { r: ['#4a2a2e', '#5e3638', '#744446', '#8a5658', '#a06a6a'], od: '#2a1618', ol: '#4a2a2e', ln: '#3a2022' },
+    [SHELL]: { r: ['#7a5452', '#9a7270', '#b89490', '#d2b0aa', '#ead0c8'], od: '#3e2626', ol: '#7a5452', ln: '#5e3c3c' },
+    [MARK]: { r: ['#4e2c2c', '#643838', '#7a4646', '#8e5656', '#a46a68'], od: '#2a1616', ol: '#4e2c2c', ln: '#3a2020' },
     [SPIKE]: { r: ['#8a8e98', '#b0b4bc', '#d4d8de', '#eef0f4', '#ffffff'], od: '#4a4e58', ol: '#7a7e88', ln: '#6a6e78' },
     [EYE]: { r: ['#141418', '#1c1c22', '#26262e', '#34343e', '#5a5a68'], od: '#08080c', ol: '#141418', ln: '#141418' },
     [SHINE]: { r: ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'], od: '#a0a0b0', ol: '#ffffff', ln: '#ffffff' },
@@ -4579,9 +4579,17 @@ const Minior = (() => {
   const PAL = core(0);
   const R0 = 26;
   const V = (x, y, z) => { const l = Math.hypot(x, y, z); return [x / l, y / l, z / l]; };
-  const EYES = [V(0.72, 0.08, 0.5), V(0.78, 0.02, -0.42)];
+  const EYES = [V(0.7, 0.05, 0.52), V(0.8, 0.0, -0.4)];
+  // triangle marks, each with its own tangent frame and a random point direction
   const MARKS = [];
-  for (let i = 0; i < 26; i++) { const a = i * 2.39996, y = 1 - (i + 0.5) / 13; MARKS.push(V(Math.cos(a) * Math.sqrt(1 - y * y), y, Math.sin(a) * Math.sqrt(1 - y * y))); }
+  for (let i = 0; i < 30; i++) {
+    const a = i * 2.39996, y = 1 - (i + 0.5) / 15, r = Math.sqrt(Math.max(0, 1 - y * y));
+    const n = V(Math.cos(a) * r, y, Math.sin(a) * r), up = Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    const b1 = V3.norm(V3.cross(up, n)), b2 = V3.cross(n, b1), rot = i * 1.7;
+    MARKS.push({ n, b1, b2, c: Math.cos(rot), s: Math.sin(rot), k: 0.13 + ((i * 37) % 7) * 0.012 });
+  }
+  // crack lines: short great-circle arcs
+  const CRACKS = [[V(0.3, 0.8, -0.5), V(0.6, 0.4, 0.7)], [V(-0.6, -0.3, 0.7), V(0.2, -0.9, 0.4)], [V(-0.8, 0.5, -0.2), V(-0.3, 0.2, -0.9)]].map(([a, b]) => ({ n: V3.norm(V3.cross(a, b)), m: V3.norm(V3.add(a, b)) }));
   const SPIKES = [V(0.2, 0.95, 0.2), V(-0.7, 0.5, 0.5), V(-0.5, 0.2, -0.85), V(0.5, -0.55, 0.7), V(-0.2, -0.9, -0.3), V(0.35, 0.6, -0.75), V(0.95, -0.2, 0.2)];
   const hash = (x, y, z) => { const h = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return h - Math.floor(h); };
   const DEFAULT = { crack: 0, eyes: 'open', spin: 0, squash: 0, side: 1 };
@@ -4597,15 +4605,21 @@ const Minior = (() => {
       mat: (s) => {
         for (const e of EYES) {
           const d = s[0] * e[0] + s[1] * e[1] + s[2] * e[2];
-          if (d > 0.93) {
+          if (d > (e === EYES[0] ? 0.925 : 0.94)) {
             if (shut) return d > 0.955 && Math.abs(s[1] - e[1]) < 0.05 ? code(EYE) : code(SHELL);
-            if (d > 0.985 && s[1] > e[1] + 0.03) return code(SHINE);
             return code(EYE);
           }
         }
         // cracked shell: the core shows through in chunky facets
         if (crack > 0) { const n = hash(Math.round(s[0] * 3), Math.round(s[1] * 3), Math.round(s[2] * 3)); if (n < crack) return code(CORE, s[1] > 0.3 ? 1 : 0); }
-        for (const m of MARKS) { const d = s[0] * m[0] + s[1] * m[1] + s[2] * m[2]; if (d > 0.972) return code(MARK); }
+        for (const m of MARKS) {
+          const dn = s[0] * m.n[0] + s[1] * m.n[1] + s[2] * m.n[2];
+          if (dn < 0.9) continue;
+          let u = s[0] * m.b1[0] + s[1] * m.b1[1] + s[2] * m.b1[2], v = s[0] * m.b2[0] + s[1] * m.b2[1] + s[2] * m.b2[2];
+          const uu = u * m.c - v * m.s, vv = u * m.s + v * m.c, k = m.k;
+          if (vv > -k * 0.5 && vv < k && Math.abs(uu) < (k - vv) * 0.62) return code(MARK, vv > k * 0.4 ? 1 : 0);
+        }
+        for (const c of CRACKS) { const dl = s[0] * c.n[0] + s[1] * c.n[1] + s[2] * c.n[2]; if (Math.abs(dl) < 0.022 && s[0] * c.m[0] + s[1] * c.m[1] + s[2] * c.m[2] > 0.75) return code(MARK, -1); }
         return code(SHELL, s[1] > 0.4 ? 1 : s[1] < -0.5 ? -1 : 0);
       },
     })];
@@ -4615,10 +4629,12 @@ const Minior = (() => {
       const ax = d, up = Math.abs(ax[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
       const b1 = V3.norm(V3.cross(up, ax)), b2 = V3.cross(ax, b1);
       const f = { L: M3.mul(body.L, M3.cols(b1, b2, ax)), t: V3.add(body.t, M3.v(body.L, V3.scale(ax, R0 * 0.98))) };
-      prims.push(ell(f, [3.2, 3.2, 6.5], { part: id, grp: 2, mat: (s) => (s[2] < -0.2 ? 0 : code(SPIKE, s[2] > 0.6 ? 1 : 0)) }));
+      prims.push(ell(f, [4.2, 4.2, 2.2], { part: id, grp: 2, mat: () => code(MARK, -1) }));
+      prims.push(ell(f, [2.8, 2.8, 7.5], { part: id, grp: 2, mat: (s) => (s[2] < 0 ? 0 : code(SPIKE, s[2] > 0.6 ? 1 : s[0] > 0.3 ? -1 : 0)) }));
       id++;
     }
-    return { prims, stamps: [], dots: [], anchors: { top: [0, R0 * 2, 0], head: [0, R0, 0], mouth: [R0, R0 * 0.8, 0] }, pose: P, pri: { 1: 0, 2: 1 }, glossy: { [CORE]: 1, [SPIKE]: 1 }, baseMat: SHELL };
+    { const nd = V(0.62, -0.28, 0.06), f = { L: body.L, t: V3.add(body.t, M3.v(body.L, V3.scale(nd, R0 * 0.97))) }; prims.push(ell(f, [3.6, 3.6, 3.6], { part: 20, grp: 3, mat: (s) => code(MARK, s[1] > 0.3 ? 1 : 0) })); }
+    return { prims, stamps: [], dots: [], anchors: { top: [0, R0 * 2, 0], head: [0, R0, 0], mouth: [R0, R0 * 0.8, 0] }, pose: P, pri: { 1: 0, 2: 1, 3: 1 }, glossy: { [CORE]: 1, [SPIKE]: 1 }, baseMat: SHELL };
   }
   const render = (model, opt) => Creature.render(model, opt);
   return { build, render, PAL, core, MAT: { SHELL, MARK, SPIKE, EYE, CORE }, DEFAULT, meta: { heightM: 0.3, bw: 80, bh: 80, oy: 0.82 } };
@@ -4641,11 +4657,11 @@ const Deoxys = (() => {
     [EYE]: { r: ['#101014', '#16161c', '#1e1e26', '#2a2a34', '#3a3a48'], od: '#08080a', ol: '#101014', ln: '#101014' },
     [WHITE]: { r: ['#d8d8e0', '#ececf2', '#ffffff', '#ffffff', '#ffffff'], od: '#8a8a96', ol: '#c0c0cc', ln: '#a0a0ac' },
   });
-  const DEFAULT = { wave: 0, lean: 0, spread: 0.5, eyes: 'open', side: 1 };
+  const DEFAULT = { wave: 0, lean: 0, spread: 0.5, fly: 0, punch: 0, kick: 0, eyes: 'open', side: 1 };
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [];
-    const root = chain(F(M3.I(), [0, 0, 0]), T(0, 90, 0), R(M3.rz(-P.lean)), T(0, -90, 0));
+    const root = chain(F(M3.I(), [0, 0, 0]), T(0, 90, 0), R(M3.rz(-P.lean - 0.45 * P.fly)), T(0, -90, 0));
     const orange = (s) => code(ORANGE, s[1] > 0.45 ? 1 : s[1] < -0.5 ? -1 : 0);
     // head: orange dome with a teal face stripe down the front, two small eyes beside it
     const head = chain(root, T(2, 150, 0));
@@ -4669,11 +4685,13 @@ const Deoxys = (() => {
         return orange(s);
       },
     }));
-    prims.push(ell(chain(root, T(0, 97, 0)), [5.5, 7, 5.5], { part: 5, grp: 5, mat: (s) => code(GREY, Math.abs(s[2]) > 0.5 ? -1 : 0) }));
+    prims.push(ell(chain(root, T(0, 97, 0)), [5.5, 7, 5.5], { part: 5, grp: 5, mat: (s) => code(GREY, Math.abs(s[1]) % 0.5 < 0.08 ? -1 : Math.abs(s[2]) > 0.5 ? -1 : s[0] > 0.4 ? 1 : 0) }));
     prims.push(ell(chain(root, T(0, 88, 0)), [12, 6.5, 13], { part: 6, grp: 6, mat: orange }));
     // long pointed legs with teal insets
     for (const sd of [1, -1]) {
-      const leg = chain(root, T(0, 86, 7 * sd), R(M3.rx(-sd * 0.36)), T(0, -38, 0));
+      // flying: legs trail back like a comet tail; kicking swings the near leg forward
+      const swing = -0.95 * P.fly + (sd > 0 ? 1.5 * P.kick : -0.3 * P.kick);
+      const leg = chain(root, T(0, 86, 7 * sd), R(M3.rz(swing)), R(M3.rx(-sd * (0.36 - 0.2 * P.fly))), T(0, -38, 0));
       prims.push(ell(leg, [6, 40, 5.5], { part: 7, grp: 7, mat: (s) => (s[2] * sd > 0.55 && Math.abs(s[1]) < 0.45 ? code(TEAL, 1) : orange(s)) }));
     }
     // tentacle arms: two strands (orange, teal) twisting around a rippling centre line
@@ -4683,9 +4701,12 @@ const Deoxys = (() => {
       const shoulder = [0, 126, 11 * sd];
       for (let k = 0; k < 18; k++) {
         const u = k / 17;
-        const cx = shoulder[0] + Math.sin(u * 3 + wv + sd) * 10 * u;
-        const cy = shoulder[1] - u * (40 + 30 * (1 - P.spread)) + Math.sin(u * 5 + wv * 1.3) * 8 * u;
-        const cz = shoulder[2] + sd * u * (24 + 30 * P.spread);
+        const pu = sd > 0 ? P.punch : 0, fl = P.fly;
+        let cx = shoulder[0] + Math.sin(u * 3 + wv + sd) * 10 * u - fl * u * 34;
+        let cy = shoulder[1] - u * (40 + 30 * (1 - P.spread)) * (1 - fl * 0.6) + Math.sin(u * 5 + wv * 1.3) * 8 * u;
+        let cz = shoulder[2] + sd * u * (24 + 30 * P.spread) * (1 - fl * 0.4);
+        // a punch drives the near arm straight out in front, fist first
+        cx += (shoulder[0] + u * 62 - cx) * pu; cy += (shoulder[1] - 4 - cy) * pu; cz += (shoulder[2] + 4 - cz) * pu;
         for (const st of [0, 1]) {
           const a = u * 9 + st * Math.PI + wv * 0.5;
           const r = 3.6 - u * 0.9;
@@ -11900,8 +11921,8 @@ const Minior = (() => {
     ['#6a1a90', '#9030c0', '#b858e8', '#d8a0ff', '#f4e0ff'],
   ];
   const base = {
-    [SHELL]: { r: ['#6e4a4c', '#8e6668', '#b08a88', '#caa8a4', '#e2c8c2'], od: '#3a2426', ol: '#6e4a4c', ln: '#5a3a3c' },
-    [MARK]: { r: ['#4a2a2e', '#5e3638', '#744446', '#8a5658', '#a06a6a'], od: '#2a1618', ol: '#4a2a2e', ln: '#3a2022' },
+    [SHELL]: { r: ['#7a5452', '#9a7270', '#b89490', '#d2b0aa', '#ead0c8'], od: '#3e2626', ol: '#7a5452', ln: '#5e3c3c' },
+    [MARK]: { r: ['#4e2c2c', '#643838', '#7a4646', '#8e5656', '#a46a68'], od: '#2a1616', ol: '#4e2c2c', ln: '#3a2020' },
     [SPIKE]: { r: ['#8a8e98', '#b0b4bc', '#d4d8de', '#eef0f4', '#ffffff'], od: '#4a4e58', ol: '#7a7e88', ln: '#6a6e78' },
     [EYE]: { r: ['#141418', '#1c1c22', '#26262e', '#34343e', '#5a5a68'], od: '#08080c', ol: '#141418', ln: '#141418' },
     [SHINE]: { r: ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'], od: '#a0a0b0', ol: '#ffffff', ln: '#ffffff' },
@@ -11910,9 +11931,17 @@ const Minior = (() => {
   const PAL = core(0);
   const R0 = 26;
   const V = (x, y, z) => { const l = Math.hypot(x, y, z); return [x / l, y / l, z / l]; };
-  const EYES = [V(0.72, 0.08, 0.5), V(0.78, 0.02, -0.42)];
+  const EYES = [V(0.7, 0.05, 0.52), V(0.8, 0.0, -0.4)];
+  // triangle marks, each with its own tangent frame and a random point direction
   const MARKS = [];
-  for (let i = 0; i < 26; i++) { const a = i * 2.39996, y = 1 - (i + 0.5) / 13; MARKS.push(V(Math.cos(a) * Math.sqrt(1 - y * y), y, Math.sin(a) * Math.sqrt(1 - y * y))); }
+  for (let i = 0; i < 30; i++) {
+    const a = i * 2.39996, y = 1 - (i + 0.5) / 15, r = Math.sqrt(Math.max(0, 1 - y * y));
+    const n = V(Math.cos(a) * r, y, Math.sin(a) * r), up = Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    const b1 = V3.norm(V3.cross(up, n)), b2 = V3.cross(n, b1), rot = i * 1.7;
+    MARKS.push({ n, b1, b2, c: Math.cos(rot), s: Math.sin(rot), k: 0.13 + ((i * 37) % 7) * 0.012 });
+  }
+  // crack lines: short great-circle arcs
+  const CRACKS = [[V(0.3, 0.8, -0.5), V(0.6, 0.4, 0.7)], [V(-0.6, -0.3, 0.7), V(0.2, -0.9, 0.4)], [V(-0.8, 0.5, -0.2), V(-0.3, 0.2, -0.9)]].map(([a, b]) => ({ n: V3.norm(V3.cross(a, b)), m: V3.norm(V3.add(a, b)) }));
   const SPIKES = [V(0.2, 0.95, 0.2), V(-0.7, 0.5, 0.5), V(-0.5, 0.2, -0.85), V(0.5, -0.55, 0.7), V(-0.2, -0.9, -0.3), V(0.35, 0.6, -0.75), V(0.95, -0.2, 0.2)];
   const hash = (x, y, z) => { const h = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return h - Math.floor(h); };
   const DEFAULT = { crack: 0, eyes: 'open', spin: 0, squash: 0, side: 1 };
@@ -11928,15 +11957,21 @@ const Minior = (() => {
       mat: (s) => {
         for (const e of EYES) {
           const d = s[0] * e[0] + s[1] * e[1] + s[2] * e[2];
-          if (d > 0.93) {
+          if (d > (e === EYES[0] ? 0.925 : 0.94)) {
             if (shut) return d > 0.955 && Math.abs(s[1] - e[1]) < 0.05 ? code(EYE) : code(SHELL);
-            if (d > 0.985 && s[1] > e[1] + 0.03) return code(SHINE);
             return code(EYE);
           }
         }
         // cracked shell: the core shows through in chunky facets
         if (crack > 0) { const n = hash(Math.round(s[0] * 3), Math.round(s[1] * 3), Math.round(s[2] * 3)); if (n < crack) return code(CORE, s[1] > 0.3 ? 1 : 0); }
-        for (const m of MARKS) { const d = s[0] * m[0] + s[1] * m[1] + s[2] * m[2]; if (d > 0.972) return code(MARK); }
+        for (const m of MARKS) {
+          const dn = s[0] * m.n[0] + s[1] * m.n[1] + s[2] * m.n[2];
+          if (dn < 0.9) continue;
+          let u = s[0] * m.b1[0] + s[1] * m.b1[1] + s[2] * m.b1[2], v = s[0] * m.b2[0] + s[1] * m.b2[1] + s[2] * m.b2[2];
+          const uu = u * m.c - v * m.s, vv = u * m.s + v * m.c, k = m.k;
+          if (vv > -k * 0.5 && vv < k && Math.abs(uu) < (k - vv) * 0.62) return code(MARK, vv > k * 0.4 ? 1 : 0);
+        }
+        for (const c of CRACKS) { const dl = s[0] * c.n[0] + s[1] * c.n[1] + s[2] * c.n[2]; if (Math.abs(dl) < 0.022 && s[0] * c.m[0] + s[1] * c.m[1] + s[2] * c.m[2] > 0.75) return code(MARK, -1); }
         return code(SHELL, s[1] > 0.4 ? 1 : s[1] < -0.5 ? -1 : 0);
       },
     })];
@@ -11946,10 +11981,12 @@ const Minior = (() => {
       const ax = d, up = Math.abs(ax[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
       const b1 = V3.norm(V3.cross(up, ax)), b2 = V3.cross(ax, b1);
       const f = { L: M3.mul(body.L, M3.cols(b1, b2, ax)), t: V3.add(body.t, M3.v(body.L, V3.scale(ax, R0 * 0.98))) };
-      prims.push(ell(f, [3.2, 3.2, 6.5], { part: id, grp: 2, mat: (s) => (s[2] < -0.2 ? 0 : code(SPIKE, s[2] > 0.6 ? 1 : 0)) }));
+      prims.push(ell(f, [4.2, 4.2, 2.2], { part: id, grp: 2, mat: () => code(MARK, -1) }));
+      prims.push(ell(f, [2.8, 2.8, 7.5], { part: id, grp: 2, mat: (s) => (s[2] < 0 ? 0 : code(SPIKE, s[2] > 0.6 ? 1 : s[0] > 0.3 ? -1 : 0)) }));
       id++;
     }
-    return { prims, stamps: [], dots: [], anchors: { top: [0, R0 * 2, 0], head: [0, R0, 0], mouth: [R0, R0 * 0.8, 0] }, pose: P, pri: { 1: 0, 2: 1 }, glossy: { [CORE]: 1, [SPIKE]: 1 }, baseMat: SHELL };
+    { const nd = V(0.62, -0.28, 0.06), f = { L: body.L, t: V3.add(body.t, M3.v(body.L, V3.scale(nd, R0 * 0.97))) }; prims.push(ell(f, [3.6, 3.6, 3.6], { part: 20, grp: 3, mat: (s) => code(MARK, s[1] > 0.3 ? 1 : 0) })); }
+    return { prims, stamps: [], dots: [], anchors: { top: [0, R0 * 2, 0], head: [0, R0, 0], mouth: [R0, R0 * 0.8, 0] }, pose: P, pri: { 1: 0, 2: 1, 3: 1 }, glossy: { [CORE]: 1, [SPIKE]: 1 }, baseMat: SHELL };
   }
   const render = (model, opt) => Creature.render(model, opt);
   return { build, render, PAL, core, MAT: { SHELL, MARK, SPIKE, EYE, CORE }, DEFAULT, meta: { heightM: 0.3, bw: 80, bh: 80, oy: 0.82 } };
@@ -11973,11 +12010,11 @@ const Deoxys = (() => {
     [EYE]: { r: ['#101014', '#16161c', '#1e1e26', '#2a2a34', '#3a3a48'], od: '#08080a', ol: '#101014', ln: '#101014' },
     [WHITE]: { r: ['#d8d8e0', '#ececf2', '#ffffff', '#ffffff', '#ffffff'], od: '#8a8a96', ol: '#c0c0cc', ln: '#a0a0ac' },
   });
-  const DEFAULT = { wave: 0, lean: 0, spread: 0.5, eyes: 'open', side: 1 };
+  const DEFAULT = { wave: 0, lean: 0, spread: 0.5, fly: 0, punch: 0, kick: 0, eyes: 'open', side: 1 };
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [];
-    const root = chain(F(M3.I(), [0, 0, 0]), T(0, 90, 0), R(M3.rz(-P.lean)), T(0, -90, 0));
+    const root = chain(F(M3.I(), [0, 0, 0]), T(0, 90, 0), R(M3.rz(-P.lean - 0.45 * P.fly)), T(0, -90, 0));
     const orange = (s) => code(ORANGE, s[1] > 0.45 ? 1 : s[1] < -0.5 ? -1 : 0);
     // head: orange dome with a teal face stripe down the front, two small eyes beside it
     const head = chain(root, T(2, 150, 0));
@@ -12001,11 +12038,13 @@ const Deoxys = (() => {
         return orange(s);
       },
     }));
-    prims.push(ell(chain(root, T(0, 97, 0)), [5.5, 7, 5.5], { part: 5, grp: 5, mat: (s) => code(GREY, Math.abs(s[2]) > 0.5 ? -1 : 0) }));
+    prims.push(ell(chain(root, T(0, 97, 0)), [5.5, 7, 5.5], { part: 5, grp: 5, mat: (s) => code(GREY, Math.abs(s[1]) % 0.5 < 0.08 ? -1 : Math.abs(s[2]) > 0.5 ? -1 : s[0] > 0.4 ? 1 : 0) }));
     prims.push(ell(chain(root, T(0, 88, 0)), [12, 6.5, 13], { part: 6, grp: 6, mat: orange }));
     // long pointed legs with teal insets
     for (const sd of [1, -1]) {
-      const leg = chain(root, T(0, 86, 7 * sd), R(M3.rx(-sd * 0.36)), T(0, -38, 0));
+      // flying: legs trail back like a comet tail; kicking swings the near leg forward
+      const swing = -0.95 * P.fly + (sd > 0 ? 1.5 * P.kick : -0.3 * P.kick);
+      const leg = chain(root, T(0, 86, 7 * sd), R(M3.rz(swing)), R(M3.rx(-sd * (0.36 - 0.2 * P.fly))), T(0, -38, 0));
       prims.push(ell(leg, [6, 40, 5.5], { part: 7, grp: 7, mat: (s) => (s[2] * sd > 0.55 && Math.abs(s[1]) < 0.45 ? code(TEAL, 1) : orange(s)) }));
     }
     // tentacle arms: two strands (orange, teal) twisting around a rippling centre line
@@ -12015,9 +12054,12 @@ const Deoxys = (() => {
       const shoulder = [0, 126, 11 * sd];
       for (let k = 0; k < 18; k++) {
         const u = k / 17;
-        const cx = shoulder[0] + Math.sin(u * 3 + wv + sd) * 10 * u;
-        const cy = shoulder[1] - u * (40 + 30 * (1 - P.spread)) + Math.sin(u * 5 + wv * 1.3) * 8 * u;
-        const cz = shoulder[2] + sd * u * (24 + 30 * P.spread);
+        const pu = sd > 0 ? P.punch : 0, fl = P.fly;
+        let cx = shoulder[0] + Math.sin(u * 3 + wv + sd) * 10 * u - fl * u * 34;
+        let cy = shoulder[1] - u * (40 + 30 * (1 - P.spread)) * (1 - fl * 0.6) + Math.sin(u * 5 + wv * 1.3) * 8 * u;
+        let cz = shoulder[2] + sd * u * (24 + 30 * P.spread) * (1 - fl * 0.4);
+        // a punch drives the near arm straight out in front, fist first
+        cx += (shoulder[0] + u * 62 - cx) * pu; cy += (shoulder[1] - 4 - cy) * pu; cz += (shoulder[2] + 4 - cz) * pu;
         for (const st of [0, 1]) {
           const a = u * 9 + st * Math.PI + wv * 0.5;
           const r = 3.6 - u * 0.9;
@@ -12038,15 +12080,17 @@ const Deoxys = (() => {
    World units are art pixels at zoom 1. y grows downward.
 ------------------------------------------------------------------- */
 const World = (() => {
-  const W = 3600, H = 1320;
+  const W = 4600, H = 1700;
   const SEA = 560;       // still-water level
   const HORIZON = 468;   // far horizon line of the backdrop sea
 
   // terrain profile (x, ground y) — dunes, beach, reef slope, deep trench
+  // dunes and beach, the dock's shallows, a wide coral reef flat, a cliff drop-off and the dark abyss
   const GP = [
     [-40, 500], [120, 497], [300, 506], [470, 522], [700, 536], [920, 548], [1080, 556], [1180, 566],
-    [1330, 596], [1500, 650], [1700, 740], [1900, 812], [2100, 842], [2320, 850], [2520, 856], [2640, 884],
-    [2740, 990], [2880, 1150], [3100, 1206], [3400, 1214], [3660, 1216],
+    [1300, 592], [1420, 640], [1560, 700], [1700, 742], [1850, 760], [2000, 752], [2150, 772], [2300, 788],
+    [2450, 778], [2600, 796], [2750, 812], [2900, 822], [3000, 838], [3070, 900], [3140, 1090], [3210, 1320],
+    [3320, 1468], [3500, 1520], [3800, 1540], [4100, 1528], [4400, 1550], [4660, 1552],
   ];
   const ground = new Float32Array(W + 2);
   (() => {
@@ -12076,9 +12120,10 @@ const World = (() => {
     { x: 842, w: 58, h: 34, seed: 1 }, { x: 896, w: 92, h: 56, seed: 2 }, { x: 962, w: 50, h: 30, seed: 3 },
     { x: 1004, w: 70, h: 42, seed: 4 }, { x: 790, w: 40, h: 24, seed: 5 },
   ];
-  const WALREIN_ROCK = { x: 1262, w: 190, h: 112, seed: 6 };
-  const REEF_ROCKS = [{ x: 1668, w: 110, h: 70, seed: 7 }, { x: 2360, w: 140, h: 80, seed: 8 }, { x: 2580, w: 90, h: 60, seed: 9 }];
-  const PIER = { x0: 1360, x1: 1880, deck: 496, posts: [1380, 1470, 1560, 1650, 1740, 1830, 1872] };
+  const WALREIN_ROCK = { x: 1190, w: 170, h: 104, seed: 6 };
+  const REEF_ROCKS = [{ x: 1780, w: 110, h: 70, seed: 7 }, { x: 2360, w: 140, h: 80, seed: 8 }, { x: 2580, w: 90, h: 60, seed: 9 }, { x: 2870, w: 130, h: 76, seed: 10 }];
+  // a low wooden dock over the shallows (deck just above the water, like a harbour jetty)
+  const PIER = { x0: 1300, x1: 2060, deck: 528, posts: [1310, 1385, 1460, 1535, 1610, 1685, 1760, 1835, 1910, 1985, 2050] };
 
   return { W, H, SEA, HORIZON, ground, groundAt, slopeAt, shoreX, PALMS, BEACH_ROCKS, WALREIN_ROCK, REEF_ROCKS, PIER };
 })();
@@ -12528,7 +12573,7 @@ const WorldRender = (() => {
   /* ---------------- backdrop: far sea band ---------------- */
   // camera tilt: the horizon (and everything on it) drifts at a slower parallax than the beach
   let TILT = 0;
-  function setTilt(v) { TILT = Math.max(-40, Math.min(70, v)); }
+  function setTilt(v) { TILT = Math.max(-44, Math.min(80, v)); }
   function drawBackdrop(fb, cx, cy, P, t, extras) {
     const VW = fb.w, VH = fb.h, d = fb.d;
     const HZ = HORIZON + Math.round(TILT), band = (SEA - HORIZON) / (SEA - HZ);
@@ -12555,21 +12600,45 @@ const WorldRender = (() => {
     const byy = HZ - cy - bd.base + 1;
     fb.blit(bd.strip, bx + 1100, byy, { test: (x, y) => cy + y < SEA });
     if (extras) extras(fb, bx + 1100, byy, bd);
+    const hzs = HZ - cy;
+    for (let sy = Math.max(0, hzs + 1); sy < y1; sy++) {
+      const k = (sy - hzs) / Math.max(1, SEA - cy - hzs), src = Math.round(hzs - (sy - hzs) * 1.7);
+      if (src < 0) continue;
+      const a = Math.round((0.42 - k * 0.3) * 256), wob = Math.sin(sy * 0.9 + t * 1.7) * (1 + k * 3), row = sy * VW, srow = src * VW;
+      if (a <= 8) continue;
+      for (let sx = 0; sx < VW; sx++) {
+        const xs = clamp(Math.round(sx + wob), 0, VW - 1), c = d[srow + xs], b = d[row + sx];
+        const it = 256 - a;
+        d[row + sx] = (0xff000000 | ((((b & 0xff00ff) * it + (c & 0xff00ff) * a) >>> 8) & 0xff00ff) | ((((b & 0xff00) * it + (c & 0xff00) * a) >>> 8) & 0xff00)) >>> 0;
+      }
+    }
   }
 
   /* ---------------- terrain ---------------- */
   const SAND_CUT = 10;
+  // sun direction (towards the light) per hour, for slope lighting
+  const SUNL = { dawn: [-0.72, -0.69], noon: [-0.25, -0.97], afternoon: [0.45, -0.89], dusk: [0.78, -0.62], night: [-0.3, -0.95] };
+  let STRAT = null;
   function drawTerrain(fb, cx, cy, P, t, occ, swash) {
     const VW = fb.w, VH = fb.h, d = fb.d;
-    const sd = P.sand, sw = P.sandWet, cut = P.cut, gr = P.grass;
+    const sd = P.sand, sw = P.sandWet, cut = P.cut, gr = P.grass, sb = P.seabed, rk = P.rock;
+    if (!STRAT) { STRAT = new Float32Array(W + 2); for (let x = 0; x <= W + 1; x++) STRAT[x] = fbm(x * 0.006, 3, 11, 3) * 40; }
+    const L = SUNL[P.key] || SUNL.noon;
+    const abyss = [PX.hex('#05070e'), PX.hex('#0b1020'), PX.hex('#141c30'), PX.hex('#1e2a42')];
     const shore = World.shoreX;
     for (let sx = 0; sx < VW; sx++) {
       const wx = cx + sx;
       if (wx < 0 || wx > W) continue;
       const g = ground[wx];
       const gTop = Math.ceil(g);
+      const slope = (ground[Math.min(W, wx + 2)] - ground[Math.max(0, wx - 2)]) / 4;
+      const nl = Math.hypot(slope, 1), lam = (slope * L[0] - L[1]) / nl;
+      const lit = lam > 0.95 ? 1 : lam < 0.82 ? -1 : 0;
+      const steep = Math.abs(slope) > 1.1;
       const wetK = clamp((wx - (shore - 150 + swash.reach * 0.2)) / 150, 0, 1);
       const dune = wx < 470 ? smooth(470, 380, wx) : 0;
+      const under = g > SEA + 2, abyssK = clamp((g - SEA - 520) / 300, 0, 1);
+      const ripple = Math.sin(wx * 0.62 + STRAT[wx] * 0.3) > 0.72;
       let sy = Math.max(0, gTop - cy);
       for (; sy < VH; sy++) {
         const wy = cy + sy;
@@ -12578,26 +12647,52 @@ const WorldRender = (() => {
         const ti = ((wy & 255) << 8) | (wx & 255);
         const gr8 = GRAIN[ti];
         let c;
-        if (g > SEA + 2) {
-          // sea floor: pale crust, then sediment darkening with depth
-          const sb = P.seabed;
-          if (dep < 1.5) c = sb[3];
-          else if (dep < SAND_CUT) c = SANDTEX[ti] >= 2 ? sb[2] : bayer4(wx, wy) < 0.5 ? sb[2] : sb[1];
-          else c = CUTTEX[ti] ? sb[0] : bayer4(wx, wy) < clamp((dep - SAND_CUT) / 60, 0, 1) ? sb[0] : sb[1];
-          if (gr8 === 3) c = sb[3];
+        if (under && dep >= SAND_CUT && wx - shore < 220 && bayer4(wx, wy) * 220 > wx - shore) {
+          // just past the shoreline the ground's cross-section fades from beach strata into seabed
+          const band = Math.floor((dep + STRAT[wx]) / 24) % 4;
+          c = band === 0 ? sd[1] : band === 1 ? cut[1] : band === 2 ? sd[2] : cut[0];
+          if (bayer4(wx, wy) < clamp((dep - SAND_CUT) / 220, 0, 0.7)) c = cut[0];
+          d[i] = c; occ[i] = 1;
+          continue;
+        }
+        if (under) {
+          if (abyssK > 0.5 || (steep && dep < 40)) {
+            // bare rock: cracked faces, lit edges, dark in the abyss
+            const R = abyssK > 0.5 ? abyss : [rk[0], rk[1], rk[2], rk[3]];
+            let tn = CUTTEX[ti] ? 0 : SANDTEX[ti] >= 2 ? 2 : 1;
+            if (dep < 2) tn = lit > 0 ? 3 : 2;
+            if (gr8 === 3) tn = 3;
+            c = R[tn];
+          } else {
+            if (dep < 1.5) c = lit > 0 ? sb[3] : sb[2];
+            else if (dep < SAND_CUT) { c = SANDTEX[ti] >= 2 ? sb[2] : bayer4(wx, wy) < 0.5 ? sb[2] : sb[1]; if (lit < 0 && dep < 4) c = sb[1]; }
+            else {
+              const band = Math.floor((dep + STRAT[wx]) / 26) % 3;
+              c = band === 0 ? sb[1] : band === 1 ? (CUTTEX[ti] ? rk[0] : sb[0]) : rk[1];
+              if (bayer4(wx, wy) < clamp((dep - 30) / 200, 0, 0.8)) c = rk[0];
+            }
+            if (gr8 === 3 && dep > 2) c = sb[3];
+          }
           d[i] = c;
           occ[i] = 1;
           continue;
         }
-        if (dep < 1.5) c = dune > 0.3 && gr8 === 0 && ((wx * 7 + wy) % 5) / 5 < dune ? gr[2] : wetK > 0.5 ? sw[3] : sd[3];
-        else if (dune > 0.3 && dep < 3.5 && ((wx * 3 + wy) % 4) / 4 < dune * 0.8) c = gr[1];
+        if (dep < 1.5) {
+          if (dune > 0.3 && gr8 === 0 && ((wx * 7 + wy) % 5) / 5 < dune) c = gr[2];
+          else if (wetK > 0.5) c = sw[3];
+          else c = ripple || lit > 0 ? sd[3] : sd[2];
+        } else if (dune > 0.3 && dep < 3.5 && ((wx * 3 + wy) % 4) / 4 < dune * 0.8) c = gr[1];
         else if (dep < SAND_CUT) {
-          const tn = SANDTEX[ti];
+          let tn = SANDTEX[ti];
+          if (dep < 5) tn = clamp(tn + lit, 0, 3);
           c = wetK > 0.35 && bayer4(wx, wy) < wetK ? sw[tn] : sd[tn];
           if (gr8 === 3) c = sd[0];
         } else {
-          const deep = clamp((dep - SAND_CUT) / 90, 0, 1);
-          c = CUTTEX[ti] ? cut[1] : bayer4(wx, wy) < deep ? cut[0] : sd[1];
+          // the sand's cross-section: wavy strata darkening with depth, pebbles and grit
+          const band = Math.floor((dep + STRAT[wx]) / 24) % 4;
+          c = band === 0 ? sd[1] : band === 1 ? cut[1] : band === 2 ? sd[2] : cut[0];
+          if (bayer4(wx, wy) < clamp((dep - SAND_CUT) / 220, 0, 0.7)) c = cut[0];
+          if (CUTTEX[ti] && band !== 2) c = cut[0];
           if (gr8 === 3) c = sd[3];
           else if (gr8 === 2) c = cut[0];
         }
@@ -12623,7 +12718,7 @@ const WorldRender = (() => {
   }
 
   /* ---------------- water pass ---------------- */
-  const RAY = new Float32Array(1024);
+  const RAY = new Float32Array(1024), ROWBUF = new Uint32Array(8192);
   let SILH = new Float32Array(0), WETCOL = new Uint8Array(0);
   function drawWater(fb, cx, cy, P, t, occ, swash) {
     const VW = fb.w, VH = fb.h, d = fb.d;
@@ -12654,6 +12749,7 @@ const WorldRender = (() => {
       return (0xff000000 | rb | g) >>> 0;
     };
     const foamC = P.foam[1], causC = P.caustic;
+    const abyssC = mixc(PX.hex('#010207'), P.waterC[P.waterC.length - 1], 0.12), snowC = mixc(P.waterC[0], PX.hex('#ffffff'), 0.4), PIER = World.PIER;
     const B8 = BAYER8, B4 = BAYER4;
     const rayT = Math.round(0.28 * 256), foamT = Math.round(0.35 * 256), deepT = Math.round(0.22 * 256);
     for (let sy = sy0; sy < VH; sy++) {
@@ -12673,6 +12769,10 @@ const WorldRender = (() => {
       const rk = fade * rayK * 16;
       const u0 = (cx + dep * 0.42) * 0.9;
       const causRow = dep < 520;
+      // light dies off with depth: the abyss is almost black
+      const dk = clamp((dep - 220) / 640, 0, 1), dkT = Math.round(Math.pow(dk, 1.1) * 0.975 * 256);
+      const shadeRow = dep >= 0 && dep < 240, shadeT = Math.round((1 - dep / 240) * 0.32 * 256);
+      const snow = dep > 200;
       for (let sx = 0; sx < VW; sx++) {
         if (!wet[sx] || wy < surf[sx]) continue;
         const wx = cx + sx;
@@ -12690,7 +12790,9 @@ const WorldRender = (() => {
           c = ray ? (deep ? (hiB ? rdb : rda) : (hiB ? rb : ra)) : (deep ? (hiB ? db : da) : (hiB ? cb : ca));
         } else {
           const wc = hiB ? cb : ca;
-          if (o === 1) {
+          if (o === 1 && wy > ground[wx < 0 ? 0 : wx > W ? W : wx] + 8) {
+            c = d[i]; // inside the seabed: no water in front of it, only the depth darkening below
+          } else if (o === 1) {
             c = mixi(d[i], wc, floorT);
             if (causRow) {
               const gnd = ground[wx < 0 ? 0 : wx > W ? W : wx];
@@ -12703,7 +12805,37 @@ const WorldRender = (() => {
           if (ray) c = mixi(c, rayC, rayT);
         }
         if (wy - surf[sx] < 2.5) c = mixi(c, foamC, foamT);
+        if (dkT > 0) c = mixi(c, abyssC, dkT);
+        if (shadeRow && wx > PIER.x0 && wx < PIER.x1) c = mixi(c, abyssC, (wx % 26) < 3 ? shadeT >> 2 : shadeT);
+        if (snow && hash2(wx >> 1, (wy + Math.floor(t * 9)) >> 1, 13) < 0.0035) c = mixi(c, snowC, 90);
         d[i] = c;
+      }
+    }
+    // refraction: underwater rows shimmer sideways; deeper rows soften (sprites stay crisp)
+    const rowTop = Math.max(sy0 + 3, Math.ceil(top) + 3 - cy);
+    for (let sy = Math.max(0, rowTop); sy < VH; sy++) {
+      const wy = cy + sy, dep = wy - SEA, row = sy * VW;
+      const off = dep < 520 ? Math.round(Math.sin(wy * 0.09 + t * 2.1) * 1.2 + Math.sin(wy * 0.23 - t * 1.4) * 0.5) : 0;
+      if (off !== 0) {
+        // shift only open water, never the ground's cross-section
+        ROWBUF.set(d.subarray(row, row + VW));
+        for (let sx = 0; sx < VW; sx++) {
+          const xs = sx - off;
+          if (xs < 0 || xs >= VW || !wet[sx] || !wet[xs]) continue;
+          const wx = cx + sx;
+          if (wy > ground[wx < 0 ? 0 : wx > W ? W : wx] || wy > ground[Math.max(0, Math.min(W, cx + xs))]) continue;
+          d[row + sx] = ROWBUF[xs];
+        }
+      }
+      const bk = clamp((dep - 160) / 520, 0, 0.6);
+      if (bk > 0.05 && dep < 1000) {
+        const bt = Math.round(bk * 200);
+        let prev = d[row];
+        for (let sx = 1; sx < VW - 1; sx++) {
+          const i = row + sx, cur = d[i];
+          if (occ[i] !== 2 && cur !== prev) d[i] = mixi(cur, prev, bt);
+          prev = cur;
+        }
       }
     }
     // swash film running up the beach
@@ -12790,11 +12922,12 @@ const Props = (() => {
     TRUNK: 1, LEAF: 5, SPINE: 9, POL: 10, NUT: 11, ROCK: 14, ROL: 19, WOOD: 20, WOL: 24, SAND: 25, SOL: 29,
     CORA: 30, CORB: 34, CORC: 38, KELP: 42, KOL: 46, RED: 47, WHITE: 51, GOLD: 52, CHEST: 56, MOSS: 60, BARN: 61, SHELL: 62, STAR: 63,
     ROPE: 64, INK: 65, GLASS: 66, FLAG: 67, POL2: 68, CORAL_OL: 69, LAMP: 70,
+    CORD: 71, CORE: 75, CORF: 79, CORG: 83, SPONGE: 87, ANEM: 91, TIP: 95, ABYSS: 96,
   };
   const palCache = {};
   function palette(P) {
     if (palCache[P.key]) return palCache[P.key];
-    const p = new Uint32Array(80);
+    const p = new Uint32Array(128);
     const g = P.grader || ((c) => c);
     const put = (base, arr) => arr.forEach((c, k) => { p[base + k] = c; });
     put(I.TRUNK, P.palm.trunk); put(I.LEAF, P.palm.leaf); p[I.SPINE] = P.palm.spine; p[I.POL] = P.palm.outline; put(I.NUT, P.palm.nut);
@@ -12815,6 +12948,11 @@ const Props = (() => {
     p[I.ROPE] = mix(P.wood[3], P.sand[3], 0.5); p[I.INK] = mix(P.rock[0], hex('#000000'), 0.5); p[I.GLASS] = g(hex('#9fd9f2'), 3);
     p[I.FLAG] = g(hex('#e84a4a'), 2); p[I.POL2] = mix(P.palm.outline, P.palm.leaf[0], 0.5); p[I.CORAL_OL] = mix(cor[0], hex('#100420'), 0.6);
     p[I.LAMP] = hex('#ffe9a0');
+    // extra reef colours (yellow, teal, red, violet), sponge orange and anemone pink, graded to the hour
+    const gr = (hx) => { const c = g(hex(hx), 2); return ramp(mix(c, cor[1], 0.15)); };
+    put(I.CORD, gr('#ffd24a')); put(I.CORE, gr('#3ad0c0')); put(I.CORF, gr('#ff5a4a')); put(I.CORG, gr('#8a6aff')); put(I.SPONGE, gr('#ff9a3a')); put(I.ANEM, gr('#ff8ad0'));
+    p[I.TIP] = g(hex('#fff4e0'), 3);
+    put(I.ABYSS, [hex('#05070e'), hex('#0a0e1a'), hex('#121a2a'), hex('#1c2638')]);
     palCache[P.key] = p;
     return p;
   }
@@ -12926,7 +13064,7 @@ const Props = (() => {
         if (dd > 0.9 && tn > 1) tn -= 1;
         // cracks
         if (Math.abs(vnoise(x * 0.09, y * 0.09, seed + 9) - 0.5) < 0.018 && tn > 0) tn = 0;
-        s.set(x, y, I.ROCK + tn);
+        s.set(x, y, (opts.dark ? I.ABYSS : I.ROCK) + tn);
       }
     // moss / algae on top, barnacles near the base
     if (opts.moss) for (let x = 0; x < W; x++) for (let y = 0; y < Hh; y++) {
@@ -12942,58 +13080,119 @@ const Props = (() => {
     return s;
   }
 
-  /* ---- pier: deck with planks, posts into the sea, rope rail ---- */
+  /* ---- dock: a low harbour jetty — tiled plank deck, fat round posts rising above it
+     with iron chains slung between them, cross-bracing below, steps down to the water and
+     a lamp post (its globe glows at dusk and night, see Scene.lampAt) ---- */
   function makePier() {
     const { x0, x1, deck, posts } = World.PIER;
-    const W = x1 - x0 + 20, top = deck - 36, bottom = World.SEA + 180;
+    const W = x1 - x0 + 40, top = deck - 70, bottom = World.SEA + 220;
     const Hh = bottom - top;
     const s = new ISprite(W, Hh);
-    const X = (wx) => wx - x0 + 10, Y = (wy) => wy - top;
-    // posts
-    for (const px of posts) {
-      const gy = Math.min(World.groundAt(px) + 6, bottom);
-      for (let y = Y(deck - 30); y < Y(gy); y++)
-        for (let k = -4; k <= 4; k++) {
-          const tone = k < -2 ? 3 : k < 1 ? 2 : k < 3 ? 1 : 0;
-          const ring = (y % 26) < 2;
-          s.set(X(px) + k, y, ring ? I.WOOD : I.WOOD + tone);
-        }
-      // post cap
-      for (let k = -5; k <= 5; k++) s.set(X(px) + k, Y(deck - 31), I.WOOD + 3);
-    }
-    // deck planks
-    for (let x = 0; x < W; x++)
-      for (let y = Y(deck); y < Y(deck + 9); y++) {
-        const plank = (x % 14) === 0;
-        let tone = y === Y(deck) ? 3 : y < Y(deck + 3) ? 2 : y < Y(deck + 7) ? 1 : 0;
-        if (!plank && tone > 0 && ((x * 7 + y * 13) % 29 === 0)) tone -= 1; // grain and knots
-        s.set(x, y, plank ? I.WOOD : I.WOOD + tone);
-      }
-    // cross beams under the deck
-    for (let x = 0; x < W; x++) if (((x / 30) | 0) % 2 === 0) s.set(x, Y(deck + 10), I.WOOD);
-    // rope railing sagging between posts
+    const X = (wx) => wx - x0 + 20, Y = (wy) => wy - top;
+    const wood = (x, y, tn) => s.set(x, y, I.WOOD + Math.max(0, Math.min(3, tn)));
+    // diagonal cross-bracing between the posts, under the deck
     for (let i = 0; i < posts.length - 1; i++) {
-      const a = X(posts[i]), b = X(posts[i + 1]);
+      const a = X(posts[i]), b = X(posts[i + 1]), yA = Y(deck + 14), yB = Y(World.SEA + 30);
+      for (let k = 0; k <= b - a; k++) { const u = k / (b - a); s.set(a + k, Math.round(yA + (yB - yA) * u), I.WOOD); s.set(a + k, Math.round(yB + (yA - yB) * u), I.WOOD + 1); }
+    }
+    // posts: round logs with a lit left edge, growth rings, dark caps
+    for (const px of posts) {
+      const gy = Math.min(World.groundAt(px) + 8, bottom);
+      for (let y = Y(deck - 40); y < Y(gy); y++)
+        for (let k = -6; k <= 6; k++) {
+          let tn = k < -3 ? 3 : k < 0 ? 2 : k < 4 ? 1 : 0;
+          if ((y * 5 + k * 3) % 23 === 0) tn -= 1;
+          if (y % 38 < 2) tn = 0;
+          wood(X(px) + k, y, tn);
+        }
+      for (let k = -6; k <= 6; k++) { wood(X(px) + k, Y(deck - 41), 3); wood(X(px) + k, Y(deck - 40), k < 0 ? 3 : 2); }
+      for (let k = -5; k <= 5; k++) s.set(X(px) + k, Y(deck - 42), I.WOOD + 2);
+    }
+    // deck: a tiled top face (planks seen at a low angle) above a thick front beam
+    for (let x = 0; x < W; x++) {
+      for (let y = Y(deck); y < Y(deck + 5); y++) {
+        const row = y - Y(deck), off = row % 2 ? 9 : 0, seam = (x + off) % 18 === 0;
+        let tn = row === 0 ? 3 : 2;
+        if (seam) tn = 0; else if (((x + off) * 13 + row * 7) % 31 === 0) tn = 1;
+        wood(x, y, tn);
+      }
+      for (let y = Y(deck + 5); y < Y(deck + 14); y++) {
+        const plank = x % 26 === 0, bolt = x % 26 === 4 && (y === Y(deck + 7) || y === Y(deck + 11));
+        const tn = y === Y(deck + 5) ? 1 : y < Y(deck + 9) ? 2 : 1;
+        s.set(x, y, bolt ? I.INK : plank ? I.WOOD : I.WOOD + tn);
+      }
+      s.set(x, Y(deck + 14), I.WOOD);
+    }
+    // iron chains slung between post tops
+    for (let i = 0; i < posts.length - 1; i++) {
+      const a = X(posts[i]) + 6, b = X(posts[i + 1]) - 6;
       for (let x = a; x <= b; x++) {
-        const u = (x - a) / (b - a);
-        const y = Math.round(Y(deck - 24) + Math.sin(u * Math.PI) * 9);
-        // iron chain: alternating open and side-on links
-        const ph = (x - a) % 6;
-        if (ph < 3) { s.set(x, y - 1, I.WOL); s.set(x, y + 1, I.WOL); if (ph === 0 || ph === 2) s.set(x, y, I.WOL); }
-        else s.set(x, y, I.WOL);
+        const u = (x - a) / (b - a), y = Math.round(Y(deck - 34) + Math.sin(u * Math.PI) * 16), ph = (x - a) % 6;
+        if (ph < 3) { s.set(x, y - 1, I.INK); s.set(x, y + 1, I.INK); if (ph !== 1) s.set(x, y, I.INK); }
+        else s.set(x, y, I.INK);
       }
     }
+    // steps down to the water at the far end
+    for (let k = 0; k < 4; k++) for (let x = 0; x < 14; x++) for (let y = 0; y < 3; y++) wood(X(x1) + 6 + x + k * 4, Y(deck + 16 + k * 9) + y, y === 0 ? 3 : 1);
+    // lamp post with a glass globe
+    const lx = X(x0 + 245);
+    for (let y = Y(deck - 58); y < Y(deck); y++) { s.set(lx, y, I.INK); s.set(lx + 1, y, I.INK); }
+    for (let yy = -5; yy <= 5; yy++) for (let xx = -5; xx <= 5; xx++) if (xx * xx + yy * yy <= 25) s.set(lx + xx, Y(deck - 64) + yy, xx * xx + yy * yy > 16 ? I.INK : (xx < -1 && yy < -1 ? I.WHITE : I.LAMP));
+    // a mooring bollard and a crate
+    for (let y = Y(deck - 10); y < Y(deck); y++) for (let k = -3; k <= 3; k++) s.set(X(x0 + 150) + k, y, I.INK);
+    for (let y = Y(deck - 16); y < Y(deck); y++) for (let k = 0; k < 18; k++) s.set(X(x0 + 560) + k, y, I.CHEST + ((k % 6 === 0 || y === Y(deck - 16)) ? 0 : k < 6 ? 3 : 2));
     s.outline(I.WOL);
-    return { s, x: x0 - 10, y: top };
+    return { s, x: x0 - 20, y: top, lamp: [x0 + 245, deck - 64] };
   }
 
   /* ---- corals ---- */
-  function makeCoral(kind, seed, size = 1) {
+  function makeCoral(kind, seed, size = 1, o = {}) {
     const r = rng(seed);
     const W = Math.round(90 * size), Hh = Math.round(80 * size);
     const s = new ISprite(W, Hh);
-    const base = kind === 'fan' ? I.CORC : kind === 'brain' ? I.CORB : I.CORA;
-    if (kind === 'branch' || kind === 'fan') {
+    const bases = { fan: I.CORC, brain: I.CORB, branch: I.CORA };
+    const base = o.base ?? bases[kind] ?? I.CORA;
+    if (kind === 'tube') {
+      // a cluster of hollow tubes with bright rims
+      const n = 3 + Math.floor(r() * 4);
+      for (let k = 0; k < n; k++) {
+        const x0 = Math.round(W / 2 + (k - (n - 1) / 2) * 7 * size + (r() - 0.5) * 4), h = Math.round((24 + r() * 34) * size), w = Math.max(2, Math.round((3 + r() * 2) * size));
+        for (let y = Hh - 2; y > Hh - 2 - h; y--) for (let x = -w; x <= w; x++) s.set(x0 + x, y, base + (x < -w / 2 ? 3 : x < w / 3 ? 2 : 1));
+        for (let x = -w; x <= w; x++) { s.set(x0 + x, Hh - 2 - h, I.TIP); if (Math.abs(x) < w) s.set(x0 + x, Hh - 1 - h, base); }
+      }
+      s.outline(I.CORAL_OL); return s;
+    }
+    if (kind === 'anemone') {
+      // round foot with a crown of fat wavy tentacles
+      const cx = W / 2, top = Hh - 10 * size;
+      for (let y = Math.round(top); y < Hh - 1; y++) for (let x = Math.round(cx - 9 * size); x < cx + 9 * size; x++) s.set(x, y, base + (x < cx - 3 ? 2 : 1));
+      const n = 11;
+      for (let k = 0; k < n; k++) {
+        const a = -Math.PI * (0.1 + 0.8 * k / (n - 1)), len = (14 + r() * 8) * size;
+        for (let j = 0; j < len; j++) {
+          const X = cx + Math.cos(a) * j + Math.sin(j * 0.4 + k) * 1.5, Y = top + Math.sin(a) * j;
+          s.set(X, Y, base + (j > len - 2 ? 3 : 2)); s.set(X + 1, Y, base + 1);
+        }
+        s.set(cx + Math.cos(a) * len, top + Math.sin(a) * len, I.TIP);
+      }
+      s.outline(I.CORAL_OL); return s;
+    }
+    if (kind === 'table') {
+      // flat plate coral on a short stalk
+      const cx = W / 2, stem = Math.round(14 * size), pw = Math.round(34 * size), py = Hh - 2 - stem;
+      for (let y = py; y < Hh - 1; y++) for (let x = -2; x <= 2; x++) s.set(cx + x, y, base + 1);
+      for (let x = -pw; x <= pw; x++) { const th = Math.max(1, Math.round((1 - Math.abs(x / pw)) * 4)); for (let y = 0; y < th; y++) s.set(cx + x, py - y + Math.round((x / pw) ** 2 * 3), base + (y === th - 1 ? 3 : 2 - (x > pw / 2 ? 1 : 0))); }
+      s.outline(I.CORAL_OL); return s;
+    }
+    if (kind === 'sponge') {
+      // barrel sponge: a tall cup with ridges and a dark mouth
+      const cx = W / 2, h = Math.round(40 * size), w0 = 8 * size;
+      for (let y = 0; y < h; y++) { const w = w0 + y * 0.12 * size; for (let x = -w; x <= w; x++) { const ridge = Math.sin(y * 0.8) > 0.6; s.set(cx + x, Hh - 2 - y, base + (x < -w / 2 ? 3 : ridge ? 1 : 2)); } }
+      const wt = w0 + h * 0.12 * size;
+      for (let x = -wt + 2; x <= wt - 2; x++) s.set(cx + x, Hh - 1 - h, I.INK);
+      s.outline(I.CORAL_OL); return s;
+    }
+    if (kind === 'branch' || kind === 'fan' || kind === 'stag') {
       const grow = (x, y, a, len, wdt, depth) => {
         for (let k = 0; k < len; k++) {
           const X = x + Math.cos(a) * k, Y = y + Math.sin(a) * k;
@@ -13005,6 +13204,7 @@ const Props = (() => {
         if (depth <= 0) { s.set(x + Math.cos(a) * len, y + Math.sin(a) * len - 1, base + 3); return; }
         const ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len;
         const n = kind === 'fan' ? 3 : 2;
+        if (kind === 'stag' && depth > 0) wdt = Math.max(wdt, 1);
         for (let i = 0; i < n; i++) grow(ex, ey, a + (i - (n - 1) / 2) * (kind === 'fan' ? 0.45 : 0.6) + (r() - 0.5) * 0.3, len * (0.62 + r() * 0.2), Math.max(0, wdt - 1), depth - 1);
       };
       const d0 = kind === 'fan' ? 4 : 4;
@@ -13190,16 +13390,32 @@ const Scene = (() => {
     cands[Math.floor(Math.random() * cands.length)].hasOrb = true;
     // pier
     S.pier = Props.makePier();
-    // corals on the reef, kelp on the slope
+    // a crowded coral reef: many kinds and colours, bigger heads where the water is deeper
     const cr = rng(12);
-    const coralSpots = [[2130, 'branch', 1.1], [2190, 'brain', 0.8], [2260, 'fan', 1.2], [2440, 'branch', 1.3], [2500, 'brain', 1], [2660, 'fan', 0.9], [1950, 'brain', 0.7], [2320, 'fan', 0.8], [2020, 'branch', 0.8]];
-    for (const [x, kind, size] of coralSpots) {
-      const spr = Props.makeCoral(kind, Math.floor(cr() * 999), size);
-      const gy = World.groundAt(x);
-      S.corals.push({ x, spr, x0: Math.round(x - spr.w / 2), y0: Math.round(gy - spr.h + 3) });
+    const I = Props.I, pool = new Map();
+    const kinds = [['branch', 3], ['brain', 2], ['fan', 2], ['tube', 2], ['anemone', 1.6], ['table', 1.2], ['sponge', 1.2], ['stag', 1.4]];
+    const bases = [I.CORA, I.CORB, I.CORC, I.CORD, I.CORE, I.CORF, I.CORG, I.SPONGE, I.ANEM];
+    const pickKind = () => { let tot = kinds.reduce((a, k) => a + k[1], 0), r = cr() * tot; for (const [k, w] of kinds) { r -= w; if (r <= 0) return k; } return 'branch'; };
+    for (let x = 1470; x < 3070; x += 9 + Math.floor(cr() * 17)) {
+      const gy = World.groundAt(x), deep = Math.min(1, (gy - World.SEA) / 260);
+      if (gy < World.SEA + 40) continue;
+      const kind = pickKind(), base = kind === 'sponge' ? I.SPONGE : kind === 'anemone' ? I.ANEM : bases[Math.floor(cr() * 7)];
+      const size = +(0.35 + deep * 0.55 + cr() * 0.35).toFixed(1);
+      const key = kind + base + size + (Math.floor(cr() * 3));
+      let spr = pool.get(key);
+      if (!spr) { spr = Props.makeCoral(kind, Math.floor(cr() * 9999), size, { base }); pool.set(key, spr); }
+      S.corals.push({ x, spr, x0: Math.round(x - spr.w / 2 + (cr() - 0.5) * 6), y0: Math.round(gy - spr.h + 3 + cr() * 3) });
     }
-    for (let x = 1520; x < 2120; x += 22 + Math.floor(cr() * 26)) S.kelp.push({ x, len: Math.min(60 + Math.floor(cr() * 110), World.groundAt(x) - World.SEA - 24), seed: x });
-    for (let x = 2700; x < 3500; x += 60 + Math.floor(cr() * 80)) S.kelp.push({ x, len: 90 + Math.floor(cr() * 160), seed: x });
+    // sea grass and kelp on the sandy slope and between the heads
+    for (let x = 1320; x < 3000; x += 18 + Math.floor(cr() * 30)) S.kelp.push({ x, len: Math.max(20, Math.min(40 + Math.floor(cr() * 120), World.groundAt(x) - World.SEA - 24)), seed: x });
+    // the abyss: nothing but tall dark rock spires
+    S.deepRocks = [];
+    for (let x = 3180; x < 4600; x += 50 + Math.floor(cr() * 120)) {
+      const h = 60 + Math.floor(cr() * 240), w = 40 + Math.floor(cr() * 70);
+      const spr = Props.makeRock(w, h, 100 + x, { moss: false, barnacles: false, dark: true });
+      const gy = World.groundAt(x);
+      S.deepRocks.push({ x, spr, x0: Math.round(x - spr.w / 2), y0: Math.round(gy - spr.h + 12) });
+    }
     for (let x = 30; x < 470; x += 26 + Math.floor(cr() * 30)) S.grass.push({ x, n: 6 + Math.floor(cr() * 8), seed: x });
     // decorations
     S.castle = { spr: Props.makeSandcastle(), x: 560 };
@@ -13302,6 +13518,7 @@ const Scene = (() => {
     if (inView(S.pier.x, S.pier.y, S.pier.s.w, S.pier.s.h)) Props.blit(fb, S.pier.s, S.pier.x - cx, S.pier.y - cy, pal, occ, 2);
     for (const k of S.kelp) if (k.x - cx > -30 && k.x - cx < VW + 30) Props.drawKelp(fb, cx, cy, k.x, World.groundAt(k.x) + 2, k.len, k.seed, t, pal, occ);
     for (const c of S.corals) if (inView(c.x0, c.y0, c.spr.w, c.spr.h)) Props.blit(fb, c.spr, c.x0 - cx, c.y0 - cy, pal, occ, 2);
+    if (S.deepRocks) for (const r of S.deepRocks) if (inView(r.x0, r.y0, r.spr.w, r.spr.h)) Props.blit(fb, r.spr, r.x0 - cx, r.y0 - cy, pal, occ, 1);
     // umbrella, towel, castle, chest
     const wob = (o) => (o.wob ? Math.round(Math.sin(o.wob * 34) * o.wob * 4) : 0);
     if (inView(S.umbrella.x - 75, S.umbrella.y0, 150, 150)) Props.blit(fb, S.umbrella.spr, S.umbrella.x - 75 - cx + wob(S.umbrella), S.umbrella.y0 - cy, pal, occ, 2);
@@ -13494,7 +13711,7 @@ const FX = (() => {
       if (p.type === 'grain') {
         p.vx += ((typeof Wind !== 'undefined' ? Wind.v : 0.4) * 60 - p.vx) * dt * 0.8;
         const g = World.groundAt(Math.max(0, Math.min(World.W, p.x)));
-        if (p.y >= g - 1) { p.y = g - 1; p.vy = -Math.abs(p.vy) * 0.3; p.vx *= 0.6; if (Math.abs(p.vy) < 12) p.vy = -Math.random() * 25 * (typeof Wind !== 'undefined' ? Wind.v : 0.4); }
+        if (p.y >= g - 1) { p.y = g - 1; p.vy = -Math.abs(p.vy) * 0.3; p.vx *= 0.6; if (Math.abs(p.vy) < 12) { p.vy = -Math.random() * 25 * (typeof Wind !== 'undefined' ? Wind.v : 0.4); if (typeof Moves !== 'undefined' && Math.random() < 0.35) { Moves.addSand(p.x, 0.25); list.splice(i, 1); continue; } } }
         if (g > World.SEA + 2 && p.y > World.SEA - 2) { list.splice(i, 1); continue; }
       }
       if (p.floor !== undefined && p.vy > 0 && p.y >= p.floor) { if (p.onFloor) p.onFloor(p); list.splice(i, 1); }
@@ -15241,7 +15458,7 @@ const Game = (() => {
   const mark = DEBUG ? (k) => { const n = performance.now(); prof[k] = (prof[k] || 0) * 0.95 + (n - pt) * 0.05; pt = n; } : () => {};
   G.prof = prof;
   function render() {
-    WorldRender.setTilt((G.cam.y - (World.SEA - G.VH * 0.62)) * 0.35 + (G.zoom - zMin) * 5);
+    WorldRender.setTilt((G.cam.y - (World.SEA - G.VH * 0.62)) * 0.5 + (G.zoom - zMin) * 7);
     if (G.gallery) { Gallery.draw(fb); Gallery.post(fb); ctx.putImageData(img, 0, 0); return; }
     const P = G.P, t = G.t;
     pt = performance.now();
@@ -15302,6 +15519,7 @@ const Game = (() => {
     FX.draw(fb, cx, cy, 3, t);
     FX.draw(fb, cx, cy, 4, t);
     for (const s of G.systems) if (s.post) s.post(fb, cx, cy, P, t);
+    if (typeof Post !== 'undefined') Post.apply(fb, P, cx, cy, t, G);
     if (typeof Gallery !== 'undefined') Gallery.post(fb);
     mark('fx');
     ctx.putImageData(img, 0, 0);
@@ -16091,6 +16309,12 @@ const Friends = (() => {
           Game.shake(3);
         }
       }
+      // sometimes the roar turns into an Ice Beam across the water
+      if (chance(0.6) && typeof Moves !== 'undefined') {
+        const m = this.at('mouth');
+        Moves.iceBeam(m[0], m[1], clamp(this.x + rnd(170, 280), World.shoreX + 40, World.W - 40));
+        let e2 = 0; while (e2 < 0.9) { const dt = yield; e2 += dt; this.o.headPitch = 0.3; this.o.mouth = 1; this.o.eyes = 'angry'; }
+      }
       // the roar rattles the palms
       for (const p of Scene.S.palms) { p.shake = Math.max(p.shake, 0.7); if (chance(0.35)) Nuts.shakePalm(p, 1); }
       for (const m of Game.mons) if (m !== this && m.kind === 'mudkip' && m.mode === 'land' && !m.sleeping) { FX.emote('shock', () => m.headPt(), { life: 0.9 }); m.vair = 220; m.air = 0.5; }
@@ -16517,7 +16741,7 @@ const Deep = (() => {
   /* ================================================================
      LUVDISC school
   ================================================================ */
-  const HEART = { cx: 2280, cy: 770, sx: 10.5, sy: 6.2 };
+  const HEART = { cx: 2400, cy: 690, sx: 10.5, sy: 6.2 };
   function heartAt(u) {
     const s = Math.sin(u), c = Math.cos(u);
     const x = 16 * s * s * s;
@@ -17725,6 +17949,194 @@ const Space = (() => {
   return sys;
 })();
 
+/* ==== src/game/post.js ==== */
+/* ------------------------------------------------------------------
+   Post — screen-space lighting passes over the finished frame:
+   bloom (bright pixels bleed soft light), the dock lamp's glow and
+   its shimmering reflection at dusk and night, and a cool underwater
+   colour wash when the camera dips below the surface.
+------------------------------------------------------------------- */
+const Post = (() => {
+  let bw = 0, bh = 0, acc = null, tmp = null;
+  const DS = 4;
+  function bloom(fb, strength, thresh) {
+    const W = fb.w, H = fb.h, d = fb.d;
+    const w = Math.ceil(W / DS), h = Math.ceil(H / DS);
+    if (w !== bw || h !== bh) { bw = w; bh = h; acc = new Float32Array(w * h * 3); tmp = new Float32Array(w * h * 3); }
+    acc.fill(0);
+    for (let y = 0; y < H; y += 2) {
+      const row = y * W, by = ((y / DS) | 0) * w;
+      for (let x = 0; x < W; x += 2) {
+        const c = d[row + x], r = c & 255, g = (c >> 8) & 255, b = (c >> 16) & 255;
+        const l = r * 0.3 + g * 0.55 + b * 0.15;
+        if (l < thresh) continue;
+        const k = (l - thresh) / (255 - thresh), j = (by + ((x / DS) | 0)) * 3;
+        acc[j] += r * k; acc[j + 1] += g * k; acc[j + 2] += b * k;
+      }
+    }
+    // two box-blur passes on the small buffer
+    for (let pass = 0; pass < 2; pass++) {
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        let r = 0, g = 0, b = 0;
+        for (let k = -2; k <= 2; k++) { const xx = Math.min(w - 1, Math.max(0, x + k)), j = (y * w + xx) * 3; r += acc[j]; g += acc[j + 1]; b += acc[j + 2]; }
+        const j = (y * w + x) * 3; tmp[j] = r / 5; tmp[j + 1] = g / 5; tmp[j + 2] = b / 5;
+      }
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        let r = 0, g = 0, b = 0;
+        for (let k = -2; k <= 2; k++) { const yy = Math.min(h - 1, Math.max(0, y + k)), j = (yy * w + x) * 3; r += tmp[j]; g += tmp[j + 1]; b += tmp[j + 2]; }
+        const j = (y * w + x) * 3; acc[j] = r / 5; acc[j + 1] = g / 5; acc[j + 2] = b / 5;
+      }
+    }
+    const s = strength / 4;
+    for (let by = 0; by < h; by++) for (let bx = 0; bx < w; bx++) {
+      const x1c = Math.min(w - 1, bx + 1), y1c = Math.min(h - 1, by + 1);
+      const j00 = (by * w + bx) * 3, j01 = (by * w + x1c) * 3, j10 = (y1c * w + bx) * 3, j11 = (y1c * w + x1c) * 3;
+      const mx = Math.max(acc[j00] + acc[j00 + 1], acc[j01] + acc[j01 + 1], acc[j10] + acc[j10 + 1], acc[j11] + acc[j11 + 1]);
+      if (mx * s < 3) continue;
+      const X0 = bx * DS + (DS >> 1), Y0 = by * DS + (DS >> 1);
+      for (let yy = 0; yy < DS; yy++) {
+        const y = Y0 + yy;
+        if (y >= H) break;
+        const ty = yy / DS, row = y * W;
+        for (let xx = 0; xx < DS; xx++) {
+          const x = X0 + xx;
+          if (x >= W) break;
+          const tx = xx / DS, a00 = (1 - tx) * (1 - ty), a01 = tx * (1 - ty), a10 = (1 - tx) * ty, a11 = tx * ty;
+          const r = (acc[j00] * a00 + acc[j01] * a01 + acc[j10] * a10 + acc[j11] * a11) * s;
+          const g = (acc[j00 + 1] * a00 + acc[j01 + 1] * a01 + acc[j10 + 1] * a10 + acc[j11 + 1] * a11) * s;
+          const b = (acc[j00 + 2] * a00 + acc[j01 + 2] * a01 + acc[j10 + 2] * a10 + acc[j11 + 2] * a11) * s;
+          const i = row + x, c = d[i];
+          d[i] = (0xff000000 | Math.min(255, (((c >> 16) & 255) + b) | 0) << 16 | Math.min(255, (((c >> 8) & 255) + g) | 0) << 8 | Math.min(255, ((c & 255) + r) | 0)) >>> 0;
+        }
+      }
+    }
+  }
+  function glow(fb, x, y, r, col, a) {
+    const cr = col & 255, cg = (col >> 8) & 255, cb = (col >> 16) & 255, W = fb.w, d = fb.d;
+    for (let yy = Math.max(0, Math.floor(y - r)); yy < Math.min(fb.h, y + r); yy++) for (let xx = Math.max(0, Math.floor(x - r)); xx < Math.min(W, x + r); xx++) {
+      const q = Math.hypot(xx - x, yy - y) / r;
+      if (q >= 1) continue;
+      const f = (1 - q) * (1 - q) * a, i = yy * W + xx, c = d[i];
+      d[i] = (0xff000000 | Math.min(255, ((c >> 16) & 255) + cb * f) << 16 | Math.min(255, ((c >> 8) & 255) + cg * f) << 8 | Math.min(255, (c & 255) + cr * f)) >>> 0;
+    }
+  }
+  function apply(fb, P, cx, cy, t, G) {
+    const h = P.key, night = h === 'night' ? 1 : h === 'dusk' ? 0.6 : 0;
+    // dock lamp: warm halo, and a broken column of light on the water below it
+    const lamp = Scene.S.pier && Scene.S.pier.lamp;
+    if (lamp && night > 0) {
+      const lx = lamp[0] - cx, ly = lamp[1] - cy;
+      if (lx > -120 && lx < fb.w + 120) {
+        glow(fb, lx, ly, 70, PX.hex('#ffc860'), 0.55 * night);
+        glow(fb, lx, ly, 14, PX.hex('#fff4c0'), 0.9 * night);
+        const sy0 = World.SEA - cy;
+        for (let k = 0; k < 90; k++) {
+          const y = Math.round(sy0 + k), x = Math.round(lx + Math.sin(k * 0.5 + t * 3) * (2 + k * 0.08));
+          if (y < 0 || y >= fb.h || x < 1 || x >= fb.w - 1 || (k + Math.floor(t * 6)) % 3 === 0) continue;
+          glow(fb, x, y, 3, PX.hex('#ffd878'), (1 - k / 90) * 0.7 * night);
+        }
+      }
+    }
+    // bloom: stronger at dusk/night so lights, glints and the sun really glow
+    bloom(fb, night ? 0.9 : 0.42, night ? 150 : 228);
+    // underwater camera: a gentle cool wash and light shafts dancing across the view
+    const under = G.cam.y + fb.h * 0.5 - World.SEA;
+    if (under > 40) {
+      const k = Math.min(1, (under - 40) / 200) * 0.12, d = fb.d;
+      for (let i = 0; i < d.length; i += 1) {
+        const c = d[i];
+        d[i] = (0xff000000 | Math.min(255, (((c >> 16) & 255) * (1 + k)) | 0) << 16 | Math.min(255, (((c >> 8) & 255) * (1 + k * 0.4)) | 0) << 8 | (((c & 255) * (1 - k)) | 0)) >>> 0;
+      }
+    }
+  }
+  return { apply, glow, bloom };
+})();
+
+/* ==== src/game/moves.js ==== */
+/* ------------------------------------------------------------------
+   Moves — Pokémon attacks as effects in the world: Walrein's Ice Beam
+   (a crackling cyan beam that freezes a floe on the sea, which drifts
+   on the waves and slowly melts) and sand that heaps into little
+   piles where it lands, flattened again by the wind.
+------------------------------------------------------------------- */
+const Moves = (() => {
+  const { hex, mix, bayer4, hash2 } = PX;
+  const C = { ice: hex('#bff4ff'), ice2: hex('#7ad8f0'), ice3: hex('#3a9ac8'), w: hex('#ffffff') };
+  const beams = [], floes = [];
+  // Ice Beam from (x0, y0) toward the sea at x1
+  function iceBeam(x0, y0, x1) {
+    beams.push({ x0, y0, x1, t: 0, life: 0.9 });
+    Game.sfx('freeze', x0, 1); Game.sfx('chime', x1, 0.4);
+  }
+  /* ---- sand piles: a height offset on top of the terrain, visual only ---- */
+  const DX = 2, pile = new Float32Array(Math.ceil(World.W / DX) + 2);
+  function addSand(x, amt = 0.35) { const i = Math.round(x / DX); for (let k = -2; k <= 2; k++) if (pile[i + k] !== undefined) pile[i + k] = Math.min(7, pile[i + k] + amt * (1 - Math.abs(k) / 3)); }
+  function update(dt, t) {
+    for (let i = beams.length - 1; i >= 0; i--) {
+      const b = beams[i]; b.t += dt;
+      const sx = b.x1, sy = WorldRender.surfaceAt(sx, t);
+      for (let k = 0; k < 3; k++) FX.add({ type: 'spark', x: sx + (Math.random() - 0.5) * 20, y: sy - Math.random() * 10, size: 2, life: 0.5, c: C.w, c2: C.ice2, layer: 3 });
+      if (b.t > b.life) {
+        beams.splice(i, 1);
+        floes.push({ x: sx, w: 34 + Math.random() * 20, life: 14, age: 0, seed: Math.floor(Math.random() * 99) });
+        Ripples.poke(sx, 60, 6); FX.splashAt(sx, sy, { power: 0.6, n: 10, c: C.ice, c2: C.ice2 }); Game.sfx('crack', sx, 0.8);
+      }
+    }
+    for (let i = floes.length - 1; i >= 0; i--) { const f = floes[i]; f.age += dt; f.x += Wind.v * 6 * dt; if (f.age > f.life) { floes.splice(i, 1); FX.bubbles(f.x, World.SEA + 4, 6, World.SEA); } }
+    // the wind slowly planes the piles flat again
+    const k = dt * (0.02 + Wind.v * 0.06);
+    for (let i = 0; i < pile.length; i++) if (pile[i] > 0) pile[i] = Math.max(0, pile[i] - k);
+  }
+  function drawFront(fb, cx, cy, P, t) {
+    const W = fb.w, H = fb.h, d = fb.d;
+    for (const b of beams) {
+      const x1 = b.x1, y1 = WorldRender.surfaceAt(x1, t), n = Math.ceil(Math.hypot(x1 - b.x0, y1 - b.y0));
+      const grow = Math.min(1, b.t / 0.2), len = n * grow;
+      for (let s = 0; s < len; s++) {
+        const u = s / n, x = b.x0 + (x1 - b.x0) * u - cx, y = b.y0 + (y1 - b.y0) * u - cy + Math.sin(s * 0.7 + b.t * 40) * 1.5;
+        for (let w = -3; w <= 3; w++) {
+          const X = Math.round(x), Y = Math.round(y + w);
+          if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
+          const a = Math.abs(w);
+          d[Y * W + X] = a === 0 ? C.w : a === 1 ? C.ice : a === 2 ? mix(d[Y * W + X], C.ice2, 0.8) : (bayer4(X, Y) < 0.5 ? mix(d[Y * W + X], C.ice2, 0.4) : d[Y * W + X]);
+        }
+        if (s % 9 === 0) { const X = Math.round(x), Y = Math.round(y) - 4; for (const [ox, oy] of [[0, 0], [1, 1], [-1, 1], [0, 2]]) if (X + ox >= 0 && Y + oy >= 0 && X + ox < W && Y + oy < H) d[(Y + oy) * W + X + ox] = C.w; }
+      }
+      Post.glow(fb, b.x0 - cx, b.y0 - cy, 18, C.ice2, 0.6);
+    }
+    for (const f of floes) {
+      const melt = 1 - f.age / f.life, w = Math.max(6, f.w * (0.4 + 0.6 * melt)), sy = WorldRender.surfaceAt(f.x, t);
+      for (let x = -w / 2; x <= w / 2; x++) {
+        const u = x / (w / 2), top = Math.round(sy - 4 - (1 - u * u) * 5 * melt - hash2(Math.round(x), f.seed, 1) * 2), bot = Math.round(sy + 3);
+        const X = Math.round(f.x + x - cx);
+        if (X < 0 || X >= W) continue;
+        for (let y = top; y <= bot; y++) {
+          const Y = y - cy;
+          if (Y < 0 || Y >= H) continue;
+          d[Y * W + X] = y === top ? C.w : y < top + 2 ? C.ice : y > sy ? mix(d[Y * W + X], C.ice3, 0.6) : C.ice2;
+        }
+      }
+    }
+    // sand piles: soft mounds with a lit crest
+    const x0 = Math.max(0, Math.floor(cx / DX)), x1 = Math.min(pile.length - 1, Math.ceil((cx + W) / DX));
+    for (let i = x0; i <= x1; i++) {
+      const hgt = pile[i];
+      if (hgt < 0.6) continue;
+      const wx = i * DX, g = World.groundAt(wx);
+      if (g > World.SEA) continue;
+      for (let k = 0; k < DX; k++) {
+        const X = wx + k - cx;
+        if (X < 0 || X >= W) continue;
+        const top = Math.round(g - hgt);
+        for (let y = top; y < g; y++) { const Y = y - cy; if (Y >= 0 && Y < H) d[Y * W + X] = y === top ? P.sand[3] : P.sand[2]; }
+      }
+    }
+  }
+  const sys = { update, drawFront, iceBeam, addSand, floes };
+  Game.systems.push(sys);
+  return sys;
+})();
+
 /* ==== src/game/fun.js ==== */
 /* ------------------------------------------------------------------
    Fun scenes — five new little stages for the Time Gallery, painted
@@ -18345,16 +18757,16 @@ const Gallery = (() => {
     return list;
   }
   /* ---- the space dwellers: Minior meteors and a swooping Deoxys ---- */
-  let crits = null, sparks = [];
+  let crits = null, sparks = [], impacts = [];
   function ensureCrits() {
     if (crits) return;
     const Pn = Times.compile('noon');
     crits = { P: Pn, minior: [], deoxys: null };
     const cores = ['#f25050', '#ffa040', '#fff050', '#5ad86a', '#50aaff', '#6a6aea', '#b858e8'].map(hex);
     for (let i = 0; i < 7; i++) {
-      const c = new Critters.Critter(Minior, { kind: 'minior', palId: 'minior' + i, pal: Minior.core(i), yaw: 1.1, scale: 0.75 + (i % 3) * 0.3, qPose: 0.05, qFields: { spin: 0.45, crack: 0.25 }, shadow: false });
+      const c = new Critters.Critter(Minior, { kind: 'minior', palId: 'minior' + i, pal: Minior.core(i), yaw: 1.1, scale: 0.6 + (i % 3) * 0.22, qPose: 0.05, qFields: { spin: 0.45, crack: 0.25 }, shadow: false });
       const a = hash2(i, 1, 9) * 6.28, sp = 0.025 + hash2(i, 2, 9) * 0.03;
-      Object.assign(c, { u: hash2(i, 3, 9), v: hash2(i, 4, 9), vu: Math.cos(a) * sp, vv: Math.sin(a) * sp * 0.6, spn: hash2(i, 5, 9) * 6, crackT: 0, core: cores[i], near: i % 3 === 2 });
+      Object.assign(c, { u: 0.1 + hash2(i, 3, 9) * 0.8, v: 0.1 + hash2(i, 4, 9) * 0.8, vu: Math.cos(a) * sp, vv: Math.sin(a) * sp * 0.6, bu: Math.cos(a) * sp, bv: Math.sin(a) * sp * 0.6, spn: hash2(i, 5, 9) * 6, spinV: 1.6, crackT: 0, core: cores[i], near: i % 3 === 2 });
       crits.minior.push(c);
     }
     crits.deoxys = new Critters.Critter(Deoxys, { kind: 'deoxys', yaw: 1.2, scale: 0.4, qPose: 0.1, qYaw: 0.2, qFields: { wave: 0.5, lean: 0.1, spread: 0.25 }, shadow: false });
@@ -18366,19 +18778,55 @@ const Gallery = (() => {
     const t = S.t;
     for (const m of crits.minior) {
       m.u += m.vu * dt; m.v += m.vv * dt;
-      if (m.u < -0.15) m.u += 1.3; if (m.u > 1.15) m.u -= 1.3; if (m.v < -0.15) m.v += 1.3; if (m.v > 1.15) m.v -= 1.3;
-      m.spn += dt * 1.6; if (m.crackT > 0) m.crackT -= dt;
+      const k = Math.min(1, dt * 0.9); m.vu += (m.bu * Math.sign(m.vu || 1) * Math.sign(m.bu || 1) - m.vu) * k * 0.5; m.vv += (m.bv - m.vv) * k * 0.3;
+      if (m.u < 0.04) { m.u = 0.04; m.vu = Math.abs(m.vu); m.bu = Math.abs(m.bu); } if (m.u > 0.96) { m.u = 0.96; m.vu = -Math.abs(m.vu); m.bu = -Math.abs(m.bu); }
+      if (m.v < 0.06) { m.v = 0.06; m.vv = Math.abs(m.vv); } if (m.v > 0.94) { m.v = 0.94; m.vv = -Math.abs(m.vv); }
+      m.spinV += (1.6 - m.spinV) * dt * 0.6;
+      m.spn += dt * m.spinV; if (m.crackT > 0) m.crackT -= dt;
       m.pose = { spin: m.spn, crack: m.crackT > 0 ? 1 : 0.3, eyes: 'open' };
       const x = m.u * w, y = m.v * h;
       for (let k = 0; k < 4; k++) sparks.push({ x: x - m.vu * w * 0.25 + R(-3, 3), y: y - m.vv * h * 0.2 + R(-3, 3), vx: -m.vu * w * R(0.4, 1.2) + R(-8, 8), vy: -m.vv * h * R(0.4, 1.2) + R(-8, 8), age: 0, life: R(0.5, 1.3), core: Math.random() < 0.3 ? m.core : 0 });
     }
+    // Deoxys: cruise, pick a Minior, rush it and land a punch or a kick that sends it flying
     const d = crits.deoxys;
+    if (!d.st) Object.assign(d, { st: 'cruise', stT: 0, x: w * 0.3, y: h * 0.5, vx: 60, vy: 0, punch: 0, kick: 0, trail: [] });
+    d.stT += dt;
     const px = d.x, py = d.y;
-    d.x = w * 0.5 + Math.sin(t * 0.21) * w * 0.46; d.y = h * 0.52 + Math.sin(t * 0.34 + 1) * h * 0.3 + 30;
-    const vx = (d.x - px) / Math.max(dt, 1e-3), vy = (d.y - py) / Math.max(dt, 1e-3);
-    d.yaw = vx >= 0 ? 1.2 : Math.PI - 1.2;
+    let tx, ty, spd;
+    if (d.st === 'cruise') {
+      tx = w * 0.5 + Math.sin(t * 0.21) * w * 0.42; ty = h * 0.52 + Math.sin(t * 0.34 + 1) * h * 0.3 + 30; spd = 90;
+      if (d.stT > 2.5 + (d.x % 2)) { d.target = crits.minior[Math.floor(Math.random() * crits.minior.length)]; d.st = 'chase'; d.stT = 0; d.move = Math.random() < 0.5 ? 'punch' : 'kick'; }
+    } else if (d.st === 'chase') {
+      const m = d.target; tx = m.u * w - Math.sign(m.u * w - d.x || 1) * 22; ty = m.v * h + 46; spd = 260;
+      if (Math.hypot(tx - d.x, ty - d.y) < 14 || d.stT > 3) { d.st = 'strike'; d.stT = 0; }
+    } else if (d.st === 'strike') {
+      tx = d.x; ty = d.y; spd = 0;
+      const k = Math.min(1, d.stT / 0.12);
+      d[d.move] = k;
+      if (!d.hit && d.stT > 0.12) {
+        d.hit = true;
+        const m = d.target, dir = m.u * w >= d.x ? 1 : -1;
+        m.vu = dir * R(0.9, 1.3); m.vv = R(-0.6, 0.2); m.spinV = 14; m.crackT = 1.2;
+        const ix = m.u * w, iy = m.v * h;
+        impacts.push({ x: ix, y: iy, age: 0, c: m.core });
+        for (let j = 0; j < 24; j++) { const a = Math.random() * 6.28, sp = R(40, 140); sparks.push({ x: ix, y: iy, vx: Math.cos(a) * sp + dir * 60, vy: Math.sin(a) * sp, age: 0, life: R(0.3, 0.8), core: j % 2 ? m.core : 0 }); }
+        S.shake = 0.25; Game.sfx(d.move === 'punch' ? 'bonk' : 'thud', null, 0.9); Game.sfx('crack', null, 0.5);
+      }
+      if (d.stT > 0.45) { d.st = 'cruise'; d.stT = 0; d.hit = false; }
+    }
+    if (d.st !== 'strike') { d.punch = Math.max(0, d.punch - dt * 4); d.kick = Math.max(0, d.kick - dt * 4); }
+    if (spd > 0) {
+      const dx = tx - d.x, dy = ty - d.y, dd = Math.hypot(dx, dy) || 1;
+      d.vx += ((dx / dd) * spd - d.vx) * Math.min(1, dt * 3); d.vy += ((dy / dd) * spd - d.vy) * Math.min(1, dt * 3);
+      d.x += d.vx * dt; d.y += d.vy * dt;
+    }
+    const vx = d.vx, vy = d.vy, sp2 = Math.hypot(vx, vy);
+    if (d.st !== 'strike') d.yaw = vx >= 0 ? 1.2 : Math.PI - 1.2;
     if (d.boost > 0) d.boost -= dt;
-    d.pose = { wave: t * 3, lean: clamp(vy * 0.004, -0.4, 0.4) * (vx >= 0 ? 1 : -1), spread: 0.5 + Math.sin(t * 1.3) * 0.4 + (d.boost > 0 ? 0.5 : 0) };
+    const fly = Math.min(1, sp2 / 180);
+    d.pose = { wave: t * 3, lean: clamp(vy * 0.003, -0.35, 0.35), spread: 0.5 + Math.sin(t * 1.3) * 0.3 + (d.boost > 0 ? 0.5 : 0), fly, punch: d.punch, kick: d.kick };
+    d.trail.unshift([d.x, d.y]); if (d.trail.length > 12) d.trail.pop();
+    for (let i = impacts.length - 1; i >= 0; i--) { impacts[i].age += dt; if (impacts[i].age > 0.5) impacts.splice(i, 1); }
     for (let k = 0; k < 2; k++) sparks.push({ x: d.x - Math.sign(vx) * 10 + R(-4, 4), y: d.y - 40 + R(-10, 10), vx: -vx * 0.2, vy: R(-5, 5), age: 0, life: R(0.3, 0.6), core: k ? hex('#48b2c0') : hex('#f59a66') });
     for (let i = sparks.length - 1; i >= 0; i--) { const p = sparks[i]; p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.age > p.life) sparks.splice(i, 1); }
     if (sparks.length > 900) sparks.splice(0, sparks.length - 900);
@@ -18487,9 +18935,11 @@ const Gallery = (() => {
   function draw(fb) {
     if (cur) return;
     const w = fb.w, h = fb.h, t = S.t, d = fb.d;
+    if (S.shake > 0) S.shake -= S.dt || 0.016;
     const Ly = layers(w, h);
     S.mx += (S.tmx - S.mx) * 0.06; S.my += (S.tmy - S.my) * 0.06;
-    const px = S.mx + Math.sin(t * 0.1) * 0.3, py = S.my + Math.cos(t * 0.13) * 0.2;
+    const shk = S.shake > 0 ? (Math.random() - 0.5) * 0.4 : 0;
+    const px = S.mx + Math.sin(t * 0.1) * 0.3 + shk, py = S.my + Math.cos(t * 0.13) * 0.2 + shk;
     // far nebula
     const fx = Math.round(40 + px * 30), fy = Math.round(25 + py * 18);
     for (let y = 0; y < h; y++) { const row = (y + fy) * Ly.far.w + fx; d.set(Ly.far.d.subarray(row, row + w), y * w); }
@@ -18542,7 +18992,32 @@ const Gallery = (() => {
         }
       }
     });
-    drawCrit(fb, crits.deoxys, crits.deoxys.x, crits.deoxys.y);
+    const dx0 = crits.deoxys;
+    if (dx0.spr && dx0.trail) {
+      // psychic afterimages: the last sprite, stamped along the trail in fading orange and teal
+      const sp = dx0.spr;
+      for (let k = 3; k < dx0.trail.length; k += 3) {
+        const [ax, ay] = dx0.trail[k], a = 1 - k / dx0.trail.length, tint = k % 6 ? hex('#ff9a5a') : hex('#5ad8e8');
+        const X0 = Math.round(ax) - dx0.OX + sp.x0, Y0 = Math.round(ay) - dx0.OY + sp.y0;
+        for (let y = 0; y < sp.h; y++) for (let x = 0; x < sp.w; x++) {
+          if (!sp.d[y * sp.w + x]) continue;
+          const X = X0 + x, Y = Y0 + y;
+          if (X < 0 || Y < 0 || X >= w || Y >= h || bayer4(X, Y) > a * 0.55) continue;
+          d[Y * w + X] = mix(d[Y * w + X], tint, 0.6);
+        }
+      }
+    }
+    drawCrit(fb, dx0, dx0.x, dx0.y);
+    for (const im of impacts) {
+      // comic impact: white core, spiky yellow star and a shockwave ring
+      const k2 = im.age / 0.5, R1 = 6 + k2 * 26, sp = 10;
+      for (let a = 0; a < 6.283; a += 0.02) {
+        const spike = (Math.floor((a / 6.283) * sp * 2) % 2) ? 1 : 0.55, rr = R1 * 0.55 * spike * (1 - k2 * 0.5);
+        for (let r = 0; r < rr; r += 1) { const X = Math.round(im.x + Math.cos(a) * r), Y = Math.round(im.y + Math.sin(a) * r); if (X >= 0 && Y >= 0 && X < w && Y < h) d[Y * w + X] = r < rr * 0.45 ? white : hex('#ffe45a'); }
+        const X = Math.round(im.x + Math.cos(a) * R1), Y = Math.round(im.y + Math.sin(a) * R1 * 0.8);
+        if (X >= 0 && Y >= 0 && X < w && Y < h && bayer4(X, Y) > k2) d[Y * w + X] = im.c;
+      }
+    }
     if (crits.deoxys.boost > 0) for (let k = 0; k < 3; k++) { const rr = (1 - crits.deoxys.boost) * 60 + k * 10; for (let a = 0; a < 6.28; a += 0.05) { const X = Math.round(crits.deoxys.x + Math.cos(a) * rr), Y = Math.round(crits.deoxys.y - 40 + Math.sin(a) * rr * 0.7); if (X >= 0 && Y >= 0 && X < w && Y < h && bayer4(X, Y) < crits.deoxys.boost) d[Y * w + X] = hex('#ffb070'); } }
     for (const m of crits.minior) if (m.near) drawCrit(fb, m, m.u * w, m.v * h + 20);
     drawSparks(fb);

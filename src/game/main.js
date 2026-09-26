@@ -170,7 +170,7 @@ const Game = (() => {
   const mark = DEBUG ? (k) => { const n = performance.now(); prof[k] = (prof[k] || 0) * 0.95 + (n - pt) * 0.05; pt = n; } : () => {};
   G.prof = prof;
   function render() {
-    WorldRender.setTilt((G.cam.y - (World.SEA - G.VH * 0.62)) * 0.35 + (G.zoom - zMin) * 5);
+    WorldRender.setTilt((G.cam.y - (World.SEA - G.VH * 0.62)) * 0.5 + (G.zoom - zMin) * 7);
     if (G.gallery) { Gallery.draw(fb); Gallery.post(fb); ctx.putImageData(img, 0, 0); return; }
     const P = G.P, t = G.t;
     pt = performance.now();
@@ -231,6 +231,7 @@ const Game = (() => {
     FX.draw(fb, cx, cy, 3, t);
     FX.draw(fb, cx, cy, 4, t);
     for (const s of G.systems) if (s.post) s.post(fb, cx, cy, P, t);
+    if (typeof Post !== 'undefined') Post.apply(fb, P, cx, cy, t, G);
     if (typeof Gallery !== 'undefined') Gallery.post(fb);
     mark('fx');
     ctx.putImageData(img, 0, 0);

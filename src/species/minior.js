@@ -15,8 +15,8 @@ const Minior = (() => {
     ['#6a1a90', '#9030c0', '#b858e8', '#d8a0ff', '#f4e0ff'],
   ];
   const base = {
-    [SHELL]: { r: ['#6e4a4c', '#8e6668', '#b08a88', '#caa8a4', '#e2c8c2'], od: '#3a2426', ol: '#6e4a4c', ln: '#5a3a3c' },
-    [MARK]: { r: ['#4a2a2e', '#5e3638', '#744446', '#8a5658', '#a06a6a'], od: '#2a1618', ol: '#4a2a2e', ln: '#3a2022' },
+    [SHELL]: { r: ['#7a5452', '#9a7270', '#b89490', '#d2b0aa', '#ead0c8'], od: '#3e2626', ol: '#7a5452', ln: '#5e3c3c' },
+    [MARK]: { r: ['#4e2c2c', '#643838', '#7a4646', '#8e5656', '#a46a68'], od: '#2a1616', ol: '#4e2c2c', ln: '#3a2020' },
     [SPIKE]: { r: ['#8a8e98', '#b0b4bc', '#d4d8de', '#eef0f4', '#ffffff'], od: '#4a4e58', ol: '#7a7e88', ln: '#6a6e78' },
     [EYE]: { r: ['#141418', '#1c1c22', '#26262e', '#34343e', '#5a5a68'], od: '#08080c', ol: '#141418', ln: '#141418' },
     [SHINE]: { r: ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'], od: '#a0a0b0', ol: '#ffffff', ln: '#ffffff' },
@@ -25,9 +25,17 @@ const Minior = (() => {
   const PAL = core(0);
   const R0 = 26;
   const V = (x, y, z) => { const l = Math.hypot(x, y, z); return [x / l, y / l, z / l]; };
-  const EYES = [V(0.72, 0.08, 0.5), V(0.78, 0.02, -0.42)];
+  const EYES = [V(0.7, 0.05, 0.52), V(0.8, 0.0, -0.4)];
+  // triangle marks, each with its own tangent frame and a random point direction
   const MARKS = [];
-  for (let i = 0; i < 26; i++) { const a = i * 2.39996, y = 1 - (i + 0.5) / 13; MARKS.push(V(Math.cos(a) * Math.sqrt(1 - y * y), y, Math.sin(a) * Math.sqrt(1 - y * y))); }
+  for (let i = 0; i < 30; i++) {
+    const a = i * 2.39996, y = 1 - (i + 0.5) / 15, r = Math.sqrt(Math.max(0, 1 - y * y));
+    const n = V(Math.cos(a) * r, y, Math.sin(a) * r), up = Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    const b1 = V3.norm(V3.cross(up, n)), b2 = V3.cross(n, b1), rot = i * 1.7;
+    MARKS.push({ n, b1, b2, c: Math.cos(rot), s: Math.sin(rot), k: 0.13 + ((i * 37) % 7) * 0.012 });
+  }
+  // crack lines: short great-circle arcs
+  const CRACKS = [[V(0.3, 0.8, -0.5), V(0.6, 0.4, 0.7)], [V(-0.6, -0.3, 0.7), V(0.2, -0.9, 0.4)], [V(-0.8, 0.5, -0.2), V(-0.3, 0.2, -0.9)]].map(([a, b]) => ({ n: V3.norm(V3.cross(a, b)), m: V3.norm(V3.add(a, b)) }));
   const SPIKES = [V(0.2, 0.95, 0.2), V(-0.7, 0.5, 0.5), V(-0.5, 0.2, -0.85), V(0.5, -0.55, 0.7), V(-0.2, -0.9, -0.3), V(0.35, 0.6, -0.75), V(0.95, -0.2, 0.2)];
   const hash = (x, y, z) => { const h = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return h - Math.floor(h); };
   const DEFAULT = { crack: 0, eyes: 'open', spin: 0, squash: 0, side: 1 };
@@ -43,15 +51,21 @@ const Minior = (() => {
       mat: (s) => {
         for (const e of EYES) {
           const d = s[0] * e[0] + s[1] * e[1] + s[2] * e[2];
-          if (d > 0.93) {
+          if (d > (e === EYES[0] ? 0.925 : 0.94)) {
             if (shut) return d > 0.955 && Math.abs(s[1] - e[1]) < 0.05 ? code(EYE) : code(SHELL);
-            if (d > 0.985 && s[1] > e[1] + 0.03) return code(SHINE);
             return code(EYE);
           }
         }
         // cracked shell: the core shows through in chunky facets
         if (crack > 0) { const n = hash(Math.round(s[0] * 3), Math.round(s[1] * 3), Math.round(s[2] * 3)); if (n < crack) return code(CORE, s[1] > 0.3 ? 1 : 0); }
-        for (const m of MARKS) { const d = s[0] * m[0] + s[1] * m[1] + s[2] * m[2]; if (d > 0.972) return code(MARK); }
+        for (const m of MARKS) {
+          const dn = s[0] * m.n[0] + s[1] * m.n[1] + s[2] * m.n[2];
+          if (dn < 0.9) continue;
+          let u = s[0] * m.b1[0] + s[1] * m.b1[1] + s[2] * m.b1[2], v = s[0] * m.b2[0] + s[1] * m.b2[1] + s[2] * m.b2[2];
+          const uu = u * m.c - v * m.s, vv = u * m.s + v * m.c, k = m.k;
+          if (vv > -k * 0.5 && vv < k && Math.abs(uu) < (k - vv) * 0.62) return code(MARK, vv > k * 0.4 ? 1 : 0);
+        }
+        for (const c of CRACKS) { const dl = s[0] * c.n[0] + s[1] * c.n[1] + s[2] * c.n[2]; if (Math.abs(dl) < 0.022 && s[0] * c.m[0] + s[1] * c.m[1] + s[2] * c.m[2] > 0.75) return code(MARK, -1); }
         return code(SHELL, s[1] > 0.4 ? 1 : s[1] < -0.5 ? -1 : 0);
       },
     })];
@@ -61,10 +75,12 @@ const Minior = (() => {
       const ax = d, up = Math.abs(ax[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
       const b1 = V3.norm(V3.cross(up, ax)), b2 = V3.cross(ax, b1);
       const f = { L: M3.mul(body.L, M3.cols(b1, b2, ax)), t: V3.add(body.t, M3.v(body.L, V3.scale(ax, R0 * 0.98))) };
-      prims.push(ell(f, [3.2, 3.2, 6.5], { part: id, grp: 2, mat: (s) => (s[2] < -0.2 ? 0 : code(SPIKE, s[2] > 0.6 ? 1 : 0)) }));
+      prims.push(ell(f, [4.2, 4.2, 2.2], { part: id, grp: 2, mat: () => code(MARK, -1) }));
+      prims.push(ell(f, [2.8, 2.8, 7.5], { part: id, grp: 2, mat: (s) => (s[2] < 0 ? 0 : code(SPIKE, s[2] > 0.6 ? 1 : s[0] > 0.3 ? -1 : 0)) }));
       id++;
     }
-    return { prims, stamps: [], dots: [], anchors: { top: [0, R0 * 2, 0], head: [0, R0, 0], mouth: [R0, R0 * 0.8, 0] }, pose: P, pri: { 1: 0, 2: 1 }, glossy: { [CORE]: 1, [SPIKE]: 1 }, baseMat: SHELL };
+    { const nd = V(0.62, -0.28, 0.06), f = { L: body.L, t: V3.add(body.t, M3.v(body.L, V3.scale(nd, R0 * 0.97))) }; prims.push(ell(f, [3.6, 3.6, 3.6], { part: 20, grp: 3, mat: (s) => code(MARK, s[1] > 0.3 ? 1 : 0) })); }
+    return { prims, stamps: [], dots: [], anchors: { top: [0, R0 * 2, 0], head: [0, R0, 0], mouth: [R0, R0 * 0.8, 0] }, pose: P, pri: { 1: 0, 2: 1, 3: 1 }, glossy: { [CORE]: 1, [SPIKE]: 1 }, baseMat: SHELL };
   }
   const render = (model, opt) => Creature.render(model, opt);
   return { build, render, PAL, core, MAT: { SHELL, MARK, SPIKE, EYE, CORE }, DEFAULT, meta: { heightM: 0.3, bw: 80, bh: 80, oy: 0.82 } };

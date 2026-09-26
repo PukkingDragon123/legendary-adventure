@@ -17,7 +17,7 @@ const Deep = (() => {
   /* ================================================================
      LUVDISC school
   ================================================================ */
-  const HEART = { cx: 2280, cy: 770, sx: 10.5, sy: 6.2 };
+  const HEART = { cx: 2400, cy: 690, sx: 10.5, sy: 6.2 };
   function heartAt(u) {
     const s = Math.sin(u), c = Math.cos(u);
     const x = 16 * s * s * s;

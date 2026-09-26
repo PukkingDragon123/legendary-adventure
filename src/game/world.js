@@ -3,15 +3,17 @@
    World units are art pixels at zoom 1. y grows downward.
 ------------------------------------------------------------------- */
 const World = (() => {
-  const W = 3600, H = 1320;
+  const W = 4600, H = 1700;
   const SEA = 560;       // still-water level
   const HORIZON = 468;   // far horizon line of the backdrop sea
 
   // terrain profile (x, ground y) — dunes, beach, reef slope, deep trench
+  // dunes and beach, the dock's shallows, a wide coral reef flat, a cliff drop-off and the dark abyss
   const GP = [
     [-40, 500], [120, 497], [300, 506], [470, 522], [700, 536], [920, 548], [1080, 556], [1180, 566],
-    [1330, 596], [1500, 650], [1700, 740], [1900, 812], [2100, 842], [2320, 850], [2520, 856], [2640, 884],
-    [2740, 990], [2880, 1150], [3100, 1206], [3400, 1214], [3660, 1216],
+    [1300, 592], [1420, 640], [1560, 700], [1700, 742], [1850, 760], [2000, 752], [2150, 772], [2300, 788],
+    [2450, 778], [2600, 796], [2750, 812], [2900, 822], [3000, 838], [3070, 900], [3140, 1090], [3210, 1320],
+    [3320, 1468], [3500, 1520], [3800, 1540], [4100, 1528], [4400, 1550], [4660, 1552],
   ];
   const ground = new Float32Array(W + 2);
   (() => {
@@ -41,9 +43,10 @@ const World = (() => {
     { x: 842, w: 58, h: 34, seed: 1 }, { x: 896, w: 92, h: 56, seed: 2 }, { x: 962, w: 50, h: 30, seed: 3 },
     { x: 1004, w: 70, h: 42, seed: 4 }, { x: 790, w: 40, h: 24, seed: 5 },
   ];
-  const WALREIN_ROCK = { x: 1262, w: 190, h: 112, seed: 6 };
-  const REEF_ROCKS = [{ x: 1668, w: 110, h: 70, seed: 7 }, { x: 2360, w: 140, h: 80, seed: 8 }, { x: 2580, w: 90, h: 60, seed: 9 }];
-  const PIER = { x0: 1360, x1: 1880, deck: 496, posts: [1380, 1470, 1560, 1650, 1740, 1830, 1872] };
+  const WALREIN_ROCK = { x: 1190, w: 170, h: 104, seed: 6 };
+  const REEF_ROCKS = [{ x: 1780, w: 110, h: 70, seed: 7 }, { x: 2360, w: 140, h: 80, seed: 8 }, { x: 2580, w: 90, h: 60, seed: 9 }, { x: 2870, w: 130, h: 76, seed: 10 }];
+  // a low wooden dock over the shallows (deck just above the water, like a harbour jetty)
+  const PIER = { x0: 1300, x1: 2060, deck: 528, posts: [1310, 1385, 1460, 1535, 1610, 1685, 1760, 1835, 1910, 1985, 2050] };
 
   return { W, H, SEA, HORIZON, ground, groundAt, slopeAt, shoreX, PALMS, BEACH_ROCKS, WALREIN_ROCK, REEF_ROCKS, PIER };
 })();

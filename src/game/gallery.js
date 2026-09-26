@@ -105,16 +105,16 @@ const Gallery = (() => {
     return list;
   }
   /* ---- the space dwellers: Minior meteors and a swooping Deoxys ---- */
-  let crits = null, sparks = [];
+  let crits = null, sparks = [], impacts = [];
   function ensureCrits() {
     if (crits) return;
     const Pn = Times.compile('noon');
     crits = { P: Pn, minior: [], deoxys: null };
     const cores = ['#f25050', '#ffa040', '#fff050', '#5ad86a', '#50aaff', '#6a6aea', '#b858e8'].map(hex);
     for (let i = 0; i < 7; i++) {
-      const c = new Critters.Critter(Minior, { kind: 'minior', palId: 'minior' + i, pal: Minior.core(i), yaw: 1.1, scale: 0.75 + (i % 3) * 0.3, qPose: 0.05, qFields: { spin: 0.45, crack: 0.25 }, shadow: false });
+      const c = new Critters.Critter(Minior, { kind: 'minior', palId: 'minior' + i, pal: Minior.core(i), yaw: 1.1, scale: 0.6 + (i % 3) * 0.22, qPose: 0.05, qFields: { spin: 0.45, crack: 0.25 }, shadow: false });
       const a = hash2(i, 1, 9) * 6.28, sp = 0.025 + hash2(i, 2, 9) * 0.03;
-      Object.assign(c, { u: hash2(i, 3, 9), v: hash2(i, 4, 9), vu: Math.cos(a) * sp, vv: Math.sin(a) * sp * 0.6, spn: hash2(i, 5, 9) * 6, crackT: 0, core: cores[i], near: i % 3 === 2 });
+      Object.assign(c, { u: 0.1 + hash2(i, 3, 9) * 0.8, v: 0.1 + hash2(i, 4, 9) * 0.8, vu: Math.cos(a) * sp, vv: Math.sin(a) * sp * 0.6, bu: Math.cos(a) * sp, bv: Math.sin(a) * sp * 0.6, spn: hash2(i, 5, 9) * 6, spinV: 1.6, crackT: 0, core: cores[i], near: i % 3 === 2 });
       crits.minior.push(c);
     }
     crits.deoxys = new Critters.Critter(Deoxys, { kind: 'deoxys', yaw: 1.2, scale: 0.4, qPose: 0.1, qYaw: 0.2, qFields: { wave: 0.5, lean: 0.1, spread: 0.25 }, shadow: false });
@@ -126,19 +126,55 @@ const Gallery = (() => {
     const t = S.t;
     for (const m of crits.minior) {
       m.u += m.vu * dt; m.v += m.vv * dt;
-      if (m.u < -0.15) m.u += 1.3; if (m.u > 1.15) m.u -= 1.3; if (m.v < -0.15) m.v += 1.3; if (m.v > 1.15) m.v -= 1.3;
-      m.spn += dt * 1.6; if (m.crackT > 0) m.crackT -= dt;
+      const k = Math.min(1, dt * 0.9); m.vu += (m.bu * Math.sign(m.vu || 1) * Math.sign(m.bu || 1) - m.vu) * k * 0.5; m.vv += (m.bv - m.vv) * k * 0.3;
+      if (m.u < 0.04) { m.u = 0.04; m.vu = Math.abs(m.vu); m.bu = Math.abs(m.bu); } if (m.u > 0.96) { m.u = 0.96; m.vu = -Math.abs(m.vu); m.bu = -Math.abs(m.bu); }
+      if (m.v < 0.06) { m.v = 0.06; m.vv = Math.abs(m.vv); } if (m.v > 0.94) { m.v = 0.94; m.vv = -Math.abs(m.vv); }
+      m.spinV += (1.6 - m.spinV) * dt * 0.6;
+      m.spn += dt * m.spinV; if (m.crackT > 0) m.crackT -= dt;
       m.pose = { spin: m.spn, crack: m.crackT > 0 ? 1 : 0.3, eyes: 'open' };
       const x = m.u * w, y = m.v * h;
       for (let k = 0; k < 4; k++) sparks.push({ x: x - m.vu * w * 0.25 + R(-3, 3), y: y - m.vv * h * 0.2 + R(-3, 3), vx: -m.vu * w * R(0.4, 1.2) + R(-8, 8), vy: -m.vv * h * R(0.4, 1.2) + R(-8, 8), age: 0, life: R(0.5, 1.3), core: Math.random() < 0.3 ? m.core : 0 });
     }
+    // Deoxys: cruise, pick a Minior, rush it and land a punch or a kick that sends it flying
     const d = crits.deoxys;
+    if (!d.st) Object.assign(d, { st: 'cruise', stT: 0, x: w * 0.3, y: h * 0.5, vx: 60, vy: 0, punch: 0, kick: 0, trail: [] });
+    d.stT += dt;
     const px = d.x, py = d.y;
-    d.x = w * 0.5 + Math.sin(t * 0.21) * w * 0.46; d.y = h * 0.52 + Math.sin(t * 0.34 + 1) * h * 0.3 + 30;
-    const vx = (d.x - px) / Math.max(dt, 1e-3), vy = (d.y - py) / Math.max(dt, 1e-3);
-    d.yaw = vx >= 0 ? 1.2 : Math.PI - 1.2;
+    let tx, ty, spd;
+    if (d.st === 'cruise') {
+      tx = w * 0.5 + Math.sin(t * 0.21) * w * 0.42; ty = h * 0.52 + Math.sin(t * 0.34 + 1) * h * 0.3 + 30; spd = 90;
+      if (d.stT > 2.5 + (d.x % 2)) { d.target = crits.minior[Math.floor(Math.random() * crits.minior.length)]; d.st = 'chase'; d.stT = 0; d.move = Math.random() < 0.5 ? 'punch' : 'kick'; }
+    } else if (d.st === 'chase') {
+      const m = d.target; tx = m.u * w - Math.sign(m.u * w - d.x || 1) * 22; ty = m.v * h + 46; spd = 260;
+      if (Math.hypot(tx - d.x, ty - d.y) < 14 || d.stT > 3) { d.st = 'strike'; d.stT = 0; }
+    } else if (d.st === 'strike') {
+      tx = d.x; ty = d.y; spd = 0;
+      const k = Math.min(1, d.stT / 0.12);
+      d[d.move] = k;
+      if (!d.hit && d.stT > 0.12) {
+        d.hit = true;
+        const m = d.target, dir = m.u * w >= d.x ? 1 : -1;
+        m.vu = dir * R(0.9, 1.3); m.vv = R(-0.6, 0.2); m.spinV = 14; m.crackT = 1.2;
+        const ix = m.u * w, iy = m.v * h;
+        impacts.push({ x: ix, y: iy, age: 0, c: m.core });
+        for (let j = 0; j < 24; j++) { const a = Math.random() * 6.28, sp = R(40, 140); sparks.push({ x: ix, y: iy, vx: Math.cos(a) * sp + dir * 60, vy: Math.sin(a) * sp, age: 0, life: R(0.3, 0.8), core: j % 2 ? m.core : 0 }); }
+        S.shake = 0.25; Game.sfx(d.move === 'punch' ? 'bonk' : 'thud', null, 0.9); Game.sfx('crack', null, 0.5);
+      }
+      if (d.stT > 0.45) { d.st = 'cruise'; d.stT = 0; d.hit = false; }
+    }
+    if (d.st !== 'strike') { d.punch = Math.max(0, d.punch - dt * 4); d.kick = Math.max(0, d.kick - dt * 4); }
+    if (spd > 0) {
+      const dx = tx - d.x, dy = ty - d.y, dd = Math.hypot(dx, dy) || 1;
+      d.vx += ((dx / dd) * spd - d.vx) * Math.min(1, dt * 3); d.vy += ((dy / dd) * spd - d.vy) * Math.min(1, dt * 3);
+      d.x += d.vx * dt; d.y += d.vy * dt;
+    }
+    const vx = d.vx, vy = d.vy, sp2 = Math.hypot(vx, vy);
+    if (d.st !== 'strike') d.yaw = vx >= 0 ? 1.2 : Math.PI - 1.2;
     if (d.boost > 0) d.boost -= dt;
-    d.pose = { wave: t * 3, lean: clamp(vy * 0.004, -0.4, 0.4) * (vx >= 0 ? 1 : -1), spread: 0.5 + Math.sin(t * 1.3) * 0.4 + (d.boost > 0 ? 0.5 : 0) };
+    const fly = Math.min(1, sp2 / 180);
+    d.pose = { wave: t * 3, lean: clamp(vy * 0.003, -0.35, 0.35), spread: 0.5 + Math.sin(t * 1.3) * 0.3 + (d.boost > 0 ? 0.5 : 0), fly, punch: d.punch, kick: d.kick };
+    d.trail.unshift([d.x, d.y]); if (d.trail.length > 12) d.trail.pop();
+    for (let i = impacts.length - 1; i >= 0; i--) { impacts[i].age += dt; if (impacts[i].age > 0.5) impacts.splice(i, 1); }
     for (let k = 0; k < 2; k++) sparks.push({ x: d.x - Math.sign(vx) * 10 + R(-4, 4), y: d.y - 40 + R(-10, 10), vx: -vx * 0.2, vy: R(-5, 5), age: 0, life: R(0.3, 0.6), core: k ? hex('#48b2c0') : hex('#f59a66') });
     for (let i = sparks.length - 1; i >= 0; i--) { const p = sparks[i]; p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt; if (p.age > p.life) sparks.splice(i, 1); }
     if (sparks.length > 900) sparks.splice(0, sparks.length - 900);
@@ -247,9 +283,11 @@ const Gallery = (() => {
   function draw(fb) {
     if (cur) return;
     const w = fb.w, h = fb.h, t = S.t, d = fb.d;
+    if (S.shake > 0) S.shake -= S.dt || 0.016;
     const Ly = layers(w, h);
     S.mx += (S.tmx - S.mx) * 0.06; S.my += (S.tmy - S.my) * 0.06;
-    const px = S.mx + Math.sin(t * 0.1) * 0.3, py = S.my + Math.cos(t * 0.13) * 0.2;
+    const shk = S.shake > 0 ? (Math.random() - 0.5) * 0.4 : 0;
+    const px = S.mx + Math.sin(t * 0.1) * 0.3 + shk, py = S.my + Math.cos(t * 0.13) * 0.2 + shk;
     // far nebula
     const fx = Math.round(40 + px * 30), fy = Math.round(25 + py * 18);
     for (let y = 0; y < h; y++) { const row = (y + fy) * Ly.far.w + fx; d.set(Ly.far.d.subarray(row, row + w), y * w); }
@@ -302,7 +340,32 @@ const Gallery = (() => {
         }
       }
     });
-    drawCrit(fb, crits.deoxys, crits.deoxys.x, crits.deoxys.y);
+    const dx0 = crits.deoxys;
+    if (dx0.spr && dx0.trail) {
+      // psychic afterimages: the last sprite, stamped along the trail in fading orange and teal
+      const sp = dx0.spr;
+      for (let k = 3; k < dx0.trail.length; k += 3) {
+        const [ax, ay] = dx0.trail[k], a = 1 - k / dx0.trail.length, tint = k % 6 ? hex('#ff9a5a') : hex('#5ad8e8');
+        const X0 = Math.round(ax) - dx0.OX + sp.x0, Y0 = Math.round(ay) - dx0.OY + sp.y0;
+        for (let y = 0; y < sp.h; y++) for (let x = 0; x < sp.w; x++) {
+          if (!sp.d[y * sp.w + x]) continue;
+          const X = X0 + x, Y = Y0 + y;
+          if (X < 0 || Y < 0 || X >= w || Y >= h || bayer4(X, Y) > a * 0.55) continue;
+          d[Y * w + X] = mix(d[Y * w + X], tint, 0.6);
+        }
+      }
+    }
+    drawCrit(fb, dx0, dx0.x, dx0.y);
+    for (const im of impacts) {
+      // comic impact: white core, spiky yellow star and a shockwave ring
+      const k2 = im.age / 0.5, R1 = 6 + k2 * 26, sp = 10;
+      for (let a = 0; a < 6.283; a += 0.02) {
+        const spike = (Math.floor((a / 6.283) * sp * 2) % 2) ? 1 : 0.55, rr = R1 * 0.55 * spike * (1 - k2 * 0.5);
+        for (let r = 0; r < rr; r += 1) { const X = Math.round(im.x + Math.cos(a) * r), Y = Math.round(im.y + Math.sin(a) * r); if (X >= 0 && Y >= 0 && X < w && Y < h) d[Y * w + X] = r < rr * 0.45 ? white : hex('#ffe45a'); }
+        const X = Math.round(im.x + Math.cos(a) * R1), Y = Math.round(im.y + Math.sin(a) * R1 * 0.8);
+        if (X >= 0 && Y >= 0 && X < w && Y < h && bayer4(X, Y) > k2) d[Y * w + X] = im.c;
+      }
+    }
     if (crits.deoxys.boost > 0) for (let k = 0; k < 3; k++) { const rr = (1 - crits.deoxys.boost) * 60 + k * 10; for (let a = 0; a < 6.28; a += 0.05) { const X = Math.round(crits.deoxys.x + Math.cos(a) * rr), Y = Math.round(crits.deoxys.y - 40 + Math.sin(a) * rr * 0.7); if (X >= 0 && Y >= 0 && X < w && Y < h && bayer4(X, Y) < crits.deoxys.boost) d[Y * w + X] = hex('#ffb070'); } }
     for (const m of crits.minior) if (m.near) drawCrit(fb, m, m.u * w, m.v * h + 20);
     drawSparks(fb);

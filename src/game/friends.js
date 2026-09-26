@@ -335,6 +335,12 @@ const Friends = (() => {
           Game.shake(3);
         }
       }
+      // sometimes the roar turns into an Ice Beam across the water
+      if (chance(0.6) && typeof Moves !== 'undefined') {
+        const m = this.at('mouth');
+        Moves.iceBeam(m[0], m[1], clamp(this.x + rnd(170, 280), World.shoreX + 40, World.W - 40));
+        let e2 = 0; while (e2 < 0.9) { const dt = yield; e2 += dt; this.o.headPitch = 0.3; this.o.mouth = 1; this.o.eyes = 'angry'; }
+      }
       // the roar rattles the palms
       for (const p of Scene.S.palms) { p.shake = Math.max(p.shake, 0.7); if (chance(0.35)) Nuts.shakePalm(p, 1); }
       for (const m of Game.mons) if (m !== this && m.kind === 'mudkip' && m.mode === 'land' && !m.sleeping) { FX.emote('shock', () => m.headPt(), { life: 0.9 }); m.vair = 220; m.air = 0.5; }

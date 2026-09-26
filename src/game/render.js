@@ -229,7 +229,7 @@ const WorldRender = (() => {
   /* ---------------- backdrop: far sea band ---------------- */
   // camera tilt: the horizon (and everything on it) drifts at a slower parallax than the beach
   let TILT = 0;
-  function setTilt(v) { TILT = Math.max(-40, Math.min(70, v)); }
+  function setTilt(v) { TILT = Math.max(-44, Math.min(80, v)); }
   function drawBackdrop(fb, cx, cy, P, t, extras) {
     const VW = fb.w, VH = fb.h, d = fb.d;
     const HZ = HORIZON + Math.round(TILT), band = (SEA - HORIZON) / (SEA - HZ);
@@ -256,21 +256,45 @@ const WorldRender = (() => {
     const byy = HZ - cy - bd.base + 1;
     fb.blit(bd.strip, bx + 1100, byy, { test: (x, y) => cy + y < SEA });
     if (extras) extras(fb, bx + 1100, byy, bd);
+    const hzs = HZ - cy;
+    for (let sy = Math.max(0, hzs + 1); sy < y1; sy++) {
+      const k = (sy - hzs) / Math.max(1, SEA - cy - hzs), src = Math.round(hzs - (sy - hzs) * 1.7);
+      if (src < 0) continue;
+      const a = Math.round((0.42 - k * 0.3) * 256), wob = Math.sin(sy * 0.9 + t * 1.7) * (1 + k * 3), row = sy * VW, srow = src * VW;
+      if (a <= 8) continue;
+      for (let sx = 0; sx < VW; sx++) {
+        const xs = clamp(Math.round(sx + wob), 0, VW - 1), c = d[srow + xs], b = d[row + sx];
+        const it = 256 - a;
+        d[row + sx] = (0xff000000 | ((((b & 0xff00ff) * it + (c & 0xff00ff) * a) >>> 8) & 0xff00ff) | ((((b & 0xff00) * it + (c & 0xff00) * a) >>> 8) & 0xff00)) >>> 0;
+      }
+    }
   }
 
   /* ---------------- terrain ---------------- */
   const SAND_CUT = 10;
+  // sun direction (towards the light) per hour, for slope lighting
+  const SUNL = { dawn: [-0.72, -0.69], noon: [-0.25, -0.97], afternoon: [0.45, -0.89], dusk: [0.78, -0.62], night: [-0.3, -0.95] };
+  let STRAT = null;
   function drawTerrain(fb, cx, cy, P, t, occ, swash) {
     const VW = fb.w, VH = fb.h, d = fb.d;
-    const sd = P.sand, sw = P.sandWet, cut = P.cut, gr = P.grass;
+    const sd = P.sand, sw = P.sandWet, cut = P.cut, gr = P.grass, sb = P.seabed, rk = P.rock;
+    if (!STRAT) { STRAT = new Float32Array(W + 2); for (let x = 0; x <= W + 1; x++) STRAT[x] = fbm(x * 0.006, 3, 11, 3) * 40; }
+    const L = SUNL[P.key] || SUNL.noon;
+    const abyss = [PX.hex('#05070e'), PX.hex('#0b1020'), PX.hex('#141c30'), PX.hex('#1e2a42')];
     const shore = World.shoreX;
     for (let sx = 0; sx < VW; sx++) {
       const wx = cx + sx;
       if (wx < 0 || wx > W) continue;
       const g = ground[wx];
       const gTop = Math.ceil(g);
+      const slope = (ground[Math.min(W, wx + 2)] - ground[Math.max(0, wx - 2)]) / 4;
+      const nl = Math.hypot(slope, 1), lam = (slope * L[0] - L[1]) / nl;
+      const lit = lam > 0.95 ? 1 : lam < 0.82 ? -1 : 0;
+      const steep = Math.abs(slope) > 1.1;
       const wetK = clamp((wx - (shore - 150 + swash.reach * 0.2)) / 150, 0, 1);
       const dune = wx < 470 ? smooth(470, 380, wx) : 0;
+      const under = g > SEA + 2, abyssK = clamp((g - SEA - 520) / 300, 0, 1);
+      const ripple = Math.sin(wx * 0.62 + STRAT[wx] * 0.3) > 0.72;
       let sy = Math.max(0, gTop - cy);
       for (; sy < VH; sy++) {
         const wy = cy + sy;
@@ -279,26 +303,52 @@ const WorldRender = (() => {
         const ti = ((wy & 255) << 8) | (wx & 255);
         const gr8 = GRAIN[ti];
         let c;
-        if (g > SEA + 2) {
-          // sea floor: pale crust, then sediment darkening with depth
-          const sb = P.seabed;
-          if (dep < 1.5) c = sb[3];
-          else if (dep < SAND_CUT) c = SANDTEX[ti] >= 2 ? sb[2] : bayer4(wx, wy) < 0.5 ? sb[2] : sb[1];
-          else c = CUTTEX[ti] ? sb[0] : bayer4(wx, wy) < clamp((dep - SAND_CUT) / 60, 0, 1) ? sb[0] : sb[1];
-          if (gr8 === 3) c = sb[3];
+        if (under && dep >= SAND_CUT && wx - shore < 220 && bayer4(wx, wy) * 220 > wx - shore) {
+          // just past the shoreline the ground's cross-section fades from beach strata into seabed
+          const band = Math.floor((dep + STRAT[wx]) / 24) % 4;
+          c = band === 0 ? sd[1] : band === 1 ? cut[1] : band === 2 ? sd[2] : cut[0];
+          if (bayer4(wx, wy) < clamp((dep - SAND_CUT) / 220, 0, 0.7)) c = cut[0];
+          d[i] = c; occ[i] = 1;
+          continue;
+        }
+        if (under) {
+          if (abyssK > 0.5 || (steep && dep < 40)) {
+            // bare rock: cracked faces, lit edges, dark in the abyss
+            const R = abyssK > 0.5 ? abyss : [rk[0], rk[1], rk[2], rk[3]];
+            let tn = CUTTEX[ti] ? 0 : SANDTEX[ti] >= 2 ? 2 : 1;
+            if (dep < 2) tn = lit > 0 ? 3 : 2;
+            if (gr8 === 3) tn = 3;
+            c = R[tn];
+          } else {
+            if (dep < 1.5) c = lit > 0 ? sb[3] : sb[2];
+            else if (dep < SAND_CUT) { c = SANDTEX[ti] >= 2 ? sb[2] : bayer4(wx, wy) < 0.5 ? sb[2] : sb[1]; if (lit < 0 && dep < 4) c = sb[1]; }
+            else {
+              const band = Math.floor((dep + STRAT[wx]) / 26) % 3;
+              c = band === 0 ? sb[1] : band === 1 ? (CUTTEX[ti] ? rk[0] : sb[0]) : rk[1];
+              if (bayer4(wx, wy) < clamp((dep - 30) / 200, 0, 0.8)) c = rk[0];
+            }
+            if (gr8 === 3 && dep > 2) c = sb[3];
+          }
           d[i] = c;
           occ[i] = 1;
           continue;
         }
-        if (dep < 1.5) c = dune > 0.3 && gr8 === 0 && ((wx * 7 + wy) % 5) / 5 < dune ? gr[2] : wetK > 0.5 ? sw[3] : sd[3];
-        else if (dune > 0.3 && dep < 3.5 && ((wx * 3 + wy) % 4) / 4 < dune * 0.8) c = gr[1];
+        if (dep < 1.5) {
+          if (dune > 0.3 && gr8 === 0 && ((wx * 7 + wy) % 5) / 5 < dune) c = gr[2];
+          else if (wetK > 0.5) c = sw[3];
+          else c = ripple || lit > 0 ? sd[3] : sd[2];
+        } else if (dune > 0.3 && dep < 3.5 && ((wx * 3 + wy) % 4) / 4 < dune * 0.8) c = gr[1];
         else if (dep < SAND_CUT) {
-          const tn = SANDTEX[ti];
+          let tn = SANDTEX[ti];
+          if (dep < 5) tn = clamp(tn + lit, 0, 3);
           c = wetK > 0.35 && bayer4(wx, wy) < wetK ? sw[tn] : sd[tn];
           if (gr8 === 3) c = sd[0];
         } else {
-          const deep = clamp((dep - SAND_CUT) / 90, 0, 1);
-          c = CUTTEX[ti] ? cut[1] : bayer4(wx, wy) < deep ? cut[0] : sd[1];
+          // the sand's cross-section: wavy strata darkening with depth, pebbles and grit
+          const band = Math.floor((dep + STRAT[wx]) / 24) % 4;
+          c = band === 0 ? sd[1] : band === 1 ? cut[1] : band === 2 ? sd[2] : cut[0];
+          if (bayer4(wx, wy) < clamp((dep - SAND_CUT) / 220, 0, 0.7)) c = cut[0];
+          if (CUTTEX[ti] && band !== 2) c = cut[0];
           if (gr8 === 3) c = sd[3];
           else if (gr8 === 2) c = cut[0];
         }
@@ -324,7 +374,7 @@ const WorldRender = (() => {
   }
 
   /* ---------------- water pass ---------------- */
-  const RAY = new Float32Array(1024);
+  const RAY = new Float32Array(1024), ROWBUF = new Uint32Array(8192);
   let SILH = new Float32Array(0), WETCOL = new Uint8Array(0);
   function drawWater(fb, cx, cy, P, t, occ, swash) {
     const VW = fb.w, VH = fb.h, d = fb.d;
@@ -355,6 +405,7 @@ const WorldRender = (() => {
       return (0xff000000 | rb | g) >>> 0;
     };
     const foamC = P.foam[1], causC = P.caustic;
+    const abyssC = mixc(PX.hex('#010207'), P.waterC[P.waterC.length - 1], 0.12), snowC = mixc(P.waterC[0], PX.hex('#ffffff'), 0.4), PIER = World.PIER;
     const B8 = BAYER8, B4 = BAYER4;
     const rayT = Math.round(0.28 * 256), foamT = Math.round(0.35 * 256), deepT = Math.round(0.22 * 256);
     for (let sy = sy0; sy < VH; sy++) {
@@ -374,6 +425,10 @@ const WorldRender = (() => {
       const rk = fade * rayK * 16;
       const u0 = (cx + dep * 0.42) * 0.9;
       const causRow = dep < 520;
+      // light dies off with depth: the abyss is almost black
+      const dk = clamp((dep - 220) / 640, 0, 1), dkT = Math.round(Math.pow(dk, 1.1) * 0.975 * 256);
+      const shadeRow = dep >= 0 && dep < 240, shadeT = Math.round((1 - dep / 240) * 0.32 * 256);
+      const snow = dep > 200;
       for (let sx = 0; sx < VW; sx++) {
         if (!wet[sx] || wy < surf[sx]) continue;
         const wx = cx + sx;
@@ -391,7 +446,9 @@ const WorldRender = (() => {
           c = ray ? (deep ? (hiB ? rdb : rda) : (hiB ? rb : ra)) : (deep ? (hiB ? db : da) : (hiB ? cb : ca));
         } else {
           const wc = hiB ? cb : ca;
-          if (o === 1) {
+          if (o === 1 && wy > ground[wx < 0 ? 0 : wx > W ? W : wx] + 8) {
+            c = d[i]; // inside the seabed: no water in front of it, only the depth darkening below
+          } else if (o === 1) {
             c = mixi(d[i], wc, floorT);
             if (causRow) {
               const gnd = ground[wx < 0 ? 0 : wx > W ? W : wx];
@@ -404,7 +461,37 @@ const WorldRender = (() => {
           if (ray) c = mixi(c, rayC, rayT);
         }
         if (wy - surf[sx] < 2.5) c = mixi(c, foamC, foamT);
+        if (dkT > 0) c = mixi(c, abyssC, dkT);
+        if (shadeRow && wx > PIER.x0 && wx < PIER.x1) c = mixi(c, abyssC, (wx % 26) < 3 ? shadeT >> 2 : shadeT);
+        if (snow && hash2(wx >> 1, (wy + Math.floor(t * 9)) >> 1, 13) < 0.0035) c = mixi(c, snowC, 90);
         d[i] = c;
+      }
+    }
+    // refraction: underwater rows shimmer sideways; deeper rows soften (sprites stay crisp)
+    const rowTop = Math.max(sy0 + 3, Math.ceil(top) + 3 - cy);
+    for (let sy = Math.max(0, rowTop); sy < VH; sy++) {
+      const wy = cy + sy, dep = wy - SEA, row = sy * VW;
+      const off = dep < 520 ? Math.round(Math.sin(wy * 0.09 + t * 2.1) * 1.2 + Math.sin(wy * 0.23 - t * 1.4) * 0.5) : 0;
+      if (off !== 0) {
+        // shift only open water, never the ground's cross-section
+        ROWBUF.set(d.subarray(row, row + VW));
+        for (let sx = 0; sx < VW; sx++) {
+          const xs = sx - off;
+          if (xs < 0 || xs >= VW || !wet[sx] || !wet[xs]) continue;
+          const wx = cx + sx;
+          if (wy > ground[wx < 0 ? 0 : wx > W ? W : wx] || wy > ground[Math.max(0, Math.min(W, cx + xs))]) continue;
+          d[row + sx] = ROWBUF[xs];
+        }
+      }
+      const bk = clamp((dep - 160) / 520, 0, 0.6);
+      if (bk > 0.05 && dep < 1000) {
+        const bt = Math.round(bk * 200);
+        let prev = d[row];
+        for (let sx = 1; sx < VW - 1; sx++) {
+          const i = row + sx, cur = d[i];
+          if (occ[i] !== 2 && cur !== prev) d[i] = mixi(cur, prev, bt);
+          prev = cur;
+        }
       }
     }
     // swash film running up the beach

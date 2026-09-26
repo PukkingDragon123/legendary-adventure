@@ -68,7 +68,7 @@ const FX = (() => {
       if (p.type === 'grain') {
         p.vx += ((typeof Wind !== 'undefined' ? Wind.v : 0.4) * 60 - p.vx) * dt * 0.8;
         const g = World.groundAt(Math.max(0, Math.min(World.W, p.x)));
-        if (p.y >= g - 1) { p.y = g - 1; p.vy = -Math.abs(p.vy) * 0.3; p.vx *= 0.6; if (Math.abs(p.vy) < 12) p.vy = -Math.random() * 25 * (typeof Wind !== 'undefined' ? Wind.v : 0.4); }
+        if (p.y >= g - 1) { p.y = g - 1; p.vy = -Math.abs(p.vy) * 0.3; p.vx *= 0.6; if (Math.abs(p.vy) < 12) { p.vy = -Math.random() * 25 * (typeof Wind !== 'undefined' ? Wind.v : 0.4); if (typeof Moves !== 'undefined' && Math.random() < 0.35) { Moves.addSand(p.x, 0.25); list.splice(i, 1); continue; } } }
         if (g > World.SEA + 2 && p.y > World.SEA - 2) { list.splice(i, 1); continue; }
       }
       if (p.floor !== undefined && p.vy > 0 && p.y >= p.floor) { if (p.onFloor) p.onFloor(p); list.splice(i, 1); }

@@ -38,16 +38,32 @@ const Scene = (() => {
     cands[Math.floor(Math.random() * cands.length)].hasOrb = true;
     // pier
     S.pier = Props.makePier();
-    // corals on the reef, kelp on the slope
+    // a crowded coral reef: many kinds and colours, bigger heads where the water is deeper
     const cr = rng(12);
-    const coralSpots = [[2130, 'branch', 1.1], [2190, 'brain', 0.8], [2260, 'fan', 1.2], [2440, 'branch', 1.3], [2500, 'brain', 1], [2660, 'fan', 0.9], [1950, 'brain', 0.7], [2320, 'fan', 0.8], [2020, 'branch', 0.8]];
-    for (const [x, kind, size] of coralSpots) {
-      const spr = Props.makeCoral(kind, Math.floor(cr() * 999), size);
-      const gy = World.groundAt(x);
-      S.corals.push({ x, spr, x0: Math.round(x - spr.w / 2), y0: Math.round(gy - spr.h + 3) });
+    const I = Props.I, pool = new Map();
+    const kinds = [['branch', 3], ['brain', 2], ['fan', 2], ['tube', 2], ['anemone', 1.6], ['table', 1.2], ['sponge', 1.2], ['stag', 1.4]];
+    const bases = [I.CORA, I.CORB, I.CORC, I.CORD, I.CORE, I.CORF, I.CORG, I.SPONGE, I.ANEM];
+    const pickKind = () => { let tot = kinds.reduce((a, k) => a + k[1], 0), r = cr() * tot; for (const [k, w] of kinds) { r -= w; if (r <= 0) return k; } return 'branch'; };
+    for (let x = 1470; x < 3070; x += 9 + Math.floor(cr() * 17)) {
+      const gy = World.groundAt(x), deep = Math.min(1, (gy - World.SEA) / 260);
+      if (gy < World.SEA + 40) continue;
+      const kind = pickKind(), base = kind === 'sponge' ? I.SPONGE : kind === 'anemone' ? I.ANEM : bases[Math.floor(cr() * 7)];
+      const size = +(0.35 + deep * 0.55 + cr() * 0.35).toFixed(1);
+      const key = kind + base + size + (Math.floor(cr() * 3));
+      let spr = pool.get(key);
+      if (!spr) { spr = Props.makeCoral(kind, Math.floor(cr() * 9999), size, { base }); pool.set(key, spr); }
+      S.corals.push({ x, spr, x0: Math.round(x - spr.w / 2 + (cr() - 0.5) * 6), y0: Math.round(gy - spr.h + 3 + cr() * 3) });
     }
-    for (let x = 1520; x < 2120; x += 22 + Math.floor(cr() * 26)) S.kelp.push({ x, len: Math.min(60 + Math.floor(cr() * 110), World.groundAt(x) - World.SEA - 24), seed: x });
-    for (let x = 2700; x < 3500; x += 60 + Math.floor(cr() * 80)) S.kelp.push({ x, len: 90 + Math.floor(cr() * 160), seed: x });
+    // sea grass and kelp on the sandy slope and between the heads
+    for (let x = 1320; x < 3000; x += 18 + Math.floor(cr() * 30)) S.kelp.push({ x, len: Math.max(20, Math.min(40 + Math.floor(cr() * 120), World.groundAt(x) - World.SEA - 24)), seed: x });
+    // the abyss: nothing but tall dark rock spires
+    S.deepRocks = [];
+    for (let x = 3180; x < 4600; x += 50 + Math.floor(cr() * 120)) {
+      const h = 60 + Math.floor(cr() * 240), w = 40 + Math.floor(cr() * 70);
+      const spr = Props.makeRock(w, h, 100 + x, { moss: false, barnacles: false, dark: true });
+      const gy = World.groundAt(x);
+      S.deepRocks.push({ x, spr, x0: Math.round(x - spr.w / 2), y0: Math.round(gy - spr.h + 12) });
+    }
     for (let x = 30; x < 470; x += 26 + Math.floor(cr() * 30)) S.grass.push({ x, n: 6 + Math.floor(cr() * 8), seed: x });
     // decorations
     S.castle = { spr: Props.makeSandcastle(), x: 560 };
@@ -150,6 +166,7 @@ const Scene = (() => {
     if (inView(S.pier.x, S.pier.y, S.pier.s.w, S.pier.s.h)) Props.blit(fb, S.pier.s, S.pier.x - cx, S.pier.y - cy, pal, occ, 2);
     for (const k of S.kelp) if (k.x - cx > -30 && k.x - cx < VW + 30) Props.drawKelp(fb, cx, cy, k.x, World.groundAt(k.x) + 2, k.len, k.seed, t, pal, occ);
     for (const c of S.corals) if (inView(c.x0, c.y0, c.spr.w, c.spr.h)) Props.blit(fb, c.spr, c.x0 - cx, c.y0 - cy, pal, occ, 2);
+    if (S.deepRocks) for (const r of S.deepRocks) if (inView(r.x0, r.y0, r.spr.w, r.spr.h)) Props.blit(fb, r.spr, r.x0 - cx, r.y0 - cy, pal, occ, 1);
     // umbrella, towel, castle, chest
     const wob = (o) => (o.wob ? Math.round(Math.sin(o.wob * 34) * o.wob * 4) : 0);
     if (inView(S.umbrella.x - 75, S.umbrella.y0, 150, 150)) Props.blit(fb, S.umbrella.spr, S.umbrella.x - 75 - cx + wob(S.umbrella), S.umbrella.y0 - cy, pal, occ, 2);

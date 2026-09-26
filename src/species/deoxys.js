@@ -15,11 +15,11 @@ const Deoxys = (() => {
     [EYE]: { r: ['#101014', '#16161c', '#1e1e26', '#2a2a34', '#3a3a48'], od: '#08080a', ol: '#101014', ln: '#101014' },
     [WHITE]: { r: ['#d8d8e0', '#ececf2', '#ffffff', '#ffffff', '#ffffff'], od: '#8a8a96', ol: '#c0c0cc', ln: '#a0a0ac' },
   });
-  const DEFAULT = { wave: 0, lean: 0, spread: 0.5, eyes: 'open', side: 1 };
+  const DEFAULT = { wave: 0, lean: 0, spread: 0.5, fly: 0, punch: 0, kick: 0, eyes: 'open', side: 1 };
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [];
-    const root = chain(F(M3.I(), [0, 0, 0]), T(0, 90, 0), R(M3.rz(-P.lean)), T(0, -90, 0));
+    const root = chain(F(M3.I(), [0, 0, 0]), T(0, 90, 0), R(M3.rz(-P.lean - 0.45 * P.fly)), T(0, -90, 0));
     const orange = (s) => code(ORANGE, s[1] > 0.45 ? 1 : s[1] < -0.5 ? -1 : 0);
     // head: orange dome with a teal face stripe down the front, two small eyes beside it
     const head = chain(root, T(2, 150, 0));
@@ -43,11 +43,13 @@ const Deoxys = (() => {
         return orange(s);
       },
     }));
-    prims.push(ell(chain(root, T(0, 97, 0)), [5.5, 7, 5.5], { part: 5, grp: 5, mat: (s) => code(GREY, Math.abs(s[2]) > 0.5 ? -1 : 0) }));
+    prims.push(ell(chain(root, T(0, 97, 0)), [5.5, 7, 5.5], { part: 5, grp: 5, mat: (s) => code(GREY, Math.abs(s[1]) % 0.5 < 0.08 ? -1 : Math.abs(s[2]) > 0.5 ? -1 : s[0] > 0.4 ? 1 : 0) }));
     prims.push(ell(chain(root, T(0, 88, 0)), [12, 6.5, 13], { part: 6, grp: 6, mat: orange }));
     // long pointed legs with teal insets
     for (const sd of [1, -1]) {
-      const leg = chain(root, T(0, 86, 7 * sd), R(M3.rx(-sd * 0.36)), T(0, -38, 0));
+      // flying: legs trail back like a comet tail; kicking swings the near leg forward
+      const swing = -0.95 * P.fly + (sd > 0 ? 1.5 * P.kick : -0.3 * P.kick);
+      const leg = chain(root, T(0, 86, 7 * sd), R(M3.rz(swing)), R(M3.rx(-sd * (0.36 - 0.2 * P.fly))), T(0, -38, 0));
       prims.push(ell(leg, [6, 40, 5.5], { part: 7, grp: 7, mat: (s) => (s[2] * sd > 0.55 && Math.abs(s[1]) < 0.45 ? code(TEAL, 1) : orange(s)) }));
     }
     // tentacle arms: two strands (orange, teal) twisting around a rippling centre line
@@ -57,9 +59,12 @@ const Deoxys = (() => {
       const shoulder = [0, 126, 11 * sd];
       for (let k = 0; k < 18; k++) {
         const u = k / 17;
-        const cx = shoulder[0] + Math.sin(u * 3 + wv + sd) * 10 * u;
-        const cy = shoulder[1] - u * (40 + 30 * (1 - P.spread)) + Math.sin(u * 5 + wv * 1.3) * 8 * u;
-        const cz = shoulder[2] + sd * u * (24 + 30 * P.spread);
+        const pu = sd > 0 ? P.punch : 0, fl = P.fly;
+        let cx = shoulder[0] + Math.sin(u * 3 + wv + sd) * 10 * u - fl * u * 34;
+        let cy = shoulder[1] - u * (40 + 30 * (1 - P.spread)) * (1 - fl * 0.6) + Math.sin(u * 5 + wv * 1.3) * 8 * u;
+        let cz = shoulder[2] + sd * u * (24 + 30 * P.spread) * (1 - fl * 0.4);
+        // a punch drives the near arm straight out in front, fist first
+        cx += (shoulder[0] + u * 62 - cx) * pu; cy += (shoulder[1] - 4 - cy) * pu; cz += (shoulder[2] + 4 - cz) * pu;
         for (const st of [0, 1]) {
           const a = u * 9 + st * Math.PI + wv * 0.5;
           const r = 3.6 - u * 0.9;
