@@ -1,0 +1,103 @@
+<title>Mudkip Beach Museum</title>
+<meta name="description" content="Five animated pixel paintings of Mudkip at the beach, from dawn to midnight. Click any painting to bring it to life.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=Libre+Franklin:wght@400;500;600;700&family=Silkscreen&display=swap">
+<style>
+/*__CSS__*/
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <a class="mark" href="#top"><canvas id="logo" width="15" height="15" aria-hidden="true"></canvas><span>Tidepool Museum of Pixel Art</span></a>
+    <div class="hours"><span><b>Room 258</b> · Hoenn Wing</span><span>Open daily 06:00–23:30</span><span>Admission free</span></div>
+  </header>
+
+  <main id="top">
+    <section class="intro" aria-labelledby="ex-title">
+      <p class="eyebrow">Now showing in Room 258</p>
+      <h1 id="ex-title">Mudkip: <em>A Day at the Beach</em></h1>
+      <p class="dek">Five animated pixel paintings of one shoreline, from first light to the lighthouse beam. Every painting is alive. Click one to step inside, then tap the scene to play along.</p>
+      <ul class="facts">
+        <li>5 works</li>
+        <li>384 × 216 px each</li>
+        <li>Rendered live in your browser</li>
+        <li>Unofficial fan art</li>
+      </ul>
+    </section>
+
+    <section class="hang" id="lead" aria-label="Centerpiece"></section>
+
+    <section aria-labelledby="series-title">
+      <div class="room-head">
+        <h2 id="series-title">Five hours, one beach</h2>
+        <p>The same stretch of Route 109 painted at five times of day, like Monet returning to his haystacks. Watch the light move across Mudkip, the water and the lighthouse.</p>
+      </div>
+      <ol class="hours-strip" id="strip" aria-label="The series in clock order"></ol>
+      <div class="series" id="series"></div>
+    </section>
+
+    <section aria-labelledby="notes-title">
+      <div class="room-head">
+        <h2 id="notes-title">Conservation notes</h2>
+        <p>What the curators checked before hanging the show.</p>
+      </div>
+      <div class="notes">
+        <div class="note">
+          <h4>The sitter</h4>
+          <dl class="dex">
+            <dt>National Dex</dt><dd>No. 0258</dd>
+            <dt>Category</dt><dd>Mud Fish Pokémon</dd>
+            <dt>Type</dt><dd>Water</dd>
+            <dt>Height</dt><dd>0.4 m</dd>
+            <dt>Weight</dt><dd>7.6 kg</dd>
+            <dt>Evolves</dt><dd>Marshtomp at Lv. 16</dd>
+          </dl>
+          <p>The fin on its head works like radar, reading currents in the water and air. The orange gills on its cheeks let it breathe underwater, which is why it never minds a wave.</p>
+        </div>
+        <div class="note">
+          <h4>The palette</h4>
+          <div class="swatches" id="swatches"></div>
+          <p>Each part of Mudkip is shaded from its own five-step ramp, deepest shadow to highlight, then outlined a shade darker. Every painting regrades these ramps for its hour.</p>
+        </div>
+        <div class="note">
+          <h4>The technique</h4>
+          <p>Mudkip is a small 3D model of ellipsoids and flat fins, cast straight into pixels with toon shading, cast shadows and hand-drawn eyes. That is why it can turn, jump and squash from any angle.</p>
+          <p>The sea runs on a 6.6-second swash cycle: the wave breaks, rushes up the sand, leaves a line of foam and drains away. Splashes, ripples and reflections are drawn pixel by pixel on every frame.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Unofficial fan art, made for fun. Pokémon and Mudkip are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. This museum is fictional.</p>
+    <p class="px">Tidepool Museum · Room 258</p>
+  </footer>
+</div>
+<div class="floor" aria-hidden="true"></div>
+
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-labelledby="v-title" hidden>
+  <div class="v-top">
+    <div class="v-title"><span class="no" id="v-no"></span><h2 id="v-title"></h2><span class="time" id="v-time"></span></div>
+    <div class="controls">
+      <span class="v-count" id="v-count"></span>
+      <button class="ctl icon v-close" id="v-close" type="button" aria-label="Close the viewing room"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.8"/></svg></button>
+    </div>
+  </div>
+  <div class="v-stage" id="v-stage"><canvas id="v-canvas" aria-label="The painting, animated. Tap it to interact."></canvas></div>
+  <div class="v-bottom">
+    <div><p class="v-desc" id="v-desc"></p><p class="v-hint" id="v-hint"></p></div>
+    <div class="controls">
+      <button class="ctl" id="v-prev" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Previous</button>
+      <button class="ctl" id="v-play" type="button" aria-pressed="false">Pause</button>
+      <button class="ctl" id="v-sound" type="button" aria-pressed="false">Sound off</button>
+      <button class="ctl" id="v-loupe" type="button" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.8"/></svg>Loupe</button>
+      <button class="ctl" id="v-next" type="button">Next<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
+    </div>
+  </div>
+</div>
+<canvas class="loupe" id="loupe" width="168" height="168" aria-hidden="true"></canvas>
+
+<script>
+/*__JS__*/
+</script>

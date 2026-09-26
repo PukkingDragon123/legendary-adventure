@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#20242c;color:#ddd;font:12px monospace}
+canvas{image-rendering:pixelated;display:block}
+</style></head><body>
+<canvas id="c"></canvas>
+<script src="../src/px.js"></script>
+<script src="../src/mudkip.js"></script>
+<script>
+const Z = +(new URLSearchParams(location.search).get('z') || 5);
+const set = new URLSearchParams(location.search).get('set') || 'a';
+const SETS = {
+  a: [
+    { yaw: 0.0, pose: {} }, { yaw: 0.6, pose: {} }, { yaw: 1.05, pose: {} }, { yaw: 1.45, pose: {} },
+    { yaw: 2.2, pose: {} },
+    { yaw: 1.05, pose: { eyes: 'happy', mouth: 1, headPitch: 0.35, lean: 0.15, squash: -0.12, legF: 0.5, legB: -0.5 } },
+    { yaw: 1.05, pose: { eyes: 'blink', mouth: 0, squash: 0.18 } },
+    { yaw: 1.05, pose: { eyes: 'sleep', mouth: 0 } },
+  ],
+  b: [ { yaw: 1.1, pose: {} }, { yaw: 1.1, pose: { eyes: 'happy', mouth: 1, headPitch: 0.3 } } ],
+};
+const poses = SETS[set];
+const W = 96, H = 96;
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const perRow = Math.min(4, poses.length);
+cv.width = W * perRow * Z; cv.height = H * Math.ceil(poses.length / perRow) * Z;
+ctx.imageSmoothingEnabled = false;
+const pal = Mudkip.BASE_PAL;
+poses.forEach((p, k) => {
+  const m = Mudkip.build(p.pose);
+  const t0 = performance.now();
+  const r = Mudkip.render(m, { yaw: p.yaw, pitch: 0.16, W, H, ox: 48, oy: 84, pal });
+  const dt = performance.now() - t0;
+  const tmp = document.createElement('canvas');
+  r.buf.toCanvas(tmp);
+  const x = (k % perRow) * W * Z, y = Math.floor(k / perRow) * H * Z;
+  ctx.fillStyle = (k % 2) ? '#a8dcea' : '#b6e2ee'; ctx.fillRect(x, y, W*Z, H*Z);
+  ctx.drawImage(tmp, x, y, W * Z, H * Z);
+  ctx.fillStyle = '#123'; ctx.fillText(`yaw ${p.yaw} ${dt.toFixed(1)}ms`, x + 6, y + 14);
+});
+</script></body></html>

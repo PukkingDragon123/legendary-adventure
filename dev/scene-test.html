@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#111;color:#ddd;font:12px monospace}
+canvas{image-rendering:pixelated;display:block}
+</style></head><body>
+<canvas id="c"></canvas>
+<script src="../src/px.js"></script>
+<script src="../src/mudkip.js"></script>
+<script src="../src/ball.js"></script>
+<script src="../src/scenery.js"></script>
+<script src="../src/actors.js"></script>
+<script src="../src/beach.js"></script>
+<script src="../src/paintings.js"></script>
+<script src="../src/paintings2.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const Z = +(q.get('z') || 3);
+const which = q.get('p') || 'noon';
+const times = (q.get('t') || '4').split(',').map(Number);
+const cols = +(q.get('cols') || 1);
+const crop = q.get('crop') ? q.get('crop').split(',').map(Number) : null;
+const P = Paintings[which]();
+const fb = new PX.Buf(P.W, P.H);
+const cv = document.getElementById('c');
+const CW = crop ? crop[2] : P.W, CH = crop ? crop[3] : P.H;
+cv.width = CW * Z * cols; cv.height = CH * Z * Math.ceil(times.length / cols);
+const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
+let tNow = 0;
+const perf = [];
+times.forEach((T, k) => {
+  while (tNow < T - 1e-6) { const dt = Math.min(1/60, T - tNow); const ev = P.step(dt); tNow += dt; if (ev && ev.length && q.get('log')) console.log(tNow.toFixed(3), ev.map(e=>e.name).join(',')); }
+  const t0 = performance.now(); P.draw(fb); perf.push(performance.now() - t0);
+  const tmp = document.createElement('canvas'); fb.toCanvas(tmp);
+  if (crop) ctx.drawImage(tmp, crop[0], crop[1], CW, CH, (k % cols) * CW * Z, Math.floor(k / cols) * CH * Z, CW * Z, CH * Z);
+  else ctx.drawImage(tmp, (k % cols) * P.W * Z, Math.floor(k / cols) * P.H * Z, P.W * Z, P.H * Z);
+});
+// timing of step+draw
+const t1 = performance.now(); for (let i = 0; i < 60; i++) { P.step(1/60); P.draw(fb); } 
+console.log('draw ms', perf.map(v=>v.toFixed(1)).join(','), 'avg step+draw', ((performance.now()-t1)/60).toFixed(2));
+</script></body></html>
