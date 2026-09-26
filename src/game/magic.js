@@ -191,7 +191,9 @@ const Magic = (() => {
     brain() { return this.life(); }
     *life() {
       yield* Life.wait(0.6);
+      if (!this.stopAt) this.stopAt = Game.t + rnd(30, 45);
       for (;;) {
+        if (Game.t > this.stopAt && !S.shift) { this.stopAt = Game.t + rnd(50, 80); yield* this.timeStop(); continue; }
         const m = Game.mudkip;
         const b = Game.ball;
         const r = Math.random();
@@ -213,6 +215,13 @@ const Magic = (() => {
         }
         yield* Life.wait(rnd(0.3, 1.2));
       }
+    }
+    *timeStop() {
+      let e = 0;
+      while (e < 0.6) { const dt = yield; e += dt; this.o.roar = Math.min(1, e / 0.4); this.o.gem = 1; this.o.mouth = 0.8; }
+      Game.frozen = 2.8; S.freezeT = 0; S.freezeAt = this.at('gem');
+      Game.sfx('freeze', this.x, 1);
+      Game.sfx('tick', this.x, 0.8);
     }
     onPoke() {
       if (this.mode === 'emerge' || S.shift || this.cool > 0) return;
@@ -441,8 +450,60 @@ const Magic = (() => {
     drawPortal(fb, cx, cy, t);
     if (S.orb === 'inside' && S.portal) drawGem(fb, cx, cy, S.portal.x, S.portal.y, t, 0.5);
   }
-  function post(fb) { postShift(fb); }
+  const frozenMap = new Map();
+  function frozenCol(c) {
+    let f = frozenMap.get(c);
+    if (f === undefined) {
+      const [r, g, b] = PX.rgbOf(c);
+      const l = r * 0.3 + g * 0.59 + b * 0.11;
+      const cl = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
+      f = PX.pack(cl(lerp(r, l, 0.65) * 0.85 + 6), cl(lerp(g, l, 0.65) * 0.9 + 12), cl(lerp(b, l, 0.65) * 0.95 + 36));
+      frozenMap.set(c, f);
+      if (frozenMap.size > 60000) frozenMap.clear();
+    }
+    return f;
+  }
+  function postFreeze(fb, cx, cy) {
+    if (!(Game.frozen > 0)) return;
+    const d = fb.d, W = fb.w, H = fb.h;
+    const dg = S.dialga;
+    for (let i = 0; i < d.length; i++) d[i] = frozenCol(d[i]);
+    // Dialga stands outside of time: drawn again, in full colour, on top
+    if (dg) dg.draw(fb, cx, cy, null);
+    // a big ticking clock face around Dialga
+    const at = S.freezeAt || (dg ? dg.at('gem') : [cx + W / 2, cy + H / 2]);
+    const X = at[0] - cx, Y = at[1] - cy;
+    const k = Math.min(1, (S.freezeT || 0) / 0.35);
+    const R = 30 + k * 60;
+    fb.ring(X + 0.5, Y + 0.5, R + 2, R + 2, C.cyan2);
+    for (let i = 0; i < 60; i++) {
+      const a = (i / 60) * TAU;
+      const len = i % 5 === 0 ? 8 : 3;
+      for (let j = 0; j < len; j++) {
+        const px = Math.round(X + Math.cos(a) * (R - j)), py = Math.round(Y + Math.sin(a) * (R - j));
+        fb.set(px, py, i % 5 === 0 ? C.w : C.c2);
+        if (i % 5 === 0) fb.set(px + 1, py, C.w);
+      }
+    }
+    const tick = Math.floor((S.freezeT || 0) * 2);
+    const ha = -Math.PI / 2 + tick * (TAU / 12);
+    for (let j = 0; j < R * 0.75; j++) fb.set(Math.round(X + Math.cos(ha) * j), Math.round(Y + Math.sin(ha) * j), C.cyan);
+    for (let j = 0; j < R * 0.5; j++) fb.set(Math.round(X + Math.cos(-Math.PI / 2) * j), Math.round(Y + Math.sin(-Math.PI / 2) * j), C.w);
+  }
+  function updateFrozen(dt) {
+    const before = S.freezeT || 0;
+    S.freezeT = before + dt;
+    if (Math.floor(S.freezeT * 2) !== Math.floor(before * 2)) Game.sfx('tick', S.dialga ? S.dialga.x : null, 0.7);
+    if (Game.frozen - dt <= 0 && Game.frozen > 0) {
+      // time snaps back
+      Game.sfx('whoosh', S.dialga ? S.dialga.x : null, 0.9);
+      if (S.freezeAt) FX.add({ type: 'ring', x: S.freezeAt[0], y: S.freezeAt[1], r0: 90, r1: 4, life: 0.35, c: C.w, thick: true, c2: C.cyan, layer: 4 });
+      Game.shake(2);
+    }
+  }
+  function post(fb, cx, cy) { postFreeze(fb, cx, cy); postShift(fb); }
   function pokeFirst(wx, wy) {
+    if (Game.frozen > 0) { FX.sparkles(wx, wy, 2, 6, C.w, C.cyan); return true; }
     if ((S.orb === 'float' || S.orb === 'pop') && Math.hypot(wx - S.ox, wy - S.oy) < 16) { summon(); return true; }
     if (S.shift) return true;
     return false;
@@ -462,7 +523,17 @@ const Magic = (() => {
     if (S.dialga) { m.fillStyle = '#1b2240'; m.fillRect(Math.round(S.dialga.x * sx) - 2, Math.round((S.dialga.y - 30) * sy2) - 2, 5, 5); m.fillStyle = '#7ff6ff'; m.fillRect(Math.round(S.dialga.x * sx) - 1, Math.round((S.dialga.y - 30) * sy2) - 1, 3, 3); }
   }
 
-  const sys = { init, update, drawBack, drawFront, post, pokeFirst, rockPoked, orbButton, clockButton, drawMini, S, timeShift, spawnDialga, reveal, summon };
+  function restoreDialga() {
+    if (S.dialga) return;
+    const m = Game.mudkip;
+    const x = m ? m.x + 90 : 600;
+    const d = spawnDialga(x, gy(x));
+    d.mode = 'land';
+    S.orb = 'used';
+    if (S.rock) S.rock.x0 += S.rock.x0 + S.rock.spr.w / 2 < 900 ? -30 : 30;
+    Game.HUD.orb('dialga');
+  }
+  const sys = { init, update, updateFrozen, drawBack, drawFront, post, pokeFirst, rockPoked, orbButton, clockButton, drawMini, S, timeShift, spawnDialga, reveal, summon, restoreDialga };
   Game.systems.push(sys);
   return sys;
 })();

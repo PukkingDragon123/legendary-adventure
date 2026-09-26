@@ -115,10 +115,7 @@ const Game = (() => {
   }
 
   /* ---------- update ---------- */
-  function update(dt) {
-    G.t += dt;
-    const t = G.t;
-    // camera
+  function updateCamera(dt) {
     const c = G.cam;
     if (G.lock > 0) G.lock -= dt;
     else if (G.follow && G.mudkip && !drag) {
@@ -133,6 +130,21 @@ const Game = (() => {
     }
     c.x += keys.x * dt * 420 / Math.sqrt(G.zoom / zMin); c.y += keys.y * dt * 420 / Math.sqrt(G.zoom / zMin);
     clampCam();
+  }
+
+  function update(dt) {
+    G.rt = (G.rt || 0) + dt;
+    if (G.frozen > 0) {
+      // Dialga stopped time: only Dialga (and the magic) keep moving
+      G.frozen -= dt;
+      for (const m of G.mons) if (m.kind === 'dialga') m.update(dt, G.rt);
+      for (const s of G.systems) if (s.updateFrozen) s.updateFrozen(dt);
+      updateCamera(dt);
+      return;
+    }
+    G.t += dt;
+    const t = G.t;
+    updateCamera(dt);
     // world
     for (const p of Scene.S.palms) p.shake = Math.max(0, p.shake - dt * 1.2);
     for (const r of Scene.S.rocks) r.shake = Math.max(0, r.shake - dt);
@@ -144,7 +156,7 @@ const Game = (() => {
     FX.update(dt);
     G.shakeA = Math.max(0, G.shakeA - dt * 6);
     // audio: muffle when the view is underwater
-    const midY = c.y + G.VH * 0.5;
+    const midY = G.cam.y + G.VH * 0.5;
     Sound.setUnder(midY > World.SEA + 60 ? 1 : 0);
   }
 
@@ -623,6 +635,15 @@ const Game = (() => {
     requestAnimationFrame(frame);
   }
 
+  function restore(d) {
+    if (!d || typeof d !== 'object') return;
+    if (typeof d.hour === 'number') setHour(d.hour);
+    if (d.zoom) { G.zoom = d.zoom; layout(); }
+    if (d.cam) { G.cam.x = d.cam[0]; G.cam.y = d.cam[1]; clampCam(); }
+    if (typeof d.follow === 'boolean') { G.follow = d.follow; updateFollowUI(); }
+    if (d.started) { G.started = true; $('#start').hidden = true; }
+    if (typeof Magic !== 'undefined' && (d.orb === 'used' || d.orb === 'inside' || d.orb === 'summon')) Magic.restoreDialga();
+  }
   function boot() {
     const wk = document.getElementById('wk-src');
     if (wk && !qs.has('noworker')) Critters.Pool.init(wk.textContent);
@@ -634,9 +655,16 @@ const Game = (() => {
     $('#start').addEventListener('click', start);
     try { $('#b-start').focus({ preventScroll: true }); } catch (e) { /* focus is optional */ }
     if (qs.has('autostart')) { G.started = true; $('#start').hidden = true; }
+    // keep the player's place across a republish of the page
+    const hot = window.claude && window.claude.hot;
+    if (hot && hot.snapshot) {
+      try {
+        hot.snapshot(() => ({ hour: G.hourIdx, cam: [G.cam.x, G.cam.y], zoom: G.zoom, follow: G.follow, started: G.started, orb: typeof Magic !== 'undefined' ? Magic.S.orb : 'hidden' }));
+      } catch (e) { /* optional */ }
+    }
     if (DEBUG) { const d = document.createElement('div'); d.id = 'dbg'; wrap.appendChild(d); }
-    // warm up: let the first frames render lots of sprites
-    requestAnimationFrame(frame);
+    const go = (d) => { try { restore(d); } catch (e) { /* fresh start */ } requestAnimationFrame(frame); };
+    if (hot && hot.ready) hot.ready(go); else go(hot && hot.data);
   }
   G.boot = boot;
   G.layout = layout;

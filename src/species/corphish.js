@@ -20,7 +20,7 @@ const Corphish = (() => {
     [SHELL]: { r: ['#9a3024', '#c64e38', '#ea7152', '#f89672', '#fdb896'], od: '#58150e', ol: '#8f2c1c', ln: '#8a2a1c' },
     [CREAM]: { r: ['#b09884', '#d2bfa8', '#eadcc6', '#f6eee0', '#fffaf0'], od: '#5a3c2a', ol: '#8a6a52', ln: '#9c7e66' },
     [EYE]: { r: ['#b4bccb', '#d6dce6', '#f3f6fa', '#ffffff', '#ffffff'], od: '#3c1c18', ol: '#5c2c24', ln: '#3c1c18' },
-    [INNER]: { r: ['#5a1c16', '#76281e', '#94382a', '#ac4a38', '#c05e48'], od: '#3a0e0a', ol: '#56160f', ln: '#44120c' },
+    [INNER]: { r: ['#6a2a24', '#88392e', '#a54c3c', '#bd624d', '#d27b62'], od: '#3a0e0a', ol: '#5e1a12', ln: '#4a140e' },
     [MOUTH]: { r: ['#3e0c12', '#56141a', '#6e1e24', '#88282c', '#a03836'], od: '#2a0608', ol: '#3a0c10', ln: '#3a0c10' },
     [TONGUE]: { r: ['#b0404a', '#cc5a60', '#e57a78', '#f59a92', '#ffc0b4'], od: '#5a1018', ol: '#7a1c24', ln: '#8a2830' },
   });
@@ -146,7 +146,7 @@ const Corphish = (() => {
   const TIP = onBite(0.97); // front point of the bite loop (where the pincer tips meet)
   // arm keyframes (near side, body frame): wrist position, claw axis, back-of-claw direction
   const ARM_K = [
-    { a: -0.5, W: [14, 30, 25], X: [1, 0.3, -0.12], Y: [0, 1, 0.1] },
+    { a: -0.5, W: [12, 32, 26], X: [1, 0.35, -0.15], Y: [-0.8, 0.9, 0.1] },
     { a: 0, W: [-8, 53, 33], X: [0.2, 1, 0.3], Y: [-1, 0.15, 0.25] },
     { a: 1, W: [-6, 66, 27], X: [0.05, 1, 0.12], Y: [-1, 0.05, 0.15] },
   ];
@@ -323,5 +323,5 @@ const Corphish = (() => {
 
   const render = (model, opt) => Creature.render(model, opt);
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 130, bh: 146, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 126, bh: 142, oy: 0.905 } };
 })();

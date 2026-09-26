@@ -163,10 +163,10 @@ const Wailord = (() => {
           const bx = (x - 600) / 55, bz = (s[2] * rz) / 30;
           if (y > 1000 && bx * bx + bz * bz < 1) return code(BODY, -2);
         }
-        // small glossy highlight (HL = half vector in model space, set per render)
-        if (HL) {
+        // small glossy highlight on the head (HL = half vector in model space, set per render)
+        if (HL && E === MAIN) {
           const nx = (ca * s[0]) / rx - (sa * s[1]) / ry, ny = (sa * s[0]) / rx + (ca * s[1]) / ry, nz = s[2] / rz;
-          if ((nx * HL[0] + ny * HL[1] + nz * HL[2]) / Math.hypot(nx, ny, nz) > 0.992) return code(BODY, 2);
+          if ((nx * HL[0] + ny * HL[1] + nz * HL[2]) / Math.hypot(nx, ny, nz) > 0.9965) return code(BODY, 2);
         }
         return code(BODY);
       };
@@ -217,9 +217,9 @@ const Wailord = (() => {
   const EYEC = { k: '#0c1220', w: '#ffffff', b: '#26406e' };
   const EYES = [
     { open: ['kk', 'kk', 'kk'], happy: ['.k.', 'k.k'], closed: ['kkk'] }, // tiny (far out at sea)
-    { open: ['.k.', 'kwk', 'kkk', '.k.'], happy: ['.k.', 'k.k'], closed: ['k.k', '.k.'] },
-    { open: ['.kk.', 'kwkk', 'kkkk', 'kkbk', '.kk.'], happy: ['.kk.', 'k..k'], closed: ['k..k', '.kk.'] },
-    { open: ['..kk..', '.kwwk.', 'kwwkkk', 'kkkkkk', 'kkkkbk', '.kkbk.', '..kk..'], happy: ['..kk..', '.k..k.', 'k....k'], closed: ['k....k', '.kkkk.'] },
+    { open: ['.kk.', 'kwkk', 'kkkk', '.kk.'], happy: ['.kk.', 'k..k'], closed: ['k..k', '.kk.'] },
+    { open: ['.kkk.', 'kwwkk', 'kwkkk', 'kkkkk', 'kkkbk', '.kkk.'], happy: ['.kkk.', 'k...k', 'k...k'], closed: ['k...k', '.kkk.'] },
+    { open: ['..kkk..', '.kwwkk.', 'kwwkkkk', 'kwkkkkk', 'kkkkkkk', 'kkkkbbk', '.kkkbk.', '..kkk..'], happy: ['..kkk..', '.k...k.', 'k.....k', 'k.....k'], closed: ['k.....k', '.k...k.', '..kkk..'] },
   ];
 
   function render(model, opt) {

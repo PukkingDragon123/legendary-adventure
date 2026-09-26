@@ -15,7 +15,7 @@ const Pelipper = (() => {
     [CAP]:   { r: ['#3d6396', '#5783b8', '#7ea7d4', '#a6c6e8', '#d2e6f8'], od: '#1e3560', ol: '#3b5d90', ln: '#34568a' },
     [BILL]:  { r: ['#be9448', '#ddb865', '#f4d88f', '#fbe9b5', '#fff7de'], od: '#6e4c18', ol: '#a67d34', ln: '#a27a32' },
     [MOUTH]: { r: ['#7a3a58', '#9c5676', '#c27e9b', '#daa2ba', '#efc8d8'], od: '#4a1830', ol: '#6c2b48', ln: '#6c2b48' },
-    [TIP]:   { r: ['#3c6ca4', '#568ec6', '#7db1de', '#a6cff0', '#d2ebff'], od: '#1c3968', ol: '#36689e', ln: '#2e5a90' },
+    [TIP]:   { r: ['#3c6ca4', '#5a92c9', '#7fb2de', '#9cc8ec', '#b9dbf6'], od: '#1c3968', ol: '#36689e', ln: '#2e5a90' },
     [FEET]:  { r: ['#34609a', '#4d82bc', '#71a6d8', '#98c4ec', '#c4e2fb'], od: '#193360', ol: '#315f96', ln: '#2a5288' },
     [EYEW]:  { r: ['#c5cfe4', '#e0e7f4', '#f9fbff', '#ffffff', '#ffffff'], od: '#1b2136', ol: '#283150', ln: '#1e2539' },
     [EYE]:   { r: ['#0d111d', '#131827', '#181e2f', '#20283b', '#34405a'], od: '#0a0d17', ol: '#0a0d17', ln: '#0a0d17' },
@@ -51,7 +51,7 @@ const Pelipper = (() => {
 
   /* ---------- wing shapes (u = span from the joint, v = chord, +v = leading edge) ---------- */
   const ARM_L = 70;
-  const ARM = bakeShape(Shape2D.poly([[-6, -4], [-3, 12], [16, 16.5], [45, 18], [70, 18.5], [77, 14], [78, 0], [76, -18], [58, -24], [30, -23], [8, -19], [-4, -12]], code(WHITE)));
+  const ARM = bakeShape(Shape2D.poly([[-6, -4], [-3, 12], [16, 16.5], [45, 18], [70, 18.5], [77, 14], [78, 0], [76, -18], [58, -24], [30, -23], [8, -19], [-4, -12]], code(WHITE, 1)));
   const FINGERS = [
     { v0: 13, len: 56, fan: 4.5 },
     { v0: 2, len: 62, fan: 1.5 },
@@ -65,8 +65,8 @@ const Pelipper = (() => {
   const HAND = bakeShape({
     bb: [-8, -30, FU0 + 72, 28],
     test(u, v) {
-      for (const s of FSEG) if (Shape2D.segDist(u, v, s[0], s[1], s[2], s[3]) < FW) return u > whiteEdge(v) ? code(TIP) : code(WHITE);
-      return Shape2D.inPoly(u, v, HAND_POLY) ? code(WHITE) : 0;
+      for (const s of FSEG) if (Shape2D.segDist(u, v, s[0], s[1], s[2], s[3]) < FW) return u > whiteEdge(v) ? code(TIP, 1) : code(WHITE, 1);
+      return Shape2D.inPoly(u, v, HAND_POLY) ? code(WHITE, 1) : 0;
     },
   });
   // separation lines between the blue feathers + the white/blue boundary
@@ -92,8 +92,9 @@ const Pelipper = (() => {
   const ETY = V3.norm(V3.sub([0, 1, 0], V3.scale(EC, EC[1])));
   const ETX = V3.cross(ETY, EC); // points toward the bill
   const EA = 0.44, EB = 0.54, ETILT = 0.14;
-  let curScale = 1;
+  let curScale = 1, eyeCull = [0, 0, 0, 0]; // eyeCull: camera direction in head space per eye side
   function eyeMat(s, kind) {
+    if ((s[2] < 0 ? eyeCull[1] : eyeCull[0]) < 0.3) return 0;
     const m = s[2] < 0 ? [s[0], s[1], -s[2]] : s;
     if (m[0] * EC[0] + m[1] * EC[1] + m[2] * EC[2] < 0.45) return 0;
     const dx = m[0] - EC[0], dy = m[1] - EC[1], dz = m[2] - EC[2];
@@ -159,7 +160,7 @@ const Pelipper = (() => {
     const W = () => code(WHITE);
 
     // --- body, tail, neck
-    const bodyF = chain(top, T(-16, 82, 0), R(M3.rz(-0.26)));
+    const bodyF = chain(top, T(-16, 78, 0), R(M3.rz(-0.26)));
     prims.push(ell(bodyF, [32, 58, 32], { part: 1, grp: 1, mat: W }));
     prims.push(ell(chain(top, T(-48, 42, 0), R(M3.rz(0.6))), [18, 4, 10], { part: 1, grp: 1, mat: W }));
     prims.push(ell(chain(top, T(-8, 142, 0), R(M3.rz(-0.3))), [26, 30, 26], { part: 2, grp: 2, mat: W }));
@@ -235,12 +236,12 @@ const Pelipper = (() => {
     const feetPts = [];
     const FM = () => code(FEET);
     for (const side of [1, -1]) {
-      let legF = chain(T(-12, 26, 12), R(M3.rz(-ft * 1.5)), R(M3.rx(-0.08)));
+      let legF = chain(T(-12, 20, 12), R(M3.rz(-ft * 1.5)), R(M3.rx(-0.08)));
       if (side < 0) legF = mirror(legF);
       legF = chain(top, legF);
       const pid = side > 0 ? 14 : 15;
-      prims.push(ell(chain(legF, T(0, -10, 0)), [4.6, 11, 4.6], { part: pid, grp: pid, mat: FM }));
-      const footF = chain(legF, T(2, -22.6, 0.5));
+      prims.push(ell(chain(legF, T(0, -7, 0)), [5, 8.5, 5], { part: pid, grp: pid, mat: FM }));
+      const footF = chain(legF, T(2, -16.6, 0.5));
       prims.push(ell(footF, [6.5, 3.2, 6], { part: pid, grp: pid, mat: FM }));
       for (const ta of [-0.62, 0, 0.62]) prims.push(ell(chain(footF, R(M3.ry(ta)), T(8, -1, 0), R(M3.rz(-0.12))), [8.5, 2.2, 2.4], { part: pid, grp: pid, mat: FM }));
       feetPts.push(P2W(footF, [0, -3.4, 0]));
@@ -259,7 +260,7 @@ const Pelipper = (() => {
       eyeF: P2W(headF, [HR[0] * EC[0], HR[1] * EC[1], -HR[2] * EC[2]]),
     };
     return {
-      prims, anchors, pose: P, stamps: [], dots: [],
+      prims, anchors, pose: P, stamps: [], dots: [], headL: M3.mul(headF.L, M3.diag(...HR)),
       pri: { 1: 0, 2: 0, 3: 1, 4: 2, 5: 1, 6: 0, 7: 0, 10: 1, 11: 1, 14: 1, 15: 1 },
       glossy: GLOSSY, baseMat: WHITE, shadowSteps: 14,
     };
@@ -269,6 +270,16 @@ const Pelipper = (() => {
   function render(model, opt) {
     curScale = opt.scale || 1;
     const { yaw = 1.05, pitch = 0.16, scale = 1, W = 96, H = 96, ox = 48, oy = 82 } = opt;
+    // eyes: facing of each eye centre toward the camera (skip eyes seen edge-on)
+    if (model.headL) {
+      const M = M3.mul(M3.rx(pitch), M3.ry(-yaw)), cam = [M[6], M[7], M[8]];
+      const Li = M3.inv(model.headL);
+      for (const k of [0, 1]) {
+        const e = [EC[0], EC[1], k ? -EC[2] : EC[2]];
+        const n = V3.norm([Li[0] * e[0] + Li[3] * e[1] + Li[6] * e[2], Li[1] * e[0] + Li[4] * e[1] + Li[7] * e[2], Li[2] * e[0] + Li[5] * e[1] + Li[8] * e[2]]);
+        eyeCull[k] = V3.dot(n, cam);
+      }
+    } else eyeCull = [1, 1];
     // inner mouth walls: only the wall on the far side of the mouth is ever visible
     const cz = Math.cos(yaw);
     if (model.prims.some((p) => p.farSide)) model = Object.assign({}, model, { prims: model.prims.filter((p) => !p.farSide || (Math.abs(cz) > 0.35 && p.farSide * cz < 0)) });

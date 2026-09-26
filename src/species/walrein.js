@@ -7,7 +7,8 @@ const Walrein = (() => {
   const { ell, chain, T, R, F, onEll, sph, code } = Creature;
 
   const BODY = 1, PATCH = 2, MANE = 3, BAND = 4, TUSK = 5, NOSE = 6, MOUTH = 7, TONGUE = 8, FLIP = 9;
-  const MAT = { BODY, PATCH, MANE, BAND, TUSK, NOSE, MOUTH, TONGUE, FLIP };
+  const TK0 = 10, TK1 = 11, TK2 = 12, TK3 = 13; // tusk tones (flat ramps, shaded analytically)
+  const MAT = { BODY, PATCH, MANE, BAND, TUSK, NOSE, MOUTH, TONGUE, FLIP, TK0, TK1, TK2, TK3 };
 
   const PAL = Creature.palette({
     [BODY]:   { r: ['#1f5a86', '#2f78a8', '#4a95c2', '#70b1d8', '#a8d4ee'], od: '#10324f', ol: '#21577f', ln: '#245e88' },
@@ -16,6 +17,10 @@ const Walrein = (() => {
     [MANE]:   { r: ['#adc3e1', '#cddbef', '#e9f0fa', '#f7fafe', '#ffffff'], od: '#4a6892', ol: '#7a96be', ln: '#93acce' },
     [BAND]:   { r: ['#8fb0d2', '#b8d0e8', '#e6f0fa', '#ffffff', '#ffffff'], od: '#44628c', ol: '#7792ba', ln: '#7896bc' },
     [TUSK]:   { r: ['#b99a5e', '#d6bb80', '#ecd9a6', '#f8eccb', '#fff8e6'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
+    [TK0]:    { r: ['#c2a164', '#c2a164', '#c2a164', '#c2a164', '#c2a164'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
+    [TK1]:    { r: ['#dbbf86', '#dbbf86', '#dbbf86', '#dbbf86', '#dbbf86'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
+    [TK2]:    { r: ['#eedcab', '#eedcab', '#eedcab', '#eedcab', '#eedcab'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
+    [TK3]:    { r: ['#faefd2', '#faefd2', '#faefd2', '#faefd2', '#faefd2'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
     [NOSE]:   { r: ['#163f60', '#1f5378', '#2c6890', '#4a86ae', '#7fb0d2'], od: '#0a2238', ol: '#17405f', ln: '#143a58' },
     [MOUTH]:  { r: ['#6a2034', '#8a3046', '#aa4a5e', '#c46676', '#dc8a94'], od: '#40101e', ol: '#62182a', ln: '#62182a' },
     [TONGUE]: { r: ['#b8566c', '#d4728a', '#ea94a4', '#f8b6be', '#ffd6da'], od: '#6e1428', ol: '#8e2038', ln: '#b04450' },
@@ -88,6 +93,7 @@ const Walrein = (() => {
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [];
+    const view = { L: [-0.49, 0.7, 0.49] }; // model-space light direction, updated by render()
     const sq = clamp(P.squash, -0.15, 0.15);
     const root = chain(F(M3.diag(K * (1 + sq * 0.25), K * (1 - sq * 0.5), K * (1 + sq * 0.25)), [0, 0, 0]), T(OX, 0, 0));
     const rinv = M3.inv(root.L), rt = root.t;
@@ -110,20 +116,20 @@ const Walrein = (() => {
     };
 
     /* --- torso, rear, tail --- */
-    const torso = chain(root, T(-12, 50, 0), R(M3.rz(0.12)));
-    const torsoP = ell(torso, [102, 62, 67], { part: 1, grp: 1 });
+    const torso = chain(root, T(-14, 45, 0), R(M3.rz(0.14)));
+    const torsoP = ell(torso, [104, 57, 68], { part: 1, grp: 1 });
     torsoP.mat = bodyMat(torsoP);
-    const rear = chain(root, T(-92, 38, 0), R(M3.rz(0.3)));
-    const rearP = ell(rear, [54, 34, 46], { part: 1, grp: 1 });
+    const rear = chain(root, T(-92, 36, 0), R(M3.rz(0.32)));
+    const rearP = ell(rear, [54, 32, 46], { part: 1, grp: 1 });
     rearP.mat = bodyMat(rearP);
-    const tailS = chain(root, T(-130, 48, 0), R(M3.rz(0.5)));
+    const tailS = chain(root, T(-128, 50, 0), R(M3.rz(0.62)));
     const tailP = ell(tailS, [26, 15, 22], { part: 1, grp: 1 });
     tailP.mat = bodyMat(tailP);
     prims.push(torsoP, rearP, tailP);
     const flukeBase = chain(tailS, T(-18, 2, 0));
     for (const side of [1, -1]) {
-      const lobe = chain(flukeBase, R(M3.ry(side * 0.55)), R(M3.rx(-side * 0.55)), T(-27, 0, 0), R(M3.rz(-0.05)));
-      prims.push(ell(lobe, [35, 8, 19], {
+      const lobe = chain(flukeBase, R(M3.ry(side * 0.5)), R(M3.rx(-side * 0.62)), T(-30, 0, 0), R(M3.rz(-0.12)));
+      prims.push(ell(lobe, [38, 8, 20], {
         part: 20, grp: 20,
         mat: (s) => (Math.abs(s[0] + 0.1) < 0.1 ? code(BAND) : code(FLIP)),
       }));
@@ -158,18 +164,33 @@ const Walrein = (() => {
       prims.push(ell(cav, [15, 4 + mo * 8, 14], { part: 7, grp: 2, mat: (s) => (s[1] < -0.3 ? code(TONGUE) : code(MOUTH)) }));
     }
 
-    /* --- tusks: smooth curved chains of ellipsoids from the upper jaw --- */
+    /* --- tusks: a dense chain of shrinking spheres along a curve. A union of spheres has rippled
+       normals, so the tusks are shaded here with the normal of the ideal smooth cone instead
+       (flat-ramp tone materials; the light direction is set per render by render()). --- */
     const tuskTips = [];
     const tuskPt = (t, side) => [34 + 5 * t - 12 * t * t, -12 - 50 * t, side * (13 + 8 * t)];
+    const tuskTan = (t, side) => V3.norm([5 - 24 * t, -50, side * 8]);
+    const TK = [code(TK0), code(TK1), code(TK2), code(TK3)];
     for (const side of [1, -1]) {
-      const N = 16;
+      const N = 26;
       for (let i = 0; i < N; i++) {
         const t = i / (N - 1);
-        const p = tuskPt(t, side), q = tuskPt(t + 0.02, side);
-        const r = lerp(5.8, 1.7, t ** 1.15);
-        const ay = V3.norm(V3.sub(q, p)), ax = V3.norm(V3.cross(ay, [0, 0, 1])), az = V3.cross(ax, ay);
-        const f = chain(head, T(...p), F(M3.cols(ax, ay, az), [0, 0, 0]));
-        prims.push(ell(f, [r, 7.5, r], { part: side > 0 ? 8 : 9, grp: side > 0 ? 8 : 9, mat: () => code(TUSK) }));
+        const r = lerp(5.6, 1.4, t ** 1.1);
+        const f = chain(head, T(...tuskPt(t, side)));
+        const a = V3.norm(M3.v(head.L, tuskTan(t, side))); // cone axis (toward the tip) in model space
+        const HL = head.L;
+        prims.push(ell(f, [r, r, r], {
+          part: side > 0 ? 8 : 9, grp: side > 0 ? 8 : 9,
+          mat: (s) => {
+            let nx = HL[0] * s[0] + HL[1] * s[1] + HL[2] * s[2];
+            let ny = HL[3] * s[0] + HL[4] * s[1] + HL[5] * s[2];
+            let nz = HL[6] * s[0] + HL[7] * s[1] + HL[8] * s[2];
+            const k = nx * a[0] + ny * a[1] + nz * a[2] - 0.08 * Math.hypot(nx, ny, nz);
+            nx -= k * a[0]; ny -= k * a[1]; nz -= k * a[2];
+            const L = view.L, d = (nx * L[0] + ny * L[1] + nz * L[2]) / (Math.hypot(nx, ny, nz) || 1);
+            return TK[d < -0.2 ? 0 : d < 0.18 ? 1 : d < 0.74 ? 2 : 3];
+          },
+        }));
         if (i === N - 1) tuskTips.push(V3.add(f.t, M3.v(f.L, [0, -1, 0])));
       }
     }
@@ -206,7 +227,7 @@ const Walrein = (() => {
     };
     const kind = P.eyes;
     return {
-      prims, anchors, pose: P,
+      prims, anchors, pose: P, view,
       stamps: [
         { at: onHead(0.75, 0.45), set: EYES, colors: EYEC, kind },
         { at: onHead(-0.75, 0.45), set: EYES, colors: EYEC, kind },
@@ -216,6 +237,7 @@ const Walrein = (() => {
       glossy: GLOSSY,
       baseMat: BODY,
       shadowSteps: 10,
+      shadowDepth: 10,
     };
   }
 
@@ -260,7 +282,14 @@ const Walrein = (() => {
     return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  const render = (model, opt) => renderTight(model, opt);
+  function render(model, opt) {
+    if (model.view) {
+      // light direction in model space = inverse view rotation applied to the (view-space) light
+      const Ld = V3.norm((opt.light && opt.light.dir) || [-0.5, 0.72, 0.5]);
+      model.view.L = M3.v(M3.mul(M3.ry(opt.yaw ?? 1.05), M3.rx(-(opt.pitch ?? 0.16))), Ld);
+    }
+    return renderTight(model, opt);
+  }
 
   return {
     build, render, PAL, MAT, DEFAULT,

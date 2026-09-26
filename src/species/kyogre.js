@@ -223,18 +223,27 @@ const Kyogre = (() => {
   // view ray's chord through the ellipsoid (direction from the renderer's prim.Li) and accept the
   // first sample inside the outline: edge-on fins keep their true silhouette. Face-on the chord
   // keeps the same (u, v), so nothing changes there.
-  const clipped = (prim, test, edge) => {
+  const clipped = (prim, test, edge, thin, R) => {
+    let li = null, cw = 1, dx = 0, dy = 0, dz = 0, dt = 0;
     prim.mat = (s) => {
       const m = test(s[0], s[1], s[2]);
       if (m) return m;
       const Li = prim.Li;
-      let dx = Li[2], dy = Li[5], dz = Li[8];
-      const il = 1 / Math.sqrt(dx * dx + dy * dy + dz * dz);
-      dx *= il; dy *= il; dz *= il;
+      if (Li !== li) {
+        // once per render: view direction in local space, and |cos| between view and fin normal
+        li = Li;
+        const t3 = thin * 3;
+        cw = Math.abs(Li[t3 + 2]) / Math.hypot(Li[t3], Li[t3 + 1], Li[t3 + 2]);
+        const il = 1 / Math.hypot(Li[2], Li[5], Li[8]);
+        dx = Li[2] * il; dy = Li[5] * il; dz = Li[8] * il;
+        dt = thin === 0 ? dx : thin === 1 ? dy : dz;
+      }
+      if (cw > 0.5) return 0; // within 60 degrees of face-on: the surface clip is already right
       const k = 2 * (s[0] * dx + s[1] * dy + s[2] * dz);
-      if (k < 0.05) return 0;
-      for (let j = 1; j < 9; j++) {
-        const t = (k * j) / 9;
+      // samples ~3 units apart along the chord's travel across the fin plane
+      const n = Math.min(8, Math.floor((k * Math.sqrt(Math.max(0, 1 - dt * dt)) * R) / 3));
+      for (let j = 1; j <= n; j++) {
+        const t = (k * j) / (n + 1);
         const e = edge(s[0] - t * dx, s[1] - t * dy, s[2] - t * dz);
         if (e) return e;
       }
@@ -340,7 +349,7 @@ const Kyogre = (() => {
         if (!at(DORSAL_G, X, Y, 0)) return 0;
         if (at(DORSAL_LN, X, Y, 99) < LWH) return code(RED);
         return code(FIN, Math.max(-1, bevel(DORSAL_G, X, Y, -4, 3) - (Math.abs(c) < 0.3 ? 1 : 0)));
-      }, (a, b) => (at(DORSAL_G, E.cx + E.rx * a, E.cy + E.ry * b, 0) ? cEdge : 0)));
+      }, (a, b) => (at(DORSAL_G, E.cx + E.rx * a, E.cy + E.ry * b, 0) ? cEdge : 0), 2, E.rx));
     }
 
     // --- pectoral fins (near, far = mirror); sweep: fin=+1 up/forward, -1 down/back
@@ -367,7 +376,7 @@ const Kyogre = (() => {
         if (b < 0) return code(FINU);
         if (at(FIN_LN, uu, vv, 99) < LWH) return code(RED);
         return code(FIN, bevel(FIN_IN, uu, vv, 0, 7));
-      }, (a, b, c) => (at(FIN_IN, E.cu + E.ru * a, E.cv + E.rv * c, 0) ? cFinEdge : 0)));
+      }, (a, b, c) => (at(FIN_IN, E.cu + E.ru * a, E.cv + E.rv * c, 0) ? cFinEdge : 0), 1, E.ru));
       // claws
       CLAWS.forEach((c, k) => {
         const ca = Math.cos(c.a), sa = Math.sin(c.a);
@@ -379,7 +388,7 @@ const Kyogre = (() => {
           const uu = CLAW_E.ru * a, vv = CLAW_E.rv * c;
           if (!at(CLAW_G, uu, vv, 0)) return 0;
           return b < 0 ? code(CLAW, -1) : code(CLAW, bevel(CLAW_G, uu, vv, 0, 4.5));
-        }, (a, b, c) => (at(CLAW_G, CLAW_E.ru * a, CLAW_E.rv * c, 0) ? cClawEdge : 0)));
+        }, (a, b, c) => (at(CLAW_G, CLAW_E.ru * a, CLAW_E.rv * c, 0) ? cClawEdge : 0), 1, CLAW_E.ru));
       });
       finParts.push(fr);
     }
@@ -397,7 +406,7 @@ const Kyogre = (() => {
           const uu = E.cu + E.ru * a, vv = E.cv + E.rv * c;
           if (!at(E.g, uu, vv, 0)) return 0;
           return code(TAILF, bevel(E.full, uu, vv, -2.2, 5));
-        }, (a, b, c) => (at(E.g, E.cu + E.ru * a, E.cv + E.rv * c, 0) ? cTailEdge : 0)));
+        }, (a, b, c) => (at(E.g, E.cu + E.ru * a, E.cv + E.rv * c, 0) ? cTailEdge : 0), 1, E.ru));
       });
       return fr;
     };
@@ -444,6 +453,11 @@ const Kyogre = (() => {
     }
     const { yaw = 1.05, pitch = 0.16, W = 96, H = 96, ox = 48, oy = 82 } = opt;
     const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(sc, sc, sc)));
+    // nearest primitives first: hidden pixels then fail the depth test before any mat() call
+    // (draw order only affects overdraw, not the image)
+    const zs = new Map();
+    for (const p of model.prims) zs.set(p, V[6] * p.c[0] + V[7] * p.c[1] + V[8] * p.c[2]);
+    model.prims.sort((a, b) => zs.get(b) - zs.get(a));
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const p of model.prims) {
       const cv = M3.v(V, p.c), Lv = M3.mul(V, p.L);

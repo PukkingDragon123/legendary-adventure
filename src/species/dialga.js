@@ -15,18 +15,27 @@ const Dialga = (() => {
   // Clipped thin "shell" ellipsoid: test(s0,s1,s2) = material of the nearest surface point or 0.
   // When that point is clipped away, march the view ray's chord through the ellipsoid (direction
   // from the renderer's prim.Li) so edge-on fins keep their silhouette; face-on nothing changes.
-  const clipped = (prim, test, edge) => {
+  const clipped = (prim, test, edge, thin, R) => {
+    let li = null, cw = 1, dx = 0, dy = 0, dz = 0, dt = 0;
     prim.mat = (s) => {
       const m = test(s[0], s[1], s[2]);
       if (m) return m;
       const Li = prim.Li;
-      let dx = Li[2], dy = Li[5], dz = Li[8];
-      const il = 1 / Math.sqrt(dx * dx + dy * dy + dz * dz);
-      dx *= il; dy *= il; dz *= il;
+      if (Li !== li) {
+        // once per render: view direction in local space, and |cos| between view and fin normal
+        li = Li;
+        const t3 = thin * 3;
+        cw = Math.abs(Li[t3 + 2]) / Math.hypot(Li[t3], Li[t3 + 1], Li[t3 + 2]);
+        const il = 1 / Math.hypot(Li[2], Li[5], Li[8]);
+        dx = Li[2] * il; dy = Li[5] * il; dz = Li[8] * il;
+        dt = thin === 0 ? dx : thin === 1 ? dy : dz;
+      }
+      if (cw > 0.5) return 0; // within 60 degrees of face-on: the surface clip is already right
       const k = 2 * (s[0] * dx + s[1] * dy + s[2] * dz);
-      if (k < 0.05) return 0;
-      for (let j = 1; j < 9; j++) {
-        const t = (k * j) / 9;
+      // samples ~3 units apart along the chord's travel across the fin plane
+      const n = Math.min(8, Math.floor((k * Math.sqrt(Math.max(0, 1 - dt * dt)) * R) / 3));
+      for (let j = 1; j <= n; j++) {
+        const t = (k * j) / (n + 1);
         const e = edge(s[0] - t * dx, s[1] - t * dy, s[2] - t * dz);
         if (e) return e;
       }
@@ -270,7 +279,7 @@ const Dialga = (() => {
           const uu = B.cu + B.ru * a, vv = B.rv * c;
           if (!at(B.g, uu, vv, 0)) return 0;
           return code(SILVER, vv > W * 0.18 ? 1 : vv < -W * 0.25 ? -1 : 0);
-        }, (a, bb, c) => (at(B.g, B.cu + B.ru * a, B.rv * c, 0) ? cSILVER : 0)));
+        }, (a, bb, c) => (at(B.g, B.cu + B.ru * a, B.rv * c, 0) ? cSILVER : 0), 1, B.ru));
       });
     }
 
@@ -309,7 +318,7 @@ const Dialga = (() => {
       if (!at(CREST_G, X, Y, 0)) return 0;
       if (Math.abs(c) > 0.3 && at(CREST_LN, X, Y, 99) < 0.85) return cCYAN;
       return code(SILVER, bevel(CREST_G, X, Y, 1.1, 1.5));
-    }, (a, b) => (at(CREST_G, CE.cx + CE.rx * a, CE.cy + CE.ry * b, 0) ? cSILVER : 0)));
+    }, (a, b) => (at(CREST_G, CE.cx + CE.rx * a, CE.cy + CE.ry * b, 0) ? cSILVER : 0), 2, CE.rx));
 
     // --- anchors + eye stamps
     const eyeS = (az, v) => { const c = Math.sqrt(1 - v * v); return [c * Math.cos(az), v, c * Math.sin(az)]; };
@@ -330,7 +339,7 @@ const Dialga = (() => {
       ],
       dots: [],
       pri: { 1: 0, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1, 10: 2, 11: 2, 12: 3, 13: 3, 16: 2, 17: 3, 20: 1, 21: 2, 22: 0, 23: 3, 24: 3 },
-      glossy: GLOSSY, baseMat: BODY, shadowSteps: 8,
+      glossy: GLOSSY, baseMat: BODY, shadowSteps: 6,
     };
   }
 
@@ -349,6 +358,11 @@ const Dialga = (() => {
     }
     const { yaw = 1.05, pitch = 0.16, W = 96, H = 96, ox = 48, oy = 82 } = opt;
     const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(sc, sc, sc)));
+    // nearest primitives first: hidden pixels then fail the depth test before any mat() call
+    // (draw order only affects overdraw, not the image)
+    const zs = new Map();
+    for (const p of model.prims) zs.set(p, V[6] * p.c[0] + V[7] * p.c[1] + V[8] * p.c[2]);
+    model.prims.sort((a, b) => zs.get(b) - zs.get(a));
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     const grow = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
     for (const p of model.prims) {

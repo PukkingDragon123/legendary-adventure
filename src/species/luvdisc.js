@@ -70,7 +70,7 @@ const Luvdisc = (() => {
     const body = chain(F(M3.I(), CEN), R(M3.rz(P.tilt)), T(-CEN[0], -CEN[1], -CEN[2]));
     // the back of the heart swings sideways (swimming wiggle), pivoting near the snout
     const wig = Math.max(-1, Math.min(1, P.wiggle));
-    const back = chain(body, T(6, 0, 0), R(M3.ry(wig * 0.22)), T(-6, 0, 0));
+    const back = chain(body, T(6, 0, 0), R(M3.ry(wig * 0.32)), T(-6, 0, 0));
 
     // --- cheeks (patches on the body's sides), in front of the body
     const bl = Math.max(0, Math.min(1, P.blush));
@@ -137,5 +137,5 @@ const Luvdisc = (() => {
 
   const render = (model, opt) => Creature.render(model, opt);
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 96, bh: 136, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 94, bh: 118, oy: 0.94 } };
 })();

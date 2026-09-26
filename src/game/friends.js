@@ -142,7 +142,10 @@ const Friends = (() => {
     }
     onBonk() { this.sq.kick(1); this.happyT = 0; FX.add({ type: 'dizzy', x: 0, y: 0, at: () => this.at('top', 0, -6), rx: 16, life: 1.6, layer: 3 }); this.doTask((function* (s) { let e = 0; while (e < 1.6) { const dt = yield; e += dt; s.o.eyes = 'dizzy'; s.o.mouth = 0.4; } })(this), 3); }
     greet() { this.happyT = 1.2; Game.sfx('spheal', this.x, 0.8); }
-    newHour(h) { if (h !== 'night') this.sleeping = false; }
+    newHour(h) {
+      if (h !== 'night') this.sleeping = false;
+      if (h !== 'night' && this.mode === 'land') this.doTask((function* (s) { yield* wait(0.8); FX.emote('sparkle', () => s.headPt()); yield* s.clapAbout(); })(this), 2);
+    }
   }
 
   /* ================================================================
@@ -265,6 +268,7 @@ const Friends = (() => {
     }
     onBonk(c) { this.happyT = 0; FX.add({ type: 'dizzy', x: 0, y: 0, at: () => this.at('top', 0, -6), rx: 16, life: 1.4, layer: 3 }); }
     pierKnock(x) { if (Math.abs(x - this.x) < 200) { this.sq.kick(0.5); FX.emote('shock', () => this.headPt(), { life: 0.8 }); } }
+    newHour(h) { if (h !== 'night' && !this.item) this.doTask((function* (s) { yield* wait(1); Game.sfx('bark', s.x, 0.6); yield* s.clap(1.4); })(this), 2); }
     greet() { this.happyT = 1; Game.sfx('bark', this.x, 0.7); }
   }
 
@@ -482,6 +486,7 @@ const Friends = (() => {
     onBonk() { this.angry = 1.5; FX.add({ type: 'dizzy', x: 0, y: 0, at: () => this.at('top', 0, -4), rx: 12, life: 1.4, layer: 3 }); }
     onBall() { this.angry = 1.2; return false; }
     bubbleNear(x, y) { if (this.underwater && Math.hypot(x - this.x, y - this.y) < 120) { this.happyT = 0.8; } }
+    newHour() { this.happyT = 1.5; }
     greet() { this.happyT = 1; Game.sfx('crab', this.x, 0.6); }
   }
 
