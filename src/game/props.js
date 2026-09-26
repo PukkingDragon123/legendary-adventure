@@ -221,7 +221,8 @@ const Props = (() => {
     for (let x = 0; x < W; x++)
       for (let y = Y(deck); y < Y(deck + 9); y++) {
         const plank = (x % 14) === 0;
-        const tone = y === Y(deck) ? 3 : y < Y(deck + 3) ? 2 : y < Y(deck + 7) ? 1 : 0;
+        let tone = y === Y(deck) ? 3 : y < Y(deck + 3) ? 2 : y < Y(deck + 7) ? 1 : 0;
+        if (!plank && tone > 0 && ((x * 7 + y * 13) % 29 === 0)) tone -= 1; // grain and knots
         s.set(x, y, plank ? I.WOOD : I.WOOD + tone);
       }
     // cross beams under the deck
@@ -231,8 +232,11 @@ const Props = (() => {
       const a = X(posts[i]), b = X(posts[i + 1]);
       for (let x = a; x <= b; x++) {
         const u = (x - a) / (b - a);
-        const y = Y(deck - 24) + Math.sin(u * Math.PI) * 7;
-        s.set(x, y, I.ROPE);
+        const y = Math.round(Y(deck - 24) + Math.sin(u * Math.PI) * 9);
+        // iron chain: alternating open and side-on links
+        const ph = (x - a) % 6;
+        if (ph < 3) { s.set(x, y - 1, I.WOL); s.set(x, y + 1, I.WOL); if (ph === 0 || ph === 2) s.set(x, y, I.WOL); }
+        else s.set(x, y, I.WOL);
       }
     }
     s.outline(I.WOL);

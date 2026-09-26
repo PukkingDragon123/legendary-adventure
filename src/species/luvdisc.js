@@ -38,13 +38,13 @@ const Luvdisc = (() => {
 
   // ---- body (heart) geometry, fitted to the official silhouette (side view)
   const CEN = [0, 52, 0]; // pivot for tilt / wiggle
-  const THK = 10; // half-thickness (laterally thin)
+  const THK = 12; // half-thickness (laterally thin)
   const LOBES = [
-    { c: [-8, 74.6, 0], r: [31.6, 19.6, THK], a: -1.29 }, // upper lobe
-    { c: [-7.2, 27.3, 0], r: [27.5, 20.4, THK], a: 1.4 }, // lower lobe
-    { c: [-7, 52, 0], r: [15.5, 30, THK + 0.8], a: 0 }, // central filler (smooths the mid crease, fills the cleft)
-    { c: [10.2, 67.6, 0], r: [27, 6, THK * 0.55], a: -1.15 }, // upper front edge (runs into the lips)
-    { c: [10, 32, 0], r: [28.8, 6.4, THK * 0.55], a: 1.18 }, // lower front edge
+    { c: [-6, 73, 0], r: [30, 25, THK], a: -0.55 }, // upper lobe (big and round, like the official art)
+    { c: [-7, 31, 0], r: [24, 22, THK], a: 0.5 }, // lower lobe
+    { c: [-6, 52, 0], r: [27, 31, THK + 0.8], a: 0 }, // central filler: keeps the outline convex (a heart, not a bone)
+    { c: [9.5, 66, 0], r: [24, 7, THK * 0.6], a: -0.85 }, // upper front edge (runs into the lips)
+    { c: [9, 35, 0], r: [24, 7, THK * 0.6], a: 0.9 }, // lower front edge
   ];
   const LIP_C = [18.4, 49.5, 0]; // centre of the lip blob
 

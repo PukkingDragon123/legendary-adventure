@@ -151,6 +151,9 @@ const Game = (() => {
     for (const r of Scene.S.rocks) r.shake = Math.max(0, r.shake - dt);
     for (const k of ['umbrella', 'castle']) if (Scene.S[k].wob) Scene.S[k].wob = Math.max(0, Scene.S[k].wob - dt * 1.5);
     Life.Nuts.update(dt, t);
+    Wind.update(dt); Ripples.step(dt);
+    // blowing sand on the dry beach in view
+    if (Math.random() < dt * Wind.v * 30) { const x = G.cam.x + Math.random() * G.VW, g = World.groundAt(Math.max(0, Math.min(World.W, x))); if (g < World.SEA - 2 && g > G.cam.y && g < G.cam.y + G.VH) FX.add({ type: 'grain', x, y: g - 2, vx: Wind.v * 50, vy: -Math.random() * 40, life: 1.5 + Math.random() * 2, c: G.P.sand[3], c2: G.P.sand[2], layer: 2 }); }
     if (G.ball) { G.ball.step(dt, t); Life.ballCollide(G.ball, dt); }
     for (const m of G.mons) if (m.alive) m.update(dt, t);
     for (const s of G.systems) if (s.update) s.update(dt, t);
@@ -167,6 +170,7 @@ const Game = (() => {
   const mark = DEBUG ? (k) => { const n = performance.now(); prof[k] = (prof[k] || 0) * 0.95 + (n - pt) * 0.05; pt = n; } : () => {};
   G.prof = prof;
   function render() {
+    WorldRender.setTilt((G.cam.y - (World.SEA - G.VH * 0.62)) * 0.35 + (G.zoom - zMin) * 5);
     if (G.gallery) { Gallery.draw(fb); Gallery.post(fb); ctx.putImageData(img, 0, 0); return; }
     const P = G.P, t = G.t;
     pt = performance.now();

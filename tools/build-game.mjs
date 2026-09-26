@@ -6,13 +6,13 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(join(root, p), 'utf8');
-const SPECIES = ['spheal', 'sealeo', 'walrein', 'corphish', 'luvdisc', 'pelipper', 'wailord', 'kyogre', 'dialga'];
+const SPECIES = ['spheal', 'sealeo', 'walrein', 'corphish', 'luvdisc', 'pelipper', 'wailord', 'kyogre', 'dialga', 'palkia', 'minior', 'deoxys'];
 const files = [
   'src/px.js', 'src/scenery.js', 'src/actors.js', 'src/creature.js', 'src/mudkip.js', 'src/ball.js', 'src/beach.js', 'src/paintings.js', 'src/paintings2.js',
   ...SPECIES.map((s) => `src/species/${s}.js`).filter((p) => existsSync(join(root, p))),
-  'src/game/world.js', 'src/game/render.js', 'src/game/props.js', 'src/game/scene.js', 'src/game/fx.js',
+  'src/game/world.js', 'src/game/waves.js', 'src/game/render.js', 'src/game/props.js', 'src/game/scene.js', 'src/game/fx.js',
   'src/game/critters.js', 'src/game/life.js', 'src/game/audio.js', 'src/game/main.js',
-  ...['src/game/friends.js', 'src/game/deep.js', 'src/game/magic.js', 'src/game/fun.js', 'src/game/gallery.js'].filter((p) => existsSync(join(root, p))),
+  ...['src/game/friends.js', 'src/game/deep.js', 'src/game/magic.js', 'src/game/space.js', 'src/game/fun.js', 'src/game/gallery.js'].filter((p) => existsSync(join(root, p))),
 ];
 const js = files.map((f) => `/* ==== ${f} ==== */\n${read(f)}`).join('\n') + '\nGame.boot();\n';
 // worker: the renderer + species models + a tiny message handler

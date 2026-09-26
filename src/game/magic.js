@@ -225,15 +225,15 @@ const Magic = (() => {
     }
     // poke Dialga: he roars and tears open a portal to the Time Gallery
     onPoke() {
-      if (this.mode === 'emerge' || S.shift || this.cool > 0 || (S.portal && S.portal.gallery)) return;
+      if (this.mode === 'emerge' || S.shift || this.cool > 0) return;
       this.cool = 3;
       this.doTask((function* (d) {
         d.roarT = 0.9; Game.sfx('dialga', d.x, 1);
         yield* Life.wait(0.35);
         d.say();
         yield* Life.wait(0.3);
-        openGalleryPortal(d);
-        yield* Life.wait(1);
+        timeShift(d);
+        yield* Life.wait(2);
       })(this), 4);
     }
     // the clock button: a plain time shift

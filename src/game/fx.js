@@ -9,6 +9,7 @@ const FX = (() => {
     y: hex('#ffd83a'), o: hex('#ff9a2a'), g: hex('#8a8a9a'), p: hex('#c080ff'), a: hex('#e82a3a'), n: hex('#2a2c48'),
   };
   const ICON = {
+    fish: ['..ww...', '.wwwwk.w', 'wwkwwwww', '.wwwwk.w', '..ww....'].map((r) => r.slice(0, 8)),
     heart: ['.rr.rr.', 'rlrrrrr', 'rrrrrrr', '.rrrrr.', '..rrr..', '...r...'],
     note: ['...kk', '..kkk', '..k.k', '..k..', '.kk..', 'kkk..', '.k...'],
     sweat: ['.b..', '.bb.', 'bcbb', 'bcbb', 'bbbb', '.bb.'],
@@ -64,6 +65,12 @@ const FX = (() => {
       if (p.age >= p.life) { if (p.onDie) p.onDie(p); list.splice(i, 1); continue; }
       p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
       if (p.drag) { p.vx *= Math.pow(p.drag, dt); p.vy *= Math.pow(p.drag, dt); }
+      if (p.type === 'grain') {
+        p.vx += ((typeof Wind !== 'undefined' ? Wind.v : 0.4) * 60 - p.vx) * dt * 0.8;
+        const g = World.groundAt(Math.max(0, Math.min(World.W, p.x)));
+        if (p.y >= g - 1) { p.y = g - 1; p.vy = -Math.abs(p.vy) * 0.3; p.vx *= 0.6; if (Math.abs(p.vy) < 12) p.vy = -Math.random() * 25 * (typeof Wind !== 'undefined' ? Wind.v : 0.4); }
+        if (g > World.SEA + 2 && p.y > World.SEA - 2) { list.splice(i, 1); continue; }
+      }
       if (p.floor !== undefined && p.vy > 0 && p.y >= p.floor) { if (p.onFloor) p.onFloor(p); list.splice(i, 1); }
       else if (p.ceil !== undefined && p.y <= p.ceil) { if (p.onCeil) p.onCeil(p); list.splice(i, 1); }
     }
@@ -77,6 +84,7 @@ const FX = (() => {
       if (p.type !== 'emote' && p.type !== 'say' && (x < -40 || y < -40 || x > fb.w + 40 || y > fb.h + 40)) continue;
       switch (p.type) {
         case 'drop': fb.set(x, y, p.c); if (p.size > 1) fb.set(x, y - Math.sign(p.vy || 1), p.c2 || p.c); break;
+        case 'grain': if (k < 0.85 || bayer4(x, y) > (k - 0.85) * 6) { fb.set(x, y, p.c); if (p.vx > 30) fb.set(x - 1, y, p.c2 || p.c); } break;
         case 'bubble': {
           const r = p.r || 1.5;
           if (r < 1.2) { fb.set(x, y, p.c); break; }
@@ -177,6 +185,7 @@ const FX = (() => {
   /* ---- composite effects ---- */
   function splashAt(x, y, o = {}) {
     const power = o.power ?? 1, n = o.n ?? 16;
+    if (typeof Ripples !== 'undefined' && typeof Game !== 'undefined' && !Game.gallery && Math.abs(y - World.SEA) < 40) Ripples.poke(x, 70 * power, 3 + Math.round(power * 3));
     const c = o.c ?? C.w, c2 = o.c2 ?? hex('#8fd6ee');
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + Math.random() * 0.4;

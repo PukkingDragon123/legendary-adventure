@@ -343,6 +343,7 @@ const Life = (() => {
         opts.push([1.2, () => this.swimTrip()]);
         opts.push([1.2, () => this.idleLook()]);
         opts.push([0.6, () => this.dig()]);
+        opts.push([1.1, () => this.fishing()]);
         opts.push([0.5, () => this.visit()]);
         let tot = opts.reduce((a, b) => a + b[0], 0), r = Math.random() * tot;
         for (const [w, f] of opts) { r -= w; if (r <= 0) { yield* f(); break; } }
@@ -385,6 +386,40 @@ const Life = (() => {
       let tx = clamp(this.x + rnd(-280, 280), 140, World.shoreX - 20);
       yield* this.walkTo(tx, rnd(45, 65));
       if (chance(0.3)) { this.happyT = 0.8; yield* this.hop(200); }
+    }
+    // Water Gun fishing: Mudkip squirts a jet into the shallows, a fish flips out and gets gobbled
+    *fishing() {
+      const edge = World.shoreX - 26;
+      if (Math.abs(this.x - edge) > 900) return yield* this.idleLook();
+      yield* this.walkTo(edge, 70);
+      yield* this.faceTo(1, false);
+      yield* wait(0.3);
+      const tx = edge + rnd(90, 150);
+      Game.sfx('spout', this.x, 0.4);
+      let e = 0;
+      while (e < 0.9) {
+        const dt = yield; e += dt;
+        this.o.mouth = 1; this.o.headPitch = -0.15; this.o.eyes = 'open';
+        const [mx, my] = this.at('mouth');
+        for (let k = 0; k < 3; k++) {
+          const T = 0.5, vx = (tx - mx) / T + rnd(-10, 10), vy = (sy(tx) - my - 0.5 * 420 * T * T) / T + rnd(-10, 10);
+          FX.add({ type: 'drop', x: mx, y: my, vx, vy, g: 420, life: 1.2, c: PX.hex('#ffffff'), c2: PX.hex('#8fd6ee'), size: 2, floor: sy(tx) + 1, layer: 3,
+            onFloor: (p) => { if (Math.random() < 0.25) FX.add({ type: 'ripple', x: p.x, y: sy(p.x) + 1, r0: 1, r1: 5, flat: 0.35, life: 0.35, c: PX.hex('#e8fbff'), layer: 2 }); } });
+        }
+      }
+      FX.splashAt(tx, sy(tx), { power: 0.8, n: 12 }); Game.sfx('splash', tx, 0.7);
+      yield* wait(0.3);
+      if (chance(0.75)) {
+        // a little silver fish flips out of the water toward Mudkip
+        const fish = { x: tx, y: sy(tx), vx: (this.x - tx) / 0.9, vy: -330, t: 0 };
+        Game.sfx('plop', tx, 0.8);
+        FX.add({ type: 'icon', icon: 'fish', x: fish.x, y: fish.y, vx: fish.vx, vy: fish.vy, g: 700, life: 0.9, layer: 3 });
+        yield* wait(0.5);
+        this.o.mouth = 1; yield* this.hop(200);
+        Game.sfx('gulp', this.x, 1); Game.sfx('munch', this.x, 0.7);
+        let k = 0; while (k < 0.8) { const dt = yield; k += dt; this.o.mouth = Math.sin(k * 20) > 0 ? 0.7 : 0.1; this.o.eyes = 'happy'; }
+        this.emote('heart'); this.happyT = 1.5;
+      } else { this.emote('sweat'); yield* wait(0.6); }
     }
     *dig() {
       yield* this.walkTo(clamp(this.x + rnd(-150, 150), 480, World.shoreX - 30), 55);

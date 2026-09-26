@@ -37,6 +37,7 @@ const Deep = (() => {
       const P = { wiggle: Math.sin(this.phase), kiss: 0, tilt: clamp(Math.atan2(-this.vy, Math.abs(this.vx) + 20) * 0.7, -0.45, 0.45), blush: 0, eyes: this.blink(t, dt) ? 'blink' : 'open' };
       if (this.kissT > 0) { this.kissT -= dt; P.kiss = 1; P.eyes = 'happy'; P.blush = 1; }
       if (this.happyT > 0) { this.happyT -= dt; P.eyes = 'happy'; P.blush = 1; }
+      if (Game.hour() === 'night' && this.kissT <= 0 && this.happyT <= 0) { P.eyes = 'blink'; P.wiggle *= 0.3; if (Math.random() < dt * 0.4) FX.bubbles(this.x, this.y - 30, 1, World.SEA); }
       Object.assign(P, this.o);
       this.pose = P;
       if (Math.abs(this.vx) > 6) this.turn(this.vx > 0 ? 0.35 : Math.PI - 0.35, dt, 3.5);

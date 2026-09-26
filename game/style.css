@@ -43,6 +43,7 @@ body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
 .hb:focus-visible { outline: 3px solid var(--glow); outline-offset: 2px; }
 .hb:disabled { opacity: 0.4; cursor: default; transform: none; }
 .hb[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent), 0 3px 0 var(--ink), 0 0 14px rgba(86, 188, 240, 0.45); }
+#b-lorb.lit { box-shadow: inset 0 0 0 2px #ffb8e8, 0 3px 0 var(--ink), 0 0 18px rgba(255, 150, 220, 0.6); }
 #b-orb.lit { box-shadow: inset 0 0 0 2px var(--glow), 0 3px 0 var(--ink), 0 0 18px rgba(159, 243, 255, 0.6); }
 #b-orb.pulse svg { animation: orbpulse 1.6s ease-in-out infinite; }
 #b-orb.hint { animation: hintwig 2.8s ease-in-out infinite; }

@@ -74,6 +74,25 @@ const WorldRender = (() => {
     const hp = { rock: [rp[0], rp[1], rp[2]], grass: [P.grass[1], P.grass[2]], tower: [PX.mix(rp[3], PX.hex('#ffffff'), 0.4), PX.mix(rp[4], PX.hex('#ffffff'), 0.6), PX.hex('#ffffff')], stripe: [PX.hex('#96302b'), PX.hex('#d4443a'), PX.hex('#ee675a')], iron: rp[0], glass: PX.hex('#9fd9f2'), roof: PX.hex('#b3352e'), lampOn: [PX.hex('#ffe58a'), PX.hex('#fff8d2')] };
     if (P.key === 'dusk' || P.key === 'night') { hp.tower = [rp[2], rp[3], rp[4]]; hp.stripe = [PX.mix(PX.hex('#96302b'), rp[0], 0.5), PX.mix(PX.hex('#d4443a'), rp[1], 0.5), PX.mix(PX.hex('#ee675a'), rp[2], 0.5)]; }
     const lamp = Scenery.headland(strip, { x: 1240, y: base, w: 150, pal: hp, seed: 5, lampOn: P.key === 'night' || P.key === 'dusk' });
+    // hazy city skylines on the far shores
+    {
+      const far = P.farC[1] || P.farC[0], lit = P.key === 'dusk' || P.key === 'night';
+      const bc = [PX.mix(far, rp[1], 0.35), PX.mix(far, rp[2], 0.28), PX.mix(far, PX.hex('#ffffff'), 0.18)], win = PX.hex(lit ? '#ffe08a' : '#e8f4ff');
+      for (const [x0, x1, hmax] of [[230, 470, 34], [1440, 1720, 44]]) {
+        let x = x0, k = 0;
+        while (x < x1) {
+          const w = 6 + Math.floor(hash2(x, 1, 9) * 12), u = (x - x0) / (x1 - x0), hh = Math.round(6 + hash2(x, 2, 9) * hmax * Math.sin(u * Math.PI) + (hash2(x, 3, 9) > 0.85 ? 12 : 0));
+          const c = bc[k++ % 2];
+          for (let yy = base - hh; yy < base; yy++) for (let xx = x; xx < x + w; xx++) {
+            let col = xx === x ? bc[2] : c;
+            if (yy > base - hh + 2 && (xx - x) % 3 === 1 && (yy % 3 === 0) && hash2(xx, yy, 4) > (lit ? 0.45 : 0.8)) col = PX.mix(col, win, lit ? 0.9 : 0.35);
+            strip.set(xx, yy, col);
+          }
+          if (hh > 30) for (let yy = base - hh - 6; yy < base - hh; yy++) strip.set(x + (w >> 1), yy, bc[0]);
+          x += w + (hash2(x, 4, 9) > 0.7 ? 2 : 0);
+        }
+      }
+    }
     // islands
     const isl = [PX.mix(P.farC[1] || P.farC[0], rp[2], 0.5), PX.mix(P.farC[1] || P.farC[0], rp[3], 0.35)];
     for (const [x0, w, h] of [[120, 90, 7], [520, 60, 5], [880, 130, 9], [1560, 70, 6]]) {
@@ -180,7 +199,7 @@ const WorldRender = (() => {
     const bufs = cloudsFor(P);
     CLOUDS.forEach((c, k) => {
       const b = bufs[k];
-      const wx = (((c.x + t * c.sp - cx * 0.28) % CLOUD_SPAN) + CLOUD_SPAN) % CLOUD_SPAN - 200;
+      const wx = (((c.x + Wind.off * 1.4 * c.sp - cx * 0.28) % CLOUD_SPAN) + CLOUD_SPAN) % CLOUD_SPAN - 200;
       const wy = c.y - cy * 0.9;
       if (wx > VW || wx + b.w < 0 || wy > rows || wy + b.h < 0) return;
       fb.blit(b, wx, wy, { test: (x, y) => cy + y < SEA - 4 });
@@ -198,7 +217,7 @@ const WorldRender = (() => {
     const bufs = cloudsFor(P);
     for (let k = 0; k < CLOUDS.length; k++) {
       const c = CLOUDS[k], b = bufs[k];
-      const wx = (((c.x + t * c.sp - cx * 0.28) % CLOUD_SPAN) + CLOUD_SPAN) % CLOUD_SPAN - 200;
+      const wx = (((c.x + Wind.off * 1.4 * c.sp - cx * 0.28) % CLOUD_SPAN) + CLOUD_SPAN) % CLOUD_SPAN - 200;
       const wy = c.y - cy * 0.9;
       const x = Math.round(sx - wx), y = Math.round(sy - wy);
       if (x >= 0 && y >= 0 && x < b.w && y < b.h && b.d[y * b.w + x]) return k;
@@ -208,14 +227,18 @@ const WorldRender = (() => {
   function rainOn(k, until) { rainClouds.set(k, until); }
 
   /* ---------------- backdrop: far sea band ---------------- */
+  // camera tilt: the horizon (and everything on it) drifts at a slower parallax than the beach
+  let TILT = 0;
+  function setTilt(v) { TILT = Math.max(-40, Math.min(70, v)); }
   function drawBackdrop(fb, cx, cy, P, t, extras) {
     const VW = fb.w, VH = fb.h, d = fb.d;
-    const y0 = Math.max(0, HORIZON - cy), y1 = Math.min(VH, SEA - cy + 6);
+    const HZ = HORIZON + Math.round(TILT), band = (SEA - HORIZON) / (SEA - HZ);
+    const y0 = Math.max(0, HZ - cy), y1 = Math.min(VH, SEA - cy + 6);
     for (let sy = y0; sy < y1; sy++) {
       const wy = cy + sy;
-      const s = P.farRow[clamp(wy - HORIZON, 0, P.farRow.length - 1)];
+      const s = P.farRow[clamp(Math.round((wy - HZ) * band), 0, P.farRow.length - 1)];
       const row = sy * VW;
-      const p = (wy - HORIZON) / (SEA - HORIZON);
+      const p = (wy - HZ) / (SEA - HZ);
       for (let sx = 0; sx < VW; sx++) {
         const ux = Math.floor(sx + cx * BX);
         let c = bayer8(ux, wy) < s.f ? s.b : s.a;
@@ -230,7 +253,7 @@ const WorldRender = (() => {
     if (y1 <= y0) return;
     const bd = backdropBuf(P);
     const bx = -Math.round(cx * BX) + 900 - 1240 + Math.round(VW * 0.1);
-    const byy = HORIZON - cy - bd.base + 1;
+    const byy = HZ - cy - bd.base + 1;
     fb.blit(bd.strip, bx + 1100, byy, { test: (x, y) => cy + y < SEA });
     if (extras) extras(fb, bx + 1100, byy, bd);
   }
@@ -297,7 +320,7 @@ const WorldRender = (() => {
     return { p, reach: up * 90, front: World.shoreX - up * 90 };
   }
   function surfaceAt(wx, t) {
-    return SEA + waves(wx, t);
+    return SEA + waves(wx, t) + Ripples.at(wx);
   }
 
   /* ---------------- water pass ---------------- */
@@ -408,12 +431,13 @@ const WorldRender = (() => {
       if (g <= s) continue;
       const sy = Math.floor(s) - cy;
       if (sy < 0 || sy >= VH) continue;
-      const crest = waves(wx, t) < -2.4;
+      const rv = Ripples.vel(wx), crest = waves(wx, t) < -2.4 || rv < -18;
       fb.set(sx, sy, P.foam[crest ? 0 : 1]);
+      if (rv < -30 && hash2(wx, Math.floor(t * 8), 7) < 0.6) { fb.set(sx, sy - 1, P.foam[0]); if (rv < -55) fb.set(sx, sy - 2, P.foam[1]); }
       if (crest && hash2(wx >> 1, Math.floor(t * 4), 3) < 0.5) fb.set(sx, sy - 1, P.foam[0]);
       if (hash2(wx, Math.floor(t * 6), 5) < 0.06) fb.set(sx, sy + 1, P.foam[0]);
     }
   }
 
-  return { drawSky, drawBackdrop, drawTerrain, drawWater, drawSurface, surfaceAt, swashState, waves, cloudAt, rainOn, CLOUDS };
+  return { setTilt, drawSky, drawBackdrop, drawTerrain, drawWater, drawSurface, surfaceAt, swashState, waves, cloudAt, rainOn, CLOUDS };
 })();
