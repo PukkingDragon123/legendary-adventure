@@ -17,7 +17,7 @@ const Deep = (() => {
   /* ================================================================
      LUVDISC school
   ================================================================ */
-  const HEART = { cx: 2280, cy: 705, sx: 8.6, sy: 5.2 };
+  const HEART = { cx: 2280, cy: 770, sx: 8.6, sy: 5.0 };
   function heartAt(u) {
     const s = Math.sin(u), c = Math.cos(u);
     const x = 16 * s * s * s;
@@ -92,7 +92,7 @@ const Deep = (() => {
         const sp2 = Math.hypot(f.vx, f.vy), mx = this.scatterT > 0 ? 260 : 120;
         if (sp2 > mx) { f.vx *= mx / sp2; f.vy *= mx / sp2; }
         f.x += f.vx * dt; f.y += f.vy * dt;
-        f.y = clamp(f.y, World.SEA + 60, gy(f.x) - 30);
+        f.y = clamp(f.y, World.SEA + 150, gy(f.x) - 12);
         sx += f.x; sy2 += f.y;
       }
       this.cx = sx / this.fish.length; this.cy = sy2 / this.fish.length;
@@ -189,7 +189,11 @@ const Deep = (() => {
       this.t += dt;
       const c = this.c;
       if (this.state === 'away') {
-        if (this.t > this.nextT) { this.state = 'rise'; this.t = 0; this.bx = rnd(250, 1500); c.yaw = chance(0.5) ? 0.28 : Math.PI - 0.28; }
+        if (this.t > this.nextT) {
+          // surface somewhere the player can see it
+          const strip = -Math.round(Game.cam.x * 0.35) + 760 + Math.round(Game.VW * 0.1);
+          this.state = 'rise'; this.t = 0; this.bx = rnd(0.25, 0.75) * Game.VW - strip; c.yaw = chance(0.5) ? 0.28 : Math.PI - 0.28;
+        }
       } else if (this.state === 'rise') {
         this.rise = Math.min(1, this.t / 4);
         if (this.t > 4) { this.state = 'blow'; this.t = 0; }
@@ -336,13 +340,41 @@ const Deep = (() => {
     },
   };
 
+  const Meteors = {
+    list: [], nextT: 6,
+    spawn(x, y) { this.list.push({ x: x ?? rnd(0.1, 0.9), y: y ?? rnd(40, 260), vx: rnd(-260, -160), vy: rnd(70, 120), age: 0, life: 0.9 }); },
+    update(dt) {
+      const h = Game.hour();
+      if (h === 'night' || h === 'dusk') { this.nextT -= dt; if (this.nextT <= 0) { this.nextT = rnd(5, 12); this.spawn(); } }
+      for (let i = this.list.length - 1; i >= 0; i--) { const m = this.list[i]; m.age += dt; if (m.age > m.life) this.list.splice(i, 1); }
+    },
+    draw(fb, cx, cy, P, t) {
+      if (P.key !== 'night' && P.key !== 'dusk') return;
+      const w = hex('#ffffff'), c2 = hex('#bfe0ff');
+      for (const m of this.list) {
+        const X0 = m.x <= 1 ? m.x * fb.w : m.x - cx, Y0 = m.y - cy * 0.9;
+        const X = X0 + m.vx * m.age, Y = Y0 + m.vy * m.age;
+        for (let j = 0; j < 22; j++) {
+          const px = Math.round(X - (m.vx / 60) * j * 0.5), py = Math.round(Y - (m.vy / 60) * j * 0.5);
+          if (py + cy > World.SEA - 8) continue;
+          if (j > 6 && bayer4(px, py) < j / 22) continue;
+          fb.set(px, py, j < 3 ? w : c2);
+        }
+      }
+    },
+  };
   const sys = {
     init(G) { School.init(G); Kyo.init(G); Wail.init(); Gulls.init(); Chinchou.init(); },
-    update(dt, t) { School.update(dt, t); Wail.update(dt, t); Gulls.update(dt); Chinchou.update(dt, t); },
-    drawSky(fb, cx, cy, P, t) { Gulls.draw(fb, cx, cy, P, t); },
+    update(dt, t) { School.update(dt, t); Wail.update(dt, t); Gulls.update(dt); Chinchou.update(dt, t); Meteors.update(dt); },
+    drawSky(fb, cx, cy, P, t) { Gulls.draw(fb, cx, cy, P, t); Meteors.draw(fb, cx, cy, P, t); },
     drawBackdrop(fb, cx, cy, P, t, bx, byy) { Wail.draw(fb, cx, cy, P, t, bx, byy); },
     drawFront(fb, cx, cy, P, t) { Chinchou.draw(fb, cx, cy, P, t); },
-    pokeSky(wx, wy) { return Wail.poke(wx, wy); },
+    pokeSky(wx, wy) {
+      if (Wail.poke(wx, wy)) return true;
+      const h = Game.hour();
+      if (h === 'night' || h === 'dusk') { Meteors.spawn(wx + 60, wy - 30 + Game.cy * 0.9 - Game.cy); Game.sfx('twinkle', wx, 0.8); FX.sparkles(wx, wy, 3, 10); return true; }
+      return false;
+    },
     School, Kyo, Wail,
   };
   Game.systems.push(sys);

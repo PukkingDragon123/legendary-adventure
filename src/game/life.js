@@ -141,6 +141,10 @@ const Life = (() => {
             const g0 = gy(c.x);
             if (c.state === 'fall') {
               c.vy += 760 * dt;
+              // someone who juggles might catch it on their nose
+              let caught = false;
+              if (c.vy > 60) for (const m of mons) if (m.catchNut && m.catchNut(c)) { caught = true; break; }
+              if (caught) break;
               // bonk heads on the way down
               if (c.vy > 120) for (const m of mons) {
                 if (!m.solid || !m.visible || m.mode === 'dive' || m === c.bonked) continue;

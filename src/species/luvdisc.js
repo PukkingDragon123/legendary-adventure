@@ -17,15 +17,16 @@ const Luvdisc = (() => {
   const BODY = 1, LIPS = 2, CHEEK = 3, BLUSH = 4;
   const MAT = { BODY, LIPS, CHEEK, BLUSH };
   const PAL = Creature.palette({
-    [BODY]: { r: ['#b4506a', '#d0707f', '#e8929a', '#f5b4b6', '#ffdcda'], od: '#6a1e34', ol: '#a8465c', ln: '#a8465c' },
-    [LIPS]: { r: ['#d8a2aa', '#eec2c6', '#fadfe0', '#fff0ef', '#ffffff'], od: '#6a1e34', ol: '#9a4458', ln: '#8a3a4e' },
+    [BODY]: { r: ['#bc5a72', '#d97f8b', '#ea959c', '#f6b4b6', '#ffd4d2'], od: '#6a1e34', ol: '#a8465c', ln: '#a8465c' },
+    [LIPS]: { r: ['#d49aa4', '#e8b6bd', '#f6d2d5', '#fde4e4', '#fff5f3'], od: '#6a1e34', ol: '#9a4458', ln: '#8a3a4e' },
     [CHEEK]: { r: ['#dc9aa4', '#eebcc2', '#fad8da', '#ffeceb', '#fff8f7'], od: '#6a1e34', ol: '#9a4458', ln: '#8a3a4e' },
-    [BLUSH]: { r: ['#d05a74', '#e27488', '#f0909e', '#f8aab2', '#ffc8cc'], od: '#6a1e34', ol: '#9a4458', ln: '#8a2e46' },
+    [BLUSH]: { r: ['#d2385e', '#e84f74', '#f76a8c', '#ff8aa6', '#ffb4c6'], od: '#6a1e34', ol: '#a8304e', ln: '#b0304f' },
   });
-  const GLOSSY = { [BODY]: 1, [LIPS]: 1 };
+  const GLOSSY = { [LIPS]: 1 };
   const NO_DOTS = [{}].slice(1); // empty, but with the elements kind of Mudkip's dot list
   const C_BODY = code(BODY), C_LIPS = code(LIPS), C_CHEEK = code(CHEEK), C_BLUSH = code(BLUSH);
-  const M_BODY = () => C_BODY, M_LIPS = () => C_LIPS, M_CHEEK = () => C_CHEEK, M_BLUSH = () => C_BLUSH;
+  const C_BODY_L = code(BODY, 1);
+  const M_BODY = () => C_BODY, M_BODY_L = () => C_BODY_L, M_LIPS = () => C_LIPS, M_CHEEK = () => C_CHEEK, M_BLUSH = () => C_BLUSH;
 
   // ---- helpers
   const add = V3.add, sub = V3.sub, sc = V3.scale, cross = V3.cross, nrm = V3.norm;
@@ -36,18 +37,19 @@ const Luvdisc = (() => {
 
   // ---- body (heart) geometry, fitted to the official silhouette (side view)
   const CEN = [0, 52, 0]; // pivot for tilt / wiggle
-  const THK = 12.5; // half-thickness (laterally thin)
+  const THK = 10; // half-thickness (laterally thin)
   const LOBES = [
-    { c: [-6.5, 74, 0], r: [31.5, 20, THK], a: -1.28 }, // upper lobe
-    { c: [-5.7, 27, 0], r: [27.3, 20.3, THK], a: 1.36 }, // lower lobe
-    { c: [-6.9, 60, 0], r: [17.7, 42.8, THK + 0.6], a: 0 }, // filler
-    { c: [8, 50, 0], r: [14, 11, THK - 1.5], a: 0 }, // snout bridging to the lips
+    { c: [-8, 74.6, 0], r: [31.6, 19.6, THK], a: -1.29 }, // upper lobe
+    { c: [-7.2, 27.3, 0], r: [27.5, 20.4, THK], a: 1.4 }, // lower lobe
+    { c: [-7, 52, 0], r: [15.5, 30, THK + 0.8], a: 0 }, // central filler (smooths the mid crease, fills the cleft)
+    { c: [10.2, 67.6, 0], r: [27, 6, THK * 0.55], a: -1.15 }, // upper front edge (runs into the lips)
+    { c: [10, 32, 0], r: [28.8, 6.4, THK * 0.55], a: 1.18 }, // lower front edge
   ];
   // lips: two small ellipsoids converging at the front (the mouth line is their seam)
-  const LIP_C = [17.5, 49.5, 0];
+  const LIP_C = [19, 49.5, 0];
 
   // ---- face: eye and cheek positions on the side of the body (model units)
-  const EYE_P = [-1, 58.5], CHEEK_P = [-5, 50];
+  const EYE_P = [0.5, 59.5], CHEEK_P = [-4.2, 50];
   // unit-sphere direction on the filler's side surface at model (x, y), side ±1
   const FILL = LOBES[2];
   function sideDir(x, y, side) {
@@ -57,7 +59,7 @@ const Luvdisc = (() => {
 
   const PRI = {};
   for (let i = 1; i < 9; i++) PRI[i] = 0;
-  Object.assign(PRI, { 5: 3, 6: 2, 7: 4, 8: 4 });
+  Object.assign(PRI, { 5: 3, 7: 4, 8: 4 });
 
   const DEFAULT = { wiggle: 0, kiss: 0, eyes: 'open', tilt: 0, blush: 0, side: 1 };
 
@@ -82,20 +84,25 @@ const Luvdisc = (() => {
       const ax = M3.cols(cross(up, nw), up, nw);
       const cLoc = sub(add(FILL.c, [FILL.r[0] * s[0], FILL.r[1] * s[1], FILL.r[2] * s[2]]), sc(nw, 1.2));
       const id = side > 0 ? 7 : 8;
-      prims.push(E(inF(back, cLoc), M3.mul(back.L, M3.mul(ax, M3.diag(3.6 * cs, 7.2 * cs, 2))), id, id, cheekMat));
+      prims.push(E(inF(back, cLoc), M3.mul(back.L, M3.mul(ax, M3.diag(4.1 * cs, 7 * cs, 2))), id, id, cheekMat));
     }
 
-    // --- lips (front-most)
+    // --- lips (front-most): a round blob plus two beak halves converging on a point;
+    //     the mouth line is a decal in the mid-plane, so it reads from either side
     const k = Math.max(0, Math.min(1, P.kiss));
-    const lipBase = chain(body, T(LIP_C[0] + k * 3.2, LIP_C[1], 0), R(M3.diag(1 + k * 0.12, 1 + k * 0.08, 1 + k * 0.1)));
-    const tiltL = 0.42 + k * 0.18;
-    prims.push(ellF(chain(lipBase, T(0, 2.6, 0), R(M3.rz(-tiltL))), [9, 5.8, 7], 5, 5, M_LIPS));
-    prims.push(ellF(chain(lipBase, T(0, -2.6, 0), R(M3.rz(tiltL))), [9, 5.8, 7], 6, 6, M_LIPS));
+    const lipBase = chain(body, T(LIP_C[0] + k * 3.5, LIP_C[1], 0), R(M3.diag(1 + k * 0.1, 1 + k * 0.06, 1 + k * 0.1)));
+    const bt = 0.55 + k * 0.2, by = 2.3 - k * 0.3;
+    prims.push(ellF(chain(lipBase, T(4.6, by, 0), R(M3.rz(-bt))), [6.8, 3.7, 6.2], 5, 5, M_LIPS));
+    prims.push(ellF(chain(lipBase, T(4.6, -by, 0), R(M3.rz(bt))), [6.8, 3.7, 6.2], 5, 5, M_LIPS));
+    const blob = ellF(lipBase, [8.6, 8.2, 8.6], 5, 5, M_LIPS);
+    blob.lines = [{ pts: [[1.28, 0, 0], [0.62, 0.02, 0], [0.2, 0.06, 0]], tone: 1, mat: LIPS, useLn: true }];
+    prims.push(blob);
 
     // --- body lobes
     prims.push(fillPrim);
+    // (the upper front edge is one tone lighter: the official art's highlight along that edge)
     LOBES.forEach((l, i) => {
-      if (i !== 2) prims.push(ellF(chain(i === 3 ? body : back, T(...l.c), R(M3.rz(l.a))), l.r, 1, 1, M_BODY));
+      if (i !== 2) prims.push(ellF(chain(back, T(...l.c), R(M3.rz(l.a))), l.r, 1, 1, i === 3 ? M_BODY_L : M_BODY));
     });
 
     // --- eyes (stamps on the sides; far-side set is mirrored so the highlight stays toward the back)
@@ -114,15 +121,15 @@ const Luvdisc = (() => {
   /* ---------- eye stamps (Mudkip's key layout) ----------
      k = black, b = dark blue, c = blue, w = white highlight (toward the back of the fish) */
   const mirror = (g) => g.map((row) => row.split('').reverse().join(''));
-  const G_OPEN = ['.kkk.', 'kwwkk', 'kwwkk', 'kkkkk', 'kkkkk', 'kkbbk', 'kbbbk', 'kbbbk', '.kkk.'];
-  const G_OPEN_N = ['.kk.', 'kwkk', 'kwkk', 'kkkk', 'kkkk', 'kbbk', 'kbbk', 'kbbk', '.kk.'];
-  const G_OPEN_F = ['kk.', 'wkk', 'kkk', 'kkk', 'kbk', 'kbk', '.k.'];
-  const G_HAPPY = ['.kkk.', 'k...k', 'k...k'];
-  const G_BLINK = ['.....', '.....', 'kkkkk', '.kkk.'];
+  const G_OPEN = ['..kkk..', '.kkkkk.', 'kwwkkkk', 'kwwkkkk', 'kwkkkkk', 'kkkkkkk', 'kkkkbbk', 'kkkbbbk', 'kkbbbbk', '.kbbbk.', '..kkk..'];
+  const G_OPEN_N = ['.kkkk.', 'kwwkkk', 'kwwkkk', 'kwkkkk', 'kkkkkk', 'kkkkkk', 'kkkbbk', 'kkbbbk', 'kbbbbk', '.kbbk.', '..kk..'];
+  const G_OPEN_F = ['.kkk.', 'kwkkk', 'kwkkk', 'kkkkk', 'kkkkk', 'kkkbk', 'kkbbk', 'kbbbk', '.kbk.'];
+  const G_HAPPY = ['...k...', '..kkk..', '.kk.kk.', 'kk...kk', 'k.....k'];
+  const G_BLINK = ['.......', '.......', '.......', '.......', 'kkkkkkk', '.kkkkk.'];
   const mk = (tr) => ({
     open: tr(G_OPEN), openN: tr(G_OPEN_N), openF: tr(G_OPEN_F),
-    happy: tr(G_HAPPY), happyN: tr(['.kk.', 'k..k', 'k..k']), happyF: tr(['.kk', 'k..', 'k..']),
-    blink: tr(G_BLINK), blinkN: tr(['....', '....', 'kkkk', '.kk.']), blinkF: tr(['...', '...', 'kkk', '.kk']),
+    happy: tr(G_HAPPY), happyN: tr(['..kk..', '.kkkk.', 'kk..kk', 'k....k']), happyF: tr(['..k..', '.kkk.', 'kk.kk', 'k...k']),
+    blink: tr(G_BLINK), blinkN: tr(['......', '......', '......', '......', 'kkkkkk', '.kkkk.']), blinkF: tr(['.....', '.....', '.....', 'kkkkk', '.kkk.']),
     sleep: tr(['k...k', '.kkk.']), sleepN: tr(['k..k', '.kk.']), sleepF: tr(['k..', '.kk']),
   });
   const EYES = mk((g) => g), EYES_M = mk(mirror);

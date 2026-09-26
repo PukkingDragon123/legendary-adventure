@@ -34,7 +34,7 @@ const Scene = (() => {
     S.rocks.push(S.walreinRock);
     for (const r of World.REEF_ROCKS) S.rocks.push(R(r, 'reef'));
     // the Adamant crystal hides under one of the rocks you can poke
-    const cands = S.rocks.filter((r) => r.kind !== 'shore');
+    const cands = S.rocks.filter((r) => r.kind === 'beach');
     cands[Math.floor(Math.random() * cands.length)].hasOrb = true;
     // pier
     S.pier = Props.makePier();
@@ -59,6 +59,18 @@ const Scene = (() => {
     S.towel.y0 = Math.round(World.groundAt(300) - 7);
     S.chestSpr = [Props.makeChest(false), Props.makeChest(true)];
     S.chest = { x: 2960, y0: Math.round(World.groundAt(2960) - 46) };
+    // under the sand: palm roots, pebbles, shells, two fossils and a bottle
+    S.buried = [];
+    for (const p of S.palms) S.buried.push({ kind: 'roots', x: p.gx, seed: p.seed });
+    for (let k = 0; k < 60; k++) {
+      const x = 20 + cr() * 1250, g = World.groundAt(x);
+      const d = 14 + Math.pow(cr(), 0.7) * 260;
+      if (g + d > World.H - 10) continue;
+      S.buried.push({ kind: cr() < 0.75 ? 'pebble' : 'shell', x, y: g + d, r: 2 + cr() * 4, seed: k });
+    }
+    S.buried.push({ kind: 'helix', x: 520, y: World.groundAt(520) + 120, seed: 1 });
+    S.buried.push({ kind: 'dome', x: 930, y: World.groundAt(930) + 170, seed: 2 });
+    S.buried.push({ kind: 'bottle', x: 240, y: World.groundAt(240) + 80, seed: 3 });
     for (let k = 0; k < 26; k++) {
       const x = 480 + cr() * 2400;
       S.shells.push({ x, kind: cr() < 0.3 ? 'star' : 'shell', flip: cr() < 0.5 });
@@ -132,6 +144,7 @@ const Scene = (() => {
     const pal = Props.palette(P);
     const VW = fb.w, VH = fb.h;
     const inView = (x0, y0, w, h) => x0 - cx < VW && x0 + w - cx > 0 && y0 - cy < VH && y0 + h - cy > 0;
+    drawBuried(fb, cx, cy, P, pal, t);
     for (const sh of S.shells) if (sh.x - cx > -8 && sh.x - cx < VW + 8) drawShell(fb, cx, cy, sh, P);
     // pier (posts in the water get tinted later by the water pass)
     if (inView(S.pier.x, S.pier.y, S.pier.s.w, S.pier.s.h)) Props.blit(fb, S.pier.s, S.pier.x - cx, S.pier.y - cy, pal, occ, 2);
@@ -158,6 +171,72 @@ const Scene = (() => {
     }
   }
 
+  function drawBuried(fb, cx, cy, P, pal, t) {
+    const VW = fb.w, VH = fb.h;
+    for (const b of S.buried) {
+      const X = Math.round(b.x) - cx;
+      if (X < -140 || X > VW + 140) continue;
+      if (b.kind === 'roots') {
+        const g = World.groundAt(b.x);
+        const r = rng(b.seed * 31);
+        const root = (x, y, a, len, w, depth) => {
+          for (let k = 0; k < len; k++) {
+            x += Math.cos(a); y += Math.sin(a); a += (r() - 0.5) * 0.25;
+            const Y = Math.round(y) - cy, XX = Math.round(x) - cx;
+            if (Y < 0 || Y >= VH) continue;
+            for (let j = 0; j < w; j++) fb.set(XX + j, Y, pal[I.TRUNK + (j === 0 ? 0 : 1)]);
+          }
+          if (depth > 0) for (let i = 0; i < 2; i++) root(x, y, a + (r() - 0.5) * 1.4, len * 0.6, Math.max(1, w - 1), depth - 1);
+        };
+        for (let i = 0; i < 5; i++) root(b.x + (i - 2) * 4, g + 4, Math.PI / 2 + (i - 2) * 0.45, 26 + r() * 30, 2, 2);
+        continue;
+      }
+      const Y = Math.round(b.y) - cy;
+      if (Y < -30 || Y > VH + 30) continue;
+      if (b.kind === 'pebble') {
+        fb.ellipse(X + 0.5, Y + 0.5, b.r + 0.6, b.r * 0.7 + 0.6, pal[I.ROL]);
+        fb.ellipse(X + 0.5, Y + 0.5, b.r, b.r * 0.7, pal[I.ROCK + 2 + (b.seed % 2)]);
+        fb.set(X - 1, Y - 1, pal[I.ROCK + 4]);
+      } else if (b.kind === 'shell') {
+        for (const [dx, dy] of [[-2, 0], [-1, -1], [0, -1], [1, -1], [2, 0], [-1, 0], [0, 0], [1, 0], [0, 1]]) fb.set(X + dx, Y + dy, pal[I.SHELL]);
+        fb.set(X, Y - 1, pal[I.WHITE]);
+      } else if (b.kind === 'helix' || b.kind === 'dome') {
+        // fossils: a spiral shell and a domed shell, set in a pale stone
+        fb.ellipse(X + 0.5, Y + 0.5, 15, 12, pal[I.SOL]);
+        fb.ellipse(X + 0.5, Y + 0.5, 14, 11, pal[I.SAND + 1]);
+        if (b.kind === 'helix') {
+          for (let a = 0; a < 16; a += 0.05) {
+            const rr = 1 + a * 0.62;
+            fb.set(Math.round(X + Math.cos(a) * rr), Math.round(Y + Math.sin(a) * rr * 0.85), pal[a > 14 ? I.ROL : I.ROCK + 1]);
+          }
+        } else {
+          fb.ellipse(X + 0.5, Y + 2.5, 9, 7, pal[I.ROCK + 1]);
+          fb.ellipse(X + 0.5, Y + 3.5, 7, 5, pal[I.ROCK + 2]);
+          for (let x = -8; x <= 8; x++) fb.set(X + x, Y + 5, pal[I.ROL]);
+          fb.set(X - 3, Y + 3, pal[I.ROL]); fb.set(X + 3, Y + 3, pal[I.ROL]);
+        }
+        if (b.shine > 0) { b.shine -= 1 / 60; if ((Math.floor(t * 10) & 1) === 0) Scenery.star(fb, X + 8, Y - 8, 2, PX.hex('#ffffff'), PX.hex('#ffe066')); }
+      } else if (b.kind === 'bottle') {
+        for (let y = -10; y <= 8; y++) for (let x = -4; x <= 4; x++) {
+          const neck = y < -4;
+          if (neck && Math.abs(x) > 1) continue;
+          if (!neck && x * x / 16 + (y - 2) * (y - 2) / 64 > 1.05) continue;
+          fb.set(X + x, Y + y, Math.abs(x) >= (neck ? 1 : 3) ? pal[I.INK] : x < 0 ? pal[I.GLASS] : pal[I.WHITE]);
+        }
+        fb.set(X, Y - 11, pal[I.WOOD + 2]); fb.set(X, Y - 12, pal[I.WOOD + 3]);
+        for (let y = 0; y < 5; y++) fb.set(X - 1 + (y & 1), Y + y, pal[I.SAND + 3]);
+        if (b.shine > 0) { b.shine -= 1 / 60; if ((Math.floor(t * 10) & 1) === 0) Scenery.star(fb, X + 6, Y - 12, 2, PX.hex('#ffffff'), PX.hex('#9fe8ff')); }
+      }
+    }
+  }
+  function pokeBuried(wx, wy) {
+    for (const b of S.buried) {
+      if (b.kind !== 'helix' && b.kind !== 'dome' && b.kind !== 'bottle') continue;
+      if (Math.hypot(wx - b.x, wy - b.y) < 16) { b.shine = 1.2; return b; }
+    }
+    return null;
+  }
+
   function drawCastleRubble(fb, cx, cy, P, pal) {
     const gy = World.groundAt(S.castle.x);
     for (let x = -34; x <= 34; x++) {
@@ -169,7 +248,7 @@ const Scene = (() => {
   // items layer (coconuts etc.) — drawn with creatures
   function drawItems(fb, cx, cy, P, t) {
     for (const c of S.coconuts) {
-      if (c.state === 'gone' || c.state === 'held') continue;
+      if (c.state === 'gone' || c.state === 'held' || c.state === 'tree') continue;
       if (c.x - cx < -20 || c.x - cx > fb.w + 20 || c.y - cy < -20 || c.y - cy > fb.h + 20) continue;
       drawCoconut(fb, cx, cy, c, P, t);
     }
@@ -184,8 +263,10 @@ const Scene = (() => {
       const fy = Math.round(p.gy + p.m.crownY - p.m.by - p.m.ccy + 4) - cy;
       if (fx < fb.w && fx + 360 > 0 && fy < fb.h && fy + 250 > 0) Props.blit(fb, p.m.frames[f], fx, fy, pal);
     }
+    // coconuts still on the palms hang in front of the fronds
+    for (const c of S.coconuts) if (c.state === 'tree' && c.x - cx > -20 && c.x - cx < fb.w + 20 && c.y - cy > -20 && c.y - cy < fb.h + 20) drawCoconut(fb, cx, cy, c, P, t);
     for (const g of S.grass) if (g.x - cx > -30 && g.x - cx < fb.w + 30) Props.drawGrass(fb, cx, cy, g.x, World.groundAt(g.x) + 1, g.n, g.seed, t, P);
   }
 
-  return { S, init, drawBack, drawItems, drawFront, drawCoconut };
+  return { S, init, drawBack, drawItems, drawFront, drawCoconut, pokeBuried };
 })();

@@ -104,6 +104,17 @@ const Spheal = (() => {
   }
   const minYs = (ps) => ps.reduce((m, p) => Math.min(m, minY(p)), Infinity);
 
+  // world-space topmost point over a set of ellipsoid prims (where things rest on the head)
+  function topOf(prims) {
+    let best = null;
+    for (const p of prims) {
+      const ly = Math.hypot(p.L[3], p.L[4], p.L[5]);
+      const q = V3.add(p.c, M3.v(p.L, [p.L[3] / ly, p.L[4] / ly, p.L[5] / ly]));
+      if (!best || q[1] > best[1]) best = q;
+    }
+    return best;
+  }
+
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     let m = buildAt(P, 0);
@@ -168,6 +179,7 @@ const Spheal = (() => {
     prims.push(snoutPrim);
 
     /* --- ears: small round bumps on top --- */
+    const ears = [];
     for (const side of [1, -1]) {
       const d = sph(side * 0.86, 0.86);
       const press = smooth(0.55, 0.97, downness(d)) * 0.7;
@@ -177,10 +189,11 @@ const Spheal = (() => {
       const lat = V3.cross(face, upv);
       const k = 0.99 - press * 0.08;
       const ear = chain(head, T(d[0] * BR[0] * k, d[1] * BR[1] * k, d[2] * BR[2] * k), F(M3.cols(face, upv, lat), [0, 0, 0]));
-      prims.push(ell(ear, [6.5, 9.5 * (1 - press * 0.5), 9], {
+      const earP = ell(ear, [6.5, 9.5 * (1 - press * 0.5), 9], {
         part: side > 0 ? 3 : 4, grp: side > 0 ? 3 : 4,
         mat: (s) => (s[0] > 0.45 && s[1] > -0.2 && s[1] * s[1] + s[2] * s[2] < 0.3 ? code(EARIN) : code(BODY)),
-      }));
+      });
+      ears.push(earP); prims.push(earP);
     }
 
     /* --- fangs (plates hanging from the lip) --- */
@@ -244,7 +257,7 @@ const Spheal = (() => {
     const lipMid = onBallH(0, faceLip(0));
     const snoutTip = V3.add(snoutPrim.c, M3.v(snoutPrim.L, [1, 0.1, 0]));
     const anchors = {
-      top: V3.add(ballC.t, [0, BR[1] * (1 - sq) + 4, 0]),
+      top: topOf([ball, snoutPrim, ...ears]),
       mouth: lipMid.p,
       nose: snoutTip,
       belly: V3.add(ballC.t, M3.v(root.L, [BR[0], -6, 0])),
@@ -266,10 +279,52 @@ const Spheal = (() => {
       glossy: GLOSSY,
       baseMat: BODY,
       shadowSteps: 18,
+      shadowDepth: 12,
     };
   }
 
-  const render = (model, opt) => Creature.render(model, opt);
+  /* Render only the model's on-screen bounding box, then paste it into the full W x H sprite.
+     Pixel-identical to Creature.render (nothing is drawn outside the prims), but the renderer's
+     full-buffer passes then only touch the pixels the creature can actually cover. */
+  function renderTight(model, opt) {
+    const { yaw = 1.05, pitch = 0.16, scale = 1, W = 96, H = 96, ox = 48, oy = 82 } = opt;
+    const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(scale, scale, scale)));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of model.prims) {
+      const cv = M3.v(V, p.c), Lv = M3.mul(V, p.L);
+      if (p.kind === 'ell') {
+        const rx = Math.hypot(Lv[0], Lv[1], Lv[2]), ry = Math.hypot(Lv[3], Lv[4], Lv[5]);
+        x0 = Math.min(x0, cv[0] - rx); x1 = Math.max(x1, cv[0] + rx);
+        y0 = Math.min(y0, -cv[1] - ry); y1 = Math.max(y1, -cv[1] + ry);
+      } else {
+        const [a, b, c, d] = p.shape.bb;
+        for (const [u, v] of [[a, b], [a, d], [c, b], [c, d]])
+          for (const w of [-p.thick, p.thick]) {
+            const q = V3.add(cv, M3.v(Lv, [u, v, w]));
+            x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]);
+            y0 = Math.min(y0, -q[1]); y1 = Math.max(y1, -q[1]);
+          }
+      }
+    }
+    const pad = 4;
+    const X0 = Math.max(0, Math.floor(ox + x0) - pad), X1 = Math.min(W, Math.ceil(ox + x1) + pad);
+    const Y0 = Math.max(0, Math.floor(oy + y0) - pad), Y1 = Math.min(H, Math.ceil(oy + y1) + pad);
+    const w = X1 - X0, h = Y1 - Y0;
+    if (!(w > 0 && h > 0) || w * h > W * H * 0.9) return Creature.render(model, opt);
+    const r = Creature.render(model, Object.assign({}, opt, { W: w, H: h, ox: ox - X0, oy: oy - Y0 }));
+    const buf = new PX.Buf(W, H), depth = new Float32Array(W * H).fill(-1e9), part = new Uint8Array(W * H);
+    for (let y = 0; y < h; y++) {
+      const s0 = y * w, d0 = (y + Y0) * W + X0;
+      buf.d.set(r.buf.d.subarray(s0, s0 + w), d0);
+      depth.set(r.depth.subarray(s0, s0 + w), d0);
+      part.set(r.part.subarray(s0, s0 + w), d0);
+    }
+    const anchors = {};
+    for (const k in r.anchors) { const a = r.anchors[k]; anchors[k] = [a[0] + X0, a[1] + Y0, a[2]]; }
+    return { buf, depth, part, W, H, ox, oy, anchors };
+  }
+
+  const render = (model, opt) => renderTight(model, opt);
 
   return {
     build, render, PAL, MAT, DEFAULT,

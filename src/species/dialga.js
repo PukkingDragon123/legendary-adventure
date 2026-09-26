@@ -12,6 +12,28 @@ const Dialga = (() => {
   // prims as { kind, part, grp, c, L, mat } literals (same hidden class as Mudkip's)
   const ell = (f, r, o) => ({ kind: 'ell', part: o.part, grp: o.grp, c: f.t, L: M3.mul(f.L, M3.diag(r[0], r[1], r[2])), mat: o.mat });
   const plate = (f, shape, o) => ({ kind: 'plate', part: o.part, grp: o.grp, c: f.t, L: f.L, shape, thick: o.thick || 1.4 });
+  // Clipped thin "shell" ellipsoid: test(s0,s1,s2) = material of the nearest surface point or 0.
+  // When that point is clipped away, march the view ray's chord through the ellipsoid (direction
+  // from the renderer's prim.Li) so edge-on fins keep their silhouette; face-on nothing changes.
+  const clipped = (prim, test, edge) => {
+    prim.mat = (s) => {
+      const m = test(s[0], s[1], s[2]);
+      if (m) return m;
+      const Li = prim.Li;
+      let dx = Li[2], dy = Li[5], dz = Li[8];
+      const il = 1 / Math.sqrt(dx * dx + dy * dy + dz * dz);
+      dx *= il; dy *= il; dz *= il;
+      const k = 2 * (s[0] * dx + s[1] * dy + s[2] * dz);
+      if (k < 0.05) return 0;
+      for (let j = 1; j < 9; j++) {
+        const t = (k * j) / 9;
+        const e = edge(s[0] - t * dx, s[1] - t * dy, s[2] - t * dz);
+        if (e) return e;
+      }
+      return 0;
+    };
+    return prim;
+  };
 
   // material ids
   const BODY = 1, SILVER = 2, CYAN = 3, GEM = 4, MOUTH = 5, TONGUE = 6, FANG = 7, DARK = 8, HALO = 9;
@@ -85,20 +107,20 @@ const Dialga = (() => {
   stroke(LINES, smooth([[17, 46], [13, 41]]), 4);
 
   /* ---------- crest (side view, x forward / y up), thin axis z ---------- */
-  const CREST_OUT = smooth([[25, 72], [20, 79], [12, 84.5], [2, 89.5], [-8, 94], [-15.5, 96], [-11.5, 90.5], [-6.5, 84.5], [-4, 78.5], [-2, 72], [10, 70]], true, 8);
-  const CREST_G = grid(-20, 66, 30, 100, 0.25);
+  const CREST_OUT = smooth([[27, 70], [23, 77.5], [15, 83.5], [4, 88.5], [-8, 92.5], [-20, 95.5], [-25, 95], [-19, 89.5], [-12, 83], [-7, 76.5], [-4, 70], [10, 68]], true, 8);
+  const CREST_G = grid(-30, 64, 32, 100, 0.25);
   fill(CREST_G, CREST_OUT, 1);
-  const CREST_LN = grid(-20, 66, 30, 100, 0.25, Float32Array, 99);
-  stroke(CREST_LN, smooth([[19, 78.5], [9, 84], [-2, 89.5], [-10, 93]]), 3);
-  const CREST_E = { cx: 5, cy: 83.5, rx: 29, ry: 18, rz: 5.5 };
+  const CREST_LN = grid(-30, 64, 32, 100, 0.25, Float32Array, 99);
+  stroke(CREST_LN, smooth([[21, 76], [11, 82.5], [-1, 87.5], [-12, 91], [-19, 93]]), 3);
+  const CREST_E = { cx: 1, cy: 81, rx: 41, ry: 23, rz: 5.5 };
 
   /* ---------- chest shield (local: v = up, w = sideways) ---------- */
-  const SHIELD_OUT = smooth([[-12, 11], [0, 13], [12, 11], [12.5, 2], [8, -8], [0, -15], [-8, -8], [-12.5, 2]], true, 8);
-  const SHIELD_G = grid(-15, -17, 15, 15, 0.25);
+  const SHIELD_OUT = smooth([[-11, 12], [-6, 15.5], [0, 16.5], [6, 15.5], [11, 12], [12.5, 2], [8, -8], [0, -15], [-8, -8], [-12.5, 2]], true, 8);
+  const SHIELD_G = grid(-15, -17, 15, 19, 0.25);
   fill(SHIELD_G, SHIELD_OUT, 1);
-  const SHIELD_E = { rv: 16.5, rw: 15.5, ru: 5.5 };
+  const SHIELD_E = { rv: 18.5, rw: 15.5, ru: 5.5 };
   // gem diamond (plate, local u = sideways, v = up)
-  const GEM_H = 6.8, GEM_W = 5;
+  const GEM_H = 8, GEM_W = 5.8;
   const gemShape = bakeShape({
     bb: [-GEM_W - 0.5, -GEM_H - 0.5, GEM_W + 0.5, GEM_H + 0.5],
     test(u, v) {
@@ -118,11 +140,15 @@ const Dialga = (() => {
   });
 
   /* ---------- back blades, tail fin, fangs, claws (plates) ---------- */
-  const bladeShape = (L, W) => bakeShape(Shape2D.poly([[0, -W * 0.5], [L * 0.35, -W * 0.55], [L * 0.8, -W * 0.3], [L, 0.2 * W], [L * 0.72, W * 0.5], [L * 0.3, W * 0.55], [0, W * 0.45], [-2, 0]], code(SILVER), 8, (u, v) => code(SILVER, v > W * 0.18 ? 1 : v < -W * 0.25 ? -1 : 0)));
+  const bladeShape = (L, W) => {
+    const g = grid(-4, -W, L + 2, W, 0.25);
+    fill(g, smooth([[0, -W * 0.5], [L * 0.35, -W * 0.55], [L * 0.8, -W * 0.3], [L, 0.2 * W], [L * 0.72, W * 0.5], [L * 0.3, W * 0.55], [0, W * 0.45], [-2, 0]], true, 8), 1);
+    return { g, cu: L / 2 - 1, ru: (L / 2 + 1.5) * 1.22, rv: W * 0.85, rw: 1.9 };
+  };
   const BLADES = [
-    { a: 0.3, L: 27, W: 8.2 },
-    { a: 0.8, L: 24, W: 7.6 },
-    { a: 1.3, L: 19, W: 6.6 },
+    { a: 0.3, L: 33, W: 9.6 },
+    { a: 0.8, L: 30, W: 9 },
+    { a: 1.28, L: 24, W: 7.8 },
   ].map((b) => Object.assign(b, { shape: bladeShape(b.L, b.W) }));
   const TAILFIN = bakeShape(Shape2D.poly([[0, -3], [6, -5.5], [12, -4], [15.5, 1.5], [12, 5.5], [5, 6], [0, 3]], code(SILVER), 8, (u, v) => code(SILVER, v > 2.5 ? 1 : v < -2.8 ? -1 : 0)));
   const FANGS = bakeShape(Shape2D.poly([[-1.3, 0.6], [1.3, 0.6], [0.2, -3.2]], code(FANG), 6));
@@ -164,6 +190,7 @@ const Dialga = (() => {
   };
   const EYEC = { k: '#0a1630', w: '#ffffff', r: '#ec3b33', d: '#a81e26' };
 
+  const K = 0.9; // overall size: ~95 px tall at yaw 1.1 including the crest
   const DEFAULT = { roar: 0, walk: 0, hop: 0, headPitch: 0, headYaw: 0, mouth: 0, eyes: 'open', gem: 0, tailWag: 0, side: 1 };
   let LWH = 0.9;
 
@@ -181,7 +208,7 @@ const Dialga = (() => {
     const walking = wk !== 0;
     const bob = walking ? 1.1 * Math.abs(Math.sin(wk)) : 0;
     const sy = 1 + 0.2 * hop, sxz = 1 - 0.1 * hop;
-    const root = frame(M3.diag(sxz, sy, sxz), [0, bob, 0]);
+    const root = frame(M3.diag(K * sxz, K * sy, K * sxz), [0, K * bob, 0]);
 
     const cBODY = code(BODY), cCYAN = code(CYAN), cSILVER = code(SILVER);
     const skin = (X, Y, az) => (az > 0.25 && at(LINES, X, Y, 99) < LWH ? cCYAN : cBODY);
@@ -210,7 +237,7 @@ const Dialga = (() => {
     const tailF = chain(root, pivot([-20, 24, 0], M3.mul(M3.ry(P.tailWag), M3.rz(-0.12))));
     prims.push(navy(tailF, [-27, 23.5, 0], [8, 6.5, 6.5], 3, 1, 0.12, (s) => (s[1] > 0.62 && Math.abs(s[2]) < 0.45 ? cCYAN : 0)));
     prims.push(navy(tailF, [-34, 22.5, 0], [5.5, 4.4, 4.4], 4, 1, 0.2, (s) => (s[1] > 0.6 && Math.abs(s[2]) < 0.5 ? cCYAN : 0)));
-    prims.push(plate(chain(tailF, T(-37.5, 23.5, 0), R(M3.rz(2.6))), TAILFIN, { part: 5, grp: 5, thick: 1.6 }));
+    prims.push(ell(chain(tailF, T(-41.5, 26.5, 0), R(M3.rz(-0.55))), [8, 4.2, 1.8], { part: 5, grp: 5, mat: (s) => code(SILVER, s[1] > 0.5 ? 1 : s[1] < -0.55 ? -1 : 0) }));
 
     // --- legs (trot: FL+BR together); hips in rest coordinates
     const legs = [
@@ -226,18 +253,24 @@ const Dialga = (() => {
       const [hx, , hz] = lg.hip;
       const sd = Math.sign(hz);
       prims.push(navy(f, [hx, 10.5, hz], [6.6, 8.5, 6.2], lg.id, lg.id, 0, (s) => (s[2] * sd > 0.55 && Math.abs(s[0]) < 0.28 && s[1] < 0.5 ? cCYAN : 0)));
-      prims.push(ell(chain(f, T(hx + 1.5, 3.6, hz)), [7.4, 3.9, 6.8], { part: lg.id, grp: lg.id, mat: (s) => (s[1] > 0.42 ? cSILVER : cBODY) }));
-      for (const dz of [-3.3, 0, 3.3]) prims.push(ell(chain(f, T(hx + 7.8, 1.8, hz + dz), R(M3.rz(-0.25))), [2.7, 1.8, 1.45], { part: lg.id, grp: lg.id, mat: () => cSILVER }));
+      prims.push(ell(chain(f, T(hx + 1.5, 3.6, hz)), [7.4, 3.9, 6.8], { part: lg.id, grp: lg.id, mat: (s) => (s[1] > 0.62 ? cSILVER : cBODY) }));
+      for (const dz of [-3.5, 0, 3.5]) prims.push(ell(chain(f, T(hx + 7.9, 1.7, hz + dz * 0.95), R(M3.ry(-dz * 0.08)), R(M3.rz(-0.3))), [3.1, 1.8, 1.55], { part: lg.id, grp: lg.id, mat: () => cSILVER }));
     }
 
     // --- shoulder plates + fan of blades (near/far)
     for (const sd of [1, -1]) {
       const gid = sd > 0 ? 10 : 11;
-      prims.push(ell(chain(root, T(5, 36, 12.5 * sd)), [8.5, 6, 5.5], { part: gid, grp: gid, mat: (s) => (s[1] < -0.55 ? 0 : cSILVER) }));
+      prims.push(ell(chain(root, T(4, 36.5, 12 * sd), R(M3.rx(-0.35 * sd))), [7.5, 5, 4.6], { part: gid, grp: gid, mat: (s) => (s[1] < -0.55 ? 0 : cSILVER) }));
       BLADES.forEach((b, k) => {
         // blade plane: u along the blade, v across, w normal (mostly sideways)
-        const f = chain(root, T(0 - k * 3, 39, 8.5 * sd), R(M3.ry(sd * (0.28 + 0.1 * k))), R(M3.rz(Math.PI / 2 + b.a + 0.12 * roar)));
-        prims.push(plate(f, b.shape, { part: 12 + k + (sd < 0 ? 3 : 0), grp: 12 + (sd < 0 ? 1 : 0), thick: 1.6 }));
+        const f = chain(root, T(0 - k * 3, 39, 8.5 * sd), R(M3.ry(sd * (0.42 + 0.12 * k))), R(M3.rx(sd * 0.22)), R(M3.rz(Math.PI / 2 + b.a - 0.12 * roar)));
+        const B = b.shape, W = b.W;
+        const bl = { kind: 'ell', part: 12 + k + (sd < 0 ? 3 : 0), grp: 12 + (sd < 0 ? 1 : 0), c: pt(f, [B.cu, 0, 0]), L: M3.mul(f.L, M3.cols([B.ru, 0, 0], [0, 0, B.rw], [0, B.rv, 0])), mat: null };
+        prims.push(clipped(bl, (a, bb, c) => {
+          const uu = B.cu + B.ru * a, vv = B.rv * c;
+          if (!at(B.g, uu, vv, 0)) return 0;
+          return code(SILVER, vv > W * 0.18 ? 1 : vv < -W * 0.25 ? -1 : 0);
+        }, (a, bb, c) => (at(B.g, B.cu + B.ru * a, B.rv * c, 0) ? cSILVER : 0)));
       });
     }
 
@@ -253,7 +286,9 @@ const Dialga = (() => {
     const headF = chain(root, pivot([8, 46, 0], M3.mul(M3.rz(P.headPitch + 0.32 * roar), M3.ry(P.headYaw))));
     const cranium = navy(headF, [12, 62, 0], [18.5, 17, 18], 20, 20, 0, (s) => {
       // silver visor band across the brow (front half only)
-      if (s[0] > 0.15 && s[1] > 0.08 && s[1] < 0.38) return cSILVER;
+      if (s[0] > 0.12 && s[1] > -0.24 + 0.1 * s[0] && s[1] < 0.06 + 0.1 * s[0]) return cSILVER;
+      // ridge from the visor up the forehead to the crest
+      if (s[0] > 0.3 && s[1] > 0 && Math.abs(s[2]) < 0.1 + 0.06 * s[1]) return cSILVER;
       return 0;
     });
     prims.push(cranium);
@@ -266,17 +301,15 @@ const Dialga = (() => {
     // fangs
     for (const sd of [1, -1]) prims.push(plate(chain(headF, T(33, 50.6, 4.2 * sd), R(M3.ry(-sd * 0.9))), FANGS, { part: 24, grp: 23, thick: 1 }));
     // crest (raised by the roar)
-    const crestF = chain(headF, pivot([8, 76, 0], M3.rz(0.3 * roar)));
+    const crestF = chain(headF, pivot([8, 76, 0], M3.mul(M3.ry(0.3 * (P.side ?? 1)), M3.rz(-0.42 * roar))));
+    // crest: clipped thin shell (crisp fin outline; chord fallback keeps it solid head-on)
     const CE = CREST_E;
-    prims.push(ell(chain(crestF, T(CE.cx, CE.cy, 0)), [CE.rx, CE.ry, CE.rz], {
-      part: 25, grp: 24,
-      mat: (s) => {
-        const X = CE.cx + CE.rx * s[0], Y = CE.cy + CE.ry * s[1];
-        if (!at(CREST_G, X, Y, 0)) return 0;
-        if (at(CREST_LN, X, Y, 99) < LWH * 0.9) return cCYAN;
-        return code(SILVER, bevel(CREST_G, X, Y, 1.2, 1.6));
-      },
-    }));
+    prims.push(clipped(ell(chain(crestF, T(CE.cx, CE.cy, 0)), [CE.rx, CE.ry, CE.rz], { part: 25, grp: 24, mat: null }), (a, b, c) => {
+      const X = CE.cx + CE.rx * a, Y = CE.cy + CE.ry * b;
+      if (!at(CREST_G, X, Y, 0)) return 0;
+      if (Math.abs(c) > 0.3 && at(CREST_LN, X, Y, 99) < 0.85) return cCYAN;
+      return code(SILVER, bevel(CREST_G, X, Y, 1.1, 1.5));
+    }, (a, b) => (at(CREST_G, CE.cx + CE.rx * a, CE.cy + CE.ry * b, 0) ? cSILVER : 0)));
 
     // --- anchors + eye stamps
     const eyeS = (az, v) => { const c = Math.sqrt(1 - v * v); return [c * Math.cos(az), v, c * Math.sin(az)]; };
@@ -284,7 +317,7 @@ const Dialga = (() => {
     const anchors = {
       gem: pt(gemF, [0, 0, 0]),
       mouth: pt(jawF, [32, 51.5, 0]),
-      top: pt(crestF, [-15, 96, 0]),
+      top: pt(crestF, [-23, 95.5, 0]),
       head: pt(headF, [12, 62, 0]),
       eyeN: { p: V3.add(cranium.c, M3.v(cranium.L, eN)), s: eN },
       eyeF: { p: V3.add(cranium.c, M3.v(cranium.L, eF)), s: eF },
@@ -297,10 +330,12 @@ const Dialga = (() => {
       ],
       dots: [],
       pri: { 1: 0, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1, 10: 2, 11: 2, 12: 3, 13: 3, 16: 2, 17: 3, 20: 1, 21: 2, 22: 0, 23: 3, 24: 3 },
-      glossy: GLOSSY, baseMat: BODY, shadowSteps: 14,
+      glossy: GLOSSY, baseMat: BODY, shadowSteps: 8,
     };
   }
 
+  // Render into a tight buffer around the model's projected bounds (same bbox maths as the
+  // renderer, so pixels are identical), then place it in the full sprite buffer.
   function render(model, opt) {
     const sc = opt.scale || 1;
     LWH = 0.5 * Math.max(1.7, 1.25 / sc);
@@ -312,7 +347,38 @@ const Dialga = (() => {
       const e = pal[GEM];
       pal = Object.assign({}, pal, { [GEM]: { r: e.r.map((c, i) => PX.mix(c, GEM_GLOW[i], g * 0.85)), od: e.od, ol: PX.mix(e.ol, GEM_GLOW[1], g * 0.5), ln: e.ln } });
     }
-    return Creature.render(model, Object.assign({}, opt, { pal }));
+    const { yaw = 1.05, pitch = 0.16, W = 96, H = 96, ox = 48, oy = 82 } = opt;
+    const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(sc, sc, sc)));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const grow = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
+    for (const p of model.prims) {
+      const cv = M3.v(V, p.c), Lv = M3.mul(V, p.L);
+      if (p.kind === 'ell') {
+        const rx = Math.hypot(Lv[0], Lv[1], Lv[2]), ry = Math.hypot(Lv[3], Lv[4], Lv[5]);
+        grow(ox + cv[0] - rx, oy - cv[1] - ry); grow(ox + cv[0] + rx, oy - cv[1] + ry);
+      } else {
+        const [a, b, c, d] = p.shape.bb;
+        for (const [u, v] of [[a, b], [a, d], [c, b], [c, d]]) for (const w of [-p.thick, p.thick]) {
+          const q = V3.add(cv, M3.v(Lv, [u, v, w]));
+          grow(ox + q[0], oy - q[1]);
+        }
+      }
+    }
+    const X0 = Math.max(0, Math.floor(x0) - 3), Y0 = Math.max(0, Math.floor(y0) - 3);
+    const X1 = Math.min(W - 1, Math.ceil(x1) + 3), Y1 = Math.min(H - 1, Math.ceil(y1) + 3);
+    if (X1 < X0 || Y1 < Y0) return Creature.render(model, Object.assign({}, opt, { pal }));
+    const w = X1 - X0 + 1, h = Y1 - Y0 + 1;
+    const r = Creature.render(model, Object.assign({}, opt, { pal, W: w, H: h, ox: ox - X0, oy: oy - Y0 }));
+    const buf = new PX.Buf(W, H), depth = new Float32Array(W * H).fill(-1e9), part = new Uint8Array(W * H);
+    for (let y = 0; y < h; y++) {
+      const src = y * w, dst = (y + Y0) * W + X0;
+      buf.d.set(r.buf.d.subarray(src, src + w), dst);
+      depth.set(r.depth.subarray(src, src + w), dst);
+      part.set(r.part.subarray(src, src + w), dst);
+    }
+    const anchors = {};
+    for (const k in r.anchors) { const a = r.anchors[k]; anchors[k] = [a[0] + X0, a[1] + Y0, a[2]]; }
+    return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
   return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.54, bw: 150, bh: 136, oy: 0.84 } };

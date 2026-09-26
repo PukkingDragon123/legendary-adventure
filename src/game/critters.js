@@ -9,7 +9,7 @@ const Critters = (() => {
   /* ---- global sprite cache (LRU by bytes) ---- */
   const cache = new Map();
   let bytes = 0;
-  const BUDGET = 56 * 1024 * 1024;
+  const BUDGET = ((typeof navigator !== 'undefined' && navigator.deviceMemory) || 8) >= 4 ? 110 * 1024 * 1024 : 50 * 1024 * 1024;
   function cacheGet(k) {
     const s = cache.get(k);
     if (s) { cache.delete(k); cache.set(k, s); }

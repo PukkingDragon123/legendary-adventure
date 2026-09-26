@@ -184,6 +184,7 @@ const Corphish = (() => {
   for (const b of [20, 30]) { PRI[b] = 3; PRI[b + 1] = 4; PRI[b + 2] = 5; PRI[b + 3] = 6; }
   for (let i = 40; i < 46; i++) PRI[i] = 1;
 
+  const SIZE = 0.945;
   const DEFAULT = { clawN: 0, clawF: 0, armN: 0, armF: 0, walk: 0, eyes: 'open', squash: 0, tilt: 0, mouth: 0, side: 1 };
 
   function build(pose) {
@@ -298,6 +299,11 @@ const Corphish = (() => {
     anchors.top = inF(body, [-4, 104, 0]);
     anchors.head = inF(body, HOOD_C);
     anchors.mouth = inF(body, [MUZ_C[0] + MUZ_R[0] * 0.85, MUZ_C[1] - MUZ_R[1] * 0.5, 0]);
+
+    // uniform scale to the Pokédex height (0.6 m ≈ 105 px silhouette at yaw 1.1)
+    for (const p of prims) { p.c = sc(p.c, SIZE); p.L = p.L.map((v) => v * SIZE); }
+    for (const st of stamps) st.at.p = sc(st.at.p, SIZE);
+    for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
     return { prims, anchors, pose: P, headPrim: hoodPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: SHELL };
   }
 
@@ -317,5 +323,5 @@ const Corphish = (() => {
 
   const render = (model, opt) => Creature.render(model, opt);
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 130, bh: 142, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 130, bh: 146, oy: 0.9 } };
 })();

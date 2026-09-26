@@ -13,31 +13,31 @@ const Walrein = (() => {
     [BODY]:   { r: ['#1f5a86', '#2f78a8', '#4a95c2', '#70b1d8', '#a8d4ee'], od: '#10324f', ol: '#21577f', ln: '#245e88' },
     [PATCH]:  { r: ['#3a77a4', '#5594c0', '#76b0d6', '#98c9e6', '#c4e2f4'], od: '#10324f', ol: '#21577f', ln: '#2f6c96' },
     [FLIP]:   { r: ['#1d5580', '#2c719f', '#448cba', '#68a9d2', '#a0cfea'], od: '#10324f', ol: '#21577f', ln: '#1f5a86' },
-    [MANE]:   { r: ['#9fb8da', '#c3d5ec', '#e4edf8', '#f6f9fe', '#ffffff'], od: '#4a6892', ol: '#7a96be', ln: '#8ea8cc' },
+    [MANE]:   { r: ['#adc3e1', '#cddbef', '#e9f0fa', '#f7fafe', '#ffffff'], od: '#4a6892', ol: '#7a96be', ln: '#93acce' },
     [BAND]:   { r: ['#8fb0d2', '#b8d0e8', '#e6f0fa', '#ffffff', '#ffffff'], od: '#44628c', ol: '#7792ba', ln: '#7896bc' },
     [TUSK]:   { r: ['#b99a5e', '#d6bb80', '#ecd9a6', '#f8eccb', '#fff8e6'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
     [NOSE]:   { r: ['#163f60', '#1f5378', '#2c6890', '#4a86ae', '#7fb0d2'], od: '#0a2238', ol: '#17405f', ln: '#143a58' },
     [MOUTH]:  { r: ['#6a2034', '#8a3046', '#aa4a5e', '#c46676', '#dc8a94'], od: '#40101e', ol: '#62182a', ln: '#62182a' },
     [TONGUE]: { r: ['#b8566c', '#d4728a', '#ea94a4', '#f8b6be', '#ffd6da'], od: '#6e1428', ol: '#8e2038', ln: '#b04450' },
   });
-  const GLOSSY = { [BODY]: 0, [NOSE]: 1, [TUSK]: 1 };
+  const GLOSSY = { [BODY]: 0, [NOSE]: 1, [TUSK]: 0 };
 
   const DEFAULT = { headPitch: 0.12, headYaw: 0, mouth: 0, eyes: 'open', squash: 0, flipper: 0, side: 1 };
 
   const K = 1.08;
-  const OX = 20;
+  const OX = 38;
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp = (a, b, t) => a + (b - a) * t;
 
   /* ---------- eye stamps: small dark eyes ---------- */
   const EYES = {
-    open: ['.kkk.', 'kwkkk', 'kkkkk', 'kkkkk', '.kkk.'],
-    openN: ['.kk.', 'wkkk', 'kkkk', 'kkkk', '.kk.'],
-    openF: ['kk', 'wk', 'kk', 'kk'],
-    angry: ['kk...', 'kkkk.', 'kwkkk', 'kkkkk', '.kkk.'],
-    angryN: ['k...', 'kkk.', 'wkkk', 'kkkk', '.kk.'],
-    angryF: ['k.', 'kk', 'wk', 'kk'],
-    happy: ['.kkk.', 'k...k', 'k...k'],
+    open: ['.kkk.', 'kwwkk', 'kwkkk', 'kkkkk', 'kkkkk', '.kkk.'],
+    openN: ['.kk.', 'wwkk', 'wkkk', 'kkkk', 'kkkk', '.kk.'],
+    openF: ['kk', 'wk', 'kk', 'kk', 'kk'],
+    angry: ['kk...', '.kkk.', 'kwkkk', 'kkkkk', 'kkkkk', '.kkk.'],
+    angryN: ['k...', '.kk.', 'wkkk', 'kkkk', 'kkkk', '.kk.'],
+    angryF: ['k.', 'kk', 'wk', 'kk', 'kk'],
+    happy: ['.kkk.', 'kk.kk', 'k...k'],
     happyN: ['.kk.', 'k..k', 'k..k'],
     happyF: ['.k', 'k.', 'k.'],
     blink: ['kkkkk', '.kkk.'],
@@ -58,26 +58,37 @@ const Walrein = (() => {
         const t = a0 + (i / n) * Math.PI * 2;
         const cy = Math.cos(t), cz = Math.sin(t);
         if (cy < cut) continue;
-        L.push([x - 5 * (1 - cy), R * cy - 3, R * cz * 1.1, r * (cy < -0.3 ? 0.9 : 1)]);
+        L.push([x - 6 * (1 - cy), R * cy - 2, R * cz * 1.12, r * (cy < -0.3 ? 0.9 : 1)]);
       }
     };
-    ring(-3, 32, 17, 9, 0, -0.85);
-    ring(-26, 30, 21, 7, Math.PI / 7, -2);
-    L.push([-48, 12, 0, 24], [-44, -14, 16, 20], [-44, -14, -16, 20], [-34, 36, 0, 18]);
-    L.push([2, 32, 13, 12], [2, 32, -13, 12]);
+    ring(-2, 36, 21, 8, 0, -0.8);          // front ring framing the face
+    ring(-32, 36, 27, 6, Math.PI / 6, -2); // second ring
+    L.push([10, 30, 0, 18], [-14, 44, 0, 22]); // forehead cap
+    L.push([-62, 14, 0, 32], [-58, -22, 22, 26], [-58, -22, -22, 26], [-70, -40, 0, 24]); // back puff
     return L;
   })();
 
   // lighter marbled patches: smooth organic blobs from a few low-frequency waves (root space)
   const patchAt = (x, y, z) => {
-    const f = Math.sin(x * 0.045 + 1.2) * Math.cos(z * 0.05 - 0.4) + 0.75 * Math.sin(y * 0.06 + x * 0.025 + 2.1) + 0.45 * Math.cos(z * 0.08 + y * 0.03);
-    return f > 0.62;
+    const f = Math.sin(x * 0.045 + 1.2 + z * 0.03) * Math.cos(z * 0.05 - 0.4 + y * 0.012) + 0.75 * Math.sin(y * 0.06 + x * 0.025 + 2.1 + z * 0.02);
+    return f > 0.55;
   };
+
+  // world-space topmost point over a set of ellipsoid prims (where things rest on the head)
+  function topOf(prims) {
+    let best = null;
+    for (const p of prims) {
+      const ly = Math.hypot(p.L[3], p.L[4], p.L[5]);
+      const q = V3.add(p.c, M3.v(p.L, [p.L[3] / ly, p.L[4] / ly, p.L[5] / ly]));
+      if (!best || q[1] > best[1]) best = q;
+    }
+    return best;
+  }
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [];
-    const sq = clamp(P.squash, -0.2, 0.2);
+    const sq = clamp(P.squash, -0.15, 0.15);
     const root = chain(F(M3.diag(K * (1 + sq * 0.25), K * (1 - sq * 0.5), K * (1 + sq * 0.25)), [0, 0, 0]), T(OX, 0, 0));
     const rinv = M3.inv(root.L), rt = root.t;
 
@@ -99,20 +110,20 @@ const Walrein = (() => {
     };
 
     /* --- torso, rear, tail --- */
-    const torso = chain(root, T(-12, 56, 0), R(M3.rz(0.1)));
-    const torsoP = ell(torso, [98, 70, 68], { part: 1, grp: 1 });
+    const torso = chain(root, T(-12, 50, 0), R(M3.rz(0.12)));
+    const torsoP = ell(torso, [102, 62, 67], { part: 1, grp: 1 });
     torsoP.mat = bodyMat(torsoP);
-    const rear = chain(root, T(-96, 42, 0), R(M3.rz(0.28)));
-    const rearP = ell(rear, [58, 38, 48], { part: 1, grp: 1 });
+    const rear = chain(root, T(-92, 38, 0), R(M3.rz(0.3)));
+    const rearP = ell(rear, [54, 34, 46], { part: 1, grp: 1 });
     rearP.mat = bodyMat(rearP);
-    const tailS = chain(root, T(-142, 46, 0), R(M3.rz(0.45)));
-    const tailP = ell(tailS, [30, 16, 24], { part: 1, grp: 1 });
+    const tailS = chain(root, T(-130, 48, 0), R(M3.rz(0.5)));
+    const tailP = ell(tailS, [26, 15, 22], { part: 1, grp: 1 });
     tailP.mat = bodyMat(tailP);
     prims.push(torsoP, rearP, tailP);
-    const flukeBase = chain(tailS, T(-22, 2, 0));
+    const flukeBase = chain(tailS, T(-18, 2, 0));
     for (const side of [1, -1]) {
-      const lobe = chain(flukeBase, R(M3.ry(side * 0.55)), R(M3.rx(-side * 0.5)), T(-28, 0, 0), R(M3.rz(-0.1)));
-      prims.push(ell(lobe, [36, 8, 18], {
+      const lobe = chain(flukeBase, R(M3.ry(side * 0.55)), R(M3.rx(-side * 0.55)), T(-27, 0, 0), R(M3.rz(-0.05)));
+      prims.push(ell(lobe, [35, 8, 19], {
         part: 20, grp: 20,
         mat: (s) => (Math.abs(s[0] + 0.1) < 0.1 ? code(BAND) : code(FLIP)),
       }));
@@ -120,59 +131,64 @@ const Walrein = (() => {
 
     /* --- neck (with the white collar band) and head --- */
     const hp = clamp(P.headPitch, -0.3, 0.8);
-    const neckBase = chain(root, T(48, 96, 0), R(M3.rz(-0.25 + hp * 0.35)));
-    const neckP = ell(chain(neckBase, T(0, 26, 0)), [40, 54, 46], { part: 2, grp: 1 });
+    const neckBase = chain(root, T(48, 88, 0), R(M3.rz(-0.25 + hp * 0.55)));
+    const neckP = ell(chain(neckBase, T(0, 28 + hp * 12, 0)), [46, 54 + hp * 14, 54], { part: 2, grp: 1 });
     neckP.mat = bodyMat(neckP, (s) => {
-      const b1 = s[1] + 0.52, b2 = s[1] + 0.22;
-      if (Math.abs(b1) < 0.07 || Math.abs(b2) < 0.065) return code(BAND);
+      const b1 = s[1] + 0.34, b2 = s[1] + 0.06;
+      if (Math.abs(b1) < 0.065 || Math.abs(b2) < 0.06) return code(BAND);
       return 0;
     });
-    prims.push(neckP);
+    const shoulder = chain(root, T(32, 90, 0), R(M3.rz(-0.35)));
+    const shoulderP = ell(shoulder, [54, 46, 60], { part: 1, grp: 1 });
+    shoulderP.mat = bodyMat(shoulderP);
+    prims.push(neckP, shoulderP);
 
-    const head = chain(neckBase, T(8, 76, 0), R(M3.rz(hp * 0.65 + 0.25)), R(M3.ry(clamp(P.headYaw, -0.8, 0.8))));
-    const headP = ell(head, [30, 27, 32], { part: 3, grp: 2, mat: () => code(BODY) });
-    const snout = chain(head, T(26, -2, 0));
-    const snoutP = ell(snout, [20, 15, 22], { part: 4, grp: 2, mat: () => code(BODY) });
-    const noseP = ell(chain(snout, T(12, 7, 0)), [12, 10, 13], { part: 5, grp: 3, mat: (s) => (s[1] < -0.55 && Math.abs(s[2]) < 0.6 ? code(NOSE, -1) : code(NOSE)) });
+    const head = chain(neckBase, T(8 - hp * 6, 76 + hp * 26, 0), R(M3.rz(hp * 0.45 + 0.25)), R(M3.ry(clamp(P.headYaw, -0.8, 0.8))));
+    const headP = ell(head, [32, 28, 33], { part: 3, grp: 2, mat: () => code(BODY) });
+    const snout = chain(head, T(28, -2, 0));
+    const snoutP = ell(snout, [22, 17, 24], { part: 4, grp: 2, mat: () => code(BODY) });
+    const noseP = ell(chain(snout, T(14, 8, 0)), [13.5, 11, 14.5], { part: 5, grp: 3, mat: (s) => (s[1] < -0.55 && Math.abs(s[2]) < 0.6 ? code(NOSE, -1) : code(NOSE)) });
     const mo = clamp(P.mouth, 0, 1);
-    const jaw = chain(head, T(10, -14, 0), R(M3.rz(-mo * 0.55)));
-    const jawP = ell(chain(jaw, T(12, -4, 0)), [18, 8, 16], { part: 6, grp: 2, mat: (s) => (s[1] > 0.45 && mo > 0.05 ? code(TONGUE) : code(BODY)) });
+    const jaw = chain(head, T(8, -15, 0), R(M3.rz(-mo * 0.85)));
+    const jawP = ell(chain(jaw, T(14, -4, 0)), [20, 9, 18], { part: 6, grp: 2, mat: (s) => (s[1] > 0.45 && mo > 0.05 ? code(TONGUE) : code(BODY)) });
     prims.push(headP, snoutP, noseP, jawP);
     if (mo > 0.05) {
       // dark mouth cavity between the jaws
-      const cav = chain(head, T(20, -12 - mo * 5, 0));
-      prims.push(ell(cav, [14, 4 + mo * 7, 13], { part: 7, grp: 2, mat: (s) => (s[1] < -0.3 ? code(TONGUE) : code(MOUTH)) }));
+      const cav = chain(head, T(22, -13 - mo * 5, 0));
+      prims.push(ell(cav, [15, 4 + mo * 8, 14], { part: 7, grp: 2, mat: (s) => (s[1] < -0.3 ? code(TONGUE) : code(MOUTH)) }));
     }
 
     /* --- tusks: smooth curved chains of ellipsoids from the upper jaw --- */
     const tuskTips = [];
-    const tuskPt = (t, side) => [31 + 12 * t - 7 * t * t, -11 - 46 * t, side * (12 + 6 * t)];
+    const tuskPt = (t, side) => [34 + 5 * t - 12 * t * t, -12 - 50 * t, side * (13 + 8 * t)];
     for (const side of [1, -1]) {
-      const N = 11;
+      const N = 16;
       for (let i = 0; i < N; i++) {
         const t = i / (N - 1);
         const p = tuskPt(t, side), q = tuskPt(t + 0.02, side);
-        const r = lerp(5.4, 1.5, t ** 1.2);
+        const r = lerp(5.8, 1.7, t ** 1.15);
         const ay = V3.norm(V3.sub(q, p)), ax = V3.norm(V3.cross(ay, [0, 0, 1])), az = V3.cross(ax, ay);
         const f = chain(head, T(...p), F(M3.cols(ax, ay, az), [0, 0, 0]));
-        prims.push(ell(f, [r, 6, r], { part: side > 0 ? 8 : 9, grp: side > 0 ? 8 : 9, mat: () => code(TUSK) }));
+        prims.push(ell(f, [r, 7.5, r], { part: side > 0 ? 8 : 9, grp: side > 0 ? 8 : 9, mat: () => code(TUSK) }));
         if (i === N - 1) tuskTips.push(V3.add(f.t, M3.v(f.L, [0, -1, 0])));
       }
     }
 
     /* --- mane: rings of white lumps framing the face, plus a big puff behind the head --- */
+    const maneP = [];
     for (const [x, y, z, r] of MANE_L) {
-      prims.push(ell(chain(head, T(x, y, z)), [r, r * 0.94, r], { part: 10, grp: 10, mat: () => code(MANE) }));
+      const mp = ell(chain(head, T(x, y, z)), [r, r * 0.94, r], { part: 10, grp: 10, mat: () => code(MANE) });
+      maneP.push(mp); prims.push(mp);
     }
 
     /* --- front flippers --- */
     const fl = clamp(P.flipper, 0, 1);
     for (const side of [1, -1]) {
-      const ax = V3.norm([0.62, -0.08 + fl * 0.5, side * 0.72]);
+      const ax = V3.norm([0.45, -0.08 + fl * 0.5, side * 0.85]);
       const ay = V3.norm(V3.sub([0, 1, 0], V3.scale(ax, V3.dot([0, 1, 0], ax))));
       const az = V3.cross(ax, ay);
-      const fr = chain(root, T(40, 18 + fl * 20, side * 50), F(M3.cols(ax, ay, az), [0, 0, 0]), T(30, 0, 0));
-      const fp = ell(fr, [44, 9, 21], { part: side > 0 ? 11 : 12, grp: side > 0 ? 11 : 12, mat: () => code(FLIP) });
+      const fr = chain(root, T(38, 18 + fl * 20, side * 48), F(M3.cols(ax, ay, az), [0, 0, 0]), T(26, 0, 0));
+      const fp = ell(fr, [40, 9, 20], { part: side > 0 ? 11 : 12, grp: side > 0 ? 11 : 12, mat: () => code(FLIP) });
       const low = fp.c[1] - Math.hypot(fp.L[3], fp.L[4], fp.L[5]);
       if (low < 0) fp.c = [fp.c[0], fp.c[1] - low, fp.c[2]];
       fp.lines = [-0.4, 0, 0.4].map((w) => ({ pts: [[0.6, 0.8, w], [0.97, 0.2, w * 0.9]], mat: FLIP, useLn: true }));
@@ -185,28 +201,69 @@ const Walrein = (() => {
     const anchors = {
       tusk,
       mouth: V3.add(head.t, M3.v(head.L, [28, -12, 0])),
-      top: V3.add(head.t, M3.v(head.L, [-12, 52, 0])),
+      top: topOf([...maneP, headP, noseP]),
       head: headP.c,
     };
     const kind = P.eyes;
     return {
       prims, anchors, pose: P,
       stamps: [
-        { at: onHead(0.62, 0.3), set: EYES, colors: EYEC, kind },
-        { at: onHead(-0.62, 0.3), set: EYES, colors: EYEC, kind },
+        { at: onHead(0.75, 0.45), set: EYES, colors: EYEC, kind },
+        { at: onHead(-0.75, 0.45), set: EYES, colors: EYEC, kind },
       ],
       dots: [],
       pri: { 1: 0, 2: 1, 3: 2, 8: 3, 9: 3, 10: 2, 11: 1, 12: 1, 20: 1 },
       glossy: GLOSSY,
       baseMat: BODY,
-      shadowSteps: 12,
+      shadowSteps: 10,
     };
   }
 
-  const render = (model, opt) => Creature.render(model, opt);
+  /* Render only the model's on-screen bounding box, then paste it into the full W x H sprite.
+     Pixel-identical to Creature.render (nothing is drawn outside the prims), but the renderer's
+     full-buffer passes then only touch the pixels the creature can actually cover. */
+  function renderTight(model, opt) {
+    const { yaw = 1.05, pitch = 0.16, scale = 1, W = 96, H = 96, ox = 48, oy = 82 } = opt;
+    const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(scale, scale, scale)));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of model.prims) {
+      const cv = M3.v(V, p.c), Lv = M3.mul(V, p.L);
+      if (p.kind === 'ell') {
+        const rx = Math.hypot(Lv[0], Lv[1], Lv[2]), ry = Math.hypot(Lv[3], Lv[4], Lv[5]);
+        x0 = Math.min(x0, cv[0] - rx); x1 = Math.max(x1, cv[0] + rx);
+        y0 = Math.min(y0, -cv[1] - ry); y1 = Math.max(y1, -cv[1] + ry);
+      } else {
+        const [a, b, c, d] = p.shape.bb;
+        for (const [u, v] of [[a, b], [a, d], [c, b], [c, d]])
+          for (const w of [-p.thick, p.thick]) {
+            const q = V3.add(cv, M3.v(Lv, [u, v, w]));
+            x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]);
+            y0 = Math.min(y0, -q[1]); y1 = Math.max(y1, -q[1]);
+          }
+      }
+    }
+    const pad = 4;
+    const X0 = Math.max(0, Math.floor(ox + x0) - pad), X1 = Math.min(W, Math.ceil(ox + x1) + pad);
+    const Y0 = Math.max(0, Math.floor(oy + y0) - pad), Y1 = Math.min(H, Math.ceil(oy + y1) + pad);
+    const w = X1 - X0, h = Y1 - Y0;
+    if (!(w > 0 && h > 0) || w * h > W * H * 0.9) return Creature.render(model, opt);
+    const r = Creature.render(model, Object.assign({}, opt, { W: w, H: h, ox: ox - X0, oy: oy - Y0 }));
+    const buf = new PX.Buf(W, H), depth = new Float32Array(W * H).fill(-1e9), part = new Uint8Array(W * H);
+    for (let y = 0; y < h; y++) {
+      const s0 = y * w, d0 = (y + Y0) * W + X0;
+      buf.d.set(r.buf.d.subarray(s0, s0 + w), d0);
+      depth.set(r.depth.subarray(s0, s0 + w), d0);
+      part.set(r.part.subarray(s0, s0 + w), d0);
+    }
+    const anchors = {};
+    for (const k in r.anchors) { const a = r.anchors[k]; anchors[k] = [a[0] + X0, a[1] + Y0, a[2]]; }
+    return { buf, depth, part, W, H, ox, oy, anchors };
+  }
+
+  const render = (model, opt) => renderTight(model, opt);
 
   return {
     build, render, PAL, MAT, DEFAULT,
-    meta: { heightM: 1.4, bw: 360, bh: 300, oy: 0.9 },
+    meta: { heightM: 1.4, bw: 348, bh: 288, oy: 0.92 },
   };
 })();

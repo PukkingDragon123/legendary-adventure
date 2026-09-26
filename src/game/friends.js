@@ -248,6 +248,12 @@ const Friends = (() => {
       if (!this.item && b.vy > 0 && b.y < n[1] && Math.abs(b.x - n[0]) < 26) return this.catchIt(b);
       return false;
     }
+    catchNut(c) {
+      if (this.item || this.sleeping || c.cracked) return false;
+      const n = this.at('nose');
+      if (Math.abs(c.x - n[0]) < 18 && c.y < n[1] && c.y > n[1] - 26) { c.vx = c.vy = 0; return this.catchIt(c); }
+      return false;
+    }
     onPoke() {
       const had = this.item;
       if (had) { if (had.kind === 'ball') this.dropBall(); else this.dropNut(); if (had.kind === 'ball') had.kick(rnd(-60, 60), -120, this); }
@@ -639,7 +645,9 @@ const Friends = (() => {
       // prank: sometimes drop it on Mudkip instead!
       const m = mudkip();
       const prank = m && m.mode === 'land' && !m.sleeping && chance(0.3);
-      const target = () => (prank ? [m.x, m.y - 190] : [walrein.x - 70, walrein.y - 240]);
+      const sealeo = Game.mons.find((q) => q.kind === 'sealeo' && !q.item && !q.sleeping);
+      const toSeal = !prank && sealeo && chance(0.4);
+      const target = () => (prank ? [m.x, m.y - 190] : toSeal ? (() => { const p = sealeo.at('nose'); return [p[0], p[1] - 150]; })() : [walrein.x - 70, walrein.y - 240]);
       yield* this.flyTo(target, 140, 12);
       nut.holder = null; nut.state = 'fall'; nut.vx = prank ? 0 : -10; nut.vy = 0; nut.claim = null; this.cargo = null;
       this.o.bill = 0.8; Game.sfx('squawk', this.x, 0.7);

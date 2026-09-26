@@ -66,7 +66,11 @@ const Game = (() => {
     const c = G.cam;
     const W = World.W, H = World.H;
     c.x = G.VW >= W ? (W - G.VW) / 2 : clamp(c.x, 0, W - G.VW);
-    c.y = G.VH >= H ? (H - G.VH) / 2 : clamp(c.y, -60, H - G.VH);
+    // don't scroll far below the ground that's in view (endless sand isn't interesting)
+    let gmax = 0;
+    for (let x = c.x; x <= c.x + G.VW + 40; x += 40) gmax = Math.max(gmax, World.groundAt(clamp(x, 0, W)));
+    const yMax = Math.min(H - G.VH, Math.max(-60, gmax + 150 - G.VH));
+    c.y = G.VH >= H ? (H - G.VH) / 2 : clamp(c.y, -60, yMax);
   }
 
   /* ---------- audio helper ---------- */
@@ -82,7 +86,8 @@ const Game = (() => {
     Sound.play(name, pan, v);
   }
   G.sfx = sfx;
-  G.shake = (a) => { G.shakeA = Math.max(G.shakeA, a); };
+  const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  G.shake = (a) => { if (!calm) G.shakeA = Math.max(G.shakeA, a); };
 
   /* ---------- time of day ---------- */
   function setHour(i) {
@@ -320,7 +325,9 @@ const Game = (() => {
     }
     if (g > surf + 2 && Math.abs(wy - surf) < 9) { FX.splashAt(wx, surf, { power: 0.55, n: 10 }); sfx('plop', wx, 1); for (const m of G.mons) if (m.splashNear) m.splashNear(wx); return; }
     if (g > surf && wy > surf && wy < g) { FX.bubbles(wx, wy, 5, World.SEA); sfx('bubble', wx, 0.9); for (const m of G.mons) if (m.bubbleNear) m.bubbleNear(wx, wy); return; }
-    if (wy >= g - 2) { FX.poof(wx, g, P.sand[3], P.sand[2], 4, 4); sfx('dust', wx, 0.8); return; }
+    const fos = Scene.pokeBuried(wx, wy);
+    if (fos) { FX.sparkles(fos.x, fos.y, 8, 24, PX.hex('#ffffff'), PX.hex('#ffe066')); sfx('twinkle', wx, 1); return; }
+    if (wy >= g - 2) { FX.poof(wx, Math.min(wy, g + 2), P.sand[3], P.sand[2], 4, 4); sfx('dust', wx, 0.8); return; }
   }
   const cxs = () => G.cx;
   G.poke = poke;
@@ -412,8 +419,8 @@ const Game = (() => {
 
   /* ---------- HUD (icons only) ---------- */
   const ICONS = {
-    zin: ['...kkkkk.....', '..kwwwwwk....', '.kww...wwk...', 'kww..k..wwk..', 'kw...k...wk..', 'kw.kkkkk.wk..', 'kw...k...wk..', 'kww..k..wwk..', '.kww...wwk...', '..kwwwwwkkk..', '...kkkkk.kkk.', '.........kkkk', '..........kk.'],
-    zout: ['...kkkkk.....', '..kwwwwwk....', '.kww...wwk...', 'kww.....wwk..', 'kw.......wk..', 'kw.kkkkk.wk..', 'kw.......wk..', 'kww.....wwk..', '.kww...wwk...', '..kwwwwwkkk..', '...kkkkk.kkk.', '.........kkkk', '..........kk.'],
+    zin: ['...kkkkk.....', '..kwwwwwk....', '.kwcccccwk...', 'kwccckcccwk..', 'kwccckcccwk..', 'kwckkkkkcwk..', 'kwccckcccwk..', 'kwccckcccwk..', '.kwcccccwk...', '..kwwwwwkkk..', '...kkkkkkwwk.', '.........kwwk', '..........kk.'],
+    zout: ['...kkkkk.....', '..kwwwwwk....', '.kwcccccwk...', 'kwcccccccwk..', 'kwcccccccwk..', 'kwckkkkkcwk..', 'kwcccccccwk..', 'kwcccccccwk..', '.kwcccccwk...', '..kwwwwwkkk..', '...kkkkkkwwk.', '.........kwwk', '..........kk.'],
     follow: ['.....kk.......', '....kbbk......', '...kbbbbk.....', '..kbbbbbbkk...', '.kbbbbbbbbbk..', 'kobbkwbbkwbok.', 'koobkkbbkkook.', 'kobbbbbbbbbok.', '.kbbbwwwwbbk..', '..kbbbbbbbk...', '...kkkkkkk....'],
     son: ['....k.......', '...kk...k...', 'kkkwk....k..', 'kwwwk.k..k..', 'kwwwk..k.k..', 'kwwwk..k.k..', 'kwwwk.k..k..', 'kkkwk....k..', '...kk...k...', '....k.......'],
     soff: ['....k.......', '...kk.......', 'kkkwk.......', 'kwwwk.r...r.', 'kwwwk..r.r..', 'kwwwk...r...', 'kwwwk..r.r..', 'kkkwk.r...r.', '...kk.......', '....k.......'],
@@ -603,7 +610,12 @@ const Game = (() => {
     if (!G.paused) for (let k = 0; k < SPEED; k++) update(dt);
     render();
     miniT -= dt;
-    if (miniT <= 0) { drawMini(); miniT = 0.2; }
+    if (miniT <= 0) {
+      drawMini(); miniT = 0.2;
+      // a gentle nudge toward the hidden crystal after a while
+      const ob = $('#b-orb');
+      if (ob) ob.classList.toggle('hint', G.started && G.t > 50 && typeof Magic !== 'undefined' && Magic.S.orb === 'hidden');
+    }
     if (DEBUG) {
       msAcc += performance.now() - t0; fpsAcc += dt; fpsN++;
       if (fpsAcc > 0.5) { fpsShow = fpsN / fpsAcc; const el = $('#dbg'); if (el) el.textContent = fpsShow.toFixed(0) + ' fps  ' + (msAcc / fpsN).toFixed(1) + ' ms  ' + G.VW + 'x' + G.VH + ' z' + G.zoom + ' ' + JSON.stringify(Critters.cacheStats()) + ' ' + Object.entries(prof).map(([k, v]) => k + ':' + v.toFixed(1)).join(' '); fpsAcc = 0; fpsN = 0; msAcc = 0; }
@@ -618,7 +630,9 @@ const Game = (() => {
     buildHUD();
     init();
     window.addEventListener('resize', () => { const oz = G.zoom; layout(); if (G.zoom !== oz) updateZoomUI(); });
-    $('#b-start').addEventListener('click', start);
+    $('#b-start').addEventListener('click', (e) => { e.stopPropagation(); start(); });
+    $('#start').addEventListener('click', start);
+    try { $('#b-start').focus({ preventScroll: true }); } catch (e) { /* focus is optional */ }
     if (qs.has('autostart')) { G.started = true; $('#start').hidden = true; }
     if (DEBUG) { const d = document.createElement('div'); d.id = 'dbg'; wrap.appendChild(d); }
     // warm up: let the first frames render lots of sprites

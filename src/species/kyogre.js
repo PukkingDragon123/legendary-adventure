@@ -218,6 +218,30 @@ const Kyogre = (() => {
     const L = M3.mul(parent.L, M3.cols(V3.scale(u, r[0]), V3.scale(w, r[1]), V3.scale(v, r[2])));
     return { kind: 'ell', part: o.part, grp: o.grp, c: V3.add(parent.t, M3.v(parent.L, center)), L, mat: o.mat };
   };
+  // Clipped thin "shell": test(s0,s1,s2) gives the material of the nearest surface point or 0.
+  // The renderer only shades the nearest hit, so when that point is clipped away we march the
+  // view ray's chord through the ellipsoid (direction from the renderer's prim.Li) and accept the
+  // first sample inside the outline: edge-on fins keep their true silhouette. Face-on the chord
+  // keeps the same (u, v), so nothing changes there.
+  const clipped = (prim, test, edge) => {
+    prim.mat = (s) => {
+      const m = test(s[0], s[1], s[2]);
+      if (m) return m;
+      const Li = prim.Li;
+      let dx = Li[2], dy = Li[5], dz = Li[8];
+      const il = 1 / Math.sqrt(dx * dx + dy * dy + dz * dz);
+      dx *= il; dy *= il; dz *= il;
+      const k = 2 * (s[0] * dx + s[1] * dy + s[2] * dz);
+      if (k < 0.05) return 0;
+      for (let j = 1; j < 9; j++) {
+        const t = (k * j) / 9;
+        const e = edge(s[0] - t * dx, s[1] - t * dy, s[2] - t * dz);
+        if (e) return e;
+      }
+      return 0;
+    };
+    return prim;
+  };
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -310,15 +334,13 @@ const Kyogre = (() => {
     // --- dorsal fin
     {
       const E = DORSAL_E;
-      prims.push(ell(chain(root, T(E.cx, E.cy, 0)), [E.rx, E.ry, E.rz], {
-        part: 9, grp: 4,
-        mat: (s) => {
-          const X = E.cx + E.rx * s[0], Y = E.cy + E.ry * s[1];
-          if (!at(DORSAL_G, X, Y, 0)) return 0;
-          if (at(DORSAL_LN, X, Y, 99) < LWH) return code(RED);
-          return code(FIN, Math.max(-1, bevel(DORSAL_G, X, Y, -4, 3) - (Math.abs(s[2]) < 0.3 ? 1 : 0)));
-        },
-      }));
+      const cEdge = code(FIN, -1);
+      prims.push(clipped(ell(chain(root, T(E.cx, E.cy, 0)), [E.rx, E.ry, E.rz], { part: 9, grp: 4, mat: null }), (a, b, c) => {
+        const X = E.cx + E.rx * a, Y = E.cy + E.ry * b;
+        if (!at(DORSAL_G, X, Y, 0)) return 0;
+        if (at(DORSAL_LN, X, Y, 99) < LWH) return code(RED);
+        return code(FIN, Math.max(-1, bevel(DORSAL_G, X, Y, -4, 3) - (Math.abs(c) < 0.3 ? 1 : 0)));
+      }, (a, b) => (at(DORSAL_G, E.cx + E.rx * a, E.cy + E.ry * b, 0) ? cEdge : 0)));
     }
 
     // --- pectoral fins (near, far = mirror); sweep: fin=+1 up/forward, -1 down/back
@@ -338,30 +360,26 @@ const Kyogre = (() => {
       const u = [-1, 0, 0], v = [0, 1, 0], w = [0, 0, 1];
       const E = FIN_E;
       const gid = sd > 0 ? 5 : 6;
-      prims.push(shell(fr, V3.add(V3.scale(u, E.cu), V3.scale(v, E.cv)), u, w, v, [E.ru, E.rw, E.rv], {
-        part: 10 + (sd < 0 ? 1 : 0), grp: gid,
-        mat: (s) => {
-          const uu = E.cu + E.ru * s[0], vv = E.cv + E.rv * s[2];
-          if (!at(FIN_IN, uu, vv, 0)) return 0;
-          if (s[1] < 0) return code(FINU);
-          if (at(FIN_LN, uu, vv, 99) < LWH) return code(RED);
-          return code(FIN, bevel(FIN_IN, uu, vv, 0, 7));
-        },
-      }));
+      const cFinEdge = code(FIN, -1);
+      prims.push(clipped(shell(fr, V3.add(V3.scale(u, E.cu), V3.scale(v, E.cv)), u, w, v, [E.ru, E.rw, E.rv], { part: 10 + (sd < 0 ? 1 : 0), grp: gid, mat: null }), (a, b, c) => {
+        const uu = E.cu + E.ru * a, vv = E.cv + E.rv * c;
+        if (!at(FIN_IN, uu, vv, 0)) return 0;
+        if (b < 0) return code(FINU);
+        if (at(FIN_LN, uu, vv, 99) < LWH) return code(RED);
+        return code(FIN, bevel(FIN_IN, uu, vv, 0, 7));
+      }, (a, b, c) => (at(FIN_IN, E.cu + E.ru * a, E.cv + E.rv * c, 0) ? cFinEdge : 0)));
       // claws
       CLAWS.forEach((c, k) => {
         const ca = Math.cos(c.a), sa = Math.sin(c.a);
         const cu = V3.add(V3.scale(u, ca), V3.scale(v, sa));
         const cv = V3.add(V3.scale(u, -sa), V3.scale(v, ca));
         const ctr = V3.add(V3.add(V3.scale(u, c.u), V3.scale(v, c.v)), V3.add(V3.scale(cu, 16), V3.scale(w, -3)));
-        prims.push(shell(fr, ctr, cu, w, cv, [CLAW_E.ru, CLAW_E.rw, CLAW_E.rv], {
-          part: 12 + k + (sd < 0 ? 4 : 0), grp: 7 + (sd < 0 ? 1 : 0),
-          mat: (s) => {
-            const uu = CLAW_E.ru * s[0], vv = CLAW_E.rv * s[2];
-            if (!at(CLAW_G, uu, vv, 0)) return 0;
-            return s[1] < 0 ? code(CLAW, -1) : code(CLAW, bevel(CLAW_G, uu, vv, 0, 4.5));
-          },
-        }));
+        const cClawEdge = code(CLAW, -1);
+        prims.push(clipped(shell(fr, ctr, cu, w, cv, [CLAW_E.ru, CLAW_E.rw, CLAW_E.rv], { part: 12 + k + (sd < 0 ? 4 : 0), grp: 7 + (sd < 0 ? 1 : 0), mat: null }), (a, b, c) => {
+          const uu = CLAW_E.ru * a, vv = CLAW_E.rv * c;
+          if (!at(CLAW_G, uu, vv, 0)) return 0;
+          return b < 0 ? code(CLAW, -1) : code(CLAW, bevel(CLAW_G, uu, vv, 0, 4.5));
+        }, (a, b, c) => (at(CLAW_G, CLAW_E.ru * a, CLAW_E.rv * c, 0) ? cClawEdge : 0)));
       });
       finParts.push(fr);
     }
@@ -374,14 +392,12 @@ const Kyogre = (() => {
         if (k > 0) fr = chain(fr, pivot([sg.j[0], sg.j[1], 0], M3.rz(0.14 * Math.sin(ph - 2.1 - k * 0.5))));
         const E = sg.e;
         // fin space: u back (-x), v up (+y), w = z
-        prims.push(shell(fr, [-E.cu, E.cv, 0], [-1, 0, 0], [0, 0, 1], [0, 1, 0], [E.ru, E.rw, E.rv], {
-          part: partBase + k, grp: gid,
-          mat: (s) => {
-            const uu = E.cu + E.ru * s[0], vv = E.cv + E.rv * s[2];
-            if (!at(E.g, uu, vv, 0)) return 0;
-            return code(TAILF, bevel(E.full, uu, vv, -2.2, 5));
-          },
-        }));
+        const cTailEdge = code(TAILF);
+        prims.push(clipped(shell(fr, [-E.cu, E.cv, 0], [-1, 0, 0], [0, 0, 1], [0, 1, 0], [E.ru, E.rw, E.rv], { part: partBase + k, grp: gid, mat: null }), (a, b, c) => {
+          const uu = E.cu + E.ru * a, vv = E.cv + E.rv * c;
+          if (!at(E.g, uu, vv, 0)) return 0;
+          return code(TAILF, bevel(E.full, uu, vv, -2.2, 5));
+        }, (a, b, c) => (at(E.g, E.cu + E.ru * a, E.cv + E.rv * c, 0) ? cTailEdge : 0)));
       });
       return fr;
     };
