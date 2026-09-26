@@ -344,6 +344,7 @@ const Paintings = (() => {
       parts.draw(fb, 0, t);
       // Mudkip (feet submerged while grounded in water)
       const inWater = beach.isWater(Math.round(mk.x), mk.gy + 1);
+      if (Paintings.hook) Paintings.hook(fb, 'back');
       mk.draw(fb, { waterY: inWater && mk.h < 3 ? mk.gy - 2 + Math.round(mk.h) : null, sub: subT });
       if (inWater && mk.h < 2) {
         // foam collar round the ankles
@@ -365,6 +366,7 @@ const Paintings = (() => {
       fb.blit(palmFrames[Math.floor(t * 3.2) % palmFrames.length], -8, -6);
       drawGrass(fb, t, 336, 216, 20, pal.palm.leaf);
       drawGrass(fb, t, 80, 216, 8, pal.palm.leaf);
+      if (Paintings.hook) Paintings.hook(fb, 'front');
       vignette(fb);
     }
 

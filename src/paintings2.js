@@ -325,6 +325,7 @@
       parts.draw(fb, 0, t);
       const hopping = S.mode === 'hop';
       if (hopping) ball.draw(fb);
+      if (Paintings.hook) Paintings.hook(fb, 'back');
       mk.draw(fb, { waterY: inWater && mk.h < 3 ? mk.gy - 1 : null, sub: subT });
       if (inWater && mk.h < 2) {
         for (let dx = -15; dx <= 15; dx++) if (hash2(dx + Math.floor(t * 6), 0, 5) > 0.35) fb.set(Math.round(mk.x) + dx, mk.gy + Math.round((dx / 15) ** 2 * 2), pal.foam[0]);
@@ -339,6 +340,7 @@
         const y = 212 - Math.round((x - 30) * 0.12);
         fb.set(x, y, hex('#7a6166')); fb.set(x, y + 1, hex('#5a4652')); fb.set(x, y - 1, hex('#a88c8a'));
       }
+      if (Paintings.hook) Paintings.hook(fb, 'front');
       vignette(fb);
     }
 
@@ -549,6 +551,7 @@
       ball.render();
       projShadow(fb, ball.sprite, Math.round(ball.x) - ball.sprite.cx, Math.round(ball.y) - ball.sprite.cy, mk.gy + 1, 1.25, 0.2, dark);
       parts.draw(fb, 0, t);
+      if (Paintings.hook) Paintings.hook(fb, 'back');
       mk.draw(fb);
       // warm rim on the ball's sun side
       const bs = ball.sprite;
@@ -558,6 +561,7 @@
       if (S.heart > 0) Paintings.drawHeart(fb, ball.x + 14, ball.y - 8 - (1.2 - S.heart) * 12, S.heart);
       fb.blit(palmB[Math.floor(t * 2.6 + 3) % palmB.length], -10, 12);
       fb.blit(palmA[Math.floor(t * 2.2) % palmA.length], -18, -28);
+      if (Paintings.hook) Paintings.hook(fb, 'front');
       vignette(fb);
     }
     function rimBall(fb, b, c) {
@@ -815,6 +819,7 @@
       projShadow(fb, ball.sprite, Math.round(ball.x) - ball.sprite.cx, Math.round(ball.y) - ball.sprite.cy, mk.gy + 1, -0.4, 0.16, dark);
       parts.draw(fb, 0, t);
       ball.draw(fb);
+      if (Paintings.hook) Paintings.hook(fb, 'back');
       mk.draw(fb);
       // fireflies drifting over the sand
       for (const f of flies) {
@@ -827,6 +832,7 @@
       parts.draw(fb, 1, t);
       if (S.heart > 0) Paintings.drawHeart(fb, mk.anchor('finTip')[0] + 6, mk.anchor('finTip')[1] - 6 - (1.2 - S.heart) * 12, S.heart);
       fb.blit(palm[Math.floor(t * 1.6) % palm.length], 270, -30);
+      if (Paintings.hook) Paintings.hook(fb, 'front');
       vignette(fb);
     }
     function tap(x, y) {
@@ -1159,6 +1165,7 @@
       }
       drawSea(fb, t);
       parts.draw(fb, 0, t);
+      if (Paintings.hook) Paintings.hook(fb, 'back');
       if (S.mode === 'leap' && S.sink < 0) { drawBall(fb, t); drawMudkip(fb, t); }
       else { drawMudkip(fb, t); drawBall(fb, t); }
       parts.draw(fb, 1, t);
@@ -1166,6 +1173,7 @@
       // wet sheen on the rocks right after a burst
       parts.draw(fb, 2, t);
       if (S.heart > 0) Paintings.drawHeart(fb, mk.anchor('finTip')[0] + 6, mk.anchor('finTip')[1] - 6 - (1.2 - S.heart) * 12, S.heart);
+      if (Paintings.hook) Paintings.hook(fb, 'front');
       vignette(fb);
     }
 
