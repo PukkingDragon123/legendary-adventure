@@ -97,9 +97,17 @@ const Player = (() => {
         return;
       }
       const d = Math.sign(dx);
+      // long trips: bound along in happy hops
+      const run = Math.abs(dx) > 150 && this.mode === 'land';
+      if (run) {
+        this.bound = (this.bound ?? 0) - dt;
+        if (this.air <= 0 && this.bound <= 0 && Math.abs(this.vx) > 70) { this.vair = 150; this.air = 0.5; this.bound = 0.34; this.sq.kick(0.25); }
+      }
+      // skid when turning round at speed
+      if (Math.sign(this.vx) === -d && Math.abs(this.vx) > 60 && Math.random() < dt * 20) FX.add({ type: 'dust', x: this.x, y: this.y - 1, vx: -d * 20, vy: -8, r: 2, life: 0.35, c: 0xffd8ecf4, c2: 0xffb0c8d8, layer: 2 });
       this.turn(this.face(d), dt, 11);
       // ease in and out: accelerate, cruise, slow down on arrival (no snapping)
-      this.drive(d * Math.min(speed, 20 + Math.abs(dx) * 3.2), dt);
+      this.drive(d * Math.min(run ? speed * 1.45 : speed, 20 + Math.abs(dx) * 3.2), dt);
       if (Math.sign(this.vx) === d && Math.abs(this.vx * dt) > Math.abs(dx)) this.x = tx - d * 2.5;
       // step onto a dock from the sand when walking across its start
       if (!this.plat) { const p = World.platAt(this.x); if (p && Math.abs(World.groundAt(this.x) - World.platY(p, this.x)) < 8 && (tg.kind === 'plat' || tg.plat === p)) this.plat = p; }
@@ -219,7 +227,11 @@ const Player = (() => {
         if (this.y < s + 10) { this.y = s + 10; this.vy = Math.max(0, this.vy); }
         if (this.y > g - 8) { this.y = g - 8; this.vy = Math.min(0, this.vy); }
         if (!World.isWet(this.x, 12)) { this.mode = 'land'; this.air = 0; this.vx = 0; this.target = this.target && this.target.kind === 'swim' ? null : this.target; if (!this.target) this.idleTask(this.shakeOff()); }
-        if ((Math.abs(this.vx) + Math.abs(this.vy) > 25) && Math.random() < dt * 4) FX.bubbles(this.x + Math.cos(this.yaw) * 8, this.y - 6, 1, WorldRender.surfaceAt(this.x, t));
+        const sp2 = Math.abs(this.vx) + Math.abs(this.vy);
+        if (sp2 > 25 && Math.random() < dt * (4 + sp2 * 0.08)) FX.bubbles(this.x - Math.cos(this.yaw) * 12, this.y - 6, 1, WorldRender.surfaceAt(this.x, t));
+        if (Math.sign(this.vx) !== (this.lastVxS || 0) && Math.abs(this.vx) > 30) { this.lastVxS = Math.sign(this.vx); FX.bubbles(this.x, this.y - 8, 4, WorldRender.surfaceAt(this.x, t)); }
+        // paddling at the surface throws little splashes
+        if (this.y < WorldRender.surfaceAt(this.x, t) + 14 && sp2 > 30 && Math.random() < dt * 8) FX.add({ type: 'drop', x: this.x - Math.cos(this.yaw) * 10, y: WorldRender.surfaceAt(this.x, t) - 1, vx: -Math.cos(this.yaw) * 30 + rnd(-15, 15), vy: -rnd(40, 90), g: 420, life: 0.6, c: 0xffffffff, c2: U.hex('#8fd6ee'), size: 1, floor: WorldRender.surfaceAt(this.x, t) + 1, layer: 3 });
         if (Math.abs(this.vx) + Math.abs(this.vy) > 20) this.moving = 60;
       } else if (this.mode === 'fall') {
         this.vy += 800 * dt; this.x += this.vx * dt; this.y += this.vy * dt;
@@ -243,14 +255,22 @@ const Player = (() => {
       const s = Math.sin(this.phase), c = Math.cos(this.phase);
       const P = {};
       const g = swim ? Math.max(0.35, this.gait) : this.gait;
-      P.legF = s * 0.55 * g; P.legB = -s * 0.55 * g;
-      P.bodyDip = swim ? 0 : Math.abs(c) * 1.6 * this.gait;
+      const fast = clamp((Math.abs(this.vx) - 90) / 60, 0, 1);
+      P.legF = s * (0.6 + fast * 0.25) * g; P.legB = -s * (0.6 + fast * 0.25) * g;
+      P.bodyDip = swim ? 0 : Math.abs(c) * 1.8 * this.gait;
+      // footfalls: a little squash and a puff of dust
+      if (!swim && this.mode === 'land' && this.gait > 0.3 && this.air <= 0) {
+        const step = Math.floor(this.phase / Math.PI);
+        if (step !== this.lastFall) { this.lastFall = step; this.sq.kick(0.12 + fast * 0.1); if (Math.random() < 0.55) FX.add({ type: 'dust', x: this.x - Math.cos(this.yaw) * 8, y: this.y - 1, vx: -Math.cos(this.yaw) * 14, vy: -6, r: 1.6 + fast, life: 0.4, c: 0xffd8ecf4, c2: 0xffb8d0e0, layer: 2 }); }
+      }
       const sq = this.sq.step(dt);
       P.squash = Math.sin(t * 2.4 + this.seed) * 0.015 + sq * 0.5 + (this.air > 0 ? clamp(this.vair / 2500, -0.08, 0.08) * -1 : 0);
-      P.headPitch = (swim ? 0.1 : 0) + Math.sin(this.phase * 2) * 0.03 * this.gait;
-      P.lean = swim ? 0.04 : 0;
+      P.headPitch = (swim ? 0.1 : 0) + Math.sin(this.phase * 2) * 0.05 * this.gait - fast * 0.06;
+      P.lean = swim ? 0.04 + Math.sin(this.phase) * 0.1 : this.gait * 0.06 + fast * 0.06;
+      P.headRoll = Math.sin(this.phase) * 0.04 * this.gait;
       P.finSway = 0.04 + this.finS.step(dt, -this.gait * 0.08 - (this.air > 0 ? this.vair * 0.0004 : 0)) + Math.sin(t * 1.7 + this.seed) * 0.03;
-      P.tailWag = Math.sin(t * (swim ? 6 : 2.6) + this.seed) * (swim ? 0.25 : 0.1) + this.tailS.step(dt);
+      P.tailWag = (swim ? Math.sin(this.phase * 0.5) * 0.5 : Math.sin(t * (2.6 + this.gait * 6) + this.seed) * (0.1 + this.gait * 0.2)) + this.tailS.step(dt);
+      if (this.air > 0 && !swim) { P.eyes = 'happy'; }
       P.tailLift = this.air > 0 ? 0.15 : 0;
       P.mouth = 0.6;
       P.eyes = this.blink(t, dt) ? 'blink' : 'open';

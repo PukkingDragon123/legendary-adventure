@@ -75,21 +75,21 @@ const Spheal = (() => {
 
   /* ---------- eye stamps (k = pupil, w = shine, b = glint) ---------- */
   const EYES = {
-    open: ['.kkk.', 'kwkkk', 'kkkkk', 'kkkbk', '.kkk.'],
-    openN: ['.kk.', 'kwkk', 'kkbk', '.kk.'],
-    openF: ['.k.', 'kwk', 'kkk', '.k.'],
-    happy: ['.kkk.', 'k...k'],
-    happyN: ['.kk.', 'k..k'],
-    happyF: ['.k.', 'k.k'],
-    blink: ['kkkkk', '.kkk.'],
-    blinkN: ['kkkk', '.kk.'],
-    blinkF: ['kkk'],
-    closed: ['k...k', '.kkk.'],
-    closedN: ['k..k', '.kk.'],
-    closedF: ['k.k', '.k.'],
-    dizzy: ['..kkkkkk..', '.k......k.', 'k..kkkk..k', 'k.k....k.k', 'k.k.kk.k.k', 'k.k.k..k.k', 'k.k..kk..k', 'k..k.....k', '.k..kkkkk.', '..kk......'],
-    dizzyN: ['.kkkkkk.', 'k......k', 'k.kkkk.k', 'k.k..k.k', 'k.k.kk.k', 'k..k...k', '.k..kkk.', '..k.....'],
-    dizzyF: ['.kkkk.', 'k....k', 'k.kk.k', 'k.k..k', '.k.kk.', '..k...'],
+    open: ['.kk.', 'kwkk', 'kkbk', '.kk.'],
+    openN: ['.k.', 'kwk', 'kbk', '.k.'],
+    openF: ['kk', 'wk', 'kk'],
+    happy: ['.kk.', 'k..k'],
+    happyN: ['.k.', 'k.k'],
+    happyF: ['kk', 'k.'],
+    blink: ['kkkk', '.kk.'],
+    blinkN: ['kkk', '.k.'],
+    blinkF: ['kk'],
+    closed: ['k..k', '.kk.'],
+    closedN: ['k.k', '.k.'],
+    closedF: ['k.', '.k'],
+    dizzy: ['.kkkkk.', 'k.....k', 'k.kkk.k', 'k.k.k.k', 'k..kk.k', '.k....k', '..kkkk.'],
+    dizzyN: ['.kkkk.', 'k....k', 'k.kk.k', 'k.k.kk', '.k....', '..kkk.'],
+    dizzyF: ['.kkk.', 'k...k', 'k.k.k', '.kk..'],
   };
   const EYEC = { k: '#161b2e', w: '#ffffff', b: '#4d5f98' };
 
@@ -253,7 +253,7 @@ const Spheal = (() => {
     prims.push(flipper(1, bf.n), flipper(-1, bf.f), ...tail(bf.t));
 
     /* --- anchors --- */
-    const eyeN = onBallH(0.56, 0.68), eyeF = onBallH(-0.56, 0.68);
+    const eyeN = onBallH(0.5, 0.8), eyeF = onBallH(-0.5, 0.8);
     const lipMid = onBallH(0, faceLip(0));
     const snoutTip = V3.add(snoutPrim.c, M3.v(snoutPrim.L, [1, 0.1, 0]));
     const anchors = {

@@ -1,7 +1,7 @@
 html, body { margin: 0; height: 100%; background: #0a0e1a; overflow: hidden; }
 body { font-family: system-ui, sans-serif; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #game { position: fixed; inset: 0; overflow: hidden; touch-action: none; outline: none; background: #0a0e1a; }
-#game canvas { position: absolute; left: 0; top: 0; image-rendering: pixelated; image-rendering: crisp-edges; }
+#game canvas { touch-action: none; -webkit-tap-highlight-color: transparent; position: absolute; left: 0; top: 0; image-rendering: pixelated; image-rendering: crisp-edges; }
 #cv { transform-origin: 50% 50%; will-change: transform; }
 #ui { z-index: 2; cursor: pointer; }
 #dbg { position: absolute; left: 4px; bottom: 4px; z-index: 5; color: #fff; font: 11px monospace; background: rgba(0,0,0,.55); padding: 2px 5px; pointer-events: none; white-space: pre; }

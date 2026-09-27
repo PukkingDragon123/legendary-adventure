@@ -366,7 +366,7 @@ const Game = (() => {
     const p = ptrs.get(e.pointerId);
     const [x, y] = devXY(e);
     ptrs.delete(e.pointerId);
-    if (p.ui) { if (G.mode === 'dex') Dex.up(x / US, y / US); else HUD.up(x / US, y / US, e.pointerId); return; }
+    if (p.ui) { if (G.mode === 'dex') { if (e.type === 'pointercancel') Dex.cancel && Dex.cancel(); else Dex.up(x / US, y / US); } else HUD.up(x / US, y / US, e.pointerId); return; }
     if (pinch) { if (ptrs.size < 2) { pinch = null; drag = null; } return; }
     if (drag) {
       if (!drag.moved && e.type === 'pointerup') {
@@ -450,6 +450,9 @@ const Game = (() => {
     requestAnimationFrame(frame);
   }
 
+  // phone back button / swipe-back closes the Pokédex or the map
+  window.addEventListener('popstate', () => { if (G.mode === 'dex') Dex.close(); else if (G.mode === 'map') WorldMap.close(); else if (G.mode === 'camera') Photo.close(); });
+  G.pushBack = () => { try { history.pushState({ snap: 1 }, ''); } catch (e) { /* sandboxed */ } };
   function boot() {
     const wk = document.getElementById('wk-src');
     if (wk && !qs.has('noworker')) Critters.Pool.init(wk.textContent);

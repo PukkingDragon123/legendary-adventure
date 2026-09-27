@@ -342,7 +342,12 @@ const Stage = (() => {
       const s = f.spr;
       // closer than the lane: displacement from the view centre scales by p
       const ax = W / 2 + (f.x - cxm) * f.p, ay = H / 2 + (f.y - cym) * f.p;
-      const X = Math.round(ax - s.w / 2), Y = Math.round(f.hang ? ay : ay - s.h);
+      const X = Math.round(ax - s.w / 2);
+      let Y = Math.round(f.hang ? ay : ay - s.h);
+      // foreground things are nearer than the lane: they always rise from below the frame
+      // (or hang from above it), never float in the middle of the picture
+      if (!f.hang) { if (Y > H + 10) continue; if (Y + s.h < H + 3) Y = H + 3 - s.h; }
+      else if (Y > -3) Y = -3;
       if (X > W || X + s.w < 0 || Y > H || Y + s.h < 0) continue;
       const sway = f.sway ? Math.sin(t * 1.1 + f.x) * f.sway * ((typeof Wind !== 'undefined' ? Wind.v : 0.4) + 0.4) : 0;
       const tint = f.tint ?? A.foreTint ?? 0xff201a2a, dk = f.dark ?? dark;

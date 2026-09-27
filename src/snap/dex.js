@@ -46,7 +46,11 @@ const Dex = (() => {
   /* ---------- input ---------- */
   function btn(id, x, y, w, h, fn, o = {}) { D.btns.push(Object.assign({ id, x, y, w, h, fn }, o)); }
   function hit(ux, uy) { for (let i = D.btns.length - 1; i >= 0; i--) { const b = D.btns[i]; if (ux >= b.x && uy >= b.y && ux < b.x + b.w && uy < b.y + b.h) return b; } return null; }
-  function down(ux, uy) { D.press = { b: hit(ux, uy), x: ux, y: uy, sy: 0, moved: false }; const s = scrollArea(ux, uy); if (s) D.press.scroll = s, D.press.s0 = D.scroll[s] || 0; }
+  function down(ux, uy) {
+    // close buttons react on touch-down (some mobile browsers cancel the touch before it ends)
+    const hb = hit(ux, uy);
+    if (hb && (hb.id === 'x' || hb.id === 'closebar' || hb.id === 'close')) { D.press = null; SFX.blip(); close(); return; }
+    D.press = { b: hb, x: ux, y: uy, sy: 0, moved: false }; const s = scrollArea(ux, uy); if (s) D.press.scroll = s, D.press.s0 = D.scroll[s] || 0; }
   function move(ux, uy) {
     const p = D.press; if (!p) return;
     if (Math.abs(uy - p.y) > 4 || Math.abs(ux - p.x) > 6) p.moved = true;
@@ -609,5 +613,6 @@ const Dex = (() => {
       tips.forEach((s, i) => Font.draw(fb, s, L.x + 6, L.y + 28 + i * 11, S.screenText, { font: 'small' }));
     }
   }
-  return Object.assign(D, { open, close, go, update, draw, down, move, up, wheel, key, thumb });
+  function cancel() { D.press = null; }
+  return Object.assign(D, { cancel, open, close, go, update, draw, down, move, up, wheel, key, thumb });
 })();

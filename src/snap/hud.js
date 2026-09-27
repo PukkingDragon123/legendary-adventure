@@ -127,8 +127,8 @@ const HUD = (() => {
     // right: Pokédex, map, sound
     const bw = 22, y = 6;
     const items = [
-      { id: 'dex', icon: 'dexIcon', fn: () => Dex.open() },
-      { id: 'map', icon: 'map', fn: () => WorldMap.open() },
+      { id: 'dex', icon: 'dexIcon', fn: () => (Game.mode === 'dex' ? Dex.close() : Dex.open()) },
+      { id: 'map', icon: 'map', fn: () => (Game.mode === 'map' ? WorldMap.close() : WorldMap.open()) },
       { id: 'snd', icon: Sound.on ? 'snd' : 'mute', fn: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); } },
     ];
     items.forEach((it, i) => {
