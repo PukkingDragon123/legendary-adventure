@@ -564,7 +564,7 @@ Areas.canopy = (() => {
     }
     CanopyAI.post(A, fb, cx, cy, t);
   };
-  def.spawn = (A, G) => CanopyAI.spawn(A, G, S);
+  def.spawn = (A, G) => { CanopyAI.spawn(A, G, S); if (typeof GroveAI !== 'undefined') GroveAI.spawnCanopy(A, G); };
   def.update = (A, dt, t, G) => CanopyAI.update(A, dt, t, G, S);
   def.weather = (hour) => ({ rain: 0, fog: hour === 'dawn' ? 0.35 : 0.04 });
   def.ambient = (hour, W) => {

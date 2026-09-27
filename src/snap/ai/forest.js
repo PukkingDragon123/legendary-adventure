@@ -689,6 +689,7 @@ const ForestAI = (() => {
   }
   function shakeTree(A) {
     const tr = A.fruitTree;
+    if (typeof GroveAI !== 'undefined') GroveAI.shake();
     if (Game.t - S.treeT < 30) { tr.shake = 0.4; Game.sfx('rustle', TREE, 0.6); HUD.toast('No ripe fruit left... yet.', { life: 1.6 }); return; }
     S.treeT = Game.t; S.shared = false;
     tr.shake = 1; Game.sfx('rustle', TREE, 1); Game.shake(0.8);

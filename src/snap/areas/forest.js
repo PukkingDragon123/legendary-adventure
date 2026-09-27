@@ -107,7 +107,7 @@ Areas.forest = (() => {
     giant(150, 300, 3); giant(780, 330, 7); giant(1660, 310, 11); giant(2080, 350, 13); giant(2990, 320, 17);
     A.fruitTree = put(Paint.tree(M, 150, 19, { trunkRamp: M.bark, leafRamp: M.leaf, fruit: M.fruit, fruitN: 14, crownW: 150, crownH: 90 }), 560, -4, { sink: 4, foot: 16 });
     for (const [x, s] of [[330, 26], [1580, 22], [2860, 28]]) put(Paint.bush(M, s, s * 0.6, x, { ramp: M.leaf, dots: M.berry, nd: 8 }), x, -3, { sink: 3 });
-    put(Props2.log(M, 70, 5), 440, 2, { sink: 3 });
+    put(Props2.log(M, 70, 5), 440, -2, { sink: 3 });
     put(Props2.log(M, 54, 9, false), 2150, -2, { sink: 3 });
     A.stump = put(Props2.stump(M, 34, 20, 4), 2860, -1, { sink: 2 });
     A.lever = put(Props2.lever(M, false), 1760, -2, { sink: 2 });
