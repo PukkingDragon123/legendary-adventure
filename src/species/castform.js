@@ -46,7 +46,7 @@ const Castform = (() => {
     [RAINH]:  { r: ['#1c4696', '#2a60ba', '#3c80da', '#5fa0ee', '#9ccaf8'], od: '#0c2256', ol: '#1c448c', ln: '#1c4088' },
     [SNOWF]:  { r: ['#7a70b8', '#968ed0', '#b2aae2', '#ccc6f0', '#ebe8ff'], od: '#3a3280', ol: '#5e56a4', ln: '#6058a8' },
     [SNOWM]:  { r: ['#44357e', '#5a4896', '#7362b2', '#9080c8', '#b2a6de'], od: '#221a50', ol: '#3a2e70', ln: '#3a2e70' },
-    [SNOWH]:  { r: ['#7896b2', '#98b8cc', '#bcd8e4', '#daeef4', '#f6feff'], od: '#35527a', ol: '#6282a2', ln: '#6686a6' },
+    [SNOWH]:  { r: ['#6a88b0', '#88a8cc', '#a8c6e2', '#c8def0', '#e8f4fc'], od: '#2e4a78', ol: '#56769e', ln: '#5a7aa4' },
     [ICE]:    { r: ['#86b0d8', '#aacfec', '#d2ebfa', '#eef8ff', '#ffffff'], od: '#305c8c', ol: '#5886b4', ln: '#6894c0' },
     [MOUTH]:  { r: ['#681a2a', '#882436', '#a83444', '#c24a58', '#da6a72'], od: '#3a0a16', ol: '#5a1424', ln: '#5a1424' },
     [TONGUE]: { r: ['#c6506a', '#de6a80', '#f28c9a', '#ffb0b8', '#ffd2d4'], od: '#6e1428', ol: '#8e2038', ln: '#b04450' },
@@ -209,8 +209,8 @@ const Castform = (() => {
       const hoodMat = (s) => {
         const az = Math.abs(Math.atan2(s[2], s[0]));
         const v = s[1];
-        const brow = 0.5 - 0.18 * Math.exp(-(az * az) / 0.03) - 0.3 * (az / 1.3) ** 2;
-        if (az < 1.3 && v < brow) return 0;
+        const brow = 0.62 - 0.16 * Math.exp(-(az * az) / 0.03) - 0.34 * (az / 1.45) ** 2;
+        if (az < 1.45 && v < brow) return 0;
         if (v < -0.55 && az < 2.2) return 0;
         return CRH();
       };
@@ -232,18 +232,18 @@ const Castform = (() => {
       prims.push(faceP);
       // icy hail-cloud hood with a round face window, puffy lumps around it
       const HR = [16, 16.4, 16.6];
-      const WIN = 0.62;
+      const WIN = 0.52;
       const WC = nrm([1, -0.08, 0]);
       prims.push(ellF(headF, HR, 2, 2, (s) => (dot(s, WC) > WIN ? 0 : CSNH())));
       const ang = Math.acos(WIN), rr = Math.sin(ang);
-      for (let i = 0; i < 9; i++) {
-        const a = (i / 9) * Math.PI * 2 + Math.PI / 2;
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + Math.PI / 2;
         const dir = nrm(add(sc(WC, Math.cos(ang) * 0.82), add(sc([0, 1, 0], rr * 1.18 * Math.sin(a)), sc([0, 0, 1], rr * 1.18 * Math.cos(a)))));
         const p = [dir[0] * HR[0], dir[1] * HR[1], dir[2] * HR[2]];
-        prims.push(ellAlong(headF, p, dir, [0, 1, 0], [3.6, 5.2, 5.2], 3, 3, CSNH_L));
+        prims.push(ellAlong(headF, p, dir, [0, 1, 0], [3.4, 4.6, 4.6], 3, 3, CSNH));
       }
       // big cloud puffs at the lower sides and back
-      for (const [x, y, z, r] of [[-2, -8, 12, 7.5], [-2, -8, -12, 7.5], [-10, -6, 0, 8], [-8, 6, 10, 6.5], [-8, 6, -10, 6.5]]) prims.push(ellF(chain(headF, T(x, y, z)), [r, r * 0.85, r], 3, 3, CSNH_L));
+      for (const [x, y, z, r] of [[-2, -8, 12, 7.5], [-2, -8, -12, 7.5], [-10, -6, 0, 8], [-8, 6, 10, 6.5], [-8, 6, -10, 6.5]]) prims.push(ellF(chain(headF, T(x, y, z)), [r, r * 0.85, r], 3, 3, CSNH));
       // floating halo ring above the head
       const ringF = chain(headF, T(-3, 21, 0), R(M3.rz(0.22)));
       for (let i = 0; i < 16; i++) {
