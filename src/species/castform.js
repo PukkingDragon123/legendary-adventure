@@ -7,8 +7,9 @@
    units above the ground (see `bob`).
 
    Forms (pose.form):
-     'normal'  white-grey round head with a curled swirl on top, cupped by a
-               blue-grey cloud whose two ends curl up at its sides
+     'normal'  white round head with a curled swirl on top, sitting on a small grey
+               cloud body (lumpy bottom, little curled tail). Every form paints a big face
+               decal: a dark figure-8 eye mask, big black eyes with a shine, a small smile
      'sunny'   orange-red sun: yellow face disc ringed by eight flame-ray petals
                (the top one big and curling back)
      'rainy'   raindrop: pale-blue face in a dark-blue water "hood" that rises
@@ -42,7 +43,7 @@ const Castform = (() => {
     [SUNF]:   { r: ['#d8951c', '#f0b52c', '#fcd64e', '#ffe98a', '#fff7c8'], od: '#7a4410', ol: '#b06c18', ln: '#b87218' },
     [SUNR]:   { r: ['#a01e18', '#c43022', '#e2462e', '#f26442', '#ff8e6a'], od: '#5a0c08', ol: '#8e1c12', ln: '#8e1c12' },
     [SUNO]:   { r: ['#c4601a', '#e07e2e', '#f59c46', '#ffb86a', '#ffd69c'], od: '#6e2c08', ol: '#a04a14', ln: '#a44c14' },
-    [RAINF]:  { r: ['#5a9fd6', '#7ebeea', '#a4daf8', '#c8ecfd', '#eefaff'], od: '#1b4c8a', ol: '#3a76b6', ln: '#3c7aba' },
+    [RAINF]:  { r: ['#3a82c6', '#56a0de', '#78bef0', '#a2d8fa', '#d8f2ff'], od: '#1b4c8a', ol: '#3a76b6', ln: '#3c7aba' },
     [RAINH]:  { r: ['#1c4696', '#2a60ba', '#3c80da', '#5fa0ee', '#9ccaf8'], od: '#0c2256', ol: '#1c448c', ln: '#1c4088' },
     [SNOWF]:  { r: ['#7a70b8', '#968ed0', '#b2aae2', '#ccc6f0', '#ebe8ff'], od: '#3a3280', ol: '#5e56a4', ln: '#6058a8' },
     [SNOWM]:  { r: ['#44357e', '#5a4896', '#7362b2', '#9080c8', '#b2a6de'], od: '#221a50', ol: '#3a2e70', ln: '#3a2e70' },
@@ -236,14 +237,8 @@ const Castform = (() => {
       const WC = nrm([1, -0.08, 0]);
       prims.push(ellF(headF, HR, 2, 2, (s) => (dot(s, WC) > WIN ? 0 : CSNH())));
       const ang = Math.acos(WIN), rr = Math.sin(ang);
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2 + Math.PI / 2;
-        const dir = nrm(add(sc(WC, Math.cos(ang) * 0.82), add(sc([0, 1, 0], rr * 1.18 * Math.sin(a)), sc([0, 0, 1], rr * 1.18 * Math.cos(a)))));
-        const p = [dir[0] * HR[0], dir[1] * HR[1], dir[2] * HR[2]];
-        prims.push(ellAlong(headF, p, dir, [0, 1, 0], [3.4, 4.6, 4.6], 3, 3, CSNH));
-      }
-      // big cloud puffs at the lower sides and back
-      for (const [x, y, z, r] of [[-2, -8, 12, 7.5], [-2, -8, -12, 7.5], [-10, -6, 0, 8], [-8, 6, 10, 6.5], [-8, 6, -10, 6.5]]) prims.push(ellF(chain(headF, T(x, y, z)), [r, r * 0.85, r], 3, 3, CSNH));
+      // big soft cloud puffs round the lower sides and the back
+      for (const [x, y, z, r] of [[-1, -9, 12.5, 7.4], [-1, -9, -12.5, 7.4], [-10, -7, 0, 8], [-9, 7, 11, 6.2], [-9, 7, -11, 6.2], [-11, 1, 0, 8]]) prims.push(ellF(chain(headF, T(x, y, z)), [r, r * 0.85, r], 3, 3, CSNH));
       // floating halo ring above the head
       const ringF = chain(headF, T(-3, 21, 0), R(M3.rz(0.22)));
       for (let i = 0; i < 16; i++) {
@@ -277,11 +272,11 @@ const Castform = (() => {
       shadowSteps: 16, shadowDepth: 10,
     };
   }
-  const CH = code(HEAD), CH_F = K(HEAD), CC = K(CLOUD), CW = K(HEAD), CSO = K(SUNO), CRH = K(RAINH);
+  const CH = code(HEAD), CH_F = K(HEAD), CC = K(CLOUD), CW = K(HEAD), CSO = K(SUNO), CRH = K(RAINF);
   const CSNH = K(SNOWH), CSNH_L = K(SNOWH, 1), CICE = K(ICE);
   const FN = { base: CH, mask: code(MASK), R: 15.5 };
   const FS = { base: code(SUNR), mask: code(SUNF), ring: code(SUNF), R: 12.6 };
-  const FR_ = { base: code(RAINF), mask: code(RAINH), R: 14 };
+  const FR_ = { base: code(ICE), mask: code(RAINH), R: 14 };
   const FSN = { base: code(SNOWF), mask: code(SNOWM), R: 14 };
 
   function render(model, opt) {

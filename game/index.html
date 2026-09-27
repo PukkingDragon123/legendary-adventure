@@ -2160,8 +2160,9 @@ const Bagon = (() => {
    units above the ground (see `bob`).
 
    Forms (pose.form):
-     'normal'  white-grey round head with a curled swirl on top, cupped by a
-               blue-grey cloud whose two ends curl up at its sides
+     'normal'  white round head with a curled swirl on top, sitting on a small grey
+               cloud body (lumpy bottom, little curled tail). Every form paints a big face
+               decal: a dark figure-8 eye mask, big black eyes with a shine, a small smile
      'sunny'   orange-red sun: yellow face disc ringed by eight flame-ray petals
                (the top one big and curling back)
      'rainy'   raindrop: pale-blue face in a dark-blue water "hood" that rises
@@ -2195,7 +2196,7 @@ const Castform = (() => {
     [SUNF]:   { r: ['#d8951c', '#f0b52c', '#fcd64e', '#ffe98a', '#fff7c8'], od: '#7a4410', ol: '#b06c18', ln: '#b87218' },
     [SUNR]:   { r: ['#a01e18', '#c43022', '#e2462e', '#f26442', '#ff8e6a'], od: '#5a0c08', ol: '#8e1c12', ln: '#8e1c12' },
     [SUNO]:   { r: ['#c4601a', '#e07e2e', '#f59c46', '#ffb86a', '#ffd69c'], od: '#6e2c08', ol: '#a04a14', ln: '#a44c14' },
-    [RAINF]:  { r: ['#5a9fd6', '#7ebeea', '#a4daf8', '#c8ecfd', '#eefaff'], od: '#1b4c8a', ol: '#3a76b6', ln: '#3c7aba' },
+    [RAINF]:  { r: ['#3a82c6', '#56a0de', '#78bef0', '#a2d8fa', '#d8f2ff'], od: '#1b4c8a', ol: '#3a76b6', ln: '#3c7aba' },
     [RAINH]:  { r: ['#1c4696', '#2a60ba', '#3c80da', '#5fa0ee', '#9ccaf8'], od: '#0c2256', ol: '#1c448c', ln: '#1c4088' },
     [SNOWF]:  { r: ['#7a70b8', '#968ed0', '#b2aae2', '#ccc6f0', '#ebe8ff'], od: '#3a3280', ol: '#5e56a4', ln: '#6058a8' },
     [SNOWM]:  { r: ['#44357e', '#5a4896', '#7362b2', '#9080c8', '#b2a6de'], od: '#221a50', ol: '#3a2e70', ln: '#3a2e70' },
@@ -2389,14 +2390,8 @@ const Castform = (() => {
       const WC = nrm([1, -0.08, 0]);
       prims.push(ellF(headF, HR, 2, 2, (s) => (dot(s, WC) > WIN ? 0 : CSNH())));
       const ang = Math.acos(WIN), rr = Math.sin(ang);
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2 + Math.PI / 2;
-        const dir = nrm(add(sc(WC, Math.cos(ang) * 0.82), add(sc([0, 1, 0], rr * 1.18 * Math.sin(a)), sc([0, 0, 1], rr * 1.18 * Math.cos(a)))));
-        const p = [dir[0] * HR[0], dir[1] * HR[1], dir[2] * HR[2]];
-        prims.push(ellAlong(headF, p, dir, [0, 1, 0], [3.4, 4.6, 4.6], 3, 3, CSNH));
-      }
-      // big cloud puffs at the lower sides and back
-      for (const [x, y, z, r] of [[-2, -8, 12, 7.5], [-2, -8, -12, 7.5], [-10, -6, 0, 8], [-8, 6, 10, 6.5], [-8, 6, -10, 6.5]]) prims.push(ellF(chain(headF, T(x, y, z)), [r, r * 0.85, r], 3, 3, CSNH));
+      // big soft cloud puffs round the lower sides and the back
+      for (const [x, y, z, r] of [[-1, -9, 12.5, 7.4], [-1, -9, -12.5, 7.4], [-10, -7, 0, 8], [-9, 7, 11, 6.2], [-9, 7, -11, 6.2], [-11, 1, 0, 8]]) prims.push(ellF(chain(headF, T(x, y, z)), [r, r * 0.85, r], 3, 3, CSNH));
       // floating halo ring above the head
       const ringF = chain(headF, T(-3, 21, 0), R(M3.rz(0.22)));
       for (let i = 0; i < 16; i++) {
@@ -2430,11 +2425,11 @@ const Castform = (() => {
       shadowSteps: 16, shadowDepth: 10,
     };
   }
-  const CH = code(HEAD), CH_F = K(HEAD), CC = K(CLOUD), CW = K(HEAD), CSO = K(SUNO), CRH = K(RAINH);
+  const CH = code(HEAD), CH_F = K(HEAD), CC = K(CLOUD), CW = K(HEAD), CSO = K(SUNO), CRH = K(RAINF);
   const CSNH = K(SNOWH), CSNH_L = K(SNOWH, 1), CICE = K(ICE);
   const FN = { base: CH, mask: code(MASK), R: 15.5 };
   const FS = { base: code(SUNR), mask: code(SUNF), ring: code(SUNF), R: 12.6 };
-  const FR_ = { base: code(RAINF), mask: code(RAINH), R: 14 };
+  const FR_ = { base: code(ICE), mask: code(RAINH), R: 14 };
   const FSN = { base: code(SNOWF), mask: code(SNOWM), R: 14 };
 
   function render(model, opt) {
@@ -10532,7 +10527,7 @@ const Sharpedo = (() => {
   const LIP_Y = -5;                                  // mouth plane (model units)
   const LIP_S = (LIP_Y - SKULL_C[1]) / SKULL_R[1];   // ... in skull unit-sphere v
   const HINGE = [18, LIP_Y, 0];                      // mouth corner (under / in front of the eye)
-  const JAW_C = [50, -7, 0], JAW_R = [76, 25, 33];   // lower jaw, in the hinge frame
+  const JAW_C = [42, -7, 0], JAW_R = [62, 25, 33];   // lower jaw, in the hinge frame
   const JAW_S = -JAW_C[1] / JAW_R[1];                // its lip plane in jaw unit-sphere v
   const BODY_C = [-40, 7, 0], BODY_R = [104, 45, 38];
   const STOCK_C = [-146, 9, 0], STOCK_R = [46, 13, 9];
@@ -10541,6 +10536,9 @@ const Sharpedo = (() => {
 
   // cut-face ellipses (x-z) of the skull and the jaw at their lip planes
   const SK_K = Math.sqrt(1 - LIP_S * LIP_S), JW_K = Math.sqrt(1 - JAW_S * JAW_S);
+  const JAW_TIP_X = HINGE[0] + JAW_C[0] + JAW_R[0] * JW_K + 2;   // front of the lower jaw: the snout juts out beyond it
+  // white snout cap: everything ahead of a line slanting back toward the lip
+  const capWhite = (x, y) => x > 148 - 0.55 * (y - LIP_Y);
   const tri = (x) => 1 - Math.abs((x - Math.floor(x)) * 2 - 1);
 
   /* ---------- skull surface: navy top, white snout tip / lip rim, star, eye gills ---------- */
@@ -10552,10 +10550,10 @@ const Sharpedo = (() => {
   const skullMat = (s) => {
     const x = SKULL_C[0] + SKULL_R[0] * s[0], y = SKULL_C[1] + SKULL_R[1] * s[1], z = SKULL_R[2] * s[2];
     // cut at the lip plane in front of the hinge (the lower jaw and the gape live there)
-    if (s[1] < LIP_S && x > HINGE[0] - 4) return 0;
+    if (s[1] < LIP_S && x > HINGE[0] - 4) return x > JAW_TIP_X ? C_WHITE : 0;
     // yellow four-point star on top of the snout
     if (s[1] > 0.3 && s[0] > 0) {
-      const q = Math.sqrt(Math.abs(x - 110) / 26) + Math.sqrt(Math.abs(z) / 20);
+      const q = Math.sqrt(Math.abs(x - 116) / 30) + Math.sqrt(Math.abs(z) / 24);
       if (q < 1) return C_STAR;
     }
     // gill slits: three black arcs behind the eye
@@ -10567,8 +10565,7 @@ const Sharpedo = (() => {
       }
     }
     // white snout tip and a thin white lip rim; navy everywhere else above the mouth
-    const front = x - (SKULL_C[0] + SKULL_R[0] * 0.8);
-    if (x > HINGE[0] - 4 && (y < LIP_Y + 2.5 || front > 0 && y < LIP_Y + 2.5 + front * 0.9)) return C_WHITE;
+    if (x > HINGE[0] - 4 && (y < LIP_Y + 2.5 || capWhite(x, y))) return C_WHITE;
     // behind the hinge: white throat under a zig-zag edge
     if (x <= HINGE[0] - 4 && y < LIP_Y - 4 + 5 * tri(x / 14)) return C_WHITE;
     return C_NAVY;
@@ -10622,13 +10619,16 @@ const Sharpedo = (() => {
     const skullF = chain(front, T(...SKULL_C));
     const skull = ellF(skullF, SKULL_R, 1, 1, skullMat);
     prims.push(skull);
-    // narrower nose tip in front of the skull: sharpens the snout into a cone
-    const NOSE_C = [142, 1, 0], NOSE_R = [24, 14, 17];
-    prims.push(ellF(chain(front, T(...NOSE_C)), NOSE_R, 1, 1, (q) => {
-      const x = NOSE_C[0] + NOSE_R[0] * q[0], y = NOSE_C[1] + NOSE_R[1] * q[1];
-      if (y < LIP_Y) return 0;
-      return y < LIP_Y + 2.5 + Math.max(0, x - (SKULL_C[0] + SKULL_R[0] * 0.8)) * 0.9 ? C_WHITE : C_NAVY;
-    }));
+    // long pointed snout jutting well forward of the lower jaw (white cap), drooping a touch at the tip
+    const noseMat = (NC, NR) => (q) => {
+      const x = NC[0] + NR[0] * q[0], y = NC[1] + NR[1] * q[1];
+      if (y < LIP_Y && x < JAW_TIP_X) return 0;
+      if (q[1] > 0.3 && x < 146) { const k = Math.sqrt(Math.abs(x - 116) / 30) + Math.sqrt(Math.abs(NR[2] * q[2]) / 24); if (k < 1) return C_STAR; }
+      return y < LIP_Y + 2.5 || capWhite(x, y) ? C_WHITE : C_NAVY;
+    };
+    for (const [NC, NR] of [[[128, 6, 0], [40, 28, 28]], [[160, 2, 0], [30, 17, 19]], [[186, -1, 0], [18, 10, 12]], [[200, -2.5, 0], [8, 5, 6]]]) {
+      prims.push(ellF(chain(front, T(...NC)), NR, 1, 1, noseMat(NC, NR)));
+    }
 
     /* --- lower jaw, hinged at the back of the mouth; cut flat at its lip plane */
     const open = 0.045 + mo * 0.6;   // a sliver of gape even when shut: the dark mouth line + teeth read from the side
@@ -10638,7 +10638,7 @@ const Sharpedo = (() => {
     // tongue lying on the jaw floor (visible in the gape)
     if (mo > 0.04) prims.push(ellF(chain(jawF, T(-8, JAW_R[1] * JAW_S - 2, 0)), [JAW_R[0] * JW_K * 0.7, 3.5, JAW_R[2] * JW_K * 0.6], 6, 5, () => C_TONGUE));
     // dark throat filling the gape (hidden inside the head when the jaws are shut)
-    prims.push(ellF(chain(front, T(62, LIP_Y - 3, 0)), [78, 9 + mo * 16, 27], 5, 5, () => C_THROAT));
+    prims.push(ellF(chain(front, T(58, LIP_Y - 3, 0)), [64, 9 + mo * 16, 27], 5, 5, () => C_THROAT));
 
     /* --- teeth: upper row hangs from the skull's lip rim, lower row stands on the jaw rim */
     const toothAt = (frame, rx, rz, th, dirY, id, grow) => {
@@ -10651,7 +10651,7 @@ const Sharpedo = (() => {
       return PL(inF(frame, pos), L, id, id, TOOTH_S, 1.6);
     };
     const upF = chain(skullF, T(0, LIP_Y - SKULL_C[1] + 1.5, 0));
-    for (const th of UPPER_TEETH) prims.push(toothAt(upF, SKULL_R[0] * SK_K, SKULL_R[2] * SK_K, th, -1, 7, 1 - 0.14 * Math.abs(th)));
+    for (const th of UPPER_TEETH) if (SKULL_R[0] * SK_K * Math.cos(th) + SKULL_C[0] < JAW_TIP_X - 6) prims.push(toothAt(upF, SKULL_R[0] * SK_K, SKULL_R[2] * SK_K, th, -1, 7, 1 - 0.14 * Math.abs(th)));
     const lowF = chain(jawF, T(0, JAW_R[1] * JAW_S - 1.5, 0));
     for (const th of LOWER_TEETH) prims.push(toothAt(lowF, JAW_R[0] * JW_K, JAW_R[2] * JW_K, th, 1, 7, 0.92 - 0.14 * Math.abs(th)));
 
@@ -10687,7 +10687,7 @@ const Sharpedo = (() => {
     Object.assign(anchors, {
       top: inF(dF, [-52, 104, 0]),
       head: skullF.t,
-      mouth: inF(front, [SKULL_C[0] + SKULL_R[0] * 0.7, LIP_Y - 12 * mo, 0]),
+      mouth: inF(front, [(HINGE[0] + JAW_TIP_X) / 2 + 10, LIP_Y - 12 * mo, 0]),
       jawTip: inF(jawF, [JAW_R[0] * 0.95, 0, 0]),
       body: bodyF.t,
       tail: inF(tfF, [-60, 0, 0]),
@@ -16657,8 +16657,9 @@ const Bagon = (() => {
    units above the ground (see `bob`).
 
    Forms (pose.form):
-     'normal'  white-grey round head with a curled swirl on top, cupped by a
-               blue-grey cloud whose two ends curl up at its sides
+     'normal'  white round head with a curled swirl on top, sitting on a small grey
+               cloud body (lumpy bottom, little curled tail). Every form paints a big face
+               decal: a dark figure-8 eye mask, big black eyes with a shine, a small smile
      'sunny'   orange-red sun: yellow face disc ringed by eight flame-ray petals
                (the top one big and curling back)
      'rainy'   raindrop: pale-blue face in a dark-blue water "hood" that rises
@@ -16692,7 +16693,7 @@ const Castform = (() => {
     [SUNF]:   { r: ['#d8951c', '#f0b52c', '#fcd64e', '#ffe98a', '#fff7c8'], od: '#7a4410', ol: '#b06c18', ln: '#b87218' },
     [SUNR]:   { r: ['#a01e18', '#c43022', '#e2462e', '#f26442', '#ff8e6a'], od: '#5a0c08', ol: '#8e1c12', ln: '#8e1c12' },
     [SUNO]:   { r: ['#c4601a', '#e07e2e', '#f59c46', '#ffb86a', '#ffd69c'], od: '#6e2c08', ol: '#a04a14', ln: '#a44c14' },
-    [RAINF]:  { r: ['#5a9fd6', '#7ebeea', '#a4daf8', '#c8ecfd', '#eefaff'], od: '#1b4c8a', ol: '#3a76b6', ln: '#3c7aba' },
+    [RAINF]:  { r: ['#3a82c6', '#56a0de', '#78bef0', '#a2d8fa', '#d8f2ff'], od: '#1b4c8a', ol: '#3a76b6', ln: '#3c7aba' },
     [RAINH]:  { r: ['#1c4696', '#2a60ba', '#3c80da', '#5fa0ee', '#9ccaf8'], od: '#0c2256', ol: '#1c448c', ln: '#1c4088' },
     [SNOWF]:  { r: ['#7a70b8', '#968ed0', '#b2aae2', '#ccc6f0', '#ebe8ff'], od: '#3a3280', ol: '#5e56a4', ln: '#6058a8' },
     [SNOWM]:  { r: ['#44357e', '#5a4896', '#7362b2', '#9080c8', '#b2a6de'], od: '#221a50', ol: '#3a2e70', ln: '#3a2e70' },
@@ -16886,14 +16887,8 @@ const Castform = (() => {
       const WC = nrm([1, -0.08, 0]);
       prims.push(ellF(headF, HR, 2, 2, (s) => (dot(s, WC) > WIN ? 0 : CSNH())));
       const ang = Math.acos(WIN), rr = Math.sin(ang);
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2 + Math.PI / 2;
-        const dir = nrm(add(sc(WC, Math.cos(ang) * 0.82), add(sc([0, 1, 0], rr * 1.18 * Math.sin(a)), sc([0, 0, 1], rr * 1.18 * Math.cos(a)))));
-        const p = [dir[0] * HR[0], dir[1] * HR[1], dir[2] * HR[2]];
-        prims.push(ellAlong(headF, p, dir, [0, 1, 0], [3.4, 4.6, 4.6], 3, 3, CSNH));
-      }
-      // big cloud puffs at the lower sides and back
-      for (const [x, y, z, r] of [[-2, -8, 12, 7.5], [-2, -8, -12, 7.5], [-10, -6, 0, 8], [-8, 6, 10, 6.5], [-8, 6, -10, 6.5]]) prims.push(ellF(chain(headF, T(x, y, z)), [r, r * 0.85, r], 3, 3, CSNH));
+      // big soft cloud puffs round the lower sides and the back
+      for (const [x, y, z, r] of [[-1, -9, 12.5, 7.4], [-1, -9, -12.5, 7.4], [-10, -7, 0, 8], [-9, 7, 11, 6.2], [-9, 7, -11, 6.2], [-11, 1, 0, 8]]) prims.push(ellF(chain(headF, T(x, y, z)), [r, r * 0.85, r], 3, 3, CSNH));
       // floating halo ring above the head
       const ringF = chain(headF, T(-3, 21, 0), R(M3.rz(0.22)));
       for (let i = 0; i < 16; i++) {
@@ -16927,11 +16922,11 @@ const Castform = (() => {
       shadowSteps: 16, shadowDepth: 10,
     };
   }
-  const CH = code(HEAD), CH_F = K(HEAD), CC = K(CLOUD), CW = K(HEAD), CSO = K(SUNO), CRH = K(RAINH);
+  const CH = code(HEAD), CH_F = K(HEAD), CC = K(CLOUD), CW = K(HEAD), CSO = K(SUNO), CRH = K(RAINF);
   const CSNH = K(SNOWH), CSNH_L = K(SNOWH, 1), CICE = K(ICE);
   const FN = { base: CH, mask: code(MASK), R: 15.5 };
   const FS = { base: code(SUNR), mask: code(SUNF), ring: code(SUNF), R: 12.6 };
-  const FR_ = { base: code(RAINF), mask: code(RAINH), R: 14 };
+  const FR_ = { base: code(ICE), mask: code(RAINH), R: 14 };
   const FSN = { base: code(SNOWF), mask: code(SNOWM), R: 14 };
 
   function render(model, opt) {
@@ -25054,7 +25049,7 @@ const Sharpedo = (() => {
   const LIP_Y = -5;                                  // mouth plane (model units)
   const LIP_S = (LIP_Y - SKULL_C[1]) / SKULL_R[1];   // ... in skull unit-sphere v
   const HINGE = [18, LIP_Y, 0];                      // mouth corner (under / in front of the eye)
-  const JAW_C = [50, -7, 0], JAW_R = [76, 25, 33];   // lower jaw, in the hinge frame
+  const JAW_C = [42, -7, 0], JAW_R = [62, 25, 33];   // lower jaw, in the hinge frame
   const JAW_S = -JAW_C[1] / JAW_R[1];                // its lip plane in jaw unit-sphere v
   const BODY_C = [-40, 7, 0], BODY_R = [104, 45, 38];
   const STOCK_C = [-146, 9, 0], STOCK_R = [46, 13, 9];
@@ -25063,6 +25058,9 @@ const Sharpedo = (() => {
 
   // cut-face ellipses (x-z) of the skull and the jaw at their lip planes
   const SK_K = Math.sqrt(1 - LIP_S * LIP_S), JW_K = Math.sqrt(1 - JAW_S * JAW_S);
+  const JAW_TIP_X = HINGE[0] + JAW_C[0] + JAW_R[0] * JW_K + 2;   // front of the lower jaw: the snout juts out beyond it
+  // white snout cap: everything ahead of a line slanting back toward the lip
+  const capWhite = (x, y) => x > 148 - 0.55 * (y - LIP_Y);
   const tri = (x) => 1 - Math.abs((x - Math.floor(x)) * 2 - 1);
 
   /* ---------- skull surface: navy top, white snout tip / lip rim, star, eye gills ---------- */
@@ -25074,10 +25072,10 @@ const Sharpedo = (() => {
   const skullMat = (s) => {
     const x = SKULL_C[0] + SKULL_R[0] * s[0], y = SKULL_C[1] + SKULL_R[1] * s[1], z = SKULL_R[2] * s[2];
     // cut at the lip plane in front of the hinge (the lower jaw and the gape live there)
-    if (s[1] < LIP_S && x > HINGE[0] - 4) return 0;
+    if (s[1] < LIP_S && x > HINGE[0] - 4) return x > JAW_TIP_X ? C_WHITE : 0;
     // yellow four-point star on top of the snout
     if (s[1] > 0.3 && s[0] > 0) {
-      const q = Math.sqrt(Math.abs(x - 110) / 26) + Math.sqrt(Math.abs(z) / 20);
+      const q = Math.sqrt(Math.abs(x - 116) / 30) + Math.sqrt(Math.abs(z) / 24);
       if (q < 1) return C_STAR;
     }
     // gill slits: three black arcs behind the eye
@@ -25089,8 +25087,7 @@ const Sharpedo = (() => {
       }
     }
     // white snout tip and a thin white lip rim; navy everywhere else above the mouth
-    const front = x - (SKULL_C[0] + SKULL_R[0] * 0.8);
-    if (x > HINGE[0] - 4 && (y < LIP_Y + 2.5 || front > 0 && y < LIP_Y + 2.5 + front * 0.9)) return C_WHITE;
+    if (x > HINGE[0] - 4 && (y < LIP_Y + 2.5 || capWhite(x, y))) return C_WHITE;
     // behind the hinge: white throat under a zig-zag edge
     if (x <= HINGE[0] - 4 && y < LIP_Y - 4 + 5 * tri(x / 14)) return C_WHITE;
     return C_NAVY;
@@ -25144,13 +25141,16 @@ const Sharpedo = (() => {
     const skullF = chain(front, T(...SKULL_C));
     const skull = ellF(skullF, SKULL_R, 1, 1, skullMat);
     prims.push(skull);
-    // narrower nose tip in front of the skull: sharpens the snout into a cone
-    const NOSE_C = [142, 1, 0], NOSE_R = [24, 14, 17];
-    prims.push(ellF(chain(front, T(...NOSE_C)), NOSE_R, 1, 1, (q) => {
-      const x = NOSE_C[0] + NOSE_R[0] * q[0], y = NOSE_C[1] + NOSE_R[1] * q[1];
-      if (y < LIP_Y) return 0;
-      return y < LIP_Y + 2.5 + Math.max(0, x - (SKULL_C[0] + SKULL_R[0] * 0.8)) * 0.9 ? C_WHITE : C_NAVY;
-    }));
+    // long pointed snout jutting well forward of the lower jaw (white cap), drooping a touch at the tip
+    const noseMat = (NC, NR) => (q) => {
+      const x = NC[0] + NR[0] * q[0], y = NC[1] + NR[1] * q[1];
+      if (y < LIP_Y && x < JAW_TIP_X) return 0;
+      if (q[1] > 0.3 && x < 146) { const k = Math.sqrt(Math.abs(x - 116) / 30) + Math.sqrt(Math.abs(NR[2] * q[2]) / 24); if (k < 1) return C_STAR; }
+      return y < LIP_Y + 2.5 || capWhite(x, y) ? C_WHITE : C_NAVY;
+    };
+    for (const [NC, NR] of [[[128, 6, 0], [40, 28, 28]], [[160, 2, 0], [30, 17, 19]], [[186, -1, 0], [18, 10, 12]], [[200, -2.5, 0], [8, 5, 6]]]) {
+      prims.push(ellF(chain(front, T(...NC)), NR, 1, 1, noseMat(NC, NR)));
+    }
 
     /* --- lower jaw, hinged at the back of the mouth; cut flat at its lip plane */
     const open = 0.045 + mo * 0.6;   // a sliver of gape even when shut: the dark mouth line + teeth read from the side
@@ -25160,7 +25160,7 @@ const Sharpedo = (() => {
     // tongue lying on the jaw floor (visible in the gape)
     if (mo > 0.04) prims.push(ellF(chain(jawF, T(-8, JAW_R[1] * JAW_S - 2, 0)), [JAW_R[0] * JW_K * 0.7, 3.5, JAW_R[2] * JW_K * 0.6], 6, 5, () => C_TONGUE));
     // dark throat filling the gape (hidden inside the head when the jaws are shut)
-    prims.push(ellF(chain(front, T(62, LIP_Y - 3, 0)), [78, 9 + mo * 16, 27], 5, 5, () => C_THROAT));
+    prims.push(ellF(chain(front, T(58, LIP_Y - 3, 0)), [64, 9 + mo * 16, 27], 5, 5, () => C_THROAT));
 
     /* --- teeth: upper row hangs from the skull's lip rim, lower row stands on the jaw rim */
     const toothAt = (frame, rx, rz, th, dirY, id, grow) => {
@@ -25173,7 +25173,7 @@ const Sharpedo = (() => {
       return PL(inF(frame, pos), L, id, id, TOOTH_S, 1.6);
     };
     const upF = chain(skullF, T(0, LIP_Y - SKULL_C[1] + 1.5, 0));
-    for (const th of UPPER_TEETH) prims.push(toothAt(upF, SKULL_R[0] * SK_K, SKULL_R[2] * SK_K, th, -1, 7, 1 - 0.14 * Math.abs(th)));
+    for (const th of UPPER_TEETH) if (SKULL_R[0] * SK_K * Math.cos(th) + SKULL_C[0] < JAW_TIP_X - 6) prims.push(toothAt(upF, SKULL_R[0] * SK_K, SKULL_R[2] * SK_K, th, -1, 7, 1 - 0.14 * Math.abs(th)));
     const lowF = chain(jawF, T(0, JAW_R[1] * JAW_S - 1.5, 0));
     for (const th of LOWER_TEETH) prims.push(toothAt(lowF, JAW_R[0] * JW_K, JAW_R[2] * JW_K, th, 1, 7, 0.92 - 0.14 * Math.abs(th)));
 
@@ -25209,7 +25209,7 @@ const Sharpedo = (() => {
     Object.assign(anchors, {
       top: inF(dF, [-52, 104, 0]),
       head: skullF.t,
-      mouth: inF(front, [SKULL_C[0] + SKULL_R[0] * 0.7, LIP_Y - 12 * mo, 0]),
+      mouth: inF(front, [(HINGE[0] + JAW_TIP_X) / 2 + 10, LIP_Y - 12 * mo, 0]),
       jawTip: inF(jawF, [JAW_R[0] * 0.95, 0, 0]),
       body: bodyF.t,
       tail: inF(tfF, [-60, 0, 0]),

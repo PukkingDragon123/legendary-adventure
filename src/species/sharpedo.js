@@ -66,7 +66,7 @@ const Sharpedo = (() => {
   const LIP_Y = -5;                                  // mouth plane (model units)
   const LIP_S = (LIP_Y - SKULL_C[1]) / SKULL_R[1];   // ... in skull unit-sphere v
   const HINGE = [18, LIP_Y, 0];                      // mouth corner (under / in front of the eye)
-  const JAW_C = [50, -7, 0], JAW_R = [76, 25, 33];   // lower jaw, in the hinge frame
+  const JAW_C = [42, -7, 0], JAW_R = [62, 25, 33];   // lower jaw, in the hinge frame
   const JAW_S = -JAW_C[1] / JAW_R[1];                // its lip plane in jaw unit-sphere v
   const BODY_C = [-40, 7, 0], BODY_R = [104, 45, 38];
   const STOCK_C = [-146, 9, 0], STOCK_R = [46, 13, 9];
@@ -75,6 +75,9 @@ const Sharpedo = (() => {
 
   // cut-face ellipses (x-z) of the skull and the jaw at their lip planes
   const SK_K = Math.sqrt(1 - LIP_S * LIP_S), JW_K = Math.sqrt(1 - JAW_S * JAW_S);
+  const JAW_TIP_X = HINGE[0] + JAW_C[0] + JAW_R[0] * JW_K + 2;   // front of the lower jaw: the snout juts out beyond it
+  // white snout cap: everything ahead of a line slanting back toward the lip
+  const capWhite = (x, y) => x > 148 - 0.55 * (y - LIP_Y);
   const tri = (x) => 1 - Math.abs((x - Math.floor(x)) * 2 - 1);
 
   /* ---------- skull surface: navy top, white snout tip / lip rim, star, eye gills ---------- */
@@ -86,10 +89,10 @@ const Sharpedo = (() => {
   const skullMat = (s) => {
     const x = SKULL_C[0] + SKULL_R[0] * s[0], y = SKULL_C[1] + SKULL_R[1] * s[1], z = SKULL_R[2] * s[2];
     // cut at the lip plane in front of the hinge (the lower jaw and the gape live there)
-    if (s[1] < LIP_S && x > HINGE[0] - 4) return 0;
+    if (s[1] < LIP_S && x > HINGE[0] - 4) return x > JAW_TIP_X ? C_WHITE : 0;
     // yellow four-point star on top of the snout
     if (s[1] > 0.3 && s[0] > 0) {
-      const q = Math.sqrt(Math.abs(x - 110) / 26) + Math.sqrt(Math.abs(z) / 20);
+      const q = Math.sqrt(Math.abs(x - 116) / 30) + Math.sqrt(Math.abs(z) / 24);
       if (q < 1) return C_STAR;
     }
     // gill slits: three black arcs behind the eye
@@ -101,8 +104,7 @@ const Sharpedo = (() => {
       }
     }
     // white snout tip and a thin white lip rim; navy everywhere else above the mouth
-    const front = x - (SKULL_C[0] + SKULL_R[0] * 0.8);
-    if (x > HINGE[0] - 4 && (y < LIP_Y + 2.5 || front > 0 && y < LIP_Y + 2.5 + front * 0.9)) return C_WHITE;
+    if (x > HINGE[0] - 4 && (y < LIP_Y + 2.5 || capWhite(x, y))) return C_WHITE;
     // behind the hinge: white throat under a zig-zag edge
     if (x <= HINGE[0] - 4 && y < LIP_Y - 4 + 5 * tri(x / 14)) return C_WHITE;
     return C_NAVY;
@@ -156,13 +158,16 @@ const Sharpedo = (() => {
     const skullF = chain(front, T(...SKULL_C));
     const skull = ellF(skullF, SKULL_R, 1, 1, skullMat);
     prims.push(skull);
-    // narrower nose tip in front of the skull: sharpens the snout into a cone
-    const NOSE_C = [142, 1, 0], NOSE_R = [24, 14, 17];
-    prims.push(ellF(chain(front, T(...NOSE_C)), NOSE_R, 1, 1, (q) => {
-      const x = NOSE_C[0] + NOSE_R[0] * q[0], y = NOSE_C[1] + NOSE_R[1] * q[1];
-      if (y < LIP_Y) return 0;
-      return y < LIP_Y + 2.5 + Math.max(0, x - (SKULL_C[0] + SKULL_R[0] * 0.8)) * 0.9 ? C_WHITE : C_NAVY;
-    }));
+    // long pointed snout jutting well forward of the lower jaw (white cap), drooping a touch at the tip
+    const noseMat = (NC, NR) => (q) => {
+      const x = NC[0] + NR[0] * q[0], y = NC[1] + NR[1] * q[1];
+      if (y < LIP_Y && x < JAW_TIP_X) return 0;
+      if (q[1] > 0.3 && x < 146) { const k = Math.sqrt(Math.abs(x - 116) / 30) + Math.sqrt(Math.abs(NR[2] * q[2]) / 24); if (k < 1) return C_STAR; }
+      return y < LIP_Y + 2.5 || capWhite(x, y) ? C_WHITE : C_NAVY;
+    };
+    for (const [NC, NR] of [[[128, 6, 0], [40, 28, 28]], [[160, 2, 0], [30, 17, 19]], [[186, -1, 0], [18, 10, 12]], [[200, -2.5, 0], [8, 5, 6]]]) {
+      prims.push(ellF(chain(front, T(...NC)), NR, 1, 1, noseMat(NC, NR)));
+    }
 
     /* --- lower jaw, hinged at the back of the mouth; cut flat at its lip plane */
     const open = 0.045 + mo * 0.6;   // a sliver of gape even when shut: the dark mouth line + teeth read from the side
@@ -172,7 +177,7 @@ const Sharpedo = (() => {
     // tongue lying on the jaw floor (visible in the gape)
     if (mo > 0.04) prims.push(ellF(chain(jawF, T(-8, JAW_R[1] * JAW_S - 2, 0)), [JAW_R[0] * JW_K * 0.7, 3.5, JAW_R[2] * JW_K * 0.6], 6, 5, () => C_TONGUE));
     // dark throat filling the gape (hidden inside the head when the jaws are shut)
-    prims.push(ellF(chain(front, T(62, LIP_Y - 3, 0)), [78, 9 + mo * 16, 27], 5, 5, () => C_THROAT));
+    prims.push(ellF(chain(front, T(58, LIP_Y - 3, 0)), [64, 9 + mo * 16, 27], 5, 5, () => C_THROAT));
 
     /* --- teeth: upper row hangs from the skull's lip rim, lower row stands on the jaw rim */
     const toothAt = (frame, rx, rz, th, dirY, id, grow) => {
@@ -185,7 +190,7 @@ const Sharpedo = (() => {
       return PL(inF(frame, pos), L, id, id, TOOTH_S, 1.6);
     };
     const upF = chain(skullF, T(0, LIP_Y - SKULL_C[1] + 1.5, 0));
-    for (const th of UPPER_TEETH) prims.push(toothAt(upF, SKULL_R[0] * SK_K, SKULL_R[2] * SK_K, th, -1, 7, 1 - 0.14 * Math.abs(th)));
+    for (const th of UPPER_TEETH) if (SKULL_R[0] * SK_K * Math.cos(th) + SKULL_C[0] < JAW_TIP_X - 6) prims.push(toothAt(upF, SKULL_R[0] * SK_K, SKULL_R[2] * SK_K, th, -1, 7, 1 - 0.14 * Math.abs(th)));
     const lowF = chain(jawF, T(0, JAW_R[1] * JAW_S - 1.5, 0));
     for (const th of LOWER_TEETH) prims.push(toothAt(lowF, JAW_R[0] * JW_K, JAW_R[2] * JW_K, th, 1, 7, 0.92 - 0.14 * Math.abs(th)));
 
@@ -221,7 +226,7 @@ const Sharpedo = (() => {
     Object.assign(anchors, {
       top: inF(dF, [-52, 104, 0]),
       head: skullF.t,
-      mouth: inF(front, [SKULL_C[0] + SKULL_R[0] * 0.7, LIP_Y - 12 * mo, 0]),
+      mouth: inF(front, [(HINGE[0] + JAW_TIP_X) / 2 + 10, LIP_Y - 12 * mo, 0]),
       jawTip: inF(jawF, [JAW_R[0] * 0.95, 0, 0]),
       body: bodyF.t,
       tail: inF(tfF, [-60, 0, 0]),
