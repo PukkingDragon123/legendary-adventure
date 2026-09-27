@@ -237,5 +237,5 @@ const Lileep = (() => {
     return Creature.render(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.0, bw: 230, bh: 230, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.0, bw: 250, bh: 230, oy: 0.9 } };
 })();
