@@ -3,8 +3,9 @@
    A posable 3D model rendered straight to pixel art by the shared
    Creature pipeline (src/creature.js, dev/CREATURE_GUIDE.md).
    Model space: x = forward (the side with the core), y = up, z = near
-   side at yaw 0; the star lies in the y-z plane and y = 0 is under the
-   two lower arm tips (spin 0).
+   side at yaw 0; the star lies in the y-z plane and y = 0 is under its
+   lowest point (the two lower tips at spin 0): as it spins it rolls on
+   its tips like a cartwheel, the core rising and dipping.
 
    Design (official art / HOME model): a chunky five-pointed star of
    golden-brown arms, each a faceted pyramid (a ridge from the centre to
@@ -92,7 +93,6 @@ const Staryu = (() => {
   const H_F = 25, H_B = 17;                          // ridge heights at the centre (front / back), 0 at the tips
   const CS = Math.cos(Math.PI / 5), SN = Math.sin(Math.PI / 5);
   const BASE = R_IN * CS, HALF = R_IN * SN;          // arm base line distance and half width
-  const CEN_Y = R_OUT * CS;                          // core height: the two lower tips touch y = 0
   const NSEG = 3;
   const hF = (u) => H_F * (1 - u / R_OUT), hB = (u) => H_B * (1 - u / R_OUT);
   const wAt = (u) => HALF * (R_OUT - u) / (R_OUT - BASE);
@@ -151,9 +151,12 @@ const Staryu = (() => {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [], anchors = {};
     const spin = +P.spin || 0, bend = clamp(+P.bend || 0, 0, 1);
-    const core = chain(T(0, CEN_Y, 0), R(M3.rx(spin)));
+    // built around the core at the origin, then lifted so the lowest point (a tip) rests on y = 0:
+    // spinning, it rolls on its tips like a cartwheel
+    const core = R(M3.rx(spin));
     const cL = core.L, c0 = core.t;
-    const toM = (p) => add(c0, M3.v(cL, p));
+    let low = 0;
+    const toM = (p) => { const q = add(c0, M3.v(cL, p)); if (q[1] < low) low = q[1]; return q; };
     const F = [1, 0, 0];
     const dStep = bend * 0.36;
     let top = -1e9;
@@ -221,6 +224,10 @@ const Staryu = (() => {
     }
     Object.assign(anchors, { head: c0, body: c0, core: jf, mouth: jf, eyeN: jf, eyeF: jf });
     anchors.top = [c0[0], top, c0[2]];
+    const lift = [0, -low, 0];
+    for (const q of prims) q.c = add(q.c, lift);
+    for (const st of stamps) st.at.p = add(st.at.p, lift);
+    for (const k in anchors) anchors[k] = add(anchors[k], lift);
     return { prims, stamps, dots: [], anchors, pose: P, pri: PRI, glossy: GLOSSY, baseMat: ARM, shadowSteps: 14, shadowDepth: 26 };
   }
 
@@ -272,5 +279,5 @@ const Staryu = (() => {
     return cropRender(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.8, bw: 166, bh: 166, oy: 0.87 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.8, bw: 166, bh: 168, oy: 0.915 } };
 })();

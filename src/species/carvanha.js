@@ -32,7 +32,9 @@
                       the crests lift a little with it
      eyes   'open' (angry) | 'happy' | 'closed' | 'blink'
      lunge  0..1      attack stretch: the body lengthens and leans into
-                      the bite, fins and crests sweep back
+                      the bite, fins and crests sweep back; negative values
+                      (down to −1) coil it back before a charge (shorter,
+                      nose up, fins braced)
      side   −1..1     ≈ cos(yaw), passed in by the game: the crests and the
                       tail turn a little toward the camera so they read in
                       3/4 views
@@ -184,7 +186,7 @@ const Carvanha = (() => {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [], anchors = {};
     const ph = +P.swim || 0, sw = Math.sin(ph), cw = Math.cos(ph);
-    const bite = clamp(+P.bite || 0, 0, 1), fins = clamp(+P.fins || 0, -1, 1), lg = clamp(+P.lunge || 0, 0, 1);
+    const bite = clamp(+P.bite || 0, 0, 1), fins = clamp(+P.fins || 0, -1, 1), lg = clamp(+P.lunge || 0, -1, 1);
     const side = clamp(P.side === undefined ? 1 : +P.side, -1, 1);
     const kind = P.eyes === 'happy' ? 'happy' : P.eyes === 'closed' || P.eyes === 'blink' || P.eyes === 'sleep' ? 'closed' : 'open';
 
@@ -198,7 +200,7 @@ const Carvanha = (() => {
       return C_NAVY;
     }));
     // --- lower jaw: hinged at the back of the mouth
-    const open = bite * 0.62 + lg * 0.12;
+    const open = bite * 0.62 + Math.max(0, lg) * 0.12;
     const HX = -RX * 0.62, HY = -RY * 0.12;
     const jaw = chain(body, T(HX, HY, 0), R(M3.rz(-open)), T(-HX, -HY, 0));
     prims.push(ellF(jaw, [RX, RY, RZ], 2, 2, (s) => {
@@ -323,5 +325,5 @@ const Carvanha = (() => {
     return cropRender(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.8, bw: 180, bh: 166, oy: 0.71 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.8, bw: 180, bh: 170, oy: 0.715 } };
 })();
