@@ -149,6 +149,7 @@ const Game = (() => {
     G.t += dt;
     const t = G.t;
     G.hourT += dt; if (G.hourT > G.HOUR_LEN) G.nextHour();
+    if (G.lureT > 0) { G.lureT -= dt; if (G.lureT <= 0) HUD.toast('The Sweet Lure has worn off.', { life: 2 }); }
     Wind.update(dt); Ripples.step(dt);
     Stage.update(dt, t);
     Weather.update(dt, t);

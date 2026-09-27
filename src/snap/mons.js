@@ -65,6 +65,7 @@ const Mons = (() => {
       const R = this.senseR ?? 150;
       let gain = d < R ? (1 - d / R) * (mk.moving > 70 ? 1.6 : mk.moving > 0 ? 0.8 : 0.35) : -0.25;
       if (mk.sneak) gain *= 0.4;
+      if (Game.lureT > 0 && d < 420) gain = Math.max(gain, 0.5);
       if (Game.mode === 'camera' && Photo.inView(this)) gain += this.persona === 'shy' ? 0.35 : 0.15;
       this.aware = clamp(this.aware + gain * dt * (this.alert ?? 1), 0, 1);
       if (this.aware > 0.55 && this.noticeT <= 0 && t - this.lastReact > 6) {
@@ -84,6 +85,7 @@ const Mons = (() => {
     *grumble() { this.setAct('woken', 0.4); yield* wait(1.2); }
     onNotice(mk) {
       this.lastReact = Game.t;
+      if (Game.lureT > 0 && this.mode !== 'hidden') { this.doTask(this.curiousLook(mk), 3); return; }
       switch (this.persona) {
         case 'shy': this.doTask(this.flee(mk), 4); break;
         case 'curious': this.doTask(this.curiousLook(mk), 3); break;

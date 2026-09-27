@@ -139,14 +139,14 @@ Areas.forest = (() => {
       const w = 800, h = 110, s = new ISpr(w, h);
       Paint.ridge(s, M, { ramp: M.far, base: h, amp: 90, seed: 5, freq: 0.006, peaks: [[160, 140, 1], [520, 200, 0.85]], snow: null });
       for (let y = 30; y < h; y++) for (let x = 330; x < 338; x++) if (s.get(x, y)) s.set(x, y, M.mist[(y + x) % 3 === 0 ? 0 : 1]);
-      A.layer(s, 0.03, { haze: 0.55, base: h - 1, x: -60 });
+      A.layer(s, 0.03, { haze: 0.55, base: h - 1, x: -60 }).skirt = M.far[2];
     }
     // far canopy (rolling tree line) with mist
     {
       const w = 1100, h = 90, s = new ISpr(w, h);
       Paint.treeline(s, { ramp: M.hill, base: h * 0.55, size: 12, seed: 8, jag: 6 });
-      for (let y = h - 30; y < h; y++) for (let x = 0; x < w; x++) if (bayer4(x, y) < (y - (h - 30)) / 30) s.set(x, y, M.mist[0]);
-      A.layer(s, 0.14, { haze: 0.45, base: h - 1, x: 0 });
+      for (let y = h - 30; y < h; y++) for (let x = 0; x < w; x++) if (s.get(x, y) && bayer4(x, y) < (y - (h - 30)) / 60) s.set(x, y, M.hill[1]);
+      A.layer(s, 0.14, { haze: 0.45, base: h - 1, x: 0 }).skirt = M.hill[1];
     }
     // the Weather Institute on its hill
     {
@@ -157,11 +157,11 @@ Areas.forest = (() => {
       const ins = Props2.institute(M, 3);
       s.paste(ins, 690 - ins.ax, h - 60 - ins.ay + 4);
       A.instGlow = true;
-      A.layer(s, 0.3, { haze: 0.3, base: h - 1, x: 60 });
+      A.layer(s, 0.3, { haze: 0.3, base: h - 1, x: 60 }).skirt = M.hill[1];
     }
     // mid forest: big trunks and canopy clumps, a waterfall feeding the river
     {
-      const w = 2400, h = 260, s = new ISpr(w, h);
+      const w = 2400, h = 360, s = new ISpr(w, h);
       for (let x = 30; x < w; x += 90 + r() * 120) {
         const tr = Paint.tree(M, 180 + r() * 60, Math.floor(x), { trunkRamp: M.bark, leafRamp: M.leafD, crownW: 180, crownH: 110, trunkW: 9 });
         s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 6);
@@ -170,11 +170,11 @@ Areas.forest = (() => {
       const fall = Props2.waterfall(M, 26, 150, 4);
       const fx = Math.round(1200 * 0.52 + 40);
       s.paste(fall, fx - 13, h - 150);
-      A.layer(s, 0.52, { haze: 0.28, base: h - 1, x: 40 });
+      A.layer(s, 0.52, { haze: 0.28, base: h - 1, x: 40 }).skirt = M.leafD[1];
     }
     // near forest wall: huge trunks and vines, skirting down to the lane
     {
-      const w = 3000, h = 300, s = new ISpr(w, h);
+      const w = 3000, h = 420, s = new ISpr(w, h);
       for (let x = 60; x < w; x += 140 + r() * 160) {
         const tr = Paint.tree(M, 260 + r() * 60, Math.floor(x * 5), { trunkRamp: M.bark, leafRamp: M.leaf, roots: true, vines: true, crownW: 240, crownH: 140, trunkW: 14 });
         s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 2);

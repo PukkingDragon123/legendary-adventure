@@ -2186,19 +2186,25 @@ const Castform = (() => {
 
   // ---- materials
   const HEAD = 1, CLOUD = 2, SUNF = 3, SUNR = 4, RAINF = 5, RAINH = 6, SNOWF = 7, SNOWH = 8, ICE = 9, MOUTH = 10, TONGUE = 11;
-  const MAT = { HEAD, CLOUD, SUNF, SUNR, RAINF, RAINH, SNOWF, SNOWH, ICE, MOUTH, TONGUE };
+  const EYE = 12, WHITE = 13, MASK = 14, SUNO = 15, SNOWM = 16;
+  const MAT = { HEAD, CLOUD, SUNF, SUNR, RAINF, RAINH, SNOWF, SNOWH, ICE, MOUTH, TONGUE, EYE, WHITE, MASK, SUNO, SNOWM };
   const PAL = Creature.palette({
     [HEAD]:   { r: ['#9ca1b9', '#c2c6d8', '#e8eaf2', '#f7f8fc', '#ffffff'], od: '#474c6a', ol: '#7a7f9a', ln: '#8a8fa8' },
-    [CLOUD]:  { r: ['#4d5a82', '#67779f', '#8595b9', '#a7b4d1', '#cad3e7'], od: '#262e50', ol: '#4a5682', ln: '#4c5883' },
+    [CLOUD]:  { r: ['#6a6e86', '#878ba2', '#a6aabe', '#c4c7d5', '#e0e2ec'], od: '#363a54', ol: '#5c6078', ln: '#60647e' },
+    [MASK]:   { r: ['#555970', '#6c7088', '#868aa2', '#a0a4b8', '#bcbfce'], od: '#363a56', ol: '#555972', ln: '#5a5e78' },
     [SUNF]:   { r: ['#d8951c', '#f0b52c', '#fcd64e', '#ffe98a', '#fff7c8'], od: '#7a4410', ol: '#b06c18', ln: '#b87218' },
-    [SUNR]:   { r: ['#b3301a', '#d84b22', '#f26c30', '#ff9450', '#ffbe82'], od: '#661408', ol: '#9c2a12', ln: '#9a2a12' },
+    [SUNR]:   { r: ['#a01e18', '#c43022', '#e2462e', '#f26442', '#ff8e6a'], od: '#5a0c08', ol: '#8e1c12', ln: '#8e1c12' },
+    [SUNO]:   { r: ['#c4601a', '#e07e2e', '#f59c46', '#ffb86a', '#ffd69c'], od: '#6e2c08', ol: '#a04a14', ln: '#a44c14' },
     [RAINF]:  { r: ['#5a9fd6', '#7ebeea', '#a4daf8', '#c8ecfd', '#eefaff'], od: '#1b4c8a', ol: '#3a76b6', ln: '#3c7aba' },
     [RAINH]:  { r: ['#1c4696', '#2a60ba', '#3c80da', '#5fa0ee', '#9ccaf8'], od: '#0c2256', ol: '#1c448c', ln: '#1c4088' },
-    [SNOWF]:  { r: ['#a4a4d0', '#c6c6e6', '#e6e4f6', '#f4f3fc', '#ffffff'], od: '#4a4686', ol: '#7a78b4', ln: '#8886c0' },
-    [SNOWH]:  { r: ['#57549a', '#716eb8', '#918ed4', '#b3b1e8', '#d6d5f7'], od: '#2a2764', ol: '#4c4990', ln: '#4c4990' },
+    [SNOWF]:  { r: ['#7a70b8', '#968ed0', '#b2aae2', '#ccc6f0', '#ebe8ff'], od: '#3a3280', ol: '#5e56a4', ln: '#6058a8' },
+    [SNOWM]:  { r: ['#44357e', '#5a4896', '#7362b2', '#9080c8', '#b2a6de'], od: '#221a50', ol: '#3a2e70', ln: '#3a2e70' },
+    [SNOWH]:  { r: ['#7896b2', '#98b8cc', '#bcd8e4', '#daeef4', '#f6feff'], od: '#35527a', ol: '#6282a2', ln: '#6686a6' },
     [ICE]:    { r: ['#86b0d8', '#aacfec', '#d2ebfa', '#eef8ff', '#ffffff'], od: '#305c8c', ol: '#5886b4', ln: '#6894c0' },
     [MOUTH]:  { r: ['#681a2a', '#882436', '#a83444', '#c24a58', '#da6a72'], od: '#3a0a16', ol: '#5a1424', ln: '#5a1424' },
     [TONGUE]: { r: ['#c6506a', '#de6a80', '#f28c9a', '#ffb0b8', '#ffd2d4'], od: '#6e1428', ol: '#8e2038', ln: '#b04450' },
+    [EYE]:    { r: ['#0c0e1c', '#121426', '#181b30', '#22263e', '#2e344e'], od: '#05060c', ol: '#0a0c18', ln: '#0a0c18' },
+    [WHITE]:  { r: ['#c4c8da', '#e0e3ee', '#f6f7fb', '#ffffff', '#ffffff'], od: '#5a5e7c', ol: '#8a8ea8', ln: '#9a9eb6' },
   });
   const GLOSSY = { [RAINF]: 1, [RAINH]: 1, [ICE]: 1 };
 
@@ -2233,8 +2239,8 @@ const Castform = (() => {
   let curScale = 1;
 
   /* ---------- face decals: the mouth (on the face prim's unit sphere) ---------- */
-  const EAZ = 0.44, EV = 0.06; // eye direction on the face prim
-  const MV = -0.36; // mouth line height
+  const EAZ = 0.4, EV = 0.14; // eye direction on the face prim
+  const MV = -0.4; // mouth line height
   function mouthMat(s, open, base) {
     if (s[0] < 0.55) return base;
     const az = Math.atan2(s[2], s[0]);
@@ -2255,50 +2261,71 @@ const Castform = (() => {
     return s[1] < bot + (top - bot) * 0.42 && Math.abs(k) < 0.72 && open > 0.3 ? code(TONGUE) : code(MOUTH);
   }
 
-  /* ---------- eye stamps: tall black ovals with a white shine (k black, w white, b blue glint) ---------- */
-  const EYES_S = { // scale < 0.75
-    open: ['.kk.', 'kwkk', 'kkkk', 'kkbk', '.kk.'],
-    openN: ['.k.', 'kwk', 'kkk', 'kbk', '.k.'],
-    openF: ['kk', 'wk', 'kk', 'kk'],
-    happy: ['.kk.', 'k..k'], happyN: ['.k.', 'k.k'], happyF: ['kk', 'k.'],
-    blink: ['kkkk', '.kk.'], blinkN: ['kkk', '.k.'], blinkF: ['kk'],
-    sleep: ['k..k', '.kk.'], sleepN: ['k.k', '.k.'], sleepF: ['k.', '.k'],
-  };
-  const EYES_M = { // 0.75 .. 1.4
-    open: ['.kkk.', 'kwwkk', 'kwkkk', 'kkkkk', 'kkkkk', 'kkkbk', '.kkk.'],
-    openN: ['.kk.', 'kwkk', 'kwkk', 'kkkk', 'kkkk', 'kkbk', '.kk.'],
-    openF: ['.k.', 'kwk', 'kkk', 'kkk', 'kbk', '.k.'],
-    happy: ['.kkk.', 'k...k', 'k...k'], happyN: ['.kk.', 'k..k', 'k..k'], happyF: ['.k.', 'k.k', 'k.k'],
-    blink: ['.....', '.....', 'kkkkk', '.kkk.'], blinkN: ['....', '....', 'kkkk', '.kk.'], blinkF: ['...', '...', 'kkk', '.k.'],
-    sleep: ['k...k', '.kkk.'], sleepN: ['k..k', '.kk.'], sleepF: ['k.k', '.k.'],
-  };
-  const EYES_L = { // >= 1.4
-    open: ['..kkk..', '.kwwkkk', 'kwwwkkk', 'kwwkkkk', 'kkkkkkk', 'kkkkkkk', 'kkkkkbk', '.kkkbbk', '..kkk..'],
-    openN: ['.kkk.', 'kwwkk', 'kwwkk', 'kwkkk', 'kkkkk', 'kkkkk', 'kkkbk', 'kkbbk', '.kkk.'],
-    openF: ['.kk.', 'kwkk', 'kwkk', 'kkkk', 'kkkk', 'kkbk', '.kk.'],
-    happy: ['..kkk..', '.k...k.', 'k.....k', 'k.....k'], happyN: ['.kkk.', 'k...k', 'k...k'], happyF: ['.kk.', 'k..k', 'k..k'],
-    blink: ['.......', '.......', '.......', 'kkkkkkk', '.kkkkk.'], blinkN: ['.....', '.....', '.....', 'kkkkk', '.kkk.'], blinkF: ['....', '....', '....', 'kkkk', '.kk.'],
-    sleep: ['k.....k', '.kkkkk.'], sleepN: ['k...k', '.kkk.'], sleepF: ['k..k', '.kk.'],
-  };
-  const EYEC = { k: '#161a2c', w: '#ffffff', b: '#3a4a7c' };
+  /* ---------- face decal: the dark eye mask (a figure-8 patch), big eyes with a shine, the mouth ---------- */
+  let eyeKind = 'open';
+  const EYE_DIRS = [1, -1].map((sd) => Creature.sph(sd * EAZ, EV));
+  // F = { base, mask, ring, R }: base / mask codes, optional rim code (sunny), face radius in model units
+  function faceMat(s, open, F) {
+    const px = 1 / (curScale * F.R);
+    if (F.ring && s[0] < 0.42) return F.ring;
+    if (s[0] > 0.3) {
+      // small sprites: a big black eye with a shine; big sprites add the white ring of the art
+      const tiny = px > 0.075;
+      const RP = tiny ? Math.max(0.17, 1.9 * px) : 0.16, RW = tiny ? RP : RP + 0.055, RM = RW + Math.max(0.085, 1.05 * px);
+      let inMask = false;
+      for (let i = 0; i < 2; i++) {
+        const e = EYE_DIRS[i], sd = i ? -1 : 1;
+        const dx = s[0] - e[0], dy = s[1] - e[1], dz = s[2] - e[2];
+        const d = Math.hypot(dx, dy * 0.7, dz);
+        if (d < RW) {
+          if (eyeKind === 'open') {
+            if (Math.hypot(dx, dy - RP * 0.42, dz + sd * RP * 0.3) < Math.max(0.05, 0.8 * px)) return code(WHITE, 1);
+            return d < RP ? code(EYE) : code(WHITE);
+          }
+          const lw = Math.max(0.04, 0.75 * px);
+          if (eyeKind === 'happy') { if (Math.abs(d - RP * 0.8) < lw && dy > -0.02) return code(EYE); }
+          else if (Math.abs(dy + 0.02) < lw && d < RP * 1.2) return code(EYE);
+          return F.mask;
+        }
+        // mask: round patch around the eye, drawn out into a point below-outside (the mustache tip)
+        const tx = Math.hypot(dx, dz), below = -dy;
+        if (d < RM || (below > 0 && sd * s[2] > sd * e[2] - 0.05 && Math.hypot(tx * 1.25, below * 0.8) < RM + 0.02 && below < RM * 1.25)) inMask = true;
+      }
+      // bridge between the eyes, dipping to a small point over the mouth
+      if (!inMask && Math.abs(s[2]) < 0.22 && s[1] < EV + 0.2 - Math.abs(s[2]) * 0.5 && s[1] > EV - 0.13 + Math.abs(s[2]) * 0.2) inMask = true;
+      if (inMask) return F.mask;
+    }
+    return mouthMat(s, open, F.base);
+  }
+
 
   /* ---------- build ---------- */
+  // little cloud "body" under the head: a round puff, a lumpy bottom and a curled tail flicking back
+  function cloudBody(f, mat, prims, big) {
+    const k = big || 1;
+    prims.push(ellF(chain(f, T(-0.5, 10.5, 0)), [9.6 * k, 6.6, 9 * k], 2, 3, mat));
+    prims.push(ellF(chain(f, T(2.4, 5.4, 4.6 * k)), [5.8, 5.2, 5.4], 2, 3, mat));
+    prims.push(ellF(chain(f, T(2.4, 5.4, -4.6 * k)), [5.8, 5.2, 5.4], 2, 3, mat));
+    prims.push(ellF(chain(f, T(-4.6, 5.8, 0)), [5.8, 5.4, 6], 2, 3, mat));
+    tube(f, [pt(-8.5, 9, 0, 4.6, 4), pt(-12.8, 9.2, 0, 3.6, 3.1), pt(-16.2, 11, 0, 2.7, 2.3), pt(-18, 13.8, 0, 2, 1.7), pt(-17.6, 16.2, 0, 1.4, 1.2)], [0, 0, 1], 3, 3, mat, prims);
+  }
+
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const form = P.form === 'sunny' || P.form === 'rainy' || P.form === 'snowy' ? P.form : 'normal';
     const bob = clamp(+P.bob || 0, 0, 1), mo = clamp(+P.mouth || 0, 0, 1);
     const tilt = clamp(+P.tilt || 0, -1, 1) * 0.28;
     const prims = [], anchors = {};
-    const h0 = 7 + 8 * bob; // hover height of the lowest point
-    // whole-body twirl about the vertical axis; squash / stretch about the body centre (y ≈ 24 above h0)
+    const h0 = 5 + 8 * bob; // hover height of the lowest point
     const sq = clamp(+P.squash || 0, -1, 1);
-    const root = chain(T(0, h0 + 24, 0), F(M3.diag(1 + 0.14 * sq, 1 - 0.22 * sq, 1 + 0.14 * sq), [0, 0, 0]), T(0, -24, 0), R(M3.ry(+P.spin || 0)));
-    let faceP = null, headF = null, tip = null, bottomY = 0, topP = null;
+    const root = chain(T(0, h0 + 22, 0), F(M3.diag(1 + 0.14 * sq, 1 - 0.22 * sq, 1 + 0.14 * sq), [0, 0, 0]), T(0, -22, 0), R(M3.ry(+P.spin || 0)));
+    const cl = chain(root, R(M3.rx(tilt * 0.4)));
+    let faceP = null, headF = null, tip = null, bottomY = h0, topP = null;
 
     if (form === 'normal') {
-      headF = chain(root, T(0, 25, 0), R(M3.rx(tilt)));
+      headF = chain(root, T(0, 28, 0), R(M3.rx(tilt)));
       const HR = [15.5, 15, 15.5];
-      faceP = ellF(headF, HR, 1, 1, (s) => mouthMat(s, mo, CH));
+      faceP = ellF(headF, HR, 1, 1, (s) => faceMat(s, mo, FN));
       prims.push(faceP);
       // swirl on top: a soft cone that rises and curls over toward the back
       const sw = [];
@@ -2309,139 +2336,109 @@ const Castform = (() => {
       prims.push(...sw);
       tip = inF(headF, [-11.2, 18.4, 0]);
       topP = inF(headF, [-4, 25.5, 0]);
-      // blue-grey cloud cupping the head from below (a crescent of puffs), both ends curling up at the sides
-      const cl = chain(root, R(M3.rx(tilt * 0.4)));
-      prims.push(ellF(chain(cl, T(-1, 7.6, 0)), [14.5, 7.4, 12.5], 2, 3, CC));
-      prims.push(ellF(chain(cl, T(-11, 9, 0)), [8, 6.4, 9], 2, 3, CC));
-      for (const sd of [1, -1]) {
-        const id = sd > 0 ? 4 : 5;
-        tube(cl, [pt(2.5, 7.2, sd * 9.5, 7.4, 6.6, 6.8), pt(1.8, 9.6, sd * 15, 5.6, 5, 5.2), pt(0.8, 14.2, sd * 18.2, 4.4, 3.9, 3.9), pt(0, 18.8, sd * 18.4, 3.4, 2.9, 2.9), pt(-0.4, 21.6, sd * 16.4, 2.6, 2.1, 2.1), pt(-0.4, 21.4, sd * 13.8, 1.9, 1.6, 1.6)], [1, 0, 0], id, id, CC, prims);
-      }
-      bottomY = h0 + 0.4;
+      cloudBody(cl, CC, prims);
     } else if (form === 'sunny') {
-      headF = chain(root, T(0, 25, 0), R(M3.rx(tilt)));
-      // orange sun body with a yellow face disc bulging in front
-      prims.push(ellF(headF, [12.5, 13.6, 13.6], 2, 2, CSR));
-      faceP = ellF(chain(headF, T(4.6, 0, 0)), [9, 12.4, 12.4], 1, 1, (s) => mouthMat(s, mo, CSF));
+      headF = chain(root, T(0, 29, 0), R(M3.rx(tilt)));
+      // orange sun body behind a red face disc with a yellow rim
+      prims.push(ellF(headF, [10.5, 13, 13], 2, 2, CSO));
+      faceP = ellF(chain(headF, T(3.6, 0, 0)), [9, 12.6, 12.6], 1, 1, (s) => faceMat(s, mo, FS));
       prims.push(faceP);
-      // eight flame-ray petals around the face; the top one is big and curls back
+      // eight round flame puffs around the face; the top one bigger
       for (let i = 0; i < 8; i++) {
-        const a = Math.PI / 2 + (i * Math.PI) / 4; // angle in the face plane, from +z toward +y
-        const ca = Math.cos(a), sa = Math.sin(a);
-        const d = nrm([-0.34, sa, ca]);
-        const perp = [0, ca, -sa]; // in-plane, perpendicular to the ray
-        const nodes = [];
-        const top = i === 0;
-        const len = top ? 16.5 : 12, wd = top ? 7.6 : 7.2;
-        const r0 = 9.6;
-        const curl = top ? 0 : 0.1;
-        for (const [t, k] of [[0, 1], [0.34, 0.74], [0.62, 0.48], [0.86, 0.27]]) {
-          const p = add(add(sc(d, r0 + len * t), sc(perp, curl * len * t * t * 3)), top ? [-7 * t * t, -2.5 * t * t, 0] : [0, 0, 0]);
-          nodes.push({ p, r: [wd * (0.9 - 0.25 * t), 4.2 * k + 0.6, wd * k] });
-        }
-        const g = 10 + i;
-        tube(headF, nodes, [1, 0, 0], 4 + i, g, CSR, prims);
-        if (top) tip = inF(headF, add(sc(d, r0 + len), [-7, -2.5, 0]));
+        const a = Math.PI / 2 + (i * Math.PI) / 4;
+        const d = nrm([-0.3, Math.sin(a), Math.cos(a)]);
+        const top = i === 0, r = top ? 7.2 : 6.2;
+        prims.push(ellAlong(headF, sc(d, top ? 15.5 : 14.5), d, [1, 0, 0], [r * 1.05, r * 0.72, r], 4 + i, 10 + i, CSO));
+        if (top) tip = inF(headF, sc(d, 22));
       }
-      topP = inF(headF, [-3, 27, 0]);
-      bottomY = h0 + 3;
+      topP = inF(headF, [-3, 22.5, 0]);
+      cloudBody(cl, CW, prims, 0.9);
     } else if (form === 'rainy') {
-      headF = chain(root, T(0, 20, 0), R(M3.rx(tilt)));
+      headF = chain(root, T(0, 27, 0), R(M3.rx(tilt)));
       const FR = [14, 13.6, 14];
-      faceP = ellF(headF, FR, 1, 1, (s) => mouthMat(s, mo, CRF));
+      faceP = ellF(headF, FR, 1, 1, (s) => faceMat(s, mo, FR_));
       prims.push(faceP);
-      // dark-blue water hood (face window in front) rising into a pointed drop tip
       const HR = V3.scale(FR, 1.08);
       const hoodMat = (s) => {
         const az = Math.abs(Math.atan2(s[2], s[0]));
         const v = s[1];
-        // window: the lower front, arching over the brow with a centre peak (a lock of bangs)
-        const brow = 0.42 - 0.2 * Math.exp(-(az * az) / 0.03) - 0.3 * (az / 1.25) ** 2;
-        if (az < 1.25 && v < brow) return 0;
+        const brow = 0.5 - 0.18 * Math.exp(-(az * az) / 0.03) - 0.3 * (az / 1.3) ** 2;
+        if (az < 1.3 && v < brow) return 0;
         if (v < -0.55 && az < 2.2) return 0;
         return CRH();
       };
       prims.push(ellF(headF, HR, 2, 2, hoodMat));
-      // the raindrop point: one long ellipsoid plus a slim tip, leaning back a little
       prims.push(ellAlong(headF, [-1.6, 17, 0], [-0.22, 1, 0], [1, 0, 0], [11.5, 7.6, 7.8], 2, 2, CRH));
       prims.push(ellAlong(headF, [-4.6, 26.2, 0], [-0.42, 1, 0], [1, 0, 0], [5.4, 2.8, 2.9], 2, 2, CRH));
       tip = inF(headF, [-6.6, 30.6, 0]);
       topP = tip;
-      bottomY = h0 + 5;
-      // water-drop locks: a big drop hanging down each side of the face (point up, merging into the hood)
       for (const sd of [1, -1]) {
-        const id = sd > 0 ? 3 : 4;
-        prims.push(ellAlong(headF, [1.2, 1.5, sd * 12.9], [0.1, 1, sd * 0.12], [1, 0, 0], [7, 3.6, 2.6], id, id, CRH));
-        prims.push(ellAlong(headF, [1.6, -8.4, sd * 12.6], [0.05, 1, -sd * 0.1], [1, 0, 0], [6.4, 5.2, 3.6], id, id, CRH));
+        const id = sd > 0 ? 4 : 5;
+        prims.push(ellAlong(headF, [0.6, 1.5, sd * 13.4], [0.1, 1, sd * 0.12], [1, 0, 0], [7, 3.6, 2.6], id, id, CRH));
+        prims.push(ellAlong(headF, [1, -8.4, sd * 13], [0.05, 1, -sd * 0.1], [1, 0, 0], [6.4, 5.2, 3.6], id, id, CRH));
       }
+      cloudBody(cl, CC, prims);
     } else {
-      headF = chain(root, T(0, 23, 0), R(M3.rx(tilt)));
+      headF = chain(root, T(0, 22, 0), R(M3.rx(tilt)));
       const FR = [14, 13.6, 14];
-      faceP = ellF(headF, FR, 1, 1, (s) => mouthMat(s, mo, CSNF));
+      faceP = ellF(headF, FR, 1, 1, (s) => faceMat(s, mo, FSN));
       prims.push(faceP);
-      // periwinkle hail-cloud hood with a round face window
+      // icy hail-cloud hood with a round face window, puffy lumps around it
       const HR = [16, 16.4, 16.6];
-      const WIN = 0.64; // cos of the window's angular radius
-      const WC = nrm([1, -0.1, 0]);
+      const WIN = 0.62;
+      const WC = nrm([1, -0.08, 0]);
       prims.push(ellF(headF, HR, 2, 2, (s) => (dot(s, WC) > WIN ? 0 : CSNH())));
-      // thick rim around the window (a rounded collar), studded with hail lumps
       const ang = Math.acos(WIN), rr = Math.sin(ang);
-      const rimC = sc(WC, Math.cos(ang) * HR[0] * 0.97);
-      const RR = [3.2, rr * HR[1] + 2.4, rr * HR[2] + 2.4], RIN = (rr * HR[1] - 1.2) / RR[1];
-      prims.push(ellAlong(headF, rimC, WC, [0, 1, 0], RR, 3, 3, (s) => (s[1] * s[1] + s[2] * s[2] < RIN * RIN && s[0] > 0 ? 0 : CSNH_L())));
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
-        const dir = nrm(add(sc(WC, Math.cos(ang) * 0.9), add(sc([0, 1, 0], rr * 1.12 * Math.sin(a)), sc([0, 0, 1], rr * 1.12 * Math.cos(a)))));
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * Math.PI * 2 + Math.PI / 2;
+        const dir = nrm(add(sc(WC, Math.cos(ang) * 0.82), add(sc([0, 1, 0], rr * 1.18 * Math.sin(a)), sc([0, 0, 1], rr * 1.18 * Math.cos(a)))));
         const p = [dir[0] * HR[0], dir[1] * HR[1], dir[2] * HR[2]];
-        prims.push(ellAlong(headF, p, dir, [0, 1, 0], [3, 4.4, 4.4], 3, 3, CSNH_L));
+        prims.push(ellAlong(headF, p, dir, [0, 1, 0], [3.6, 5.2, 5.2], 3, 3, CSNH_L));
       }
-      // cloud tuft on top
-      prims.push(ellF(chain(headF, T(-2.5, 15, 0)), [7.6, 5.4, 7], 4, 4, CSNH));
-      prims.push(ellF(chain(headF, T(-7.2, 19, 0)), [4.8, 4, 4.4], 4, 4, CSNH));
-      prims.push(ellF(chain(headF, T(-10.2, 21.6, 0)), [2.8, 2.6, 2.8], 4, 4, CSNH));
-      tip = inF(headF, [-10.6, 23.8, 0]);
-      topP = inF(headF, [-4, 20.6, 0]);
-      // icicle hail points dangling under the back and sides of the hood (the face stays clear)
-      for (const [az, L] of [[1.7, 4.6], [Math.PI, 5.4], [-1.7, 4.6], [2.45, 3.4], [-2.45, 3.4]]) {
-        const ca = Math.cos(az), sa = Math.sin(az);
-        const v = -0.74;
-        const cr = Math.sqrt(1 - v * v);
-        const p = [HR[0] * cr * ca * 0.98, HR[1] * v - L * 0.45, HR[2] * cr * sa * 0.98];
-        prims.push(ellAlong(headF, p, [0.12 * ca, -1, 0.12 * sa], [ca, 0, sa], [L, 2.3, 2.4], 5, 6, CICE));
+      // big cloud puffs at the lower sides and back
+      for (const [x, y, z, r] of [[-2, -8, 12, 7.5], [-2, -8, -12, 7.5], [-10, -6, 0, 8], [-8, 6, 10, 6.5], [-8, 6, -10, 6.5]]) prims.push(ellF(chain(headF, T(x, y, z)), [r, r * 0.85, r], 3, 3, CSNH_L));
+      // floating halo ring above the head
+      const ringF = chain(headF, T(-3, 21, 0), R(M3.rz(0.22)));
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2;
+        prims.push(ellAlong(ringF, [11.5 * Math.cos(a), 0, 12.5 * Math.sin(a)], [-Math.sin(a), 0, Math.cos(a)], [0, 1, 0], [4.2, 2.1, 2.4], 4, 4, CSNH_L));
       }
-      bottomY = h0 + 3;
+      tip = inF(ringF, [-11.5, 0, 0]);
+      topP = inF(ringF, [0, 2, 0]);
+      // one long icicle hail point dangling below plus two small ones
+      prims.push(ellAlong(headF, [-1, -19, 0], [0.05, -1, 0], [1, 0, 0], [7, 2.8, 2.8], 5, 6, CICE));
+      for (const sd of [1, -1]) prims.push(ellAlong(headF, [-4, -15.5, sd * 7], [0, -1, sd * 0.2], [1, 0, 0], [4, 2.1, 2.1], 5, 6, CICE));
+      bottomY = h0 + 0.5;
     }
 
-    // eyes: stamps on the face prim
-    const kind = P.eyes === 'happy' ? 'happy' : P.eyes === 'blink' ? 'blink' : P.eyes === 'closed' ? 'sleep' : 'open';
-    const stamps = [];
-    for (const sd of [1, -1]) {
-      const s = Creature.sph(sd * EAZ, EV);
-      const at = { prim: faceP, p: add(faceP.c, M3.v(faceP.L, s)), s };
-      stamps.push({ at, set: EYES_M, colors: EYEC, kind, near: 0.8, far: 0.45 });
-      anchors[sd > 0 ? 'eyeN' : 'eyeF'] = at.p;
-    }
-    const ms = Creature.sph(0, MV - 0.05);
-    anchors.mouth = add(faceP.c, M3.v(faceP.L, ms));
+    // eyes: painted into the face decal (anchors only)
+    eyeKind = P.eyes === 'happy' ? 'happy' : P.eyes === 'blink' || P.eyes === 'closed' ? 'blink' : 'open';
+    const ek = eyeKind;
+    const wrap = faceP.mat;
+    faceP.mat = (s) => { eyeKind = ek; return wrap(s); };
+    for (const sd of [1, -1]) anchors[sd > 0 ? 'eyeN' : 'eyeF'] = add(faceP.c, M3.v(faceP.L, Creature.sph(sd * EAZ, EV)));
+    anchors.mouth = add(faceP.c, M3.v(faceP.L, Creature.sph(0, MV - 0.05)));
     anchors.head = headF.t;
     anchors.body = headF.t;
     anchors.top = topP;
     anchors.tip = tip;
     anchors.bottom = [0, bottomY, 0];
     return {
-      prims, stamps, dots: [], anchors, pose: P, form,
+      prims, stamps: [], dots: [], anchors, pose: P, form,
       pri: { 1: 1, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 0, 17: 0 },
-      glossy: GLOSSY, baseMat: form === 'sunny' ? SUNF : form === 'rainy' ? RAINF : form === 'snowy' ? SNOWF : HEAD,
+      glossy: GLOSSY, baseMat: form === 'sunny' ? SUNR : form === 'rainy' ? RAINF : form === 'snowy' ? SNOWF : HEAD,
       shadowSteps: 16, shadowDepth: 10,
     };
   }
-  const CH = code(HEAD), CH_F = K(HEAD), CC = K(CLOUD), CSF = code(SUNF), CSR = K(SUNR), CRF = code(RAINF), CRH = K(RAINH);
-  const CSNF = code(SNOWF), CSNH = K(SNOWH), CSNH_L = K(SNOWH, 1), CICE = K(ICE);
+  const CH = code(HEAD), CH_F = K(HEAD), CC = K(CLOUD), CW = K(HEAD), CSO = K(SUNO), CRH = K(RAINH);
+  const CSNH = K(SNOWH), CSNH_L = K(SNOWH, 1), CICE = K(ICE);
+  const FN = { base: CH, mask: code(MASK), R: 15.5 };
+  const FS = { base: code(SUNR), mask: code(SUNF), ring: code(SUNF), R: 12.6 };
+  const FR_ = { base: code(RAINF), mask: code(RAINH), R: 14 };
+  const FSN = { base: code(SNOWF), mask: code(SNOWM), R: 14 };
 
   function render(model, opt) {
     curScale = opt.scale || 1;
-    const set = curScale >= 1.4 ? EYES_L : curScale >= 0.75 ? EYES_M : EYES_S;
-    for (const st of model.stamps) st.set = set;
     return Creature.render(model, opt);
   }
 
@@ -16686,19 +16683,25 @@ const Castform = (() => {
 
   // ---- materials
   const HEAD = 1, CLOUD = 2, SUNF = 3, SUNR = 4, RAINF = 5, RAINH = 6, SNOWF = 7, SNOWH = 8, ICE = 9, MOUTH = 10, TONGUE = 11;
-  const MAT = { HEAD, CLOUD, SUNF, SUNR, RAINF, RAINH, SNOWF, SNOWH, ICE, MOUTH, TONGUE };
+  const EYE = 12, WHITE = 13, MASK = 14, SUNO = 15, SNOWM = 16;
+  const MAT = { HEAD, CLOUD, SUNF, SUNR, RAINF, RAINH, SNOWF, SNOWH, ICE, MOUTH, TONGUE, EYE, WHITE, MASK, SUNO, SNOWM };
   const PAL = Creature.palette({
     [HEAD]:   { r: ['#9ca1b9', '#c2c6d8', '#e8eaf2', '#f7f8fc', '#ffffff'], od: '#474c6a', ol: '#7a7f9a', ln: '#8a8fa8' },
-    [CLOUD]:  { r: ['#4d5a82', '#67779f', '#8595b9', '#a7b4d1', '#cad3e7'], od: '#262e50', ol: '#4a5682', ln: '#4c5883' },
+    [CLOUD]:  { r: ['#6a6e86', '#878ba2', '#a6aabe', '#c4c7d5', '#e0e2ec'], od: '#363a54', ol: '#5c6078', ln: '#60647e' },
+    [MASK]:   { r: ['#555970', '#6c7088', '#868aa2', '#a0a4b8', '#bcbfce'], od: '#363a56', ol: '#555972', ln: '#5a5e78' },
     [SUNF]:   { r: ['#d8951c', '#f0b52c', '#fcd64e', '#ffe98a', '#fff7c8'], od: '#7a4410', ol: '#b06c18', ln: '#b87218' },
-    [SUNR]:   { r: ['#b3301a', '#d84b22', '#f26c30', '#ff9450', '#ffbe82'], od: '#661408', ol: '#9c2a12', ln: '#9a2a12' },
+    [SUNR]:   { r: ['#a01e18', '#c43022', '#e2462e', '#f26442', '#ff8e6a'], od: '#5a0c08', ol: '#8e1c12', ln: '#8e1c12' },
+    [SUNO]:   { r: ['#c4601a', '#e07e2e', '#f59c46', '#ffb86a', '#ffd69c'], od: '#6e2c08', ol: '#a04a14', ln: '#a44c14' },
     [RAINF]:  { r: ['#5a9fd6', '#7ebeea', '#a4daf8', '#c8ecfd', '#eefaff'], od: '#1b4c8a', ol: '#3a76b6', ln: '#3c7aba' },
     [RAINH]:  { r: ['#1c4696', '#2a60ba', '#3c80da', '#5fa0ee', '#9ccaf8'], od: '#0c2256', ol: '#1c448c', ln: '#1c4088' },
-    [SNOWF]:  { r: ['#a4a4d0', '#c6c6e6', '#e6e4f6', '#f4f3fc', '#ffffff'], od: '#4a4686', ol: '#7a78b4', ln: '#8886c0' },
-    [SNOWH]:  { r: ['#57549a', '#716eb8', '#918ed4', '#b3b1e8', '#d6d5f7'], od: '#2a2764', ol: '#4c4990', ln: '#4c4990' },
+    [SNOWF]:  { r: ['#7a70b8', '#968ed0', '#b2aae2', '#ccc6f0', '#ebe8ff'], od: '#3a3280', ol: '#5e56a4', ln: '#6058a8' },
+    [SNOWM]:  { r: ['#44357e', '#5a4896', '#7362b2', '#9080c8', '#b2a6de'], od: '#221a50', ol: '#3a2e70', ln: '#3a2e70' },
+    [SNOWH]:  { r: ['#7896b2', '#98b8cc', '#bcd8e4', '#daeef4', '#f6feff'], od: '#35527a', ol: '#6282a2', ln: '#6686a6' },
     [ICE]:    { r: ['#86b0d8', '#aacfec', '#d2ebfa', '#eef8ff', '#ffffff'], od: '#305c8c', ol: '#5886b4', ln: '#6894c0' },
     [MOUTH]:  { r: ['#681a2a', '#882436', '#a83444', '#c24a58', '#da6a72'], od: '#3a0a16', ol: '#5a1424', ln: '#5a1424' },
     [TONGUE]: { r: ['#c6506a', '#de6a80', '#f28c9a', '#ffb0b8', '#ffd2d4'], od: '#6e1428', ol: '#8e2038', ln: '#b04450' },
+    [EYE]:    { r: ['#0c0e1c', '#121426', '#181b30', '#22263e', '#2e344e'], od: '#05060c', ol: '#0a0c18', ln: '#0a0c18' },
+    [WHITE]:  { r: ['#c4c8da', '#e0e3ee', '#f6f7fb', '#ffffff', '#ffffff'], od: '#5a5e7c', ol: '#8a8ea8', ln: '#9a9eb6' },
   });
   const GLOSSY = { [RAINF]: 1, [RAINH]: 1, [ICE]: 1 };
 
@@ -16733,8 +16736,8 @@ const Castform = (() => {
   let curScale = 1;
 
   /* ---------- face decals: the mouth (on the face prim's unit sphere) ---------- */
-  const EAZ = 0.44, EV = 0.06; // eye direction on the face prim
-  const MV = -0.36; // mouth line height
+  const EAZ = 0.4, EV = 0.14; // eye direction on the face prim
+  const MV = -0.4; // mouth line height
   function mouthMat(s, open, base) {
     if (s[0] < 0.55) return base;
     const az = Math.atan2(s[2], s[0]);
@@ -16755,50 +16758,71 @@ const Castform = (() => {
     return s[1] < bot + (top - bot) * 0.42 && Math.abs(k) < 0.72 && open > 0.3 ? code(TONGUE) : code(MOUTH);
   }
 
-  /* ---------- eye stamps: tall black ovals with a white shine (k black, w white, b blue glint) ---------- */
-  const EYES_S = { // scale < 0.75
-    open: ['.kk.', 'kwkk', 'kkkk', 'kkbk', '.kk.'],
-    openN: ['.k.', 'kwk', 'kkk', 'kbk', '.k.'],
-    openF: ['kk', 'wk', 'kk', 'kk'],
-    happy: ['.kk.', 'k..k'], happyN: ['.k.', 'k.k'], happyF: ['kk', 'k.'],
-    blink: ['kkkk', '.kk.'], blinkN: ['kkk', '.k.'], blinkF: ['kk'],
-    sleep: ['k..k', '.kk.'], sleepN: ['k.k', '.k.'], sleepF: ['k.', '.k'],
-  };
-  const EYES_M = { // 0.75 .. 1.4
-    open: ['.kkk.', 'kwwkk', 'kwkkk', 'kkkkk', 'kkkkk', 'kkkbk', '.kkk.'],
-    openN: ['.kk.', 'kwkk', 'kwkk', 'kkkk', 'kkkk', 'kkbk', '.kk.'],
-    openF: ['.k.', 'kwk', 'kkk', 'kkk', 'kbk', '.k.'],
-    happy: ['.kkk.', 'k...k', 'k...k'], happyN: ['.kk.', 'k..k', 'k..k'], happyF: ['.k.', 'k.k', 'k.k'],
-    blink: ['.....', '.....', 'kkkkk', '.kkk.'], blinkN: ['....', '....', 'kkkk', '.kk.'], blinkF: ['...', '...', 'kkk', '.k.'],
-    sleep: ['k...k', '.kkk.'], sleepN: ['k..k', '.kk.'], sleepF: ['k.k', '.k.'],
-  };
-  const EYES_L = { // >= 1.4
-    open: ['..kkk..', '.kwwkkk', 'kwwwkkk', 'kwwkkkk', 'kkkkkkk', 'kkkkkkk', 'kkkkkbk', '.kkkbbk', '..kkk..'],
-    openN: ['.kkk.', 'kwwkk', 'kwwkk', 'kwkkk', 'kkkkk', 'kkkkk', 'kkkbk', 'kkbbk', '.kkk.'],
-    openF: ['.kk.', 'kwkk', 'kwkk', 'kkkk', 'kkkk', 'kkbk', '.kk.'],
-    happy: ['..kkk..', '.k...k.', 'k.....k', 'k.....k'], happyN: ['.kkk.', 'k...k', 'k...k'], happyF: ['.kk.', 'k..k', 'k..k'],
-    blink: ['.......', '.......', '.......', 'kkkkkkk', '.kkkkk.'], blinkN: ['.....', '.....', '.....', 'kkkkk', '.kkk.'], blinkF: ['....', '....', '....', 'kkkk', '.kk.'],
-    sleep: ['k.....k', '.kkkkk.'], sleepN: ['k...k', '.kkk.'], sleepF: ['k..k', '.kk.'],
-  };
-  const EYEC = { k: '#161a2c', w: '#ffffff', b: '#3a4a7c' };
+  /* ---------- face decal: the dark eye mask (a figure-8 patch), big eyes with a shine, the mouth ---------- */
+  let eyeKind = 'open';
+  const EYE_DIRS = [1, -1].map((sd) => Creature.sph(sd * EAZ, EV));
+  // F = { base, mask, ring, R }: base / mask codes, optional rim code (sunny), face radius in model units
+  function faceMat(s, open, F) {
+    const px = 1 / (curScale * F.R);
+    if (F.ring && s[0] < 0.42) return F.ring;
+    if (s[0] > 0.3) {
+      // small sprites: a big black eye with a shine; big sprites add the white ring of the art
+      const tiny = px > 0.075;
+      const RP = tiny ? Math.max(0.17, 1.9 * px) : 0.16, RW = tiny ? RP : RP + 0.055, RM = RW + Math.max(0.085, 1.05 * px);
+      let inMask = false;
+      for (let i = 0; i < 2; i++) {
+        const e = EYE_DIRS[i], sd = i ? -1 : 1;
+        const dx = s[0] - e[0], dy = s[1] - e[1], dz = s[2] - e[2];
+        const d = Math.hypot(dx, dy * 0.7, dz);
+        if (d < RW) {
+          if (eyeKind === 'open') {
+            if (Math.hypot(dx, dy - RP * 0.42, dz + sd * RP * 0.3) < Math.max(0.05, 0.8 * px)) return code(WHITE, 1);
+            return d < RP ? code(EYE) : code(WHITE);
+          }
+          const lw = Math.max(0.04, 0.75 * px);
+          if (eyeKind === 'happy') { if (Math.abs(d - RP * 0.8) < lw && dy > -0.02) return code(EYE); }
+          else if (Math.abs(dy + 0.02) < lw && d < RP * 1.2) return code(EYE);
+          return F.mask;
+        }
+        // mask: round patch around the eye, drawn out into a point below-outside (the mustache tip)
+        const tx = Math.hypot(dx, dz), below = -dy;
+        if (d < RM || (below > 0 && sd * s[2] > sd * e[2] - 0.05 && Math.hypot(tx * 1.25, below * 0.8) < RM + 0.02 && below < RM * 1.25)) inMask = true;
+      }
+      // bridge between the eyes, dipping to a small point over the mouth
+      if (!inMask && Math.abs(s[2]) < 0.22 && s[1] < EV + 0.2 - Math.abs(s[2]) * 0.5 && s[1] > EV - 0.13 + Math.abs(s[2]) * 0.2) inMask = true;
+      if (inMask) return F.mask;
+    }
+    return mouthMat(s, open, F.base);
+  }
+
 
   /* ---------- build ---------- */
+  // little cloud "body" under the head: a round puff, a lumpy bottom and a curled tail flicking back
+  function cloudBody(f, mat, prims, big) {
+    const k = big || 1;
+    prims.push(ellF(chain(f, T(-0.5, 10.5, 0)), [9.6 * k, 6.6, 9 * k], 2, 3, mat));
+    prims.push(ellF(chain(f, T(2.4, 5.4, 4.6 * k)), [5.8, 5.2, 5.4], 2, 3, mat));
+    prims.push(ellF(chain(f, T(2.4, 5.4, -4.6 * k)), [5.8, 5.2, 5.4], 2, 3, mat));
+    prims.push(ellF(chain(f, T(-4.6, 5.8, 0)), [5.8, 5.4, 6], 2, 3, mat));
+    tube(f, [pt(-8.5, 9, 0, 4.6, 4), pt(-12.8, 9.2, 0, 3.6, 3.1), pt(-16.2, 11, 0, 2.7, 2.3), pt(-18, 13.8, 0, 2, 1.7), pt(-17.6, 16.2, 0, 1.4, 1.2)], [0, 0, 1], 3, 3, mat, prims);
+  }
+
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const form = P.form === 'sunny' || P.form === 'rainy' || P.form === 'snowy' ? P.form : 'normal';
     const bob = clamp(+P.bob || 0, 0, 1), mo = clamp(+P.mouth || 0, 0, 1);
     const tilt = clamp(+P.tilt || 0, -1, 1) * 0.28;
     const prims = [], anchors = {};
-    const h0 = 7 + 8 * bob; // hover height of the lowest point
-    // whole-body twirl about the vertical axis; squash / stretch about the body centre (y ≈ 24 above h0)
+    const h0 = 5 + 8 * bob; // hover height of the lowest point
     const sq = clamp(+P.squash || 0, -1, 1);
-    const root = chain(T(0, h0 + 24, 0), F(M3.diag(1 + 0.14 * sq, 1 - 0.22 * sq, 1 + 0.14 * sq), [0, 0, 0]), T(0, -24, 0), R(M3.ry(+P.spin || 0)));
-    let faceP = null, headF = null, tip = null, bottomY = 0, topP = null;
+    const root = chain(T(0, h0 + 22, 0), F(M3.diag(1 + 0.14 * sq, 1 - 0.22 * sq, 1 + 0.14 * sq), [0, 0, 0]), T(0, -22, 0), R(M3.ry(+P.spin || 0)));
+    const cl = chain(root, R(M3.rx(tilt * 0.4)));
+    let faceP = null, headF = null, tip = null, bottomY = h0, topP = null;
 
     if (form === 'normal') {
-      headF = chain(root, T(0, 25, 0), R(M3.rx(tilt)));
+      headF = chain(root, T(0, 28, 0), R(M3.rx(tilt)));
       const HR = [15.5, 15, 15.5];
-      faceP = ellF(headF, HR, 1, 1, (s) => mouthMat(s, mo, CH));
+      faceP = ellF(headF, HR, 1, 1, (s) => faceMat(s, mo, FN));
       prims.push(faceP);
       // swirl on top: a soft cone that rises and curls over toward the back
       const sw = [];
@@ -16809,139 +16833,109 @@ const Castform = (() => {
       prims.push(...sw);
       tip = inF(headF, [-11.2, 18.4, 0]);
       topP = inF(headF, [-4, 25.5, 0]);
-      // blue-grey cloud cupping the head from below (a crescent of puffs), both ends curling up at the sides
-      const cl = chain(root, R(M3.rx(tilt * 0.4)));
-      prims.push(ellF(chain(cl, T(-1, 7.6, 0)), [14.5, 7.4, 12.5], 2, 3, CC));
-      prims.push(ellF(chain(cl, T(-11, 9, 0)), [8, 6.4, 9], 2, 3, CC));
-      for (const sd of [1, -1]) {
-        const id = sd > 0 ? 4 : 5;
-        tube(cl, [pt(2.5, 7.2, sd * 9.5, 7.4, 6.6, 6.8), pt(1.8, 9.6, sd * 15, 5.6, 5, 5.2), pt(0.8, 14.2, sd * 18.2, 4.4, 3.9, 3.9), pt(0, 18.8, sd * 18.4, 3.4, 2.9, 2.9), pt(-0.4, 21.6, sd * 16.4, 2.6, 2.1, 2.1), pt(-0.4, 21.4, sd * 13.8, 1.9, 1.6, 1.6)], [1, 0, 0], id, id, CC, prims);
-      }
-      bottomY = h0 + 0.4;
+      cloudBody(cl, CC, prims);
     } else if (form === 'sunny') {
-      headF = chain(root, T(0, 25, 0), R(M3.rx(tilt)));
-      // orange sun body with a yellow face disc bulging in front
-      prims.push(ellF(headF, [12.5, 13.6, 13.6], 2, 2, CSR));
-      faceP = ellF(chain(headF, T(4.6, 0, 0)), [9, 12.4, 12.4], 1, 1, (s) => mouthMat(s, mo, CSF));
+      headF = chain(root, T(0, 29, 0), R(M3.rx(tilt)));
+      // orange sun body behind a red face disc with a yellow rim
+      prims.push(ellF(headF, [10.5, 13, 13], 2, 2, CSO));
+      faceP = ellF(chain(headF, T(3.6, 0, 0)), [9, 12.6, 12.6], 1, 1, (s) => faceMat(s, mo, FS));
       prims.push(faceP);
-      // eight flame-ray petals around the face; the top one is big and curls back
+      // eight round flame puffs around the face; the top one bigger
       for (let i = 0; i < 8; i++) {
-        const a = Math.PI / 2 + (i * Math.PI) / 4; // angle in the face plane, from +z toward +y
-        const ca = Math.cos(a), sa = Math.sin(a);
-        const d = nrm([-0.34, sa, ca]);
-        const perp = [0, ca, -sa]; // in-plane, perpendicular to the ray
-        const nodes = [];
-        const top = i === 0;
-        const len = top ? 16.5 : 12, wd = top ? 7.6 : 7.2;
-        const r0 = 9.6;
-        const curl = top ? 0 : 0.1;
-        for (const [t, k] of [[0, 1], [0.34, 0.74], [0.62, 0.48], [0.86, 0.27]]) {
-          const p = add(add(sc(d, r0 + len * t), sc(perp, curl * len * t * t * 3)), top ? [-7 * t * t, -2.5 * t * t, 0] : [0, 0, 0]);
-          nodes.push({ p, r: [wd * (0.9 - 0.25 * t), 4.2 * k + 0.6, wd * k] });
-        }
-        const g = 10 + i;
-        tube(headF, nodes, [1, 0, 0], 4 + i, g, CSR, prims);
-        if (top) tip = inF(headF, add(sc(d, r0 + len), [-7, -2.5, 0]));
+        const a = Math.PI / 2 + (i * Math.PI) / 4;
+        const d = nrm([-0.3, Math.sin(a), Math.cos(a)]);
+        const top = i === 0, r = top ? 7.2 : 6.2;
+        prims.push(ellAlong(headF, sc(d, top ? 15.5 : 14.5), d, [1, 0, 0], [r * 1.05, r * 0.72, r], 4 + i, 10 + i, CSO));
+        if (top) tip = inF(headF, sc(d, 22));
       }
-      topP = inF(headF, [-3, 27, 0]);
-      bottomY = h0 + 3;
+      topP = inF(headF, [-3, 22.5, 0]);
+      cloudBody(cl, CW, prims, 0.9);
     } else if (form === 'rainy') {
-      headF = chain(root, T(0, 20, 0), R(M3.rx(tilt)));
+      headF = chain(root, T(0, 27, 0), R(M3.rx(tilt)));
       const FR = [14, 13.6, 14];
-      faceP = ellF(headF, FR, 1, 1, (s) => mouthMat(s, mo, CRF));
+      faceP = ellF(headF, FR, 1, 1, (s) => faceMat(s, mo, FR_));
       prims.push(faceP);
-      // dark-blue water hood (face window in front) rising into a pointed drop tip
       const HR = V3.scale(FR, 1.08);
       const hoodMat = (s) => {
         const az = Math.abs(Math.atan2(s[2], s[0]));
         const v = s[1];
-        // window: the lower front, arching over the brow with a centre peak (a lock of bangs)
-        const brow = 0.42 - 0.2 * Math.exp(-(az * az) / 0.03) - 0.3 * (az / 1.25) ** 2;
-        if (az < 1.25 && v < brow) return 0;
+        const brow = 0.5 - 0.18 * Math.exp(-(az * az) / 0.03) - 0.3 * (az / 1.3) ** 2;
+        if (az < 1.3 && v < brow) return 0;
         if (v < -0.55 && az < 2.2) return 0;
         return CRH();
       };
       prims.push(ellF(headF, HR, 2, 2, hoodMat));
-      // the raindrop point: one long ellipsoid plus a slim tip, leaning back a little
       prims.push(ellAlong(headF, [-1.6, 17, 0], [-0.22, 1, 0], [1, 0, 0], [11.5, 7.6, 7.8], 2, 2, CRH));
       prims.push(ellAlong(headF, [-4.6, 26.2, 0], [-0.42, 1, 0], [1, 0, 0], [5.4, 2.8, 2.9], 2, 2, CRH));
       tip = inF(headF, [-6.6, 30.6, 0]);
       topP = tip;
-      bottomY = h0 + 5;
-      // water-drop locks: a big drop hanging down each side of the face (point up, merging into the hood)
       for (const sd of [1, -1]) {
-        const id = sd > 0 ? 3 : 4;
-        prims.push(ellAlong(headF, [1.2, 1.5, sd * 12.9], [0.1, 1, sd * 0.12], [1, 0, 0], [7, 3.6, 2.6], id, id, CRH));
-        prims.push(ellAlong(headF, [1.6, -8.4, sd * 12.6], [0.05, 1, -sd * 0.1], [1, 0, 0], [6.4, 5.2, 3.6], id, id, CRH));
+        const id = sd > 0 ? 4 : 5;
+        prims.push(ellAlong(headF, [0.6, 1.5, sd * 13.4], [0.1, 1, sd * 0.12], [1, 0, 0], [7, 3.6, 2.6], id, id, CRH));
+        prims.push(ellAlong(headF, [1, -8.4, sd * 13], [0.05, 1, -sd * 0.1], [1, 0, 0], [6.4, 5.2, 3.6], id, id, CRH));
       }
+      cloudBody(cl, CC, prims);
     } else {
-      headF = chain(root, T(0, 23, 0), R(M3.rx(tilt)));
+      headF = chain(root, T(0, 22, 0), R(M3.rx(tilt)));
       const FR = [14, 13.6, 14];
-      faceP = ellF(headF, FR, 1, 1, (s) => mouthMat(s, mo, CSNF));
+      faceP = ellF(headF, FR, 1, 1, (s) => faceMat(s, mo, FSN));
       prims.push(faceP);
-      // periwinkle hail-cloud hood with a round face window
+      // icy hail-cloud hood with a round face window, puffy lumps around it
       const HR = [16, 16.4, 16.6];
-      const WIN = 0.64; // cos of the window's angular radius
-      const WC = nrm([1, -0.1, 0]);
+      const WIN = 0.62;
+      const WC = nrm([1, -0.08, 0]);
       prims.push(ellF(headF, HR, 2, 2, (s) => (dot(s, WC) > WIN ? 0 : CSNH())));
-      // thick rim around the window (a rounded collar), studded with hail lumps
       const ang = Math.acos(WIN), rr = Math.sin(ang);
-      const rimC = sc(WC, Math.cos(ang) * HR[0] * 0.97);
-      const RR = [3.2, rr * HR[1] + 2.4, rr * HR[2] + 2.4], RIN = (rr * HR[1] - 1.2) / RR[1];
-      prims.push(ellAlong(headF, rimC, WC, [0, 1, 0], RR, 3, 3, (s) => (s[1] * s[1] + s[2] * s[2] < RIN * RIN && s[0] > 0 ? 0 : CSNH_L())));
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
-        const dir = nrm(add(sc(WC, Math.cos(ang) * 0.9), add(sc([0, 1, 0], rr * 1.12 * Math.sin(a)), sc([0, 0, 1], rr * 1.12 * Math.cos(a)))));
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * Math.PI * 2 + Math.PI / 2;
+        const dir = nrm(add(sc(WC, Math.cos(ang) * 0.82), add(sc([0, 1, 0], rr * 1.18 * Math.sin(a)), sc([0, 0, 1], rr * 1.18 * Math.cos(a)))));
         const p = [dir[0] * HR[0], dir[1] * HR[1], dir[2] * HR[2]];
-        prims.push(ellAlong(headF, p, dir, [0, 1, 0], [3, 4.4, 4.4], 3, 3, CSNH_L));
+        prims.push(ellAlong(headF, p, dir, [0, 1, 0], [3.6, 5.2, 5.2], 3, 3, CSNH_L));
       }
-      // cloud tuft on top
-      prims.push(ellF(chain(headF, T(-2.5, 15, 0)), [7.6, 5.4, 7], 4, 4, CSNH));
-      prims.push(ellF(chain(headF, T(-7.2, 19, 0)), [4.8, 4, 4.4], 4, 4, CSNH));
-      prims.push(ellF(chain(headF, T(-10.2, 21.6, 0)), [2.8, 2.6, 2.8], 4, 4, CSNH));
-      tip = inF(headF, [-10.6, 23.8, 0]);
-      topP = inF(headF, [-4, 20.6, 0]);
-      // icicle hail points dangling under the back and sides of the hood (the face stays clear)
-      for (const [az, L] of [[1.7, 4.6], [Math.PI, 5.4], [-1.7, 4.6], [2.45, 3.4], [-2.45, 3.4]]) {
-        const ca = Math.cos(az), sa = Math.sin(az);
-        const v = -0.74;
-        const cr = Math.sqrt(1 - v * v);
-        const p = [HR[0] * cr * ca * 0.98, HR[1] * v - L * 0.45, HR[2] * cr * sa * 0.98];
-        prims.push(ellAlong(headF, p, [0.12 * ca, -1, 0.12 * sa], [ca, 0, sa], [L, 2.3, 2.4], 5, 6, CICE));
+      // big cloud puffs at the lower sides and back
+      for (const [x, y, z, r] of [[-2, -8, 12, 7.5], [-2, -8, -12, 7.5], [-10, -6, 0, 8], [-8, 6, 10, 6.5], [-8, 6, -10, 6.5]]) prims.push(ellF(chain(headF, T(x, y, z)), [r, r * 0.85, r], 3, 3, CSNH_L));
+      // floating halo ring above the head
+      const ringF = chain(headF, T(-3, 21, 0), R(M3.rz(0.22)));
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2;
+        prims.push(ellAlong(ringF, [11.5 * Math.cos(a), 0, 12.5 * Math.sin(a)], [-Math.sin(a), 0, Math.cos(a)], [0, 1, 0], [4.2, 2.1, 2.4], 4, 4, CSNH_L));
       }
-      bottomY = h0 + 3;
+      tip = inF(ringF, [-11.5, 0, 0]);
+      topP = inF(ringF, [0, 2, 0]);
+      // one long icicle hail point dangling below plus two small ones
+      prims.push(ellAlong(headF, [-1, -19, 0], [0.05, -1, 0], [1, 0, 0], [7, 2.8, 2.8], 5, 6, CICE));
+      for (const sd of [1, -1]) prims.push(ellAlong(headF, [-4, -15.5, sd * 7], [0, -1, sd * 0.2], [1, 0, 0], [4, 2.1, 2.1], 5, 6, CICE));
+      bottomY = h0 + 0.5;
     }
 
-    // eyes: stamps on the face prim
-    const kind = P.eyes === 'happy' ? 'happy' : P.eyes === 'blink' ? 'blink' : P.eyes === 'closed' ? 'sleep' : 'open';
-    const stamps = [];
-    for (const sd of [1, -1]) {
-      const s = Creature.sph(sd * EAZ, EV);
-      const at = { prim: faceP, p: add(faceP.c, M3.v(faceP.L, s)), s };
-      stamps.push({ at, set: EYES_M, colors: EYEC, kind, near: 0.8, far: 0.45 });
-      anchors[sd > 0 ? 'eyeN' : 'eyeF'] = at.p;
-    }
-    const ms = Creature.sph(0, MV - 0.05);
-    anchors.mouth = add(faceP.c, M3.v(faceP.L, ms));
+    // eyes: painted into the face decal (anchors only)
+    eyeKind = P.eyes === 'happy' ? 'happy' : P.eyes === 'blink' || P.eyes === 'closed' ? 'blink' : 'open';
+    const ek = eyeKind;
+    const wrap = faceP.mat;
+    faceP.mat = (s) => { eyeKind = ek; return wrap(s); };
+    for (const sd of [1, -1]) anchors[sd > 0 ? 'eyeN' : 'eyeF'] = add(faceP.c, M3.v(faceP.L, Creature.sph(sd * EAZ, EV)));
+    anchors.mouth = add(faceP.c, M3.v(faceP.L, Creature.sph(0, MV - 0.05)));
     anchors.head = headF.t;
     anchors.body = headF.t;
     anchors.top = topP;
     anchors.tip = tip;
     anchors.bottom = [0, bottomY, 0];
     return {
-      prims, stamps, dots: [], anchors, pose: P, form,
+      prims, stamps: [], dots: [], anchors, pose: P, form,
       pri: { 1: 1, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 0, 17: 0 },
-      glossy: GLOSSY, baseMat: form === 'sunny' ? SUNF : form === 'rainy' ? RAINF : form === 'snowy' ? SNOWF : HEAD,
+      glossy: GLOSSY, baseMat: form === 'sunny' ? SUNR : form === 'rainy' ? RAINF : form === 'snowy' ? SNOWF : HEAD,
       shadowSteps: 16, shadowDepth: 10,
     };
   }
-  const CH = code(HEAD), CH_F = K(HEAD), CC = K(CLOUD), CSF = code(SUNF), CSR = K(SUNR), CRF = code(RAINF), CRH = K(RAINH);
-  const CSNF = code(SNOWF), CSNH = K(SNOWH), CSNH_L = K(SNOWH, 1), CICE = K(ICE);
+  const CH = code(HEAD), CH_F = K(HEAD), CC = K(CLOUD), CW = K(HEAD), CSO = K(SUNO), CRH = K(RAINH);
+  const CSNH = K(SNOWH), CSNH_L = K(SNOWH, 1), CICE = K(ICE);
+  const FN = { base: CH, mask: code(MASK), R: 15.5 };
+  const FS = { base: code(SUNR), mask: code(SUNF), ring: code(SUNF), R: 12.6 };
+  const FR_ = { base: code(RAINF), mask: code(RAINH), R: 14 };
+  const FSN = { base: code(SNOWF), mask: code(SNOWM), R: 14 };
 
   function render(model, opt) {
     curScale = opt.scale || 1;
-    const set = curScale >= 1.4 ? EYES_L : curScale >= 0.75 ? EYES_M : EYES_S;
-    for (const st of model.stamps) st.set = set;
     return Creature.render(model, opt);
   }
 
@@ -31605,7 +31599,7 @@ const Save = (() => {
       for (const s of r.others || []) if (!data.seen[s]) data.seen[s] = Date.now();
     }
     data.album.unshift({ sp: r.species, beh: r.beh, stars: r.stars, score: r.score, medal: r.medal, img: r.img, t: Date.now() });
-    if (data.album.length > 24) data.album.length = 24;
+    if (data.album.length > (data.albumMax || 24)) data.album.length = data.albumMax || 24;
     save();
     return out;
   }
@@ -32188,6 +32182,7 @@ const Mons = (() => {
       const R = this.senseR ?? 150;
       let gain = d < R ? (1 - d / R) * (mk.moving > 70 ? 1.6 : mk.moving > 0 ? 0.8 : 0.35) : -0.25;
       if (mk.sneak) gain *= 0.4;
+      if (Game.lureT > 0 && d < 420) gain = Math.max(gain, 0.5);
       if (Game.mode === 'camera' && Photo.inView(this)) gain += this.persona === 'shy' ? 0.35 : 0.15;
       this.aware = clamp(this.aware + gain * dt * (this.alert ?? 1), 0, 1);
       if (this.aware > 0.55 && this.noticeT <= 0 && t - this.lastReact > 6) {
@@ -32207,6 +32202,7 @@ const Mons = (() => {
     *grumble() { this.setAct('woken', 0.4); yield* wait(1.2); }
     onNotice(mk) {
       this.lastReact = Game.t;
+      if (Game.lureT > 0 && this.mode !== 'hidden') { this.doTask(this.curiousLook(mk), 3); return; }
       switch (this.persona) {
         case 'shy': this.doTask(this.flee(mk), 4); break;
         case 'curious': this.doTask(this.curiousLook(mk), 3); break;
@@ -32541,6 +32537,7 @@ const Player = (() => {
       this.target = tg;
     }
     physics(dt, t) {
+      if (this.mode === 'ride') return;
       const x = this.x;
       if (this.mode === 'land') {
         if (World.isWet(x, 16) && this.air <= 0 && !this.plat) {
@@ -32590,14 +32587,14 @@ const Player = (() => {
       const swim = this.mode === 'swim';
       const walk = this.moving ? clamp(this.moving / 60, 0.6, 1.5) : 0;
       this.gait = approach(this.gait, walk, dt * 6);
-      const rate = swim ? 13 : 7 + this.gait * 6;
+      const rate = swim ? 13 : 5 + Math.abs(this.vx) * 0.3; // steps keep pace with the ground (no foot sliding)
       if (this.gait > 0.01 || swim) this.phase += dt * rate;
       const s = Math.sin(this.phase), c = Math.cos(this.phase);
       const P = {};
       const g = swim ? Math.max(0.35, this.gait) : this.gait;
       const fast = clamp((Math.abs(this.vx) - 90) / 60, 0, 1);
-      P.legF = s * (0.6 + fast * 0.25) * g; P.legB = -s * (0.6 + fast * 0.25) * g;
-      P.bodyDip = swim ? 0 : Math.abs(c) * 1.8 * this.gait;
+      P.legF = s * (0.85 + fast * 0.2) * g; P.legB = -s * (0.85 + fast * 0.2) * g; P.legSplay = Math.abs(c) * 0.12 * this.gait;
+      P.bodyDip = swim ? 0 : (1 - Math.abs(s)) * 2.2 * this.gait; // body drops as the legs pass under it
       // footfalls: a little squash and a puff of dust
       if (!swim && this.mode === 'land' && this.gait > 0.3 && this.air <= 0) {
         const step = Math.floor(this.phase / Math.PI);
@@ -32909,7 +32906,7 @@ const HUD = (() => {
   function hover(ux, uy) { H.hoverId = null; for (const b of H.btns) if (ux >= b.x && uy >= b.y && ux < b.x + b.w && uy < b.y + b.h) H.hoverId = b.id; }
   const pressed = (id) => H.press && H.press.b.id === id;
 
-  function toast(msg, o = {}) { H.toasts.push(Object.assign({ msg, t: 0, life: o.life || 2.8, icon: o.icon || null, col: o.col || null }, o)); if (H.toasts.length > 4) H.toasts.shift(); }
+  function toast(msg, o = {}) { H.toasts.push(Object.assign({ msg, t: 0, life: o.life || 2.8, icon: o.icon || null, col: o.col || null }, o)); if (H.toasts.length > 3) H.toasts.shift(); }
   function banner(name, sub) { H.ban = { name, sub, t: 0 }; }
   function tool(id) {
     const mk = Game.mudkip;
@@ -33046,17 +33043,20 @@ const HUD = (() => {
     Font.draw(fb, b.name, fb.w / 2, y + 10, S.screenText, { font: 'title', align: 'center' });
     Font.draw(fb, b.sub, fb.w / 2, y + h + 4, 0xffffffff, { font: 'small', align: 'center', outline: INK });
   }
+  // notifications: a quiet feed that slides in at the top-left (no pop-up boxes)
   function drawToasts(fb, S, t, bottom = false) {
-    let y = bottom ? fb.h - 24 - 22 * Math.max(0, H.toasts.length - 1) : H.ban ? 84 : 36;
+    const maxW = Math.min(190, Math.round(fb.w * 0.42));
+    let y = bottom ? fb.h - 18 - 14 * H.toasts.length : 34;
     for (const tt of H.toasts) {
-      const k = Math.min(1, tt.t / 0.2, (tt.life - tt.t) / 0.3);
+      const k = Math.min(1, tt.t / 0.25, (tt.life - tt.t) / 0.4);
       if (k <= 0) continue;
-      const w = Font.measure(tt.msg, 'body') + 18, h = 18;
-      const x = Math.round(fb.w / 2 - w / 2);
-      const yy = Math.round(y - (1 - k) * 8);
-      UI.panel(fb, x, yy, w, h, { r: 4, ol: S.ink, fill: tt.col ?? 0xfff4f6fb });
-      Font.draw(fb, tt.msg, fb.w / 2, yy + 5, INK, { font: 'body', align: 'center' });
-      y += h + 4;
+      const lines = Font.wrap ? Font.wrap(tt.msg, 'small', maxW) : [tt.msg];
+      const w = Math.max(...lines.map((l) => Font.measure(l, 'small'))) + 14, h = lines.length * 9 + 5;
+      const x = Math.round(6 - (1 - k) * (w + 10));
+      UI.rectA(fb, x, y, w, h, 0xff0a0e20, 0.45 * k);
+      UI.rect(fb, x, y, 2, h, tt.col ?? S.accent);
+      lines.forEach((l, i) => Font.draw(fb, l, x + 8, y + 3 + i * 9, 0xffffffff, { font: 'small', shadow: 0xff0a0e20 }));
+      y += h + 3;
     }
   }
   function drawScan(fb, S, t) {
@@ -33720,18 +33720,20 @@ const Quests = (() => {
   function onStart() { checkUnlocks(); }
   function unseen() { return Q.unseenN > 0; }
   function seen() { Q.unseenN = 0; }
+  // request completed: a slim ribbon that slides in at the top-right (not a pop-up)
   function drawPop(fb, t) {
     const p = Q.pops[0];
     if (!p || p.t < 0) return;
     const S = UI.skin();
-    const k = p.t < 0.3 ? U.ease.outBack(p.t / 0.3) : p.t > p.life - 0.4 ? (p.life - p.t) / 0.4 : 1;
-    const w = Math.max(200, Font.measure(p.text, 'body') + 24), h = p.reward || p.sub ? 40 : 26;
-    const x = Math.round(fb.w / 2 - w / 2), y = Math.round(fb.h - 70 - h + (1 - k) * 30);
-    UI.body(fb, x, y, w, h, S, { r: 5 });
-    UI.screen(fb, x + 4, y + 4, w - 8, h - 8, { fill: S.screen, rim: S.ink, glare: false });
-    Font.draw(fb, (p.unlock ? '{spark} ' : '{check} ') + p.text, fb.w / 2, y + 10, S.screenText, { font: 'body', align: 'center' });
-    if (p.reward) Font.draw(fb, 'Reward: ' + p.reward.label, fb.w / 2, y + 24, S.accent === 0xff2f7ae8 ? 0xff1f58c8 : U.tweak(S.accent, 0, 1, -0.2), { font: 'small', align: 'center' });
-    else if (p.sub) Font.draw(fb, p.sub + ' — open the map!', fb.w / 2, y + 24, U.tweak(S.screenText, 0, 1, 0.2), { font: 'small', align: 'center' });
+    const k = Math.min(1, p.t / 0.3, (p.life - p.t) / 0.4);
+    if (k <= 0) return;
+    const sub = p.reward ? 'Reward: ' + p.reward.label : p.sub ? p.sub + ' — open the map!' : '';
+    const w = Math.max(Font.measure(p.text, 'body'), sub ? Font.measure(sub, 'small') : 0) + 26, h = sub ? 26 : 16;
+    const x = Math.round(fb.w - 6 - w + (1 - k) * (w + 10)), y = 34;
+    UI.rectA(fb, x, y, w, h, 0xff0a0e20, 0.5 * k);
+    UI.rect(fb, x + w - 2, y, 2, h, S.accent);
+    Font.draw(fb, (p.unlock ? '{spark} ' : '{check} ') + p.text, x + 6, y + 3, 0xffffffff, { font: 'body', shadow: 0xff0a0e20 });
+    if (sub) Font.draw(fb, sub, x + 6, y + 16, 0xffffe08a, { font: 'small', shadow: 0xff0a0e20 });
   }
   return { BIRCH, stamps, checkPhoto, checkBirch, checkUnlocks, tick, onStart, unseen, seen, drawPop, Q };
 })();
@@ -34059,7 +34061,7 @@ const Dex = (() => {
     sel: null, star: 0, scroll: {}, btns: [], press: null, drag: null, keyAng: 0, keyV: 0,
     thumbs: new Map(), imgs: new Map(), confirm: null, album: 0, styleSlot: 'hat', mudYaw: 1.1,
   };
-  const TABS = [['grid', 'Pokémon', 'pb'], ['album', 'Album', 'cam'], ['quests', 'Requests', 'check'], ['style', 'Style', 'shirt'], ['disc', 'Secrets', 'spark'], ['settings', 'Options', 'coin']];
+  const TABS = [['grid', 'Pokémon', 'pb'], ['album', 'Album', 'cam'], ['quests', 'Requests', 'check'], ['style', 'Style', 'shirt'], ['shop', 'Shop', 'bag'], ['disc', 'Secrets', 'spark'], ['settings', 'Options', 'coin']];
   const RANKS = [[0, 'Rookie'], [2000, 'Novice'], [6000, 'Pro'], [15000, 'Expert'], [30000, 'Master'], [60000, 'Legend']];
   const rank = () => { let r = RANKS[0][1]; for (const [n, name] of RANKS) if (Save.data.points >= n) r = name; return r; };
 
@@ -34328,6 +34330,7 @@ const Dex = (() => {
     else if (page === 'album') pageAlbum(fb, S, L, R, slide, t);
     else if (page === 'quests') pageQuests(fb, S, L, R, slide, t);
     else if (page === 'style') pageStyle(fb, S, L, R, slide, t);
+    else if (page === 'shop') pageShop(fb, S, L, R, slide, t);
     else if (page === 'disc') pageDisc(fb, S, L, R, slide, t);
     else if (page === 'settings') pageSettings(fb, S, L, R, slide, t);
   }
@@ -34595,6 +34598,75 @@ const Dex = (() => {
       y += 20;
       if (y > R.y + R.h - 20) break;
     }
+  }
+
+  /* ---- shop: spend research points on items, outfits and device styles ---- */
+  const PRICE = { hat: 900, shirt: 800, glasses: 600, neck: 500, skin: 1500, banner: 700, key: 400, deco: 600 };
+  const GOODS = [
+    { id: 'item.berry5', name: '5 Oran Berries', desc: 'Throw them to lure hungry Pokémon.', price: 150, buy() { Save.addItem('berry', 5); } },
+    { id: 'item.lure', name: 'Sweet Lure', desc: 'For 90 s Pokémon come closer and rare ones show up.', price: 400, buy() { Game.lureT = 90; HUD.toast('The Sweet Lure fills the air... Pokémon are drawn to you!', { life: 3 }); } },
+    { id: 'item.film', name: 'Photo Album Page', desc: '+6 album slots for your favourite shots.', price: 300, buy() { Save.data.albumMax = (Save.data.albumMax || 24) + 6; Save.save(); } },
+  ];
+  let exclusiveSet = null;
+  function exclusive() {
+    if (exclusiveSet) return exclusiveSet;
+    exclusiveSet = new Set();
+    for (const k in DexData.S) for (const o of DexData.S[k].obj || []) if (o.reward) exclusiveSet.add(o.reward);
+    for (const q of Quests.BIRCH || []) if (q.reward) exclusiveSet.add(q.reward);
+    return exclusiveSet;
+  }
+  function pageShop(fb, S, L, R, slide, t) {
+    const pts = Save.data.points;
+    if (L) {
+      Font.draw(fb, 'Pokédex Shop', L.x + 6, L.y + 8, S.screenText, { font: 'title' });
+      Font.draw(fb, '{coin} ' + pts + ' points', L.x + 6, L.y + 30, S.screenText, { font: 'body' });
+      Font.draw(fb, 'Earn points by taking great photos and finishing requests. Some prizes can only be won from Pokédex quests!', L.x + 6, L.y + 48, U.mix(S.screenText, S.screen, 0.3), { font: 'small', maxW: L.w - 12, lh: 10 });
+      const look = Save.look(); const yaw = Math.round((0.6 + Math.sin(D.mudYaw * 0.7) * 0.9) * 10) / 10;
+      const b = mudSprite(look, yaw);
+      UI.img(fb, b, L.x + L.w / 2 - b.ox * 2 + slide, L.y + L.h - 30 - b.oy * 2, 2);
+    }
+    const cats = [['items', 'Items'], ['outfit', 'Outfits'], ['device', 'Device']];
+    D.shopCat = D.shopCat || 'items';
+    const cw = Math.floor((R.w - 8) / 3);
+    cats.forEach(([id, label], i) => {
+      const bx = R.x + 4 + i * cw, on = D.shopCat === id;
+      UI.panel(fb, bx, R.y + 4, cw - 2, 14, { r: 3, ol: S.ink, fill: on ? S.accent : U.mix(S.screen, 0xff000000, 0.12), hi: null, sh: null });
+      Font.draw(fb, label, bx + (cw - 2) / 2, R.y + 8, on ? 0xffffffff : S.screenText, { font: 'small', align: 'center' });
+      btn('shopcat-' + id, bx, R.y + 4, cw - 2, 14, () => { D.shopCat = id; D.scroll.shop = 0; });
+    });
+    let rows;
+    if (D.shopCat === 'items') rows = GOODS.map((g) => ({ id: g.id, name: g.name, desc: g.desc, price: g.price, owned: false, buy: g.buy }));
+    else {
+      const slots = D.shopCat === 'outfit' ? ['hat', 'shirt', 'glasses', 'neck'] : ['skin', 'banner', 'key', 'deco'];
+      // quest prizes can be won for free, or bought here for a premium
+      rows = Object.keys(Rewards.C).filter((id) => slots.includes(Rewards.C[id].slot) && !id.endsWith('.none'))
+        .map((id) => { const ex = exclusive().has(id); return { id, name: Rewards.C[id].name + (ex ? ' {star}' : ''), desc: (ex ? 'Quest prize — or buy it now! ' : '') + (Rewards.C[id].desc || ''), price: (PRICE[Rewards.C[id].slot] || 500) * (ex ? 3 : 1), owned: Save.has(id), buy() { Save.own(id); Save.equip(Rewards.C[id].slot, id); } }; })
+        .sort((a, b) => (a.owned - b.owned) || (a.price - b.price));
+    }
+    const Q = { x: R.x, y: R.y + 22, w: R.w, h: R.h - 24 };
+    areas.shop = Q;
+    const sc = D.scroll.shop || 0;
+    clipTo(fb, Q, (g) => {
+      let y = Q.y - sc;
+      for (const r of rows) {
+        if (y + 24 > Q.y && y < Q.y + Q.h) {
+          const afford = pts >= r.price;
+          UI.panel(g, R.x + 4 + slide, y, R.w - 8, 24, { r: 3, ol: S.ink, fill: r.owned ? U.mix(S.screen, 0xffffffff, 0.3) : U.mix(S.screen, 0xffffffff, 0.12), hi: null, sh: null });
+          Font.draw(g, r.name, R.x + 10 + slide, y + 4, S.screenText, { font: 'body' });
+          Font.draw(g, r.desc || '', R.x + 10 + slide, y + 15, U.mix(S.screenText, S.screen, 0.35), { font: 'small', clip: { x0: R.x, y0: y, x1: R.x + R.w - 60, y1: y + 24 } });
+          const bw = 48, bx = R.x + R.w - 8 - bw;
+          UI.panel(g, bx, y + 5, bw, 14, { r: 3, ol: S.ink, fill: r.owned ? 0xff7a8a80 : afford ? S.accent : 0xff5a5a6a, hi: null, sh: null });
+          Font.draw(g, r.owned ? 'OWNED' : '{coin}' + r.price, bx + bw / 2, y + 9, 0xffffffff, { font: 'small', align: 'center' });
+          if (!r.owned && y + 5 >= Q.y && y + 19 <= Q.y + Q.h) btn('buy-' + r.id, bx, y + 5, bw, 14, () => {
+            if (Save.data.points < r.price) { SFX.error(); HUD.toast('Not enough points — take more great photos!', { life: 2 }); return; }
+            Save.data.points -= r.price; Save.save(); r.buy(); SFX.reward(); HUD.toast('Bought ' + r.name + '!', { life: 2 });
+          }, { silent: true });
+        }
+        y += 27;
+      }
+      D.shopMax = Math.max(0, rows.length * 27 - Q.h + 4);
+    });
+    D.scroll.shop = Math.min(D.scroll.shop || 0, D.shopMax || 0);
   }
 
   /* ---- discoveries ---- */
@@ -34888,7 +34960,7 @@ const WorldMap = (() => {
         const bx = cx + cw - 58, by = cyy + ch - 20;
         UI.panel(fb, bx, by, 52, 16, { r: 3, ol: S.ink, fill: S.accent });
         Font.draw(fb, 'Travel', bx + 26, by + 5, 0xffffffff, { font: 'small', align: 'center' });
-        HUD.btn('travel', bx, by, 52, 16, () => { M.travel = { id: M.sel, t: 0 }; SFX.unlock(); });
+        HUD.btn('travel', bx, by, 52, 16, () => { if (!Areas[M.sel]) { HUD.toast('This place is still being built — coming in a future update!', { life: 2.6 }); SFX.error(); return; } M.travel = { id: M.sel, t: 0 }; SFX.unlock(); });
       }
     }
     // travel transition: a Poké Ball wipe
@@ -36529,7 +36601,8 @@ const ForestAI = (() => {
       if (!it.eaten) {
         let e = 0, bit = false;
         while (e < 2.2) { const dt = yield; e += dt; const dip = Math.min(1, e / 0.5); this.o.neck = -dip; this.o.mouth = e > 0.5 ? (Math.sin(e * 14) > 0 ? 0.7 : 0.1) : 0; this.o.eyes = e > 0.8 ? 'happy' : 'open'; this.setAct('eat', e > 0.6 && e < 1.9 ? 1 : 0.5); if (e > 0.5 && !bit) { bit = true; Items.eat(it); Game.sfx('munch', this.x, 0.6); } }
-        this.emote('heart');
+        this.emote('heart'); this.ate = (this.ate || 0) + 1;
+        if (this.ate === 1) HUD.toast('Tropius is happy! Tap it to go for a ride.', { life: 2.6 });
       }
       const more = Items.nearest(this.x, 220, (q) => q.kind === 'fruit' && !q.eaten && q.state !== 'fly');
       if (more) { yield* this.eat(more); return; }
@@ -36563,7 +36636,7 @@ const ForestAI = (() => {
         const lift = Math.sin(k * Math.PI);
         this.x = clamp(x0 + dir * Math.sin(k * Math.PI) * 260, 120, 1000);
         this.y = gy(this.x) - lift * 150 - Math.sin(e * 3.5) * 3;
-        this.o.flap = Math.sin(e * 6.5); this.o.neck = 0.4;
+        this.o.flap = Math.sin(e * 5.5) * (0.7 + 0.3 * lift); this.o.neck = 0.35 + Math.sin(e * 5.5 + 1) * 0.1; this.o.step = Math.PI * 0.5; this.o.mouth = lift > 0.8 ? 0.3 : 0;
         this.turn(this.face(dir * Math.cos(k * Math.PI) >= 0 ? 1 : -1, true), dt, 3);
         this.setAct('fly', lift > 0.35 ? 1 : 0.6);
         if (Math.random() < dt * 3) FX.add({ type: 'drop', x: this.x + rnd(-20, 20), y: this.y - 30, vx: rnd(-20, 20), vy: 10, g: 60, life: 1.6, c: hex('#56a042'), c2: hex('#8ccc5a'), size: 2, floor: gy(this.x), layer: 3 });
@@ -36571,7 +36644,42 @@ const ForestAI = (() => {
       this.mode = 'land';
       FX.poof(this.x, gy(this.x), hex('#a8742e'), hex('#c89040'), 5, 5);
     }
+    // a ride on Tropius: Mudkip climbs on its back and they fly across the woods
+    *ride(m) {
+      S.riding = true;
+      m.wakeUp(); m.target = null;
+      m.doTask((function* () { while (S.riding) yield; })(), 6);
+      HUD.toast('All aboard! Tropius takes to the sky.', { life: 2.2 });
+      Game.sfx('whoosh', this.x, 1);
+      this.mode = 'air'; this.emote('heart');
+      const x0 = this.x, dir = x0 < 1600 ? 1 : -1, span = 1300;
+      let e = 0; const T = 16;
+      while (e < T) {
+        const dt = yield; e += dt; const k = e / T;
+        const lift = Math.min(1, Math.sin(k * Math.PI) * 1.6);
+        const px = this.x;
+        this.x = clamp(x0 + dir * Math.sin(k * Math.PI) * span, 140, World.W - 140);
+        this.y = gy(this.x) - lift * 170 - Math.sin(e * 2.2) * 6;
+        const vx = (this.x - px) / Math.max(dt, 0.016);
+        if (Math.abs(vx) > 3) this.turn(this.face(Math.sign(vx), true), dt, 3);
+        this.o.flap = Math.sin(e * 5) * (0.6 + 0.4 * lift); this.o.neck = 0.4; this.o.eyes = 'happy'; this.o.step = Math.PI * 0.5;
+        this.setAct('fly', lift > 0.4 ? 1 : 0.6);
+        // Mudkip sits on its back, holding on
+        const b = this.at('body', 0, -14);
+        m.x = b[0]; m.y = b[1]; m.yaw = this.yaw; m.mode = 'ride'; m.o.legF = -0.6; m.o.legB = 0.6; m.happyT = 0.2;
+        m.o.tailWag = Math.sin(e * 6) * 0.3;
+        if (Math.random() < dt * 4) FX.add({ type: 'drop', x: this.x + rnd(-24, 24), y: this.y - 20, vx: rnd(-20, 20), vy: 10, g: 50, life: 1.8, c: hex('#56a042'), c2: hex('#8ccc5a'), size: 2, floor: gy(this.x), layer: 3 });
+      }
+      this.mode = 'land';
+      m.mode = 'land'; m.x = this.x + (this.x > 1600 ? -30 : 30); m.y = gy(m.x); m.plat = null;
+      S.riding = false;
+      FX.poof(this.x, gy(this.x), hex('#a8742e'), hex('#c89040'), 6, 6);
+      Save.discover('tropius.ride');
+    }
     onPoke() {
+      const m0 = mk();
+      if (this.ate > 0 && !this.busy(3) && !this.sleeping && m0.mode === 'land') { this.doTask(this.ride(m0), 5); return; }
+      if (this.ate <= 0 && Math.random() < 0.5) HUD.toast('Tropius sniffs you... it looks hungry for fruit.', { life: 2 });
       if (!S.shared && Game.t - S.treeT < 40 && !Items.nearest(this.x, 400, (q) => q.kind === 'fruit' && !q.eaten)) { this.doTask(this.share(mk()), 3); return; }
       this.emote('note'); Game.sfx('grr', this.x, 0.3);
       this.doTask(hold(this, 1.2, 'walk', 0.5), 2);
@@ -37659,14 +37767,14 @@ Areas.forest = (() => {
       const w = 800, h = 110, s = new ISpr(w, h);
       Paint.ridge(s, M, { ramp: M.far, base: h, amp: 90, seed: 5, freq: 0.006, peaks: [[160, 140, 1], [520, 200, 0.85]], snow: null });
       for (let y = 30; y < h; y++) for (let x = 330; x < 338; x++) if (s.get(x, y)) s.set(x, y, M.mist[(y + x) % 3 === 0 ? 0 : 1]);
-      A.layer(s, 0.03, { haze: 0.55, base: h - 1, x: -60 });
+      A.layer(s, 0.03, { haze: 0.55, base: h - 1, x: -60 }).skirt = M.far[2];
     }
     // far canopy (rolling tree line) with mist
     {
       const w = 1100, h = 90, s = new ISpr(w, h);
       Paint.treeline(s, { ramp: M.hill, base: h * 0.55, size: 12, seed: 8, jag: 6 });
-      for (let y = h - 30; y < h; y++) for (let x = 0; x < w; x++) if (bayer4(x, y) < (y - (h - 30)) / 30) s.set(x, y, M.mist[0]);
-      A.layer(s, 0.14, { haze: 0.45, base: h - 1, x: 0 });
+      for (let y = h - 30; y < h; y++) for (let x = 0; x < w; x++) if (s.get(x, y) && bayer4(x, y) < (y - (h - 30)) / 60) s.set(x, y, M.hill[1]);
+      A.layer(s, 0.14, { haze: 0.45, base: h - 1, x: 0 }).skirt = M.hill[1];
     }
     // the Weather Institute on its hill
     {
@@ -37677,11 +37785,11 @@ Areas.forest = (() => {
       const ins = Props2.institute(M, 3);
       s.paste(ins, 690 - ins.ax, h - 60 - ins.ay + 4);
       A.instGlow = true;
-      A.layer(s, 0.3, { haze: 0.3, base: h - 1, x: 60 });
+      A.layer(s, 0.3, { haze: 0.3, base: h - 1, x: 60 }).skirt = M.hill[1];
     }
     // mid forest: big trunks and canopy clumps, a waterfall feeding the river
     {
-      const w = 2400, h = 260, s = new ISpr(w, h);
+      const w = 2400, h = 360, s = new ISpr(w, h);
       for (let x = 30; x < w; x += 90 + r() * 120) {
         const tr = Paint.tree(M, 180 + r() * 60, Math.floor(x), { trunkRamp: M.bark, leafRamp: M.leafD, crownW: 180, crownH: 110, trunkW: 9 });
         s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 6);
@@ -37690,11 +37798,11 @@ Areas.forest = (() => {
       const fall = Props2.waterfall(M, 26, 150, 4);
       const fx = Math.round(1200 * 0.52 + 40);
       s.paste(fall, fx - 13, h - 150);
-      A.layer(s, 0.52, { haze: 0.28, base: h - 1, x: 40 });
+      A.layer(s, 0.52, { haze: 0.28, base: h - 1, x: 40 }).skirt = M.leafD[1];
     }
     // near forest wall: huge trunks and vines, skirting down to the lane
     {
-      const w = 3000, h = 300, s = new ISpr(w, h);
+      const w = 3000, h = 420, s = new ISpr(w, h);
       for (let x = 60; x < w; x += 140 + r() * 160) {
         const tr = Paint.tree(M, 260 + r() * 60, Math.floor(x * 5), { trunkRamp: M.bark, leafRamp: M.leaf, roots: true, vines: true, crownW: 240, crownH: 140, trunkW: 14 });
         s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 2);
@@ -37919,6 +38027,7 @@ const Game = (() => {
     G.t += dt;
     const t = G.t;
     G.hourT += dt; if (G.hourT > G.HOUR_LEN) G.nextHour();
+    if (G.lureT > 0) { G.lureT -= dt; if (G.lureT <= 0) HUD.toast('The Sweet Lure has worn off.', { life: 2 }); }
     Wind.update(dt); Ripples.step(dt);
     Stage.update(dt, t);
     Weather.update(dt, t);

@@ -25,7 +25,7 @@ const HUD = (() => {
   function hover(ux, uy) { H.hoverId = null; for (const b of H.btns) if (ux >= b.x && uy >= b.y && ux < b.x + b.w && uy < b.y + b.h) H.hoverId = b.id; }
   const pressed = (id) => H.press && H.press.b.id === id;
 
-  function toast(msg, o = {}) { H.toasts.push(Object.assign({ msg, t: 0, life: o.life || 2.8, icon: o.icon || null, col: o.col || null }, o)); if (H.toasts.length > 4) H.toasts.shift(); }
+  function toast(msg, o = {}) { H.toasts.push(Object.assign({ msg, t: 0, life: o.life || 2.8, icon: o.icon || null, col: o.col || null }, o)); if (H.toasts.length > 3) H.toasts.shift(); }
   function banner(name, sub) { H.ban = { name, sub, t: 0 }; }
   function tool(id) {
     const mk = Game.mudkip;
@@ -162,17 +162,20 @@ const HUD = (() => {
     Font.draw(fb, b.name, fb.w / 2, y + 10, S.screenText, { font: 'title', align: 'center' });
     Font.draw(fb, b.sub, fb.w / 2, y + h + 4, 0xffffffff, { font: 'small', align: 'center', outline: INK });
   }
+  // notifications: a quiet feed that slides in at the top-left (no pop-up boxes)
   function drawToasts(fb, S, t, bottom = false) {
-    let y = bottom ? fb.h - 24 - 22 * Math.max(0, H.toasts.length - 1) : H.ban ? 84 : 36;
+    const maxW = Math.min(190, Math.round(fb.w * 0.42));
+    let y = bottom ? fb.h - 18 - 14 * H.toasts.length : 34;
     for (const tt of H.toasts) {
-      const k = Math.min(1, tt.t / 0.2, (tt.life - tt.t) / 0.3);
+      const k = Math.min(1, tt.t / 0.25, (tt.life - tt.t) / 0.4);
       if (k <= 0) continue;
-      const w = Font.measure(tt.msg, 'body') + 18, h = 18;
-      const x = Math.round(fb.w / 2 - w / 2);
-      const yy = Math.round(y - (1 - k) * 8);
-      UI.panel(fb, x, yy, w, h, { r: 4, ol: S.ink, fill: tt.col ?? 0xfff4f6fb });
-      Font.draw(fb, tt.msg, fb.w / 2, yy + 5, INK, { font: 'body', align: 'center' });
-      y += h + 4;
+      const lines = Font.wrap ? Font.wrap(tt.msg, 'small', maxW) : [tt.msg];
+      const w = Math.max(...lines.map((l) => Font.measure(l, 'small'))) + 14, h = lines.length * 9 + 5;
+      const x = Math.round(6 - (1 - k) * (w + 10));
+      UI.rectA(fb, x, y, w, h, 0xff0a0e20, 0.45 * k);
+      UI.rect(fb, x, y, 2, h, tt.col ?? S.accent);
+      lines.forEach((l, i) => Font.draw(fb, l, x + 8, y + 3 + i * 9, 0xffffffff, { font: 'small', shadow: 0xff0a0e20 }));
+      y += h + 3;
     }
   }
   function drawScan(fb, S, t) {

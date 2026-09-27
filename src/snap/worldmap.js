@@ -224,7 +224,7 @@ const WorldMap = (() => {
         const bx = cx + cw - 58, by = cyy + ch - 20;
         UI.panel(fb, bx, by, 52, 16, { r: 3, ol: S.ink, fill: S.accent });
         Font.draw(fb, 'Travel', bx + 26, by + 5, 0xffffffff, { font: 'small', align: 'center' });
-        HUD.btn('travel', bx, by, 52, 16, () => { M.travel = { id: M.sel, t: 0 }; SFX.unlock(); });
+        HUD.btn('travel', bx, by, 52, 16, () => { if (!Areas[M.sel]) { HUD.toast('This place is still being built — coming in a future update!', { life: 2.6 }); SFX.error(); return; } M.travel = { id: M.sel, t: 0 }; SFX.unlock(); });
       }
     }
     // travel transition: a Poké Ball wipe

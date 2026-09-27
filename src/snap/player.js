@@ -201,6 +201,7 @@ const Player = (() => {
       this.target = tg;
     }
     physics(dt, t) {
+      if (this.mode === 'ride') return;
       const x = this.x;
       if (this.mode === 'land') {
         if (World.isWet(x, 16) && this.air <= 0 && !this.plat) {
@@ -250,14 +251,14 @@ const Player = (() => {
       const swim = this.mode === 'swim';
       const walk = this.moving ? clamp(this.moving / 60, 0.6, 1.5) : 0;
       this.gait = approach(this.gait, walk, dt * 6);
-      const rate = swim ? 13 : 7 + this.gait * 6;
+      const rate = swim ? 13 : 5 + Math.abs(this.vx) * 0.3; // steps keep pace with the ground (no foot sliding)
       if (this.gait > 0.01 || swim) this.phase += dt * rate;
       const s = Math.sin(this.phase), c = Math.cos(this.phase);
       const P = {};
       const g = swim ? Math.max(0.35, this.gait) : this.gait;
       const fast = clamp((Math.abs(this.vx) - 90) / 60, 0, 1);
-      P.legF = s * (0.6 + fast * 0.25) * g; P.legB = -s * (0.6 + fast * 0.25) * g;
-      P.bodyDip = swim ? 0 : Math.abs(c) * 1.8 * this.gait;
+      P.legF = s * (0.85 + fast * 0.2) * g; P.legB = -s * (0.85 + fast * 0.2) * g; P.legSplay = Math.abs(c) * 0.12 * this.gait;
+      P.bodyDip = swim ? 0 : (1 - Math.abs(s)) * 2.2 * this.gait; // body drops as the legs pass under it
       // footfalls: a little squash and a puff of dust
       if (!swim && this.mode === 'land' && this.gait > 0.3 && this.air <= 0) {
         const step = Math.floor(this.phase / Math.PI);

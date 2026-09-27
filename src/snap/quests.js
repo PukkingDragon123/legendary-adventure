@@ -69,18 +69,20 @@ const Quests = (() => {
   function onStart() { checkUnlocks(); }
   function unseen() { return Q.unseenN > 0; }
   function seen() { Q.unseenN = 0; }
+  // request completed: a slim ribbon that slides in at the top-right (not a pop-up)
   function drawPop(fb, t) {
     const p = Q.pops[0];
     if (!p || p.t < 0) return;
     const S = UI.skin();
-    const k = p.t < 0.3 ? U.ease.outBack(p.t / 0.3) : p.t > p.life - 0.4 ? (p.life - p.t) / 0.4 : 1;
-    const w = Math.max(200, Font.measure(p.text, 'body') + 24), h = p.reward || p.sub ? 40 : 26;
-    const x = Math.round(fb.w / 2 - w / 2), y = Math.round(fb.h - 70 - h + (1 - k) * 30);
-    UI.body(fb, x, y, w, h, S, { r: 5 });
-    UI.screen(fb, x + 4, y + 4, w - 8, h - 8, { fill: S.screen, rim: S.ink, glare: false });
-    Font.draw(fb, (p.unlock ? '{spark} ' : '{check} ') + p.text, fb.w / 2, y + 10, S.screenText, { font: 'body', align: 'center' });
-    if (p.reward) Font.draw(fb, 'Reward: ' + p.reward.label, fb.w / 2, y + 24, S.accent === 0xff2f7ae8 ? 0xff1f58c8 : U.tweak(S.accent, 0, 1, -0.2), { font: 'small', align: 'center' });
-    else if (p.sub) Font.draw(fb, p.sub + ' — open the map!', fb.w / 2, y + 24, U.tweak(S.screenText, 0, 1, 0.2), { font: 'small', align: 'center' });
+    const k = Math.min(1, p.t / 0.3, (p.life - p.t) / 0.4);
+    if (k <= 0) return;
+    const sub = p.reward ? 'Reward: ' + p.reward.label : p.sub ? p.sub + ' — open the map!' : '';
+    const w = Math.max(Font.measure(p.text, 'body'), sub ? Font.measure(sub, 'small') : 0) + 26, h = sub ? 26 : 16;
+    const x = Math.round(fb.w - 6 - w + (1 - k) * (w + 10)), y = 34;
+    UI.rectA(fb, x, y, w, h, 0xff0a0e20, 0.5 * k);
+    UI.rect(fb, x + w - 2, y, 2, h, S.accent);
+    Font.draw(fb, (p.unlock ? '{spark} ' : '{check} ') + p.text, x + 6, y + 3, 0xffffffff, { font: 'body', shadow: 0xff0a0e20 });
+    if (sub) Font.draw(fb, sub, x + 6, y + 16, 0xffffe08a, { font: 'small', shadow: 0xff0a0e20 });
   }
   return { BIRCH, stamps, checkPhoto, checkBirch, checkUnlocks, tick, onStart, unseen, seen, drawPop, Q };
 })();

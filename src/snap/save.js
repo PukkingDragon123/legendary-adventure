@@ -69,7 +69,7 @@ const Save = (() => {
       for (const s of r.others || []) if (!data.seen[s]) data.seen[s] = Date.now();
     }
     data.album.unshift({ sp: r.species, beh: r.beh, stars: r.stars, score: r.score, medal: r.medal, img: r.img, t: Date.now() });
-    if (data.album.length > 24) data.album.length = 24;
+    if (data.album.length > (data.albumMax || 24)) data.album.length = data.albumMax || 24;
     save();
     return out;
   }

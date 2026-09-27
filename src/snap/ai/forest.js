@@ -286,7 +286,8 @@ const ForestAI = (() => {
       if (!it.eaten) {
         let e = 0, bit = false;
         while (e < 2.2) { const dt = yield; e += dt; const dip = Math.min(1, e / 0.5); this.o.neck = -dip; this.o.mouth = e > 0.5 ? (Math.sin(e * 14) > 0 ? 0.7 : 0.1) : 0; this.o.eyes = e > 0.8 ? 'happy' : 'open'; this.setAct('eat', e > 0.6 && e < 1.9 ? 1 : 0.5); if (e > 0.5 && !bit) { bit = true; Items.eat(it); Game.sfx('munch', this.x, 0.6); } }
-        this.emote('heart');
+        this.emote('heart'); this.ate = (this.ate || 0) + 1;
+        if (this.ate === 1) HUD.toast('Tropius is happy! Tap it to go for a ride.', { life: 2.6 });
       }
       const more = Items.nearest(this.x, 220, (q) => q.kind === 'fruit' && !q.eaten && q.state !== 'fly');
       if (more) { yield* this.eat(more); return; }
@@ -320,7 +321,7 @@ const ForestAI = (() => {
         const lift = Math.sin(k * Math.PI);
         this.x = clamp(x0 + dir * Math.sin(k * Math.PI) * 260, 120, 1000);
         this.y = gy(this.x) - lift * 150 - Math.sin(e * 3.5) * 3;
-        this.o.flap = Math.sin(e * 6.5); this.o.neck = 0.4;
+        this.o.flap = Math.sin(e * 5.5) * (0.7 + 0.3 * lift); this.o.neck = 0.35 + Math.sin(e * 5.5 + 1) * 0.1; this.o.step = Math.PI * 0.5; this.o.mouth = lift > 0.8 ? 0.3 : 0;
         this.turn(this.face(dir * Math.cos(k * Math.PI) >= 0 ? 1 : -1, true), dt, 3);
         this.setAct('fly', lift > 0.35 ? 1 : 0.6);
         if (Math.random() < dt * 3) FX.add({ type: 'drop', x: this.x + rnd(-20, 20), y: this.y - 30, vx: rnd(-20, 20), vy: 10, g: 60, life: 1.6, c: hex('#56a042'), c2: hex('#8ccc5a'), size: 2, floor: gy(this.x), layer: 3 });
@@ -328,7 +329,42 @@ const ForestAI = (() => {
       this.mode = 'land';
       FX.poof(this.x, gy(this.x), hex('#a8742e'), hex('#c89040'), 5, 5);
     }
+    // a ride on Tropius: Mudkip climbs on its back and they fly across the woods
+    *ride(m) {
+      S.riding = true;
+      m.wakeUp(); m.target = null;
+      m.doTask((function* () { while (S.riding) yield; })(), 6);
+      HUD.toast('All aboard! Tropius takes to the sky.', { life: 2.2 });
+      Game.sfx('whoosh', this.x, 1);
+      this.mode = 'air'; this.emote('heart');
+      const x0 = this.x, dir = x0 < 1600 ? 1 : -1, span = 1300;
+      let e = 0; const T = 16;
+      while (e < T) {
+        const dt = yield; e += dt; const k = e / T;
+        const lift = Math.min(1, Math.sin(k * Math.PI) * 1.6);
+        const px = this.x;
+        this.x = clamp(x0 + dir * Math.sin(k * Math.PI) * span, 140, World.W - 140);
+        this.y = gy(this.x) - lift * 170 - Math.sin(e * 2.2) * 6;
+        const vx = (this.x - px) / Math.max(dt, 0.016);
+        if (Math.abs(vx) > 3) this.turn(this.face(Math.sign(vx), true), dt, 3);
+        this.o.flap = Math.sin(e * 5) * (0.6 + 0.4 * lift); this.o.neck = 0.4; this.o.eyes = 'happy'; this.o.step = Math.PI * 0.5;
+        this.setAct('fly', lift > 0.4 ? 1 : 0.6);
+        // Mudkip sits on its back, holding on
+        const b = this.at('body', 0, -14);
+        m.x = b[0]; m.y = b[1]; m.yaw = this.yaw; m.mode = 'ride'; m.o.legF = -0.6; m.o.legB = 0.6; m.happyT = 0.2;
+        m.o.tailWag = Math.sin(e * 6) * 0.3;
+        if (Math.random() < dt * 4) FX.add({ type: 'drop', x: this.x + rnd(-24, 24), y: this.y - 20, vx: rnd(-20, 20), vy: 10, g: 50, life: 1.8, c: hex('#56a042'), c2: hex('#8ccc5a'), size: 2, floor: gy(this.x), layer: 3 });
+      }
+      this.mode = 'land';
+      m.mode = 'land'; m.x = this.x + (this.x > 1600 ? -30 : 30); m.y = gy(m.x); m.plat = null;
+      S.riding = false;
+      FX.poof(this.x, gy(this.x), hex('#a8742e'), hex('#c89040'), 6, 6);
+      Save.discover('tropius.ride');
+    }
     onPoke() {
+      const m0 = mk();
+      if (this.ate > 0 && !this.busy(3) && !this.sleeping && m0.mode === 'land') { this.doTask(this.ride(m0), 5); return; }
+      if (this.ate <= 0 && Math.random() < 0.5) HUD.toast('Tropius sniffs you... it looks hungry for fruit.', { life: 2 });
       if (!S.shared && Game.t - S.treeT < 40 && !Items.nearest(this.x, 400, (q) => q.kind === 'fruit' && !q.eaten)) { this.doTask(this.share(mk()), 3); return; }
       this.emote('note'); Game.sfx('grr', this.x, 0.3);
       this.doTask(hold(this, 1.2, 'walk', 0.5), 2);

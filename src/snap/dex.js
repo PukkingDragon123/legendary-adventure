@@ -15,7 +15,7 @@ const Dex = (() => {
     sel: null, star: 0, scroll: {}, btns: [], press: null, drag: null, keyAng: 0, keyV: 0,
     thumbs: new Map(), imgs: new Map(), confirm: null, album: 0, styleSlot: 'hat', mudYaw: 1.1,
   };
-  const TABS = [['grid', 'Pokémon', 'pb'], ['album', 'Album', 'cam'], ['quests', 'Requests', 'check'], ['style', 'Style', 'shirt'], ['disc', 'Secrets', 'spark'], ['settings', 'Options', 'coin']];
+  const TABS = [['grid', 'Pokémon', 'pb'], ['album', 'Album', 'cam'], ['quests', 'Requests', 'check'], ['style', 'Style', 'shirt'], ['shop', 'Shop', 'bag'], ['disc', 'Secrets', 'spark'], ['settings', 'Options', 'coin']];
   const RANKS = [[0, 'Rookie'], [2000, 'Novice'], [6000, 'Pro'], [15000, 'Expert'], [30000, 'Master'], [60000, 'Legend']];
   const rank = () => { let r = RANKS[0][1]; for (const [n, name] of RANKS) if (Save.data.points >= n) r = name; return r; };
 
@@ -284,6 +284,7 @@ const Dex = (() => {
     else if (page === 'album') pageAlbum(fb, S, L, R, slide, t);
     else if (page === 'quests') pageQuests(fb, S, L, R, slide, t);
     else if (page === 'style') pageStyle(fb, S, L, R, slide, t);
+    else if (page === 'shop') pageShop(fb, S, L, R, slide, t);
     else if (page === 'disc') pageDisc(fb, S, L, R, slide, t);
     else if (page === 'settings') pageSettings(fb, S, L, R, slide, t);
   }
@@ -551,6 +552,75 @@ const Dex = (() => {
       y += 20;
       if (y > R.y + R.h - 20) break;
     }
+  }
+
+  /* ---- shop: spend research points on items, outfits and device styles ---- */
+  const PRICE = { hat: 900, shirt: 800, glasses: 600, neck: 500, skin: 1500, banner: 700, key: 400, deco: 600 };
+  const GOODS = [
+    { id: 'item.berry5', name: '5 Oran Berries', desc: 'Throw them to lure hungry Pokémon.', price: 150, buy() { Save.addItem('berry', 5); } },
+    { id: 'item.lure', name: 'Sweet Lure', desc: 'For 90 s Pokémon come closer and rare ones show up.', price: 400, buy() { Game.lureT = 90; HUD.toast('The Sweet Lure fills the air... Pokémon are drawn to you!', { life: 3 }); } },
+    { id: 'item.film', name: 'Photo Album Page', desc: '+6 album slots for your favourite shots.', price: 300, buy() { Save.data.albumMax = (Save.data.albumMax || 24) + 6; Save.save(); } },
+  ];
+  let exclusiveSet = null;
+  function exclusive() {
+    if (exclusiveSet) return exclusiveSet;
+    exclusiveSet = new Set();
+    for (const k in DexData.S) for (const o of DexData.S[k].obj || []) if (o.reward) exclusiveSet.add(o.reward);
+    for (const q of Quests.BIRCH || []) if (q.reward) exclusiveSet.add(q.reward);
+    return exclusiveSet;
+  }
+  function pageShop(fb, S, L, R, slide, t) {
+    const pts = Save.data.points;
+    if (L) {
+      Font.draw(fb, 'Pokédex Shop', L.x + 6, L.y + 8, S.screenText, { font: 'title' });
+      Font.draw(fb, '{coin} ' + pts + ' points', L.x + 6, L.y + 30, S.screenText, { font: 'body' });
+      Font.draw(fb, 'Earn points by taking great photos and finishing requests. Some prizes can only be won from Pokédex quests!', L.x + 6, L.y + 48, U.mix(S.screenText, S.screen, 0.3), { font: 'small', maxW: L.w - 12, lh: 10 });
+      const look = Save.look(); const yaw = Math.round((0.6 + Math.sin(D.mudYaw * 0.7) * 0.9) * 10) / 10;
+      const b = mudSprite(look, yaw);
+      UI.img(fb, b, L.x + L.w / 2 - b.ox * 2 + slide, L.y + L.h - 30 - b.oy * 2, 2);
+    }
+    const cats = [['items', 'Items'], ['outfit', 'Outfits'], ['device', 'Device']];
+    D.shopCat = D.shopCat || 'items';
+    const cw = Math.floor((R.w - 8) / 3);
+    cats.forEach(([id, label], i) => {
+      const bx = R.x + 4 + i * cw, on = D.shopCat === id;
+      UI.panel(fb, bx, R.y + 4, cw - 2, 14, { r: 3, ol: S.ink, fill: on ? S.accent : U.mix(S.screen, 0xff000000, 0.12), hi: null, sh: null });
+      Font.draw(fb, label, bx + (cw - 2) / 2, R.y + 8, on ? 0xffffffff : S.screenText, { font: 'small', align: 'center' });
+      btn('shopcat-' + id, bx, R.y + 4, cw - 2, 14, () => { D.shopCat = id; D.scroll.shop = 0; });
+    });
+    let rows;
+    if (D.shopCat === 'items') rows = GOODS.map((g) => ({ id: g.id, name: g.name, desc: g.desc, price: g.price, owned: false, buy: g.buy }));
+    else {
+      const slots = D.shopCat === 'outfit' ? ['hat', 'shirt', 'glasses', 'neck'] : ['skin', 'banner', 'key', 'deco'];
+      // quest prizes can be won for free, or bought here for a premium
+      rows = Object.keys(Rewards.C).filter((id) => slots.includes(Rewards.C[id].slot) && !id.endsWith('.none'))
+        .map((id) => { const ex = exclusive().has(id); return { id, name: Rewards.C[id].name + (ex ? ' {star}' : ''), desc: (ex ? 'Quest prize — or buy it now! ' : '') + (Rewards.C[id].desc || ''), price: (PRICE[Rewards.C[id].slot] || 500) * (ex ? 3 : 1), owned: Save.has(id), buy() { Save.own(id); Save.equip(Rewards.C[id].slot, id); } }; })
+        .sort((a, b) => (a.owned - b.owned) || (a.price - b.price));
+    }
+    const Q = { x: R.x, y: R.y + 22, w: R.w, h: R.h - 24 };
+    areas.shop = Q;
+    const sc = D.scroll.shop || 0;
+    clipTo(fb, Q, (g) => {
+      let y = Q.y - sc;
+      for (const r of rows) {
+        if (y + 24 > Q.y && y < Q.y + Q.h) {
+          const afford = pts >= r.price;
+          UI.panel(g, R.x + 4 + slide, y, R.w - 8, 24, { r: 3, ol: S.ink, fill: r.owned ? U.mix(S.screen, 0xffffffff, 0.3) : U.mix(S.screen, 0xffffffff, 0.12), hi: null, sh: null });
+          Font.draw(g, r.name, R.x + 10 + slide, y + 4, S.screenText, { font: 'body' });
+          Font.draw(g, r.desc || '', R.x + 10 + slide, y + 15, U.mix(S.screenText, S.screen, 0.35), { font: 'small', clip: { x0: R.x, y0: y, x1: R.x + R.w - 60, y1: y + 24 } });
+          const bw = 48, bx = R.x + R.w - 8 - bw;
+          UI.panel(g, bx, y + 5, bw, 14, { r: 3, ol: S.ink, fill: r.owned ? 0xff7a8a80 : afford ? S.accent : 0xff5a5a6a, hi: null, sh: null });
+          Font.draw(g, r.owned ? 'OWNED' : '{coin}' + r.price, bx + bw / 2, y + 9, 0xffffffff, { font: 'small', align: 'center' });
+          if (!r.owned && y + 5 >= Q.y && y + 19 <= Q.y + Q.h) btn('buy-' + r.id, bx, y + 5, bw, 14, () => {
+            if (Save.data.points < r.price) { SFX.error(); HUD.toast('Not enough points — take more great photos!', { life: 2 }); return; }
+            Save.data.points -= r.price; Save.save(); r.buy(); SFX.reward(); HUD.toast('Bought ' + r.name + '!', { life: 2 });
+          }, { silent: true });
+        }
+        y += 27;
+      }
+      D.shopMax = Math.max(0, rows.length * 27 - Q.h + 4);
+    });
+    D.scroll.shop = Math.min(D.scroll.shop || 0, D.shopMax || 0);
   }
 
   /* ---- discoveries ---- */
