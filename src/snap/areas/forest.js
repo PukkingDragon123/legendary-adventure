@@ -291,8 +291,8 @@ Areas.forest = (() => {
     }
     ForestAI.post(A, fb, cx, cy, t);
   };
-  def.spawn = (A, G) => ForestAI.spawn(A, G, S);
-  def.update = (A, dt, t, G) => ForestAI.update(A, dt, t, G, S);
+  def.spawn = (A, G) => { ForestAI.spawn(A, G, S); if (typeof GroveAI !== 'undefined') GroveAI.spawn(A, G); };
+  def.update = (A, dt, t, G) => { ForestAI.update(A, dt, t, G, S); if (typeof GroveAI !== 'undefined') GroveAI.update(A, dt, t, G); };
   def.weather = (hour) => ({ rain: 0, fog: hour === 'dawn' ? 0.5 : 0.1 });
   def.ambient = (hour, W) => {
     const out = [{ kind: 'mote', rate: 3, c: hex('#e8ffd0'), life: 5, sway: 10, bob: 4, vy: -2 }];

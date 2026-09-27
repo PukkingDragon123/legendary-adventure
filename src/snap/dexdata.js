@@ -173,6 +173,30 @@ const DexData = (() => {
       beh: { blink: { n: 'Space jump', tier: 3, hint: 'The Lustrous Orb is hidden in one of the moored boats.' }, rift: { n: 'Opening a rift', tier: 4, hint: 'Tap Palkia when it is calm.' } },
       obj: [{ id: 'palkia.rift', t: 'Palkia opening a space rift', beh: 'rift', reward: 'pts:1000' }] },
 
+    /* ---------------- more of Coral Cove's sea ---------------- */
+    wailmer: { no: 320, name: 'Wailmer', type: ['Water'], h: 2.0, area: ['beach'], persona: 'curious',
+      blurb: 'It bounces on the waves like a ball. The more seawater it swallows, the bigger and bouncier it gets.',
+      beh: {
+        swim: { n: 'Cruising', tier: 1, hint: 'Wailmer cruise past the reef.' },
+        spout: { n: 'Water spout', tier: 2, hint: 'They come up to breathe now and then.' },
+        bounce: { n: 'Ball bounce', tier: 3, hint: 'Happy Wailmer bounce along the surface.' },
+        leap: { n: 'Belly flop!', tier: 4, hint: 'Play music at the end of the dock in daylight...' },
+      },
+      obj: [{ id: 'wailmer.bounce', t: 'Wailmer bouncing on the waves', beh: 'bounce', reward: 'pts:400' }, { id: 'wailmer.leap', t: 'Wailmer\'s giant belly flop', beh: 'leap', reward: 'pts:900' }] },
+    clamperl: { no: 366, name: 'Clamperl', type: ['Water'], h: 0.4, area: ['beach'], persona: 'shy',
+      blurb: 'Its sturdy shell makes one pearl in its lifetime. The pearl glows softly in the dark sea at night.',
+      beh: {
+        rest: { n: 'Shell shut', tier: 1, hint: 'Clamperl rest on the seabed near the sunken chest.' },
+        open: { n: 'Peeking out', tier: 2, hint: 'Wait quietly and they peek out.' },
+        feed: { n: 'Snap!', tier: 3, hint: 'Let a berry sink down to one.' },
+        pearl: { n: 'Glowing pearl', tier: 4, hint: 'Visit the seabed at night.' },
+      },
+      obj: [{ id: 'clamperl.pearl', t: 'Clamperl\'s glowing pearl', beh: 'pearl', reward: 'key.orb' }] },
+    relicanth: { no: 369, name: 'Relicanth', type: ['Water', 'Rock'], h: 1.0, area: ['beach'], persona: 'calm', rare: 2,
+      blurb: 'A living fossil that has not changed in a hundred million years. It rests in the deepest part of the sea.',
+      beh: { swim: { n: 'Deep swim', tier: 2, hint: 'Something old sleeps at the bottom of the trench.' }, ancient: { n: 'Ancient greeting', tier: 4, hint: 'When the two fossil friends are together again, visit the trench at dawn.' } },
+      obj: [{ id: 'relicanth.ancient', t: 'Relicanth rising to greet you', beh: 'ancient', reward: 'pts:1200' }] },
+
     /* ---------------- Fossil Cliffs (Coral Cove east) ---------------- */
     trapinch: { no: 328, name: 'Trapinch', type: ['Ground'], h: 0.7, area: ['beach'], persona: 'grumpy',
       blurb: 'It digs a cone-shaped pit in the sand and waits at the bottom, jaws open, for prey to slide in.',
@@ -210,6 +234,33 @@ const DexData = (() => {
       obj: [{ id: 'anorith.slash', t: 'Anorith slashing', beh: 'slash', reward: 'pts:600' }, { id: 'anorith.friends', t: 'Anorith and Lileep together', beh: 'friends', reward: 'pts:1000' }] },
 
     /* ---------------- Route 119 rainforest ---------------- */
+    zigzagoon: { no: 263, name: 'Zigzagoon', type: ['Normal'], h: 0.4, area: ['forest'], persona: 'curious',
+      blurb: 'It wanders in zig-zags, sniffing everything, and often digs up useful things it finds lying around.',
+      beh: {
+        walk: { n: 'Zig-zag trot', tier: 1, hint: 'Zigzagoon never walk in a straight line.' },
+        sniff: { n: 'Sniffing', tier: 2, hint: 'Its nose is always to the ground.' },
+        zoom: { n: 'Zoom!', tier: 3, hint: 'Throw a berry and watch it dash.' },
+        find: { n: 'Treasure find', tier: 4, hint: 'Sometimes its sniffing pays off... and it shares!' },
+      },
+      obj: [{ id: 'zigzagoon.zoom', t: 'Zigzagoon zooming', beh: 'zoom', reward: 'pts:400' }, { id: 'zigzagoon.find', t: 'Zigzagoon finding treasure', beh: 'find', reward: 'pts:800' }] },
+    surskit: { no: 283, name: 'Surskit', type: ['Bug', 'Water'], h: 0.5, area: ['forest'], persona: 'shy',
+      blurb: 'It skates across the surface of ponds as if it were walking on ice.',
+      beh: {
+        skate: { n: 'Skating', tier: 1, hint: 'Surskit skate on the lily pond.' },
+        glide: { n: 'Long glide', tier: 2, hint: 'Catch it mid-glide.' },
+        rain: { n: 'Rain twirl', tier: 3, hint: 'Surskit twirl happily in the rain.' },
+        hop: { n: 'Pad hop', tier: 4, hint: 'It loves to hop over a Lotad.' },
+      },
+      obj: [{ id: 'surskit.rain', t: 'Surskit twirling in the rain', beh: 'rain', reward: 'pts:500' }, { id: 'surskit.hop', t: 'Surskit hopping over a Lotad', beh: 'hop', reward: 'pts:800' }] },
+    shroomish: { no: 285, name: 'Shroomish', type: ['Grass'], h: 0.4, area: ['forest'], persona: 'grumpy',
+      blurb: 'It lives in damp forests. If it senses danger, it shakes its head and scatters toxic spores.',
+      beh: {
+        hop: { n: 'Bouncing', tier: 1, hint: 'Shroomish bounce around the mushrooms.' },
+        sleep: { n: 'Shady nap', tier: 2, hint: 'They doze in the midday heat.' },
+        spore: { n: 'Spore puff', tier: 3, hint: 'Startle one... from a safe distance!' },
+        party: { n: 'Mushroom party', tier: 4, hint: 'At dusk they gather on the giant mushroom.' },
+      },
+      obj: [{ id: 'shroomish.spore', t: 'Shroomish puffing spores', beh: 'spore', reward: 'pts:500' }, { id: 'shroomish.party', t: 'The Shroomish mushroom party', beh: 'party', reward: 'pts:900' }] },
     castform: { no: 351, name: 'Castform', type: ['Normal'], h: 0.3, area: ['forest'], persona: 'curious',
       blurb: 'Made at the Weather Institute, it changes its form to match the weather — sunny, rainy or snowy.',
       beh: {

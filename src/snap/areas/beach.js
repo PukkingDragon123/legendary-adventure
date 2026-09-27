@@ -562,8 +562,9 @@ Areas.beach = (() => {
     for (let i = prints.length - 1; i >= 0; i--) { const p = prints[i]; p.t += dt; if (p.t > 14 || (World.groundAt(p.saved[0][0]) > SEA - 12 && p.t > 3)) { for (const [sx, sy, v] of p.saved) Terrain.put(A, sx, sy, v); prints.splice(i, 1); } }
     BeachAI.update(A, dt, t, G);
     if (typeof FossilAI !== 'undefined') FossilAI.update(A, dt, t, G);
+    if (typeof SeaAI !== 'undefined') SeaAI.update(A, dt, t, G);
   };
-  def.spawn = (A, G) => { BeachAI.spawn(A, G); if (typeof FossilAI !== 'undefined') FossilAI.spawn(A, G); };
+  def.spawn = (A, G) => { BeachAI.spawn(A, G); if (typeof FossilAI !== 'undefined') FossilAI.spawn(A, G); if (typeof SeaAI !== 'undefined') SeaAI.spawn(A, G); };
   def.weather = (hour) => ({ rain: 0, fog: hour === 'dawn' ? 0.25 : 0 });
   def.ambient = (hour, W) => {
     const out = [
@@ -581,7 +582,7 @@ Areas.beach = (() => {
     return out;
   };
   def.onScan = (A) => BeachAI.onScan(A) + (typeof FossilAI !== 'undefined' ? FossilAI.onScan(A) : 0);
-  def.onSong = (x) => BeachAI.Secrets.song(x);
+  def.onSong = (x) => { BeachAI.Secrets.song(x); if (typeof SeaAI !== 'undefined') SeaAI.song(x); };
   def.onWater = (tx, ty) => { if (World.waterAt(tx) !== null && tx < 3500) for (const m of Mons.all) if (m.splash) m.splash(tx); if (typeof FossilAI !== 'undefined') FossilAI.water(tx, ty); };
   def.onFood = (A, it) => { if (it.state === 'float') for (const m of Mons.all) if (m.splash && !it.claim) { m.splash(it.x, it); it.claim = m; } };
   def.photoBonus = (A, crop, subs, main) => BeachAI.photoBonus(A, crop, subs, main);

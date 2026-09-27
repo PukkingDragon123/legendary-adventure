@@ -262,7 +262,13 @@ const Player = (() => {
       // footfalls: a little squash and a puff of dust
       if (!swim && this.mode === 'land' && this.gait > 0.3 && this.air <= 0) {
         const step = Math.floor(this.phase / Math.PI);
-        if (step !== this.lastFall) { this.lastFall = step; this.sq.kick(0.12 + fast * 0.1); if (Math.random() < 0.55) FX.add({ type: 'dust', x: this.x - Math.cos(this.yaw) * 8, y: this.y - 1, vx: -Math.cos(this.yaw) * 14, vy: -6, r: 1.6 + fast, life: 0.4, c: 0xffd8ecf4, c2: 0xffb8d0e0, layer: 2 }); }
+        if (step !== this.lastFall) {
+          this.lastFall = step; this.sq.kick(0.12 + fast * 0.1);
+          if (Weather.W.rain > 0.3) { // splashing through rain puddles
+            for (let k = 0; k < 3; k++) FX.add({ type: 'drop', x: this.x - Math.cos(this.yaw) * 6 + rnd(-3, 3), y: this.y - 1, vx: rnd(-30, 30), vy: -rnd(30, 70), g: 420, life: 0.5, c: 0xffffffff, c2: U.hex('#8fd6ee'), size: 1, floor: this.y, layer: 2 });
+            if (Math.random() < 0.3) Game.sfx('plop', this.x, 0.25);
+          } else if (Math.random() < 0.55) FX.add({ type: 'dust', x: this.x - Math.cos(this.yaw) * 8, y: this.y - 1, vx: -Math.cos(this.yaw) * 14, vy: -6, r: 1.6 + fast, life: 0.4, c: 0xffd8ecf4, c2: 0xffb8d0e0, layer: 2 });
+        }
       }
       const sq = this.sq.step(dt);
       P.squash = Math.sin(t * 2.4 + this.seed) * 0.015 + sq * 0.5 + (this.air > 0 ? clamp(this.vair / 2500, -0.08, 0.08) * -1 : 0);
