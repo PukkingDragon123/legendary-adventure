@@ -21,25 +21,32 @@ const Game = (() => {
   /* ---------- canvases ---------- */
   const wrap = $('#game'), cv = $('#cv'), ui = $('#ui');
   const ctx = cv.getContext('2d', { alpha: false }), uctx = ui.getContext('2d');
-  let fb = null, img = null, occ = null, idb = null, uimg = null, ufb = null;
+  let fb = null, img = null, occ = null, idb = null, uimg = null, ufb = null, hb = null, rawb = null, pre = null;
+  // HD pass: the world is drawn at the pixel-art resolution, then Pokémon are re-drawn at twice the
+  // resolution on top (3D models rendered at 2× scale), so creatures look smooth and detailed
+  G.hd = !qs.has('lowres');
   let dpr = 1, devW = 0, devH = 0, zBase = 4, US = 3;
   function layout() {
     dpr = window.devicePixelRatio || 1;
     const r = wrap.getBoundingClientRect();
     devW = Math.max(200, Math.round(r.width * dpr)); devH = Math.max(150, Math.round(r.height * dpr));
-    zBase = Math.max(1, Math.round(devH / 330));
-    while ((devW / zBase) * (devH / zBase) > 300000) zBase++;
+    const step = 1; // (the HD canvas is scaled by z/2; fine at any zoom on high-DPI screens)
+    zBase = Math.max(step, Math.round(devH / 330 / step) * step);
+    while ((devW / zBase) * (devH / zBase) > 300000) zBase += step;
+    G.zStep = step;
     if (!G.zoomSet) { G.zoom = zBase; G.zoomSet = true; }
-    G.zoom = clamp(G.zoom, Math.max(1, zBase - 1), zBase + 2);
-    G.zMin = Math.max(1, zBase - 1); G.zMax = zBase + 2;
+    G.zMin = Math.max(step, zBase - step); G.zMax = zBase + 2 * step;
+    G.zoom = clamp(Math.round(G.zoom / step) * step, G.zMin, G.zMax);
     const z = G.zoom;
     G.VW = Math.ceil(devW / z); G.VH = Math.ceil(devH / z);
-    cv.width = G.VW; cv.height = G.VH;
+    const HK = G.hd ? 2 : 1;
+    cv.width = G.VW * HK; cv.height = G.VH * HK;
     cv.style.width = (G.VW * z) / dpr + 'px'; cv.style.height = (G.VH * z) / dpr + 'px';
-    img = ctx.createImageData(G.VW, G.VH);
-    fb = new PX.Buf(G.VW, G.VH); fb.d = new Uint32Array(img.data.buffer);
-    occ = new Uint8Array(G.VW * G.VH); idb = new Uint16Array(G.VW * G.VH);
-    Stage.S.occ = occ; Stage.S.idb = idb;
+    img = ctx.createImageData(G.VW * HK, G.VH * HK);
+    fb = new PX.Buf(G.VW, G.VH);
+    if (G.hd) { hb = new Uint32Array(img.data.buffer); pre = new Uint32Array(G.VW * G.VH); } else fb.d = new Uint32Array(img.data.buffer);
+    occ = new Uint8Array(G.VW * G.VH); idb = new Uint16Array(G.VW * G.VH); rawb = new Uint32Array(G.VW * G.VH);
+    Stage.S.occ = occ; Stage.S.idb = idb; Stage.S.rawb = rawb;
     // UI canvas: its own integer scale so the device art stays crisp
     US = Math.max(2, Math.round(devH / 340));
     if (devW / US < 360) US = Math.max(1, Math.floor(devW / 360));
@@ -52,6 +59,7 @@ const Game = (() => {
     clampCam();
   }
   function setZoom(nz, sx = devW / 2, sy = devH / 2) {
+    if (G.zStep > 1) nz = G.zoom + Math.sign(nz - G.zoom) * G.zStep;
     nz = clamp(nz, G.zMin, G.zMax);
     if (nz === G.zoom) return;
     const oz = G.zoom, wx = G.cam.x + sx / oz, wy = G.cam.y + sy / oz;
@@ -137,7 +145,22 @@ const Game = (() => {
     if (!mk) return;
     if (G.mode === 'camera') { Photo.updateCam(dt); return; }
     const lead = mk.moving ? Math.cos(mk.yaw) * 36 : 0;
-    const tx = mk.x - G.VW * 0.5 + lead + c.lookX, ty = mk.y - G.VH * (mk.inWater ? 0.5 : (G.area.frameY ?? 0.7)) + c.lookY;
+    // cinematic framing: lean toward a rare moment happening nearby, drift gently when idle
+    let fx = 0, fy = 0;
+    let best = null, bd = 260;
+    for (const m of G.mons) {
+      if (m === mk || !m.alive || !m.visible || m.peak < 0.75 || m.hideK > 0.5) continue;
+      const d = DexData.S[m.dex], tier = d && d.beh[m.act.id] ? d.beh[m.act.id].tier : 1;
+      if (tier < 3) continue;
+      const dd = Math.hypot(m.x - mk.x, m.y - mk.y);
+      if (dd < bd) { bd = dd; best = m; }
+    }
+    if (best) { fx = (best.x - mk.x) * 0.4; fy = (best.y - 20 - mk.y) * 0.3; }
+    if ((mk.idleT || 0) > 4) { fx += Math.sin(G.rt * 0.25) * 14; fy += Math.sin(G.rt * 0.19) * 6; }
+    G.camF = G.camF || { x: 0, y: 0 };
+    const kf = 1 - Math.exp(-dt * 1.2);
+    G.camF.x += (fx - G.camF.x) * kf; G.camF.y += (fy - G.camF.y) * kf;
+    const tx = mk.x - G.VW * 0.5 + lead + c.lookX + G.camF.x, ty = mk.y - G.VH * (mk.inWater ? 0.5 : (G.area.frameY ?? 0.7)) + c.lookY + G.camF.y;
     const k = 1 - Math.exp(-dt * 3.2);
     c.x += (tx - c.x) * k; c.y += (ty - c.y) * k;
     if (!drag) { c.lookX *= Math.exp(-dt * 1.2); c.lookY *= Math.exp(-dt * 1.2); }
@@ -178,8 +201,9 @@ const Game = (() => {
     const A = G.area, P = G.P;
     pt = performance.now();
     occ.fill(0);
-    Stage.S.idOn = !!o.ids;
-    if (o.ids) idb.fill(0);
+    Stage.S.idOn = true;
+    idb.fill(0);
+    if (!o.ids) { let n = 1; for (const m of G.mons) m.pid = m === G.mudkip ? 999 : n++; }
     if (A.def.drawBack) A.def.drawBack(A, fb, cx, cy, t); else { Stage.drawSky(fb, cx, cy, t); Stage.drawLayers(fb, cx, cy, t); }
     mark('back');
     const dof = G.mode === 'camera' ? Photo.dof() : null;
@@ -222,7 +246,6 @@ const Game = (() => {
     if (A.def.post) A.def.post(A, fb, cx, cy, t);
     Stage.vignette(fb, 0.25);
     mark('post');
-    Stage.S.idOn = false;
   }
   G.drawWorld = drawWorld;
   G.fb = () => fb; G.idb = () => idb; G.occ = () => occ;
@@ -231,8 +254,13 @@ const Game = (() => {
       const sh = G.shakeA > 0 ? G.shakeA : 0;
       const cx = Math.round(G.cam.x + (sh ? (Math.random() - 0.5) * sh * 2 : 0)), cy = Math.round(G.cam.y + (sh ? (Math.random() - 0.5) * sh * 2 : 0));
       G.cx = cx; G.cy = cy;
-      if (G.mode !== 'dex' && G.mode !== 'map' || !G.frozenFrame) { drawWorld(cx, cy, G.t); if (G.mode === 'dex' || G.mode === 'map') G.frozenFrame = true; }
-      if (G.mode === 'camera') Photo.drawLens(fb, G.t);
+      if (G.mode !== 'dex' && G.mode !== 'map' || !G.frozenFrame) {
+        drawWorld(cx, cy, G.t);
+        if (G.hd) pre.set(fb.d);
+        if (G.mode === 'camera') Photo.drawLens(fb, G.t);
+        if (G.hd) composeHD(cx, cy);
+        if (G.mode === 'dex' || G.mode === 'map') G.frozenFrame = true;
+      }
       ctx.putImageData(img, 0, 0);
     }
     if (G.mode !== 'dex' && G.mode !== 'map') G.frozenFrame = false;
@@ -241,6 +269,49 @@ const Game = (() => {
     HUD.draw(ufb, G.rt);
     uctx.putImageData(uimg, 0, 0);
     mark('put');
+  }
+
+  // upscale the pixel-art frame 2× and re-draw every visible Pokémon from its 2× sprite, keeping the
+  // low-res frame's occlusion (idb) and all later colour changes (water tint, fog, light, bloom) via
+  // a per-pixel colour ratio between the final frame and the raw sprite colour
+  function composeHD(cx, cy) {
+    const W = fb.w, H = fb.h, d = fb.d, W2 = W * 2;
+    for (let y = 0; y < H; y++) {
+      const r0 = y * W, o0 = y * 2 * W2;
+      for (let x = 0; x < W; x++) { const c = d[r0 + x], o = o0 + x * 2; hb[o] = c; hb[o + 1] = c; hb[o + W2] = c; hb[o + W2 + 1] = c; }
+    }
+    const P = G.P;
+    for (const m of G.mons) {
+      if (!m.visible || !m.alive || !m.spr || m.hideK >= 0.999 || !m.pid || m.layer === 'sea') continue;
+      if (m.x + m.SW < cx - 20 || m.x - m.SW > cx + W + 20) continue;
+      const h2 = m.sprite2(P);
+      if (!h2) continue;
+      const s = h2.s, pid = m.pid;
+      const bury2 = m.bury ? Math.round(s.h * m.bury) : 0;
+      const X0 = m.flip ? Math.round(m.x) * 2 + h2.OX - s.x0 - s.w + 1 - cx * 2 : Math.round(m.x) * 2 - h2.OX + s.x0 - cx * 2;
+      const Y0 = Math.round(m.y) * 2 - h2.OY + s.y0 - cy * 2 + bury2;
+      const tint = m.tint || 0, tk = m.tintK || 0;
+      for (let sy = 0; sy < s.h; sy++) {
+        const Y = Y0 + sy; if (Y < 0 || Y >= H * 2) continue;
+        const ly = Y >> 1, row = sy * s.w;
+        for (let sx = 0; sx < s.w; sx++) {
+          let c = s.d[row + (m.flip ? s.w - 1 - sx : sx)]; if (!c) continue;
+          const X = X0 + sx; if (X < 0 || X >= W2) continue;
+          const li = ly * W + (X >> 1);
+          if (idb[li] !== pid || d[li] !== pre[li]) continue;
+          const raw = rawb[li], fin = d[li];
+          if (tk) c = U.mix(c, tint, tk);
+          let r = c & 255, g = (c >>> 8) & 255, b = (c >>> 16) & 255;
+          if (raw !== fin) {
+            const rr = raw & 255, rg = (raw >>> 8) & 255, rb = (raw >>> 16) & 255;
+            // colour transform raw → final: scale plus offset (handles tints that brighten dark pixels)
+            r = r + ((fin & 255) - rr); g = g + (((fin >>> 8) & 255) - rg); b = b + (((fin >>> 16) & 255) - rb);
+            r = r < 0 ? 0 : r > 255 ? 255 : r; g = g < 0 ? 0 : g > 255 ? 255 : g; b = b < 0 ? 0 : b > 255 ? 255 : b;
+          }
+          hb[Y * W2 + X] = 0xff000000 | (b << 16) | (g << 8) | r;
+        }
+      }
+    }
   }
 
   /* ---------- world taps ---------- */

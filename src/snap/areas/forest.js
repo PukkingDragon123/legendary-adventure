@@ -222,10 +222,14 @@ Areas.forest = (() => {
     if ((hr === 'noon' || hr === 'afternoon' || hr === 'dawn') && Weather.W.rain < 0.3) {
       const W = fb.w, H = fb.h, d = fb.d, k = (hr === 'dawn' ? 0.14 : 0.1) * (1 - Weather.W.rain * 3) * (S.weather === 'sun' ? 2.2 : 1);
       const col = hr === 'afternoon' ? 0xffa0e0ff : hr === 'dawn' ? 0xffc0d0ff : 0xffc8f4ff;
-      for (let y = 0; y < H; y++) for (let x = 0; x < W; x += 1) {
-        const wx = x + cx * 0.6 + y * 0.45;
-        const v = Math.sin(wx * 0.021) * Math.sin(wx * 0.0073 + 1.3) + Math.sin(t * 0.3 + wx * 0.002) * 0.2;
-        if (v > 0.55) { const a = (v - 0.55) * k * (0.4 + 0.6 * (1 - y / H)); if (a > 0.004) d[y * W + x] = U.screen(d[y * W + x], col, a); }
+      // the shaft pattern only depends on the slanted coordinate: tabulate it once per frame
+      const base = Math.floor(cx * 0.6), n = W + Math.ceil(H * 0.45) + 2;
+      if (!def._shaft || def._shaft.length < n) def._shaft = new Float32Array(n + 64);
+      const tab = def._shaft;
+      for (let j = 0; j < n; j++) { const wx = base + j; const v = Math.sin(wx * 0.021) * Math.sin(wx * 0.0073 + 1.3) + Math.sin(t * 0.3 + wx * 0.002) * 0.2; tab[j] = v > 0.55 ? v - 0.55 : 0; }
+      for (let y = 0; y < H; y++) {
+        const ky = k * (0.4 + 0.6 * (1 - y / H)), off = Math.floor(y * 0.45), row = y * W;
+        for (let x = 0; x < W; x++) { const v = tab[x + off]; if (v > 0) { const a = v * ky; if (a > 0.004) d[row + x] = U.screen(d[row + x], col, a); } }
       }
     }
     ForestAI.post(A, fb, cx, cy, t);
@@ -236,7 +240,13 @@ Areas.forest = (() => {
   def.ambient = (hour, W) => {
     const out = [{ kind: 'mote', rate: 3, c: hex('#e8ffd0'), life: 5, sway: 10, bob: 4, vy: -2 }];
     if (hour === 'night' || hour === 'dusk') out.push({ kind: 'firefly', rate: 3, c: hex('#c8ff9a'), life: 8, sway: 14, bob: 8, y: (x) => World.groundAt(x) - 20 - Math.random() * 120 });
-    else out.push({ kind: 'leaf', rate: 0.8, c: hex('#56a042'), c2: hex('#8ccc5a'), life: 9, drift: 1, vy: 8, y: (x) => World.groundAt(x) - 200 - Math.random() * 80 });
+    else {
+      out.push({ kind: 'butterfly', rate: 0.7, c: hex(Math.random() < 0.5 ? '#6ad0ff' : '#ffb040'), c2: hex('#ffffff'), life: 12, sway: 18, bob: 10, y: (x) => World.groundAt(x) - 14 - Math.random() * 50 });
+      out.push({ kind: 'dragonfly', rate: 0.5, c: hex('#3ad8a0'), c2: hex('#1a6a8a'), life: 8, sway: 30, bob: 6, vy: 0, y: (x) => World.groundAt(x) - 20 - Math.random() * 40 });
+      out.push({ kind: 'seed', rate: 0.8, life: 10, drift: 2, vy: -1, sway: 12, bob: 6, y: (x) => World.groundAt(x) - 30 - Math.random() * 120 });
+      out.push({ kind: 'bird', rate: 0.15, group: [2, 4], vx0: 26, par: 0.3, c: hex('#1a2a2a'), life: 40, sway: 3, bob: 3, y: () => 140 + Math.random() * 80 });
+    }
+    if (hour !== 'night') out.push({ kind: 'leaf', rate: 0.8, c: hex('#56a042'), c2: hex('#8ccc5a'), life: 9, drift: 1, vy: 8, y: (x) => World.groundAt(x) - 200 - Math.random() * 80 });
     return out;
   };
   def.onScan = (A) => ForestAI.onScan(A);

@@ -518,6 +518,12 @@ Areas.beach = (() => {
       { kind: 'bubble', rate: 4, life: 5, vy: -18, y: () => SEA + 40 + Math.random() * 500, sway: 4, bob: 2 },
     ];
     if (hour === 'night' || hour === 'dusk') out.push({ kind: 'firefly', rate: 0.8, c: hex('#c8ff9a'), life: 7, y: () => 420 + Math.random() * 60, sway: 10, bob: 6 });
+    if (hour !== 'night') {
+      out.push({ kind: 'bird', rate: 0.25, group: [3, 6], vx0: 22, par: 0.35, c: hour === 'dusk' ? hex('#3a2a40') : hex('#2a3a5a'), life: 40, sway: 3, bob: 2, y: () => 180 + Math.random() * 90 });
+      out.push({ kind: 'butterfly', rate: 0.5, c: hex(Math.random() < 0.5 ? '#ffd648' : '#ff9ad0'), c2: hex('#ffffff'), life: 12, sway: 18, bob: 10, y: (x) => World.groundAt(x) - 14 - Math.random() * 40 });
+      out.push({ kind: 'sand', rate: 5, c: hex('#f5dcab'), life: 1.4, vy: -3, drift: 3, sway: 2, bob: 1, y: (x) => World.groundAt(x) - 1 - Math.random() * 4 });
+    }
+    out.push({ kind: 'fish', rate: 0.6, group: [5, 9], vx0: 16, c: hex('#9ad8f0'), c2: hex('#ffffff'), life: 30, sway: 2, bob: 3, y: () => SEA + 60 + Math.random() * 300 });
     if (hour === 'noon' || hour === 'afternoon') out.push({ kind: 'leaf', rate: 0.25, c: hex('#4ea044'), c2: hex('#80c45a'), life: 8, drift: 1, vy: 6, y: () => 380 + Math.random() * 60 });
     return out;
   };

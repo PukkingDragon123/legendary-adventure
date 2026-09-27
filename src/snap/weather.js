@@ -56,13 +56,15 @@ const Weather = (() => {
     const amb = A && A.def.ambient ? A.def.ambient(Game.hour(), W) : null;
     if (amb) for (const a of amb) {
       if (Math.random() < dt * a.rate) {
-        const x = Game.cam.x + Math.random() * VW, y = a.y ? a.y(x) : Game.cam.y + Math.random() * VH;
-        W.amb.push(Object.assign({ x, y, t: 0, life: a.life || 6, ph: Math.random() * 6, vx: rnd(-6, 6), vy: rnd(-4, 4) }, a));
+        const x = Game.cam.x * (a.par ?? 1) + Math.random() * VW, y = a.y ? a.y(x) : Game.cam.y + Math.random() * VH;
+        const n = a.group ? Math.round(rnd(a.group[0], a.group[1])) : 1;
+        const vx0 = a.vx0 !== undefined ? a.vx0 * (Math.random() < 0.5 ? -1 : 1) : null;
+        for (let k = 0; k < n; k++) W.amb.push(Object.assign({ x: x + (n > 1 ? rnd(-14, 14) + k * 5 : 0), y: y + (n > 1 ? rnd(-6, 6) : 0), t: 0, life: a.life || 6, ph: Math.random() * 6, vx: rnd(-6, 6), vy: rnd(-4, 4) }, a, vx0 !== null ? { vx: vx0 * rnd(0.9, 1.1) } : {}));
       }
     }
     for (const p of W.amb) { p.t += dt; p.x += (p.vx + (p.drift || 0) * wind * 0.2 + Math.sin(t * (p.wob || 1.3) + p.ph) * (p.sway || 8)) * dt; p.y += (p.vy + Math.cos(t * 0.9 + p.ph) * (p.bob || 5)) * dt; }
-    W.amb = W.amb.filter((p) => p.t < p.life && p.x > Game.cam.x - 40 && p.x < Game.cam.x + VW + 40);
-    if (W.amb.length > 140) W.amb.splice(0, W.amb.length - 140);
+    W.amb = W.amb.filter((p) => { const sx = p.x - Game.cam.x * (p.par ?? 1); return p.t < p.life && sx > -80 && sx < VW + 80; });
+    if (W.amb.length > 220) W.amb.splice(0, W.amb.length - 220);
   }
   function draw(fb, cx, cy, t) {
     const d = fb.d, VW = fb.w, VH = fb.h;
@@ -83,6 +85,28 @@ const Weather = (() => {
         const f = Math.sin(t * 5 + p.ph) > 0;
         d[i] = p.c; if (f) d[i + 1] = p.c2 || p.c; else d[i + VW] = p.c2 || p.c;
       } else if (p.kind === 'mote') { if (bayer4(x, y) < k * 0.8) d[i] = U.screen(d[i], p.c, 0.6); }
+      else if (p.kind === 'butterfly') {
+        // two wing pixels that flap open/closed around a dark body pixel
+        const open = Math.sin(t * 18 + p.ph) > 0;
+        d[i] = 0xff202030;
+        if (open) { d[i - 1] = p.c; d[i + 1] = p.c; d[i - 1 - VW] = p.c2 || p.c; d[i + 1 - VW] = p.c2 || p.c; }
+        else d[i - VW] = p.c;
+      } else if (p.kind === 'dragonfly') {
+        const dir = p.vx > 0 ? 1 : -1;
+        d[i] = p.c; d[i - dir] = p.c; if (x > 2 && x < VW - 2) d[i - 2 * dir] = p.c2 || p.c;
+        if (Math.sin(t * 40 + p.ph) > 0) { d[i - VW] = U.screen(d[i - VW], 0xffffffff, 0.6); d[i + VW] = U.screen(d[i + VW], 0xffffffff, 0.4); }
+      } else if (p.kind === 'bird') {
+        // a distant bird: a little 'v' that flaps
+        const up = Math.sin(t * 9 + p.ph) > 0, c = p.c;
+        d[i] = c; d[i - 1 - (up ? VW : 0)] = c; d[i + 1 - (up ? VW : 0)] = c;
+        if (x > 2 && x < VW - 2 && y > 2) { d[i - 2 - (up ? 2 * VW : 0)] = c; d[i + 2 - (up ? 2 * VW : 0)] = c; }
+      } else if (p.kind === 'fish') {
+        const dir = p.vx > 0 ? 1 : -1, fl = Math.sin(t * 14 + p.ph) > 0 ? -VW : VW;
+        d[i] = mix(d[i], p.c, 0.8); d[i - dir] = mix(d[i - dir], p.c, 0.8); d[i + dir] = mix(d[i + dir], p.c2 || p.c, 0.8);
+        if (x > 3 && x < VW - 3) { d[i - 2 * dir] = mix(d[i - 2 * dir], p.c, 0.6); d[i - 3 * dir + fl] = mix(d[i - 3 * dir + fl], p.c, 0.6); }
+      } else if (p.kind === 'seed') {
+        d[i] = U.screen(d[i], 0xffffffff, 0.8 * k); d[i - VW] = U.screen(d[i - VW], 0xffffffff, 0.4 * k); d[i - 1] = U.screen(d[i - 1], 0xffffffff, 0.3 * k); d[i + 1] = U.screen(d[i + 1], 0xffffffff, 0.3 * k);
+      } else if (p.kind === 'sand') d[i] = mix(d[i], p.c, 0.7 * k);
       else if (p.kind === 'bubble') { d[i] = U.screen(d[i], 0xffffffff, 0.6 * k); }
       else if (p.kind === 'sparkle') { const s = Math.sin(t * 6 + p.ph); if (s > 0.5) { d[i] = 0xffffffff; if (s > 0.85) { d[i - 1] = U.screen(d[i - 1], p.c, 0.7); d[i + 1] = U.screen(d[i + 1], p.c, 0.7); d[i - VW] = U.screen(d[i - VW], p.c, 0.7); d[i + VW] = U.screen(d[i + VW], p.c, 0.7); } } }
       else d[i] = p.c;

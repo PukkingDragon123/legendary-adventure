@@ -365,7 +365,7 @@ const BeachAI = (() => {
   /* ================= LUVDISC school ================= */
   class LuvdiscM extends Swimmer {
     constructor(x, y, i) {
-      super(sp('Luvdisc'), { kind: 'luvdisc', dex: 'luvdisc', x, y, yaw: 0.6, z: 1.8, scale: 0.34, qPose: 0.05, qFields: { wiggle: 0.25, kiss: 0.25, tilt: 0.1 }, persona: 'shy', speed: 42, box: { x0: 1060, x1: 1900, y0: SEA + 24, y1: SEA + 150 } });
+      super(sp('Luvdisc'), { kind: 'luvdisc', dex: 'luvdisc', x, y, yaw: 0.6, z: 1.8, scale: 0.26, qPose: 0.05, qFields: { wiggle: 0.25, kiss: 0.25, tilt: 0.1 }, persona: 'shy', speed: 42, box: { x0: 1060, x1: 1900, y0: SEA + 24, y1: SEA + 150 } });
       this.i = i; this.wig = Math.random() * 6; this.senseR = 90; this.alert = 1.4;
     }
     animate(dt, t) {
@@ -547,7 +547,7 @@ const BeachAI = (() => {
   }
   class RemoraidM extends Swimmer {
     constructor(mantine) {
-      super(sp('Remoraid'), { kind: 'remoraid', dex: 'remoraid', x: 1650, y: SEA + 140, yaw: 0.7, z: 1.6, scale: 0.45, qPose: 0.06, qFields: { tail: 0.2 }, persona: 'curious', speed: 55, box: { x0: 1200, x1: 2400, y0: SEA + 40, y1: SEA + 180 } });
+      super(sp('Remoraid'), { kind: 'remoraid', dex: 'remoraid', x: 1650, y: SEA + 140, yaw: 0.7, z: 1.6, scale: 0.24, qPose: 0.06, qFields: { tail: 0.2 }, persona: 'curious', speed: 55, box: { x0: 1200, x1: 2400, y0: SEA + 40, y1: SEA + 180 } });
       this.mant = mantine;
     }
     animate(dt, t) { const P = { tail: Math.sin(t * 7 + this.seed) * 0.6, mouth: 0.2, fins: 0.5, eyes: this.blink(t, dt) ? 'blink' : 'open' }; Object.assign(P, this.o); this.pose = P; }

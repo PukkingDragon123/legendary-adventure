@@ -194,7 +194,7 @@ const Mons = (() => {
       const x0 = Math.max(0, -X), x1 = Math.min(s.w, W - X), y0 = Math.max(0, -Y), y1 = Math.min(rows, H - Y);
       if (x0 >= x1 || y0 >= y1) return;
       const occV = this.occV, hk = this.hideK, t = Game.t;
-      const idb = Stage.S.idOn ? Stage.S.idb : null, pid = this.pid || 0;
+      const idb = Stage.S.idOn ? Stage.S.idb : null, pid = this.pid || 0, rawb = Stage.S.rawb;
       const tint = this.tint || 0, tk = this.tintK || 0;
       for (let sy = y0; sy < y1; sy++) {
         const row = sy * s.w, trow = (Y + sy) * W + X;
@@ -205,9 +205,10 @@ const Mons = (() => {
             const th = U.bayer4(X + sx, Y + sy + Math.floor(t * 8));
             if (th < hk) { if (th > hk - 0.08 && hk < 0.97) d[trow + sx] = U.mix(d[trow + sx], 0xffffffff, 0.35); continue; }
           }
-          d[trow + sx] = tk ? U.mix(c, tint, tk) : c;
+          const cc = tk ? U.mix(c, tint, tk) : c;
+          d[trow + sx] = cc;
           if (occ) occ[trow + sx] = occV;
-          if (idb) idb[trow + sx] = pid;
+          if (idb) { idb[trow + sx] = pid; if (rawb) rawb[trow + sx] = cc; }
         }
       }
     }

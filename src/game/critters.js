@@ -187,6 +187,23 @@ const Critters = (() => {
       if (s) this.spr = s;
       return this.spr;
     }
+    // double-resolution sprite of the current pose (for the HD pass); returns null until it is ready
+    sprite2(P) {
+      const sc0 = this.scale, sc = sc0 * 2;
+      this.scale = sc; const key = this.keyOf(P); this.scale = sc0;
+      let s = cacheGet(key);
+      const m = this.sp.meta || { bw: 128, bh: 128, oy: 0.86 };
+      const SW = Math.ceil(m.bw * sc), SH = Math.ceil(m.bh * sc), OX = Math.floor(SW / 2), OY = Math.floor(SH * m.oy);
+      if (!s) {
+        const yaw = q(this.yaw, this.qy);
+        const pose = this.qpose(); pose.side = clamp(3 * Math.cos(yaw), -1, 1);
+        const g = P.gradePal(this.basePal, this.palId);
+        const opt = { yaw, pitch: this.pitch, scale: sc, W: SW, H: SH, ox: OX, oy: OY, pal: g.pal, light: g.light };
+        if (Pool.ready && Pool.nameOf(this.sp)) { if (!Pool.pending.has(key)) Pool.request(this.id + '#2', { key, sp: Pool.nameOf(this.sp), pose, opt, time: P.key }); }
+        else if (Budget.left > 4) { const t0 = performance.now(); s = crop(this.sp.render(this.sp.build(pose), opt), P.key); cachePut(key, s); Budget.left -= performance.now() - t0; }
+      }
+      return s ? { s, OX, OY } : null;
+    }
     // world position of the sprite's top-left
     ox() {
       const s = this.spr;
