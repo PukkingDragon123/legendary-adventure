@@ -213,7 +213,7 @@ const GroveAI = (() => {
   }
 
   /* ================= SEEDOT ================= */
-  const SEEDOT_S = 0.46, SEEDOT_H = 87 * SEEDOT_S;
+  const SEEDOT_S = 0.5, SEEDOT_H = 88 * SEEDOT_S;
   class SeedotM extends Mons.Mon {
     constructor(i, hx, hy) {
       super(sp('Seedot'), { kind: 'seedot', dex: 'seedot', x: hx, y: hy + SEEDOT_H, yaw: Math.PI / 2 + (i - 1) * 0.25, z: 1.9, scale: SEEDOT_S, qPose: 0.06, qFields: { hang: 0.25, step: 0.5, squash: 0.25, tilt: 0.1, mouth: 0.25 }, persona: 'shy', mode: 'hang' });
@@ -407,14 +407,14 @@ const GroveAI = (() => {
   /* ================= PLUSLE & MINUN ================= */
   class CheerM extends Walker {
     constructor(kind, x, minX, maxX) {
-      super(sp(kind === 'plusle' ? 'Plusle' : 'Minun'), { kind, dex: kind, x, y: gy(x), yaw: Math.PI / 2 + (kind === 'plusle' ? 0.5 : -0.5), z: 1.9, scale: 0.46, qPose: 0.06, qFields: { cheer: 0.2, jump: 0.2, step: 0.5, spark: 0.25, mouth: 0.25 }, persona: 'curious', speed: 60, minX, maxX });
+      super(sp(kind === 'plusle' ? 'Plusle' : 'Minun'), { kind, dex: kind, x, y: gy(x), yaw: Math.PI / 2 + (kind === 'plusle' ? 0.5 : -0.5), z: 1.9, scale: 0.55, qPose: 0.06, qFields: { cheer: 0.2, jump: 0.2, step: 0.5, spark: 0.25, mouth: 0.25 }, persona: 'curious', speed: 60, minX, maxX });
       this.air2 = 0; this.stepPh = 0; this.jumpK = 0; this.senseR = 110;
     }
     get pal() { return this.kind === 'plusle' ? S.minun : S.plusle; }
     physics(dt, t) { super.physics(dt, t); this.y -= this.air2; }
     animate(dt, t) {
       if (this.moving) this.stepPh += dt * (8 + this.moving * 0.06);
-      const P = { cheer: 0, jump: this.jumpK, step: this.moving ? this.stepPh : 0, spark: 0.1, mouth: 0.7, eyes: this.blink(t, dt) ? 'blink' : 'open' };
+      const P = { cheer: 0, jump: this.jumpK, step: this.moving ? this.stepPh : 0, spark: 0.1, mouth: this.kind === 'plusle' ? 0.7 : 0.15, eyes: this.blink(t, dt) ? 'blink' : 'open' };
       if (this.sleeping) { P.eyes = 'closed'; P.mouth = 0; }
       Object.assign(P, this.o); this.pose = P;
     }
@@ -511,14 +511,14 @@ const GroveAI = (() => {
   function spawn(A, G) {
     S = { party: false, findT: -99, seedot: [], seedAir: 0, duoT: 0, plusle: null, minun: null };
     const add = (m) => { if (m && m.sp) G.addMon(m); return m; };
-    if (sp('Zigzagoon')) { add(new ZigzagoonM(420, 260, 880)); add(new ZigzagoonM(1650, 1540, 1830)); }
+    if (sp('Zigzagoon')) { add(new ZigzagoonM(420, 260, 880)); add(new ZigzagoonM(3000, 2830, 3220)); }
     if (sp('Surskit')) { add(new SurskitM(2400)); add(new SurskitM(2640)); }
     if (sp('Shroomish')) { add(new ShroomishM(2120, MUSH - 40)); add(new ShroomishM(2900, 2940)); add(new ShroomishM(3050, 2980)); }
     // Seedot dangle from the fruit tree's lower boughs
     if (sp('Seedot')) { const hy = gy(TREE) - 96; S.seedot = [add(new SeedotM(0, TREE - 40, hy + 6)), add(new SeedotM(1, TREE + 4, hy - 4)), add(new SeedotM(2, TREE + 44, hy + 8))]; }
     // Slakoth lolls on the mossy log near the start
     if (sp('Slakoth')) add(new SlakothM(446, 425, 468, { zd: -8 }));
-    if (sp('Plusle') && sp('Minun')) { S.plusle = add(new CheerM('plusle', 1880, 1560, 2140)); S.minun = add(new CheerM('minun', 1930, 1560, 2140)); }
+    if (sp('Plusle') && sp('Minun')) { S.plusle = add(new CheerM('plusle', 1640, 1545, 1830)); S.minun = add(new CheerM('minun', 1690, 1545, 1830)); }
   }
   function update(A, dt, t, G) {
     S.party = hourIs('dusk');
