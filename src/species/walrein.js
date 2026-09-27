@@ -1,6 +1,10 @@
 /* ------------------------------------------------------------------
-   Walrein — the Ice Break Pokémon. A huge walrus with a fluffy white
-   mane, a white collar band and long ivory tusks.
+   Walrein — the Ice Break Pokémon. A huge blue walrus lying on its belly
+   with front flippers and a tail fin, a raised head (blue crown, yellow
+   eyes, round blue nose, long ivory tusks), a fluffy pale-blue/white mane
+   that rings the back of the head and neck like a collar and puffs out at
+   the cheeks beside the tusks (the crown and face stay clear), and two
+   white collar bands on the neck below the mane.
    Model space: x = forward, y = up, z = near side at yaw 0, ground at y = 0.
 ------------------------------------------------------------------- */
 const Walrein = (() => {
@@ -15,7 +19,7 @@ const Walrein = (() => {
     [BODY]:   { r: ['#1f5a86', '#2f78a8', '#4a95c2', '#70b1d8', '#a8d4ee'], od: '#10324f', ol: '#21577f', ln: '#245e88' },
     [PATCH]:  { r: ['#3a77a4', '#5594c0', '#76b0d6', '#98c9e6', '#c4e2f4'], od: '#10324f', ol: '#21577f', ln: '#2f6c96' },
     [FLIP]:   { r: ['#1d5580', '#2c719f', '#448cba', '#68a9d2', '#a0cfea'], od: '#10324f', ol: '#21577f', ln: '#1f5a86' },
-    [MANE]:   { r: ['#adc3e1', '#cddbef', '#e9f0fa', '#f7fafe', '#ffffff'], od: '#4a6892', ol: '#7a96be', ln: '#93acce' },
+    [MANE]:   { r: ['#98b4d6', '#b8d0ea', '#d8e7f6', '#f0f6fc', '#ffffff'], od: '#44648e', ol: '#7492bc', ln: '#88a4ca' },
     [BAND]:   { r: ['#8fb0d2', '#b8d0e8', '#e6f0fa', '#ffffff', '#ffffff'], od: '#44628c', ol: '#7792ba', ln: '#7896bc' },
     [TK0]:    { r: ['#c2a164', '#c2a164', '#c2a164', '#c2a164', '#c2a164'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
     [TK1]:    { r: ['#dbbf86', '#dbbf86', '#dbbf86', '#dbbf86', '#dbbf86'], od: '#6e5226', ol: '#9a7a44', ln: '#a4834c' },
@@ -35,41 +39,58 @@ const Walrein = (() => {
   const lerp = (a, b, t) => a + (b - a) * t;
 
   /* ---------- eye stamps: small dark eyes ---------- */
+  // small set for the game scales (~0.4), large set for close-ups (scale >= 0.75)
   const EYES = {
-    open: ['.kkk.', 'kwwkk', 'kwkkk', 'kkkkk', 'kkkkk', '.kkk.'],
-    openN: ['.kk.', 'wwkk', 'wkkk', 'kkkk', 'kkkk', '.kk.'],
-    openF: ['kk', 'wk', 'kk', 'kk', 'kk'],
-    angry: ['kk...', '.kkk.', 'kwkkk', 'kkkkk', 'kkkkk', '.kkk.'],
-    angryN: ['k...', '.kk.', 'wkkk', 'kkkk', 'kkkk', '.kk.'],
-    angryF: ['k.', 'kk', 'wk', 'kk', 'kk'],
-    happy: ['.kkk.', 'kk.kk', 'k...k'],
-    happyN: ['.kk.', 'k..k', 'k..k'],
+    open: ['.kkkk.', 'kykkyk', 'kykwyk', '.kkkk.'],
+    openN: ['.kkk.', 'kykky', 'kykwk', '.kkk.'],
+    openF: ['kk', 'yk', 'kk'],
+    angry: ['kk....', '.kkkk.', 'kykwyk', '.kkkk.'],
+    angryN: ['k....', '.kkk.', 'kykwk', '.kkk.'],
+    angryF: ['k.', 'kk', 'yk'],
+    happy: ['.kkkk.', 'kk..kk', 'k....k'],
+    happyN: ['.kkk.', 'kk.kk', 'k...k'],
     happyF: ['.k', 'k.', 'k.'],
-    blink: ['kkkkk', '.kkk.'],
-    blinkN: ['kkkk', '.kk.'],
+    blink: ['kkkkkk', '.kkkk.'],
+    blinkN: ['kkkkk', '.kkk.'],
     blinkF: ['kk', '.k'],
-    closed: ['k...k', '.kkk.'],
-    closedN: ['k..k', '.kk.'],
+    closed: ['k....k', '.kkkk.'],
+    closedN: ['k...k', '.kkk.'],
     closedF: ['k.', '.k'],
   };
-  const EYEC = { k: '#101c2c', w: '#ffffff' };
+  const EYES_L = {
+    open: ['..kkkkk..', '.kyyyyyk.', 'kyykkkyyk', 'kyykwkyyk', '.kyykyyk.', '..kkkkk..'],
+    openN: ['..kkkk.', '.kyyyyk', 'kyykkyk', 'kyykwyk', '.kyykyk', '..kkkk.'],
+    openF: ['.kk', 'kyk', 'kkk', 'kwk', '.kk'],
+    angry: ['kk.......', '.kkkkkk..', '..kkkkyyk', 'kyykwkyyk', '.kyykyyk.', '..kkkkk..'],
+    angryN: ['kk.....', '.kkkkk.', '..kkkyk', 'kyykwyk', '.kyykyk', '..kkkk.'],
+    angryF: ['k..', '.kk', 'kkk', 'kwk', '.kk'],
+    happy: ['..kkkkk..', '.kk...kk.', 'kk.....kk', 'k.......k'],
+    happyN: ['..kkkk.', '.kk..kk', 'kk....k', 'k.....k'],
+    happyF: ['.kk', 'kk.', 'k..'],
+    blink: ['kkkkkkkkk', '.kkkkkkk.'],
+    blinkN: ['kkkkkkk', '.kkkkk.'],
+    blinkF: ['kkk', '.kk'],
+    closed: ['k.......k', 'kk.....kk', '.kkkkkkk.'],
+    closedN: ['k.....k', 'kk...kk', '.kkkkk.'],
+    closedF: ['k..', 'kk.', '.kk'],
+  };
+  const EYEC = { k: '#101c2c', w: '#ffffff', y: '#f2d24a' };
 
-  // mane lumps [x, y, z, r] in the head frame: a front ring around the face, a second ring
-  // behind it, a cap on the forehead and a big puff at the back
+  // mane lumps [x, y, z, r] in the head frame. Official look: the fluffy mane is a collar round the
+  // back of the head and neck, puffing out at the cheeks beside the tusks; the crown, the eyes and
+  // the whole face (snout, nose, mouth) stay clear, and the throat under the jaw stays blue.
   const MANE_L = (() => {
     const L = [];
-    const ring = (x, R, r, n, a0, cut, sx = 1.1) => {
-      for (let i = 0; i < n; i++) {
-        const t = a0 + (i / n) * Math.PI * 2;
-        const cy = Math.cos(t), cz = Math.sin(t);
-        if (cy < cut) continue;
-        L.push([x - 6 * (1 - cy), R * cy + 2, R * cz * sx, r * (cy < -0.3 ? 0.9 : 1)]);
-      }
-    };
-    ring(8, 31, 17, 9, 0, -0.55);           // front ring: forehead and cheeks, around the snout
-    ring(-17, 37, 23, 8, Math.PI / 8, -0.9); // second ring
-    L.push([-8, 46, 0, 20]);                 // crown
-    L.push([-50, 14, 0, 32], [-46, -20, 22, 26], [-46, -20, -22, 26], [-58, -38, 0, 24], [-32, 38, 0, 24]); // back puff
+    for (const sd of [1, -1]) {
+      // cheek puffs flanking the snout and the tusk roots
+      L.push([20, -6, sd * 27, 11], [10, 4, sd * 31, 13], [6, -14, sd * 28, 12], [-2, 14, sd * 30, 12]);
+      // collar ring behind the face: sides and lower sides of the head
+      L.push([-10, 2, sd * 36, 17], [-12, -16, sd * 34, 16], [-8, -32, sd * 26, 14], [-18, 18, sd * 29, 13]);
+      // outer ring further back and lower, puffing wider down the neck
+      L.push([-30, 2, sd * 37, 20], [-30, -22, sd * 37, 20], [-24, -44, sd * 28, 17], [-40, -38, sd * 22, 18]);
+    }
+    // back of the neck: big puffs behind the skull, kept below the crown
+    L.push([-40, 6, 0, 21], [-48, -18, 0, 25], [-40, -46, 0, 21], [-52, -4, 20, 19], [-52, -4, -20, 19]);
     return L;
   })();
 
@@ -138,9 +159,9 @@ const Walrein = (() => {
     /* --- neck (with the white collar band) and head --- */
     const hp = clamp(P.headPitch, -0.3, 0.8);
     const neckBase = chain(root, T(48, 88, 0), R(M3.rz(-0.25 + hp * 0.55)));
-    const neckP = ell(chain(neckBase, T(0, 28 + hp * 12, 0)), [46, 54 + hp * 14, 54], { part: 2, grp: 1 });
+    const neckP = ell(chain(neckBase, T(0, 36 + hp * 12, 0)), [42, 64 + hp * 14, 50], { part: 2, grp: 1 });
     neckP.mat = bodyMat(neckP, (s) => {
-      const b1 = s[1] + 0.34, b2 = s[1] + 0.06;
+      const b1 = s[1] + 0.4, b2 = s[1] + 0.16;
       if (Math.abs(b1) < 0.065 || Math.abs(b2) < 0.06) return code(BAND);
       return 0;
     });
@@ -149,7 +170,7 @@ const Walrein = (() => {
     shoulderP.mat = bodyMat(shoulderP);
     prims.push(neckP, shoulderP);
 
-    const head = chain(neckBase, T(8 - hp * 6, 76 + hp * 26, 0), R(M3.rz(hp * 0.45 + 0.25)), R(M3.ry(clamp(P.headYaw, -0.8, 0.8))));
+    const head = chain(neckBase, T(8 - hp * 6, 94 + hp * 26, 0), R(M3.rz(hp * 0.45 + 0.25)), R(M3.ry(clamp(P.headYaw, -0.8, 0.8))));
     const headP = ell(head, [32, 28, 33], { part: 3, grp: 2, mat: () => code(BODY) });
     const snout = chain(head, T(28, -2, 0));
     const snoutP = ell(snout, [22, 17, 24], { part: 4, grp: 2, mat: () => code(BODY) });
@@ -202,7 +223,7 @@ const Walrein = (() => {
     /* --- mane: rings of white lumps framing the face, plus a big puff behind the head --- */
     const maneP = [];
     for (const [x, y, z, r] of MANE_L) {
-      const mp = ell(chain(head, T(x, y, z)), [r, r * 0.94, r], { part: 10, grp: 10, mat: () => code(MANE) });
+      const mp = ell(chain(head, T(x, y, z * 1.12)), [r * 1.15, r * 1.08, r * 1.15], { part: 10, grp: 10, mat: () => code(MANE) });
       maneP.push(mp); prims.push(mp);
     }
 
@@ -288,6 +309,8 @@ const Walrein = (() => {
   }
 
   function render(model, opt) {
+    const set = (opt.scale || 1) >= 0.75 ? EYES_L : EYES;
+    if (model.stamps && model.stamps[0] && model.stamps[0].set !== set) model = Object.assign({}, model, { stamps: model.stamps.map((st) => Object.assign({}, st, { set })) });
     if (model.view) {
       // light direction in model space = inverse view rotation applied to the (view-space) light
       const Ld = V3.norm((opt.light && opt.light.dir) || [-0.5, 0.72, 0.5]);

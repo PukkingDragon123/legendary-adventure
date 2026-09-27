@@ -162,24 +162,24 @@ const Volbeat = (() => {
   /* ---------- antennae: up, one curl outward, black band and tip ---------- */
   function antPts(side) {
     const pts = [];
-    for (let i = 0; i <= 5; i++) pts.push([1.5 - i * 0.7, i * 7, side * i * 1.3]);
-    const c = [-3, 42, side * 18];
+    for (let i = 0; i <= 4; i++) pts.push([1.5 - i * 0.7, i * 6.5, side * i * 1.4]);
+    const c = [-2.5, 32, side * 16.6];
     for (let i = 1; i <= 12; i++) {
       const a = Math.PI + (i / 12) * Math.PI * 1.55;
       pts.push([c[0] + 1.5 * Math.sin(a), c[1] - 11 * Math.sin(a), c[2] + side * 11 * Math.cos(a)]);
     }
     const last = pts[pts.length - 1];
-    pts.push([last[0] - 0.5, last[1] + 7, last[2] + side * 1.5], [last[0] - 1, last[1] + 15, last[2] + side * 2.5]);
+    pts.push([last[0] - 0.5, last[1] + 6.5, last[2] + side * 1.5], [last[0] - 1, last[1] + 13.5, last[2] + side * 2.5]);
     return pts;
   }
-  const ANT_BLACK = (i, n) => i >= n - 2 || i === 7 || i === 8; // tip + a band where the loop starts
+  const ANT_BLACK = (i, n) => i >= n - 2 || i === 6 || i === 7; // tip + a band where the loop starts
 
   /* ---------- wings (plates): rounded, pointed leaves ---------- */
   const WING_G = bakeShape(Shape2D.poly([[0, -4], [8, -8], [20, -10], [32, -8], [40, -2], [38, 5], [28, 9], [14, 8], [0, 4]], C_WING, 8));
   const WING2_G = bakeShape(Shape2D.poly([[0, -3], [8, -6], [18, -7], [27, -4], [29, 1], [22, 5], [10, 5], [0, 3]], C_WING, 8));
   const WING_VEIN = [[[2, 0], [16, -1], [30, -2], [38, 0]]].map((pl) => ({ pts: Shape2D.catmull(pl, false, 4).map(([u, v]) => [u, v, 0]), mat: WING, useLn: true }));
 
-  const SIZE = 0.8;
+  const SIZE = 0.73;
   const DEFAULT = { flap: 0, arms: 0, armN: null, armF: null, glow: 0, lean: 0, mouth: 0, eyes: 'open', side: 1 };
   const PRI = {};
   for (let i = 1; i < 64; i++) PRI[i] = 0;
@@ -236,8 +236,8 @@ const Volbeat = (() => {
     }
 
     // --- torso, bulb
-    prims.push(ellF(chain(body, T(...CHEST_C), R(M3.rz(-0.1))), CHEST_R, 6, 6, torsoMat(CHEST_C, CHEST_R, -0.1, 0.12)));
-    prims.push(ellF(chain(body, T(...ABD_C), R(M3.rz(0.32))), ABD_R, 6, 6, torsoMat(ABD_C, ABD_R, 0.32, 0.18)));
+    prims.push(ellF(chain(body, T(...CHEST_C), R(M3.rz(-0.1))), CHEST_R, 6, 6, torsoMat(CHEST_C, CHEST_R, -0.1, 0.22)));
+    prims.push(ellF(chain(body, T(...ABD_C), R(M3.rz(0.32))), ABD_R, 6, 6, torsoMat(ABD_C, ABD_R, 0.32, 0.3)));
     const bulbF = chain(body, T(...BULB_C));
     // glowing core: the bulb's lit face is a paler spot
     prims.push(ellF(bulbF, [BULB_R, BULB_R * 0.94, BULB_R * 0.98], 9, 9, (s) => code(BULB, s[0] < -0.35 && s[1] > -0.2 ? 1 : 0)));
@@ -296,7 +296,7 @@ const Volbeat = (() => {
       anchors[side > 0 ? 'wingTipN' : 'wingTipF'] = add(root, M3.v(L1, [40, 0, 0]));
     });
 
-    anchors.top = inF(headF, [0, HEAD_R[1] + 56, 0]);
+    anchors.top = inF(headF, [0, HEAD_R[1] + 46, 0]);
     // uniform scale to the Pokédex height (0.7 m ≈ 122 units)
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
     for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);

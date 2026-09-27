@@ -52,11 +52,26 @@ const WorldMap = (() => {
       if (dv < 6 && h > 0.9) c = lava;
       // rainforest east of the volcano: extra lush
       if (Math.hypot(x - 176, y - 128) < 26 && h > 0.08 && h < 0.8) c = n > 0.4 ? C('#1c5a2a') : C('#2e7a36');
+      // fine texture: grass tufts / canopy blobs (bright top-left, dark bottom-right), rocky speckle
+      if (!WATER[i]) {
+        const f = vnoise(x * 0.9, y * 0.9, 13);
+        if (h >= 0.08 && h < 0.8) {
+          const tree = vnoise(x * 0.45, y * 0.45, 17);
+          if (tree > 0.62) { const top = hash(x, y, 21) > 0.5; c = mix(c, top ? C('#7acc5a') : C('#123a1c'), top ? 0.35 : 0.45); }
+          else c = mix(c, f > 0.5 ? C('#8ad06a') : C('#245a2a'), Math.abs(f - 0.5) * 0.5);
+        } else if (h >= 0.7) c = mix(c, f > 0.5 ? 0xffffffff : 0xff203040, Math.abs(f - 0.5) * 0.35);
+        else c = mix(c, f > 0.5 ? C('#fff2c8') : C('#c8a870'), Math.abs(f - 0.5) * 0.6);
+      } else {
+        // coral patches in the shallows
+        if (h > -0.04 && vnoise(x * 0.4, y * 0.4, 23) > 0.66) c = mix(c, C('#f08aa0'), 0.35);
+      }
       // slope lighting (light from the north-west)
       const hx = HM[i] - HM[y * N + Math.max(0, x - 1)], hy = HM[i] - HM[Math.max(0, y - 1) * N + x];
       if (!WATER[i]) { const l = clamp(0.85 + (hx + hy) * 5, 0.55, 1.25); c = U.pack(U.R(c) * l, U.G(c) * l, U.B(c) * l); }
       CM[i] = c;
     }
+    // white surf ring along every coast
+    for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) { const i = y * N + x; if (WATER[i] && (!WATER[i - 1] || !WATER[i + 1] || !WATER[i - N] || !WATER[i + N])) CM[i] = mix(CM[i], 0xffffffff, 0.6); }
     // towns / landmarks as tiny coloured roofs
     const roof = (x, y, col) => { for (let yy = -2; yy <= 2; yy++) for (let xx = -2; xx <= 2; xx++) { const i = (y + yy) * N + x + xx; CM[i] = (Math.abs(xx) + Math.abs(yy)) < 2 ? col : mix(col, 0xff000000, 0.3); HM[i] = Math.max(HM[i], 0.1) + 0.02; } };
     roof(120, 186, C('#ff5a4a')); roof(206, 184, C('#ffd23a')); roof(172, 124, C('#f4f4f4')); roof(152, 82, C('#b8864a'));
@@ -89,8 +104,27 @@ const WorldMap = (() => {
     const horizon = Y0 + H * (0.15 + (1 - M.pitch) * 0.2);
     const scaleH = H * 0.9;
     const ybuf = new Int32Array(W).fill(Y0 + H);
-    const sky0 = hex('#2966c8'), sky1 = hex('#bde2f8');
-    for (let y = Y0; y < Y0 + H; y++) { const k = clamp((y - Y0) / (horizon - Y0 + 30), 0, 1); const c = mix(sky0, sky1, k); for (let x = X0; x < X0 + W; x++) d[y * FW + x] = c; }
+    const sky0 = hex('#2966c8'), sky1 = hex('#cde8f8'), cloudC = 0xfffcfaf6, cloudS = hex('#c8d8ec');
+    const sunX = X0 + W * (0.5 + Math.sin(M.yaw * 1.0 + 1.2) * 0.6), sunY = Y0 + (horizon - Y0) * 0.35;
+    for (let y = Y0; y < Y0 + H; y++) {
+      const k = clamp((y - Y0) / (horizon - Y0 + 30), 0, 1);
+      const base = mix(sky0, sky1, k * k);
+      for (let x = X0; x < X0 + W; x++) {
+        let c = base;
+        const ds = Math.hypot(x - sunX, (y - sunY) * 1.3);
+        if (ds < 40) c = mix(c, 0xffe8fcff, (1 - ds / 40) * 0.6);
+        if (ds < 6) c = 0xfff0ffff;
+        if (y < horizon + 2) {
+          // two cloud bands that slide as the map spins
+          const u = (x - X0) / W + M.yaw * 0.35 + t * 0.004, vy = (y - Y0) / Math.max(1, horizon - Y0);
+          const cl = vnoise(u * 7, vy * 5, 31) * 0.65 + vnoise(u * 19, vy * 11, 32) * 0.35;
+          const band = Math.max(0, 1 - Math.abs(vy - 0.55) * 3.2);
+          const v = cl * band;
+          if (v > 0.48) c = v > 0.56 ? cloudC : mix(base, cloudS, 0.7);
+        }
+        d[y * FW + x] = c;
+      }
+    }
     const sinY = Math.sin(M.yaw), cosY = Math.cos(M.yaw);
     const fov = 0.9;
     const shimmer = Math.floor(t * 3);
@@ -101,7 +135,7 @@ const WorldMap = (() => {
       const rx = cx + sinY * z + cosY * prx, ry = cy - cosY * z + sinY * prx;
       const dx = (rx - lx) / W, dy = (ry - ly) / W;
       let px = lx, py = ly;
-      const fog = clamp((z - 140) / 190, 0, 1);
+      const fog = clamp((z - 110) / 220, 0, 0.92);
       for (let sx = 0; sx < W; sx++, px += dx, py += dy) {
         const mx = Math.floor(px), my = Math.floor(py);
         let h, c;

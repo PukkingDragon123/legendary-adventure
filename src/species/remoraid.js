@@ -76,13 +76,13 @@ const Remoraid = (() => {
   const PELV = finShape([[0, -3], [6, -5], [12, -6], [15, -3], [11, 1], [4, 3]], [[[2, 0], [8, -3], [13, -4]]]);
 
   /* ---------- face ---------- */
-  const EYE_AZ = 0.98, EYE_V = 0.08; // on the head ellipsoid
+  const EYE_AZ = 0.88, EYE_V = 0.04; // on the head ellipsoid
 
   const PRI = {};
   for (let i = 1; i < 16; i++) PRI[i] = 0;
   Object.assign(PRI, { 1: 0, 2: 1, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 3, 11: 3 });
 
-  const SIZE = 1.06;
+  const SIZE = 0.95;
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -145,7 +145,9 @@ const Remoraid = (() => {
     tailFin.lines = TAILF.lines;
     prims.push(tailFin);
     // dorsal fin on the back, raised by `fins`
-    const dF = chain(bodyF, T(-6, BODY_R[1] * 0.9, 0), R(M3.rz(0.06 - fins * 0.14)), R(M3.rx(side * 0.08)));
+    // (a slight twist toward the camera keeps it from collapsing into a needle when seen head-on)
+    const sgn = side < 0 ? -1 : 1;
+    const dF = chain(bodyF, T(-6, BODY_R[1] * 0.9, 0), R(M3.rz(0.06 - fins * 0.14)), R(M3.ry(-sgn * 0.3)), R(M3.rx(side * 0.08)));
     const dorsal = PL(dF.t, M3.mul(dF.L, M3.cols([-1, 0, 0], [0, 1, 0], [0, 0, -1])), 8, 8, DORSAL.shape, 1.4);
     dorsal.lines = DORSAL.lines;
     prims.push(dorsal);
@@ -276,12 +278,12 @@ const Remoraid = (() => {
     }
     return o;
   }
-  const EYES_XS = eyeSet(5), EYES_S = eyeSet(7), EYES_M = eyeSet(10), EYES_L = eyeSet(14), EYES_XL = eyeSet(18);
+  const EYES_XS = eyeSet(5), EYES_S = eyeSet(7), EYES_M = eyeSet(10), EYES_L = eyeSet(14), EYES_XL = eyeSet(18), EYES_XXL = eyeSet(22);
   const EYEC = { k: '#111a1e', w: '#ffffff', b: '#2c4c78' };
 
   function render(model, opt) {
     const { yaw = 1.05, pitch = 0.16, scale = 1 } = opt;
-    const set = scale >= 0.95 ? EYES_XL : scale >= 0.72 ? EYES_L : scale >= 0.42 ? EYES_M : scale >= 0.28 ? EYES_S : EYES_XS;
+    const set = scale >= 1.15 ? EYES_XXL : scale >= 0.95 ? EYES_XL : scale >= 0.72 ? EYES_L : scale >= 0.42 ? EYES_M : scale >= 0.28 ? EYES_S : EYES_XS;
     const cy = Math.cos(yaw), sy = Math.sin(yaw);
     for (const st of model.stamps) {
       st.set = set;
@@ -299,5 +301,5 @@ const Remoraid = (() => {
     return Creature.render(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 208, bh: 190, oy: 0.645 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 224, bh: 208, oy: 0.68 } };
 })();
