@@ -147,12 +147,12 @@ const Lileep = (() => {
     const sway = clamp(P.sway, -1, 1), open = clamp(P.tentacles, 0, 1), hide = clamp(P.hide, 0, 1);
 
     // --- foot: domed base + five rounded toes
-    prims.push(ellF(T(0, 13, 0), [23, 15, 23], 9, 9, M_FOOT));
-    prims.push(ellF(T(0, 27, 0), [11, 9, 11], 9, 9, M_FOOT));
+    prims.push(ellF(T(0, 15, 0), [24, 17, 24], 9, 9, M_FOOT));
+    prims.push(ellF(T(0, 29, 0), [11, 9, 11], 9, 9, M_FOOT));
     TOES.forEach((a, i) => {
       const o = [Math.cos(a), 0, Math.sin(a)];
-      const f = chain(T(o[0] * 25, 7, o[2] * 25), R(M3.ry(-a)), R(M3.rz(-0.18)));
-      prims.push(ellF(f, [16, 7.5, 12], 10 + i, 10 + i, M_FOOT));
+      const f = chain(T(o[0] * 26, 8, o[2] * 26), R(M3.ry(-a)), R(M3.rz(-0.22)));
+      prims.push(ellF(f, [18, 8.5, 14.5], 10 + i, 10 + i, M_FOOT));
     });
     anchors.base = [0, 12, 0];
 
@@ -163,7 +163,7 @@ const Lileep = (() => {
     for (let i = 0; i < 5; i++) {
       f = chain(f, R(M3.mul(M3.rx(bendX), M3.rz(-lean))));
       const g = chain(f, T(0, SEG_L / 2, 0));
-      prims.push(ellF(g, [5.2 - i * 0.2, SEG_L / 2 + 1.4, 5.2 - i * 0.2], 4 + i, 4 + i, () => (i % 2 ? C_GOLD : C_GOLD)));
+      prims.push(ellF(g, [6.2 - i * 0.2, SEG_L / 2 + 1.4, 6.2 - i * 0.2], 4 + i, 4 + i, () => (i % 2 ? C_GOLD : C_GOLD)));
       if (i === 2) anchors.stalk = inF(g, [0, 0, 0]);
       f = chain(f, T(0, SEG_L, 0));
     }
@@ -173,7 +173,7 @@ const Lileep = (() => {
     // --- cup, its narrow bottom and the lip above the collar
     const cupPrim = ellF(chain(up, T(...CUP_C)), CUP_R, 1, 1, cupMat);
     prims.push(cupPrim);
-    prims.push(ellF(chain(up, T(0, 62, 0)), [15, 9, 15], 1, 1, () => C_CUP));
+    prims.push(ellF(chain(up, T(0, 64, 0)), [19, 11, 19], 1, 1, () => C_CUP));
     anchors.body = inF(up, CUP_C);
 
     // --- head dome, tilted forward so the face looks out

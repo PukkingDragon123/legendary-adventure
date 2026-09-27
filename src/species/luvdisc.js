@@ -85,8 +85,8 @@ const Luvdisc = (() => {
   const NB = BALLS.length;
   const CEN = [PXX(250), PXY(242) + Y0, 0]; // heart centre (tilt pivot)
   const LIP_C = [PXX(150), PXY(246) + Y0, 0]; // lip blob centre
-  const EYE_C = [PXX(236), PXY(214) + Y0], EYE_R = [3.4, 6.2];
-  const CHEEK_C = [PXX(259), PXY(254) + Y0], CHEEK_R = [3.6, 6.0];
+  const EYE_C = [PXX(236), PXY(214) + Y0], EYE_R = [3.9, 6.8];
+  const CHEEK_C = [PXX(259), PXY(254) + Y0], CHEEK_R = [4.2, 6.6];
 
   /* ---------- smooth shading: an analytic pillow ----------
      The body is a union of ellipsoids (for the silhouette and depth), but it is shaded as a clean

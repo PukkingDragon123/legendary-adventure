@@ -87,11 +87,11 @@ const Milotic = (() => {
   const U = 0.85, THC = 2.04; // model units per reference pixel; the art's view yaw
   const RIGHT = [Math.cos(THC), 0, -Math.sin(THC)], TOWARD = [Math.sin(THC), 0, Math.cos(THC)];
   const rawM = (X, Y, D) => [X * U * RIGHT[0] + D * U * TOWARD[0], (445 - Y) * U, X * U * RIGHT[2] + D * U * TOWARD[2]];
-  const NECK_UP_PX = [[178, 196, 14, 15], [188, 236, 11, 19], [202, 278, 8, 24], [213, 320, 6, 30], [218, 358, 8, 37], [208, 392, 14, 43]];
-  const NECK_BOW_PX = [[108, 300, 96, 15], [132, 256, 74, 18], [170, 238, 48, 22], [204, 260, 24, 30], [218, 320, 10, 37], [208, 390, 14, 43]];
-  const LOOP_PX = [[172, 402, 24, 45], [126, 403, 34, 46], [88, 388, 38, 46], [74, 348, 34, 44], [88, 308, 22, 39], [120, 288, 6, 34], [158, 284, -14, 30]];
-  const TAIL_PX = [[205, 290, -36, 26], [255, 318, -48, 24], [310, 350, -54, 22], [365, 374, -56, 21], [412, 368, -54, 20], [436, 330, -50, 18], [422, 290, -46, 15], [388, 264, -42, 12], [352, 246, -40, 10], [330, 230, -38, 8]];
-  const HEAD_UP_PX = [170, 166, 18], HEAD_BOW_PX = [98, 318, 110];
+  const NECK_UP_PX = [[178, 196, 14, 15], [188, 236, 11, 19], [202, 278, 8, 24], [213, 320, 6, 30], [218, 358, 8, 40], [208, 392, 14, 47]];
+  const NECK_BOW_PX = [[128, 238, 86, 15], [146, 212, 66, 19], [178, 206, 42, 24], [206, 244, 22, 30], [218, 318, 10, 40], [208, 390, 14, 47]];
+  const LOOP_PX = [[172, 398, 24, 51], [126, 396, 34, 54], [88, 382, 38, 54], [74, 346, 34, 51], [88, 308, 22, 45], [120, 288, 6, 38], [158, 285, -14, 33]];
+  const TAIL_PX = [[205, 292, -38, 31], [255, 320, -52, 29], [310, 352, -58, 27], [365, 372, -60, 26], [410, 364, -58, 24], [432, 328, -54, 21], [420, 290, -50, 17], [388, 264, -46, 14], [352, 246, -42, 11], [330, 230, -40, 8]];
+  const HEAD_UP_PX = [170, 166, 18], HEAD_BOW_PX = [104, 262, 104];
   // footprint centre → origin
   const OFF = (() => {
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
@@ -197,7 +197,7 @@ const Milotic = (() => {
     const fa = Math.floor(a), fc = Math.floor(c);
     const uc = (fa + fc + 1) / 2;
     if (uc < U_START) return CREAM;
-    const w = clamp(0.48 / (curScale * b.sl), 0.035, 0.16);
+    const w = clamp(0.6 / (curScale * b.sl), 0.05, 0.16);
     const ra = a - fa, rc = c - fc;
     if (ra < w || rc < w || ra > 1 - w || rc > 1 - w) return INK;
     const vc = (fa - fc) / 2; // angular index of the cell centre
@@ -225,7 +225,7 @@ const Milotic = (() => {
   }
 
   /* ---------- head decals ---------- */
-  const HEAD_R = [22, 25, 22];
+  const HEAD_R = [24, 27, 24];
   const EC = Creature.sph(1.02, 0.08);
   const ETY = nrm(sub([0, 1, 0], sc(EC, EC[1])));
   const ETX = cross(ETY, EC); // toward the snout on the near side
@@ -258,7 +258,7 @@ const Milotic = (() => {
       return C_CREAM;
     };
   }
-  const SNOUT_R = [14, 10.5, 12.5];
+  const SNOUT_R = [15, 11.5, 13.5];
   function snoutMat(mo) {
     return (s) => {
       if (s[0] > 0.3) {
@@ -373,10 +373,10 @@ const Milotic = (() => {
     const kind = P.eyes, mo = clamp(P.mouth, 0, 1);
     const headPrim = ellF(head, HEAD_R, 4, 4, headMat(kind, mo));
     prims.push(headPrim);
-    prims.push(ellF(chain(head, T(11, -13, 0), R(M3.rz(-0.45))), SNOUT_R, 5, 4, snoutMat(mo)));
+    prims.push(ellF(chain(head, T(12, -14, 0), R(M3.rz(-0.45))), SNOUT_R, 5, 4, snoutMat(mo)));
     // spike: a cone out of the crown (wide base + thin tip), leaning a little forward
-    prims.push(ellF(chain(head, T(1.5, 32, 0), R(M3.rz(-0.08))), [15.5, 36, 14.5], 6, 4, M_CREAM));
-    const tipF = chain(head, T(6, 74, 0), R(M3.rz(-0.12)));
+    prims.push(ellF(chain(head, T(1.5, 34, 0), R(M3.rz(-0.08))), [16.5, 38, 15.5], 6, 4, M_CREAM));
+    const tipF = chain(head, T(6, 78, 0), R(M3.rz(-0.12)));
     prims.push(ellF(tipF, [6.5, 34, 6], 6, 4, M_CREAM));
     anchors.top = inF(tipF, [0, 34, 0]);
     anchors.head = head.t;
@@ -386,7 +386,7 @@ const Milotic = (() => {
     // --- antennae (thin red whips from the eyebrows, arching up and hooking inward: a heart)
     const antEnd = {};
     for (const sd of [1, -1]) {
-      const root = inF(head, [9, 15, sd * 8]);
+      const root = inF(head, [10, 16, sd * 9]);
       const out = nrm(M3.v(head.L, [-0.12 - 0.25 * hair, 0, sd]));
       const back = nrm(M3.v(head.L, [-1, 0, 0]));
       let prev = root;

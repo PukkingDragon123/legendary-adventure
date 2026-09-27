@@ -153,12 +153,12 @@ const Trapinch = (() => {
     const st = P.step || 0;
     const bob = 1.4 * Math.abs(Math.sin(st));
     const jaw = clamp(P.jaw, 0, 1);
-    const pitch = 0.32 + clamp(P.headPitch, -1, 1) * 0.36;
+    const pitch = 0.6 + clamp(P.headPitch, -1, 1) * 0.42;
     const body = T(0, bob, 0);
 
     // --- body, neck
     prims.push(ellF(chain(body, T(...BD_C), R(M3.rz(0.08))), BD_R, 4, 4, bodyMat));
-    const neckTop = inF(body, [12, 48, 0]);
+    const neckTop = inF(body, [8, 46, 0]);
     prims.push(seg(inF(body, [-2, 30, 0]), neckTop, 13, 13, 3, 3, M_SKIN));
     anchors.neck = neckTop;
     anchors.body = inF(body, BD_C);
@@ -166,7 +166,7 @@ const Trapinch = (() => {
     // --- head: pivot at the neck top; the head sits forward and up of it
     // When the jaw opens the lower jaw drops a little and the upper jaw swings up (hinge at the back).
     const hp = chain(body, T(...neckTop), R(M3.rz(pitch - 0.22 * jaw)));
-    const hc = chain(hp, T(16, 28, 0));
+    const hc = chain(hp, T(20, 30, 0));
     const HINGE = [-HD_R[0] * 0.9, HD_R[1] * SEAM_V, 0];
     const upF = chain(hc, T(...HINGE), R(M3.rz(jaw * 1.45)), T(-HINGE[0], -HINGE[1], 0));
     let eyeHost;
