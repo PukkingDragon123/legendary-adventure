@@ -25,7 +25,7 @@
                      — the "sharing fruit" shot; the jaw opens a little to grip it. Default 0
    Anchors: top, head, mouth, eyeN, eyeF, body, fruit (banana bunch, or the held banana), tail,
    wingTipN, wingTipF (front leaf tips), footFN, footFF, footBN, footBF.
-   Render: cropped to the silhouette box; shadowSteps 12.
+   Render: cropped to the silhouette box; shadowSteps 8.
 ------------------------------------------------------------------- */
 const Tropius = (() => {
   const { chain, T, R, F, code } = Creature;
@@ -136,12 +136,12 @@ const Tropius = (() => {
     }
     return { plates, lines, L };
   }
-  const WING_L = 238, WING_W = 52;
-  const WING_F = leafHalf(WING_L, WING_W, null, C_LEAF, 'wing', C_LEAF_L);
-  const WING2_L = 212, WING2_W = 47;
-  const WING2_F = leafHalf(WING2_L, WING2_W, null, C_LEAF, 'wing', C_LEAF_L);
+  const WING_L = 226, WING_W = 52;
+  const WING_F = leafHalf(WING_L, WING_W, null, C_LEAF, 'wing', C_LEAF_L), WING_U = leafHalf(WING_L, WING_W, null, code(LEAF2, 1), 'wing', C_LEAF2);
+  const WING2_L = 200, WING2_W = 47;
+  const WING2_F = leafHalf(WING2_L, WING2_W, null, C_LEAF, 'wing', C_LEAF_L), WING2_U = leafHalf(WING2_L, WING2_W, null, code(LEAF2, 1), 'wing', C_LEAF2);
   const CAPE_L = 92, CAPE_W = 22;
-  const CAPE_T = leafHalf(CAPE_L, CAPE_W, true, C_LEAF2, 'cape'), CAPE_B = leafHalf(CAPE_L, CAPE_W, false, code(LEAF2, 1), 'cape');
+  const CAPE_F = leafHalf(CAPE_L, CAPE_W, null, C_LEAF2, 'cape', code(LEAF2, 1));
 
   /* ---------- eye stamps (small gentle eyes) ---------- */
   const EYES_S = {
@@ -224,7 +224,7 @@ const Tropius = (() => {
     const low = Math.max(0, -nk), high = Math.max(0, nk);
     const phi0 = 1.62 - 1.1 * low + 0.02 * high;            // heading at the base (rad, 0 = forward)
     const turn = 2.55 - 0.35 * low - 0.8 * high;            // total forward bend along the neck
-    const NL = 300 - 52 * low, segs = 28, ds = NL / segs;
+    const NL = 312 - 60 * low, segs = 32, ds = NL / segs;
     const NECK = [], DIRS = [];
     let p = nb;
     for (let i = 0; i <= segs; i++) {
@@ -329,15 +329,13 @@ const Tropius = (() => {
       const Lm = M3.mul(body.L, M3.cols(dir, acr, nrmL));
       const base = inF(body, at);
       const g = 20 + (i % 2);
-      for (const [H, f] of [[CAPE_T, 0.28], [CAPE_B, -0.28]]) {
-        for (const [k, pl] of H.plates.entries()) prims.push(PL(base, M3.mul(Lm, M3.rx(f)), g, g, pl, 2, k === 0 && f > 0 ? H.lines : null));
-      }
+      prims.push(PL(base, Lm, g, g, CAPE_F.plates[0], 2, CAPE_F.lines));
     }
 
     /* --- leaf wings on the back: two per side, V-folded plates with veins --- */
     const tips = [];
     for (const sd of [1, -1]) {
-      for (const [k, W] of [[0, { at: [4, 148, 22], d: [0.62, 0.36, 0.7], roll: 0.55, F: WING_F, L: WING_L }], [1, { at: [-34, 146, 24], d: [-0.3, 0.52, 0.8], roll: 0.5, F: WING2_F, L: WING2_L }]]) {
+      for (const [k, W] of [[0, { at: [4, 148, 22], d: [0.62, 0.36, 0.7], roll: 0.85, F: WING_F, U: WING_U, L: WING_L }], [1, { at: [-34, 146, 24], d: [-0.3, 0.52, 0.8], roll: 0.5, F: WING2_F, U: WING2_U, L: WING2_L }]]) {
         const lift = flap * (k ? 0.62 : 0.7) + (walking ? Math.sin(step * 2 + k) * 0.03 : 0);
         const d = nrm(W.d);
         const A = axesAlong(d, [0, 1, 0]);
@@ -351,7 +349,8 @@ const Tropius = (() => {
         const base = inF(body, at);
         const LL = M3.mul(body.L, Lm);
         const g = sd > 0 ? 16 + k : 18 + k;
-        for (const [j, pl] of W.F.plates.entries()) prims.push(PL(base, LL, g, g, pl, 2, j === 0 ? W.F.lines : null));
+        // (the paler underside shape is swapped in at render time when the camera sees the leaf from below)
+        for (const [j, pl] of W.F.plates.entries()) prims.push(Object.assign(PL(base, LL, g, g, pl, 2, j === 0 ? W.F.lines : null), { top: pl, under: W.U.plates[j] }));
         if (k === 0) tips.push(add(base, M3.v(LL, [W.L, 0, 0])));
       }
     }
@@ -372,7 +371,7 @@ const Tropius = (() => {
     return {
       prims, anchors, pose: P, stamps, dots: [],
       pri: { 1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 2, 9: 3, 10: 2, 11: 4, 12: 5, 13: 3, 14: 4, 15: 4, 16: 2, 17: 2, 18: 2, 19: 2, 20: 3, 21: 3 },
-      glossy: GLOSSY, baseMat: BODY, shadowSteps: 10, shadowDepth: 30,
+      glossy: GLOSSY, baseMat: BODY, shadowSteps: 8, shadowDepth: 30,
     };
   }
 
@@ -382,6 +381,7 @@ const Tropius = (() => {
     const set = scale >= 0.8 ? EYES_L : EYES_S;
     for (const st of model.stamps) st.set = set;
     const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(scale, scale, scale)));
+    for (const p of model.prims) if (p.under) p.shape = V[6] * p.L[2] + V[7] * p.L[5] + V[8] * p.L[8] >= 0 ? p.top : p.under;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (const p of model.prims) {
       const cv = M3.v(V, p.c), Lv = M3.mul(V, p.L);

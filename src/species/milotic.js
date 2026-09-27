@@ -80,22 +80,32 @@ const Milotic = (() => {
     return [c + x * x * C1, x * y * C1 - z * s, x * z * C1 + y * s, y * x * C1 + z * s, c + y * y * C1, y * z * C1 - x * s, z * x * C1 - y * s, z * y * C1 + x * s, c + z * z * C1];
   };
 
-  /* ---------- spine: control points (head end first) ---------- */
-  // neck, upright (rise = 1) and bowed (rise = 0); last point = loop entry
-  const LOOP_C = [34, 83, 0], LOOP_R = 55, LOOP_A0 = -Math.PI / 2 - 0.55, LOOP_SPAN = 2 * Math.PI - 1.08, LOOP_Z = 30;
-  const loopPt = (t) => {
-    const a = LOOP_A0 + LOOP_SPAN * t;
-    return [LOOP_C[0] + LOOP_R * Math.cos(a), LOOP_C[1] + LOOP_R * Math.sin(a), LOOP_Z - 2 * LOOP_Z * t];
-  };
-  const ENTRY = loopPt(0);
-  const NECK_UP = [[40, 254, 0], [21, 232, 2], [8, 202, 4], [0, 168, 8], [-7, 134, 14], [-13, 100, 20], [-16, 70, 26], [-9, 48, 29]];
-  const NECK_BOW = [[108, 146, 0], [94, 180, 2], [70, 205, 5], [38, 212, 9], [8, 196, 14], [-11, 160, 20], [-18, 112, 26], [-12, 62, 29]];
-  const NECK_R = [15, 16, 17.5, 19.5, 21.5, 23.5, 25, 26];
-  const LOOP_N = 9;
-  const TAIL = [[-26, 58, -32], [-40, 32, -30], [-74, 23, -26], [-124, 23, -20], [-176, 28, -12], [-220, 44, -4], [-248, 74, 2], [-261, 110, 4], [-259, 146, 4]];
-  const TAIL_R = [26, 25, 23.5, 21.5, 19.5, 17.5, 15.5, 13.5, 11.5];
+  /* ---------- spine: control points (head end first) ----------
+     Authored straight on the official art: (X, Y) in the 475 px reference image (Y down, ground at
+     445), D = depth toward the viewer in the same pixels, r = tube radius. The art is a front 3/4
+     view; it is mapped to the camera at yaw THC (π − THC for the mirrored side, see build). */
+  const U = 0.85, THC = 2.04; // model units per reference pixel; the art's view yaw
+  const RIGHT = [Math.cos(THC), 0, -Math.sin(THC)], TOWARD = [Math.sin(THC), 0, Math.cos(THC)];
+  const rawM = (X, Y, D) => [X * U * RIGHT[0] + D * U * TOWARD[0], (445 - Y) * U, X * U * RIGHT[2] + D * U * TOWARD[2]];
+  const NECK_UP_PX = [[178, 196, 14, 15], [188, 236, 11, 19], [202, 278, 8, 24], [213, 320, 6, 30], [218, 358, 8, 37], [208, 392, 14, 43]];
+  const NECK_BOW_PX = [[108, 300, 96, 15], [132, 256, 74, 18], [170, 238, 48, 22], [204, 260, 24, 30], [218, 320, 10, 37], [208, 390, 14, 43]];
+  const LOOP_PX = [[172, 402, 24, 45], [126, 403, 34, 46], [88, 388, 38, 46], [74, 348, 34, 44], [88, 308, 22, 39], [120, 288, 6, 34], [158, 284, -14, 30]];
+  const TAIL_PX = [[205, 290, -36, 26], [255, 318, -48, 24], [310, 350, -54, 22], [365, 374, -56, 21], [412, 368, -54, 20], [436, 330, -50, 18], [422, 290, -46, 15], [388, 264, -42, 12], [352, 246, -40, 10], [330, 230, -38, 8]];
+  const HEAD_UP_PX = [170, 166, 18], HEAD_BOW_PX = [98, 318, 110];
+  // footprint centre → origin
+  const OFF = (() => {
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const q of [...NECK_UP_PX, ...LOOP_PX, ...TAIL_PX]) {
+      const m = rawM(q[0], q[1], q[2]);
+      x0 = Math.min(x0, m[0] - q[3] * U); x1 = Math.max(x1, m[0] + q[3] * U); z0 = Math.min(z0, m[2] - q[3] * U); z1 = Math.max(z1, m[2] + q[3] * U);
+    }
+    return [(x0 + x1) / 2, 0, (z0 + z1) / 2];
+  })();
+  const toM = (X, Y, D) => sub(rawM(X, Y, D), OFF);
+  const conv = (arr) => arr.map((q) => ({ p: toM(q[0], q[1], q[2]), r: q[3] * U }));
+  const NECK_UP = conv(NECK_UP_PX), NECK_BOW = conv(NECK_BOW_PX), LOOP = conv(LOOP_PX), TAIL = conv(TAIL_PX);
+  const HEAD_UP = toM(...HEAD_UP_PX), HEAD_BOW = toM(...HEAD_BOW_PX);
   const SEC_NECK = 0, SEC_LOOP = 1, SEC_TAIL = 2;
-  const XC = 105; // shift so the footprint is centred on the origin
 
   function controlPoints(P) {
     const rise = smooth(clamp(P.rise, 0, 1));
@@ -103,24 +113,23 @@ const Milotic = (() => {
     const pts = [];
     const nN = NECK_UP.length;
     for (let i = 0; i < nN; i++) {
-      const p = lerp3(NECK_BOW[i], NECK_UP[i], rise);
+      const p = lerp3(NECK_BOW[i].p, NECK_UP[i].p, rise);
       const w = 1 - i / (nN - 1); // wave weight: 1 at the head, 0 at the loop
       p[2] += 11 * w * Math.sin(ph + i * 0.85);
       p[0] += 4 * w * Math.sin(ph * 0.5 + 1 + i * 0.4);
-      pts.push({ p, r: NECK_R[i], sec: SEC_NECK });
+      pts.push({ p, r: NECK_UP[i].r, sec: SEC_NECK });
     }
-    for (let k = 0; k <= LOOP_N; k++) {
-      const t = k / LOOP_N;
-      const p = loopPt(t);
+    LOOP.forEach((q, k) => {
+      const p = q.p.slice();
       p[2] += 2 * Math.sin(ph - k * 0.7);
-      pts.push({ p, r: lerp(26.5, 26, t), sec: SEC_LOOP });
-    }
+      pts.push({ p, r: q.r, sec: SEC_LOOP });
+    });
     TAIL.forEach((q, i) => {
       const w = smooth(i / (TAIL.length - 1));
-      const p = q.slice();
-      p[2] += 16 * w * Math.sin(ph - 1.2 - i * 0.75);
+      const p = q.p.slice();
+      p[2] += 14 * w * Math.sin(ph - 1.2 - i * 0.75);
       p[1] += 4 * w * Math.sin(ph - 0.3 - i * 0.75);
-      pts.push({ p, r: TAIL_R[i], sec: SEC_TAIL });
+      pts.push({ p, r: q.r, sec: SEC_TAIL });
     });
     return pts;
   }
@@ -171,7 +180,7 @@ const Milotic = (() => {
   }
 
   /* ---------- tail scales: diamond grid in (along, around) scale units ---------- */
-  const NA = 8; // scales around the body
+  const NA = 4; // scales around the body (big diamond scales, like the art)
   const U_START = 1.2; // scales begin this many scale-lengths after the loop
   let curScale = 1;
   function scaleMat(b) {
@@ -195,7 +204,7 @@ const Milotic = (() => {
     return Math.abs(vc) > NA * 0.38 ? PINK : BLUE;
   }
   // neck: cream with three black gill dots on each side
-  const GILLS = [44, 58, 72]; // arc length from the neck top
+  const GILLS = [26, 38, 50]; // arc length from the neck top
   function neckMat(b) {
     return (s) => tube(b.prim, s, neckM(b, s), false);
   }
@@ -216,7 +225,7 @@ const Milotic = (() => {
   }
 
   /* ---------- head decals ---------- */
-  const HEAD_R = [28, 22.5, 20];
+  const HEAD_R = [22, 25, 22];
   const EC = Creature.sph(1.02, 0.08);
   const ETY = nrm(sub([0, 1, 0], sc(EC, EC[1])));
   const ETX = cross(ETY, EC); // toward the snout on the near side
@@ -227,28 +236,29 @@ const Milotic = (() => {
         const dx = m[0] - EC[0], dy = m[1] - EC[1], dz = m[2] - EC[2];
         const ex = dx * ETX[0] + dy * ETX[1] + dz * ETX[2], ey = dx * ETY[0] + dy * ETY[1] + dz * ETY[2];
         const px = 1 / (curScale * HEAD_R[1]);
-        const ir = ((ex - 0.02) / 0.23) ** 2 + ((ey + 0.01) / 0.3) ** 2;
+        const ir = ((ex - 0.02) / 0.27) ** 2 + ((ey + 0.01) / 0.33) ** 2;
         if (kind === 'closed' || kind === 'happy') {
           const yc = kind === 'happy' ? -0.12 + 0.3 * (1 - (ex / 0.26) ** 2) : 0.06 - 0.24 * (1 - (ex / 0.26) ** 2);
           if (Math.abs(ex) < 0.25 && Math.abs(ey - yc) < Math.max(0.05, 0.7 * px)) return C_PUPIL;
         } else if (ir < 1) {
           if (kind === 'blink' && ey > -0.06) return ey < -0.06 + Math.max(0.06, 0.9 * px) ? C_PUPIL : C_HAIR;
-          const pr = ((ex - 0.05) / Math.max(0.11, 1.2 * px)) ** 2 + ((ey + 0.03) / 0.19) ** 2;
+          const pr = ((ex - 0.05) / Math.max(0.12, 1.2 * px)) ** 2 + ((ey + 0.03) / 0.2) ** 2;
           if (curScale >= 0.6 && ((ex + 0.06) / 0.08) ** 2 + ((ey - 0.12) / 0.08) ** 2 < 1) return C_SHINE;
           return pr < 1 ? C_PUPIL : C_IRIS;
         }
         // pink marking: a rim around the eye that streams back (and a little down) to the hair root
-        if (ir < 1.7) return C_HAIR;
-        if (ex < -0.05 && ex > -0.75) {
-          const t = (-ex - 0.05) / 0.7;
-          const yc = -0.03 - 0.12 * t, hw = 0.16 + 0.1 * t;
+        if (ir < 1.6) return C_HAIR;
+        if (ex < 0.12 && ex > -0.85) {
+          // a pink brow arching over the eye and sweeping back into the hair root (the art's "hood")
+          const t = (0.12 - ex) / 0.97;
+          const yc = 0.2 + 0.1 * Math.sin(t * Math.PI) - 0.2 * t * t, hw = 0.1 + 0.16 * t;
           if (Math.abs(ey - yc) < hw) return C_HAIR;
         }
       }
       return C_CREAM;
     };
   }
-  const SNOUT_R = [18, 13, 14];
+  const SNOUT_R = [14, 10.5, 12.5];
   function snoutMat(mo) {
     return (s) => {
       if (s[0] > 0.3) {
@@ -262,26 +272,29 @@ const Milotic = (() => {
   }
 
   /* ---------- plates: hair fins (4 segments, widening, forked tip) and tail fins ---------- */
-  const HSEG = [{ l: 44, w0: 7, w1: 13 }, { l: 50, w0: 13, w1: 19 }, { l: 50, w0: 19, w1: 25 }, { l: 44, w0: 25, w1: 30, fork: true }];
+  const HSEG = [{ l: 44, w0: 17, w1: 19 }, { l: 50, w0: 19, w1: 25 }, { l: 50, w0: 25, w1: 31 }, { l: 44, w0: 31, w1: 37, fork: true }];
   const HAIR_G = HSEG.map((g) => {
     const pts = [[-2, -g.w0 / 2], [g.l + 2, -g.w1 / 2]];
-    if (g.fork) pts.push([g.l + 14, -g.w1 * 0.55], [g.l + 3, -g.w1 * 0.18], [g.l + 16, 0.02 * g.w1], [g.l + 3, g.w1 * 0.22], [g.l + 12, g.w1 * 0.58]);
+    if (g.fork) pts.push([g.l + 15, -g.w1 * 0.55], [g.l + 3, -g.w1 * 0.2], [g.l + 17, 0.02 * g.w1], [g.l + 3, g.w1 * 0.24], [g.l + 13, g.w1 * 0.58]);
     pts.push([g.l + 2, g.w1 / 2], [-2, g.w0 / 2]);
     const bb = Shape2D.bbox(pts, 0.5);
     return bakeShape({ bb, test: (u, v) => (Shape2D.inPoly(u, v, pts) ? C_HAIR : 0) });
   });
-  const HAIR_A = [0.26, 0.12, -0.02, -0.12]; // hang angles from vertical (+ = backward)
-  const HAIR_F = [0.3, 0.42, 0.5, 0.56]; // flow response per segment
-  const TFIN_G = bakeShape(Shape2D.poly([[0, -5], [14, -15], [40, -20.5], [68, -17], [90, -8], [100, 0], [90, 8], [68, 17], [40, 20.5], [14, 15], [0, 5]], C_FIN, 8, (u, v) => (((u - 50) / 29) ** 2 + (v / 8.5) ** 2 < 1 ? C_FINO : C_FIN)));
+  // hair ribbons, authored on the art (X, Y, D px): the near one streams down and back over the tail,
+  // the far one falls straight down in front of the loop
+  const HAIR_PX = { near: [[192, 158, 20], [236, 225, 5], [286, 286, -12], [340, 335, -20], [386, 378, -22]], far: [[150, 190, 24], [153, 250, 60], [148, 310, 86], [131, 360, 96], [112, 400, 96]] };
+  const HAIR_OFS = {};
+  for (const k in HAIR_PX) { const q0 = toM(...HAIR_PX[k][0]); HAIR_OFS[k] = HAIR_PX[k].map((q) => sub(toM(...q), q0)); }
+  // tail fan: four blue fins with pink ovals, spread in the art's picture plane (angle from the art's right, length px)
+  const TFIN_G = bakeShape(Shape2D.poly([[0, -4], [12, -10], [34, -16.5], [58, -19], [78, -15], [93, -7], [100, 0], [93, 7], [78, 15], [58, 19], [34, 16.5], [12, 10], [0, 4]], C_FIN, 8, (u, v) => (((u - 44) / 26) ** 2 + (v / 9) ** 2 < 1 ? C_FINO : C_FIN)));
   const TFINS = [
-    { a: -0.95, yaw: -0.5, tw: 0.35, s: 0.9 },
-    { a: -0.42, yaw: -0.18, tw: 0.12, s: 1 },
-    { a: 0.08, yaw: 0.16, tw: -0.12, s: 1 },
-    { a: 0.56, yaw: 0.46, tw: -0.35, s: 0.88 },
+    { a: 1.62, l: 120, d: 0, tw: 0.2 },
+    { a: 1.22, l: 138, d: 1.5, tw: 0.08 },
+    { a: 0.86, l: 142, d: 3, tw: -0.08 },
+    { a: 0.42, l: 123, d: 4.5, tw: -0.2 },
   ];
-  const FAN_YAW = 0.5; // the fan turns toward the camera side (pose.side) so it reads in both 3/4 views
-  // antenna path in its own plane (x = outward, y = up), from the forehead
-  const ANT = [[0, 0], [5, 18], [14, 36], [28, 52], [46, 61], [64, 60], [78, 50], [86, 34], [87, 16], [83, 0], [76, -14]];
+  // antenna path in its own plane (x = outward, y = up), from the eyebrow: rises and hooks inward (a heart)
+  const ANT = [[0, 0], [18, 18], [40, 40], [62, 64], [80, 86], [88, 102], [84, 114], [72, 119], [58, 116], [47, 108]];
 
   const DEFAULT = { coil: 0, rise: 1, hair: 0, mouth: 0, eyes: 'open', side: 1 };
   const PRI = {};
@@ -292,6 +305,7 @@ const Milotic = (() => {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [], anchors = {};
     const hair = clamp(P.hair, -1, 1);
+    const ph = P.coil || 0;
 
     // --- spine → beads
     const ctrl = controlPoints(P);
@@ -301,18 +315,17 @@ const Milotic = (() => {
     let s = 0;
     while (s < Ltot) {
       const q = sampleAt(D, s);
-      const step = Math.max(4, q.r * 0.45);
+      const step = Math.max(4, q.r * (q.sec === SEC_LOOP ? 0.34 : 0.55)); // tight bend in the loop: denser beads
       beads.push({ s, p: q.p, r: q.r, sec: q.sec, step });
       s += step;
     }
-    // tangents
     for (let i = 0; i < beads.length; i++) {
       const a = sampleAt(D, Math.max(0, beads[i].s - 3)).p, b = sampleAt(D, Math.min(Ltot, beads[i].s + 3)).p;
       beads[i].t = nrm(sub(b, a));
     }
-    // dorsal frame for the tail: parallel transport from the ground part (dorsal = up)
-    const iRef = beads.findIndex((b) => b.sec === SEC_TAIL && b.p[1] < 30);
-    const i0 = iRef < 0 ? beads.length - 1 : iRef;
+    // dorsal frame for the tail: parallel transport from its lowest point (dorsal = up)
+    let i0 = beads.length - 1, yMin = Infinity;
+    beads.forEach((b, i) => { if (b.sec === SEC_TAIL && b.p[1] < yMin) { yMin = b.p[1]; i0 = i; } });
     const proj = (d, t) => nrm(sub(d, sc(t, dot(d, t))));
     beads[i0].d = proj([0, 1, 0], beads[i0].t);
     for (let i = i0 + 1; i < beads.length; i++) beads[i].d = proj(beads[i - 1].d, beads[i].t);
@@ -334,7 +347,6 @@ const Milotic = (() => {
         mat = neckMat(info);
       } else if (b.sec === SEC_TAIL) {
         const sl = (2 * Math.PI * b.r) / NA;
-        // curvature of the spine at this bead, in the bead's (d, bz) axes, times the radius
         const ia = Math.max(0, i - 1), ib = Math.min(beads.length - 1, i + 1);
         const kv = ib > ia ? sc(sub(beads[ib].t, beads[ia].t), 1 / (beads[ib].s - beads[ia].s)) : [0, 0, 0];
         const bzv = cross(b.t, d);
@@ -351,92 +363,100 @@ const Milotic = (() => {
       prims.push(prim);
     });
 
-    // --- head: frame from the neck top (bows with rise)
-    const rise = smooth(clamp(P.rise, 0, 1));
-    const top = beads[0];
-    const pitch = lerp(-0.95, 0.02, rise) + 0.06 * Math.sin((P.coil || 0) + 0.5);
-    const yawH = 0.1 * Math.sin(P.coil || 0);
-    const head = chain(T(...top.p), R(M3.ry(yawH)), R(M3.rz(pitch)), T(7, 19, 0));
+    // --- head: small, with a tall spike; bows with rise
+    const rise = smooth(clamp(P.rise, 0, 1)), bow = 1 - rise;
+    const hc = lerp3(HEAD_BOW, HEAD_UP, rise);
+    hc[2] += 11 * Math.sin(ph);
+    hc[0] += 4 * Math.sin(ph * 0.5 + 1);
+    const pitch = lerp(-0.95, -0.14, rise) + 0.06 * Math.sin(ph + 0.5);
+    const head = chain(T(...hc), R(M3.ry(0.1 * Math.sin(ph))), R(M3.rz(pitch)));
     const kind = P.eyes, mo = clamp(P.mouth, 0, 1);
     const headPrim = ellF(head, HEAD_R, 4, 4, headMat(kind, mo));
     prims.push(headPrim);
-    prims.push(ellF(chain(head, T(17, -8, 0), R(M3.rz(-0.12))), SNOUT_R, 5, 4, snoutMat(mo)));
-    // spike
-    prims.push(ellF(chain(head, T(-3, 26, 0), R(M3.rz(0.1))), [8.4, 46, 7.8], 6, 4, M_CREAM));
-    anchors.top = inF(head, [-3 - 46 * Math.sin(0.1), 26 + 46 * Math.cos(0.1), 0]);
+    prims.push(ellF(chain(head, T(11, -13, 0), R(M3.rz(-0.45))), SNOUT_R, 5, 4, snoutMat(mo)));
+    // spike: a cone out of the crown (wide base + thin tip), leaning a little forward
+    prims.push(ellF(chain(head, T(1.5, 32, 0), R(M3.rz(-0.08))), [15.5, 36, 14.5], 6, 4, M_CREAM));
+    const tipF = chain(head, T(6, 74, 0), R(M3.rz(-0.12)));
+    prims.push(ellF(tipF, [6.5, 34, 6], 6, 4, M_CREAM));
+    anchors.top = inF(tipF, [0, 34, 0]);
     anchors.head = head.t;
-    anchors.mouth = inF(head, [30, -10, 0]);
-    anchors.eyeN = inF(head, [HEAD_R[0] * EC[0], HEAD_R[1] * EC[1], HEAD_R[2] * EC[2]]);
-    anchors.eyeF = inF(head, [HEAD_R[0] * EC[0], HEAD_R[1] * EC[1], -HEAD_R[2] * EC[2]]);
+    anchors.mouth = inF(head, [24, -16, 0]);
+    const eyeP = (sd) => inF(head, [HEAD_R[0] * EC[0], HEAD_R[1] * EC[1], sd * HEAD_R[2] * EC[2]]);
 
-    // --- antennae (thin red whips arching over the head like a heart)
-    for (const side of [1, -1]) {
-      const root = inF(head, [9, 19, side * 8]);
-      const out = nrm(M3.v(head.L, [-0.15 - 0.25 * hair, 0, side]));
-      const up = [0, 1, 0];
+    // --- antennae (thin red whips from the eyebrows, arching up and hooking inward: a heart)
+    const antEnd = {};
+    for (const sd of [1, -1]) {
+      const root = inF(head, [9, 15, sd * 8]);
+      const out = nrm(M3.v(head.L, [-0.12 - 0.25 * hair, 0, sd]));
+      const back = nrm(M3.v(head.L, [-1, 0, 0]));
       let prev = root;
       ANT.forEach(([ox, oy], k) => {
         if (k === 0) return;
-        const bend = hair * 0.25 * (k / ANT.length);
-        const p = add(root, add(sc(nrm(add(out, [-bend, 0, 0])), ox), sc(up, oy)));
-        const r = k < 3 ? 2.6 : 2.2;
-        prims.push(seg(prev, p, r, side > 0 ? 7 : 8, 5, M_HAIR));
+        const p = add(root, add(add(sc(out, ox), [0, oy, 0]), sc(back, oy * (0.08 + 0.12 * hair))));
+        prims.push(seg(prev, p, k < 3 ? 2.6 : 2.2, sd > 0 ? 7 : 8, 5, M_HAIR));
         prev = p;
       });
-      anchors[side > 0 ? 'antN' : 'antF'] = prev;
+      antEnd[sd] = prev;
     }
 
-    // --- hair fins: ribbons of four plates hanging beside the neck
-    // neck lateral position/radius at a given height (the upper neck is roughly vertical)
-    const nb = beads.filter((b) => b.sec === SEC_NECK);
-    const neckAt = (q) => {
-      let best = nb[0], bd = Infinity;
-      for (const b of nb) { const d2 = (b.p[0] - q[0]) ** 2 + (b.p[1] - q[1]) ** 2; if (d2 < bd) { bd = d2; best = b; } }
-      return best;
-    };
-    const bow = 1 - rise; // bowed: the hair streams back along the neck
-    for (const side of [1, -1]) {
-      const root = inF(head, [-11, 1, side * 17]);
-      const J = [root];
-      let q = root;
-      HSEG.forEach((g, k) => {
-        const a = HAIR_A[k] + hair * HAIR_F[k] + 0.04 * Math.sin((P.coil || 0) - k * 0.8) + bow * [1.0, 0.62, 0.3, 0.1][k];
-        q = add(q, [-Math.sin(a) * g.l, -Math.cos(a) * g.l, 0]);
-        q[1] = Math.max(q[1], 4 + 3 * k);
-        const nk = neckAt(q);
-        q[2] = nk.p[2] + side * (nk.r + 5 + 2 * k);
-        J.push(q.slice());
+    // --- hair fins: long ribbons from behind the eyes, four plates each, broad side to the viewer
+    const hairEnd = {};
+    for (const [key, sd] of [['near', -1], ['far', 1]]) {
+      const root = inF(head, [-7, 9, sd * (HEAD_R[2] - 5)]);
+      const J = HAIR_OFS[key].map((o, i) => {
+        const t = i / (HAIR_OFS[key].length - 1);
+        const q = add(root, o);
+        q[0] += -40 * hair * t - 55 * bow * t;
+        q[1] += 12 * Math.max(0, hair) * t + 60 * bow * t * t;
+        q[2] += 4 * Math.sin(ph - i * 0.8) * t;
+        q[1] = Math.max(q[1], 4 + 3 * i);
+        return q;
       });
       HSEG.forEach((g, k) => {
         const du = nrm(sub(J[k + 1], J[k]));
-        const v = nrm(cross([0, 0, side], du));
+        const v = nrm(cross(TOWARD, du));
         const Lk = len3(sub(J[k + 1], J[k])) / g.l;
-        const id = (side > 0 ? 10 : 12) + (k >> 1);
-        prims.push(PL(J[k], M3.cols(sc(du, Lk), v, cross(du, v)), id, side > 0 ? 10 : 11, HAIR_G[k], 1.6));
+        const id = (sd < 0 ? 10 : 12) + (k >> 1);
+        prims.push(PL(J[k], M3.cols(sc(du, Lk), v, cross(du, v)), id, sd < 0 ? 10 : 11, HAIR_G[k], 1.6));
       });
-      anchors[side > 0 ? 'hairN' : 'hairF'] = J[J.length - 1];
+      hairEnd[sd] = J[J.length - 1];
     }
 
-    // --- tail fan: four blue fins with pink ovals, spread like a lotus
+    // --- tail fan: four blue fins with pink ovals, spread like a lotus in the art's picture plane
     const last = beads[beads.length - 1];
-    const tipT = last.t;
-    // tip frame: x = back, y = along the tail, z = side; the fan spreads in its x-y plane, turned toward the 3/4 view
-    const tbx = proj([-1, 0, 0], tipT);
-    const tipF = F(M3.cols(tbx, tipT, cross(tbx, tipT)), add(last.p, sc(tipT, last.r * 0.4)));
+    const fanC = add(last.p, sc(last.t, last.r * 0.3));
+    const sway = 0.1 * Math.sin(ph - 2.2);
     TFINS.forEach((f, k) => {
-      const sway = 0.12 * Math.sin((P.coil || 0) - 2.2 - k * 0.3);
-      const Rf = M3.mul(M3.ry(FAN_YAW * clamp(P.side ?? 1, -1, 1) + f.yaw * 0.5 + sway), M3.mul(M3.rz(Math.PI / 2 + f.a), M3.rx(f.tw)));
-      const L = M3.mul(tipF.L, M3.mul(Rf, M3.diag(f.s, f.s, 1)));
-      prims.push(PL(tipF.t, L, 20 + k, 14 + (k & 1), TFIN_G, 1.6));
+      const a = f.a + sway + 0.03 * Math.sin(ph - 2.6 - k * 0.4);
+      const dir = add(sc(RIGHT, Math.cos(a)), [0, Math.sin(a), 0]);
+      const side = nrm(cross(TOWARD, dir));
+      const nrmF = cross(dir, side);
+      // a little twist about the fin's axis so the fins overlap like petals
+      const v = add(sc(side, Math.cos(f.tw)), sc(nrmF, Math.sin(f.tw))), w = cross(dir, v);
+      const len = (f.l * U) / 100;
+      prims.push(PL(add(fanC, sc(TOWARD, f.d)), M3.cols(sc(dir, len), v, w), 20 + k, 14 + (k & 1), TFIN_G, 1.6));
     });
-    anchors.tail = inF(tipF, [0, 90, 0]);
+    anchors.tail = add(fanC, [0, 100, 0]);
     anchors.body = beads[Math.floor(beads.length * 0.45)].p;
-    anchors.loop = LOOP_C.slice();
+    anchors.loop = lerp3(LOOP[1].p, LOOP[5].p, 0.5);
 
-    // centre the footprint on the origin
-    for (const q of prims) q.c = [q.c[0] + XC, q.c[1], q.c[2]];
-    for (const k in anchors) anchors[k] = [anchors[k][0] + XC, anchors[k][1], anchors[k][2]];
-    return { prims, stamps: [], dots: [], anchors, pose: P, pri: PRI, glossy: GLOSSY, baseMat: CREAM, shadowSteps: 14, shadowDepth: 30 };
+    // --- the art is authored for the far (−z) side facing the camera; mirror for the near side
+    //     so both 3/4 views show the classic pose (loop in front, tail and fan behind)
+    const mir = (P.side ?? 1) > 0;
+    // N = the +z side after mirroring
+    const nS = mir ? -1 : 1;
+    anchors.eyeN = eyeP(nS); anchors.eyeF = eyeP(-nS);
+    anchors.antN = antEnd[nS]; anchors.antF = antEnd[-nS];
+    anchors.hairN = hairEnd[nS]; anchors.hairF = hairEnd[-nS];
+    if (mir) {
+      for (const q of prims) {
+        q.c = [q.c[0], q.c[1], -q.c[2]];
+        const L = q.L;
+        q.L = [L[0], L[1], L[2], L[3], L[4], L[5], -L[6], -L[7], -L[8]];
+      }
+      for (const k in anchors) anchors[k] = [anchors[k][0], anchors[k][1], -anchors[k][2]];
+    }
+    return { prims, stamps: [], dots: [], anchors, pose: P, pri: PRI, glossy: GLOSSY, baseMat: CREAM, shadowSteps: 10, shadowDepth: 30 };
   }
 
   /* ---------- render: ray-cast only the silhouette box (nearest prims first), paste into the full buffer ---------- */
