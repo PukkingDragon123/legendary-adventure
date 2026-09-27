@@ -963,8 +963,8 @@ const Mudkip = (() => {
     };
     const look = P.look;
     const anchors = {
-      eyeN: onHead(0.5 + look, -0.06),
-      eyeF: onHead(-0.5 + look, -0.06),
+      eyeN: onHead(0.36 + look, -0.04),
+      eyeF: onHead(-0.36 + look, -0.04),
       nosN: onHead(0.13, -0.27),
       nosF: onHead(-0.13, -0.27),
       mouth: onHead(0, -0.42),
@@ -1365,32 +1365,32 @@ const Mudkip = (() => {
   /* ---------- eye stamps ---------- */
   // k = black, w = white, b = deep-blue glint, '.' = skip
   const EYES_S = {
-    open: ['.kk.', 'kwwk', 'kwkk', 'kkkk', 'kkbk', '.kk.'],
-    openN: ['.k.', 'kwk', 'kwk', 'kkk', 'kkk', '.k.'],
-    openF: ['kk', 'wk', 'kk', 'kk', '.k'],
+    open: ['.k.', 'kwk', 'kkk', 'kbk', '.k.'],
+    openN: ['.k', 'wk', 'kk', 'bk', '.k'],
+    openF: ['k', 'k', 'k', 'k'],
+    happy: ['.k.', 'k.k'],
+    happyN: ['.k', 'k.'],
+    happyF: ['k', 'k'],
+    blink: ['...', '...', 'kkk'],
+    blinkN: ['..', '..', 'kk'],
+    blinkF: ['.', '.', 'k'],
+    sleep: ['k.k', '.k.'],
+    sleepN: ['k.', '.k'],
+    sleepF: ['k'],
+  };
+  const EYES_L = {
+    open: ['.kk.', 'kwwk', 'kwkk', 'kkbk', '.kk.'],
+    openN: ['.k.', 'kwk', 'kkk', 'kbk', '.k.'],
+    openF: ['k.', 'wk', 'kk', 'kk', '.k'],
     happy: ['.kk.', 'k..k', 'k..k'],
     happyN: ['.k.', 'k.k', 'k.k'],
     happyF: ['.k', 'k.', 'k.'],
-    blink: ['....', '....', 'kkkk', '.kk.'],
-    blinkN: ['...', '...', 'kkk', '.k.'],
-    blinkF: ['..', '..', 'kk', '.k'],
+    blink: ['....', '....', '....', 'kkkk'],
+    blinkN: ['...', '...', '...', 'kkk'],
+    blinkF: ['..', '..', '..', 'kk'],
     sleep: ['k..k', '.kk.'],
     sleepN: ['k.k', '.k.'],
     sleepF: ['k.', '.k'],
-  };
-  const EYES_L = {
-    open: ['.kkk.', 'kwwkk', 'kwwkk', 'kkkkk', 'kkkbk', 'kkbbk', '.kkk.'],
-    openN: ['.kk.', 'kwwk', 'kwkk', 'kkkk', 'kkbk', 'kkbk', '.kk.'],
-    openF: ['kk.', 'wkk', 'kkk', 'kkk', 'kbk', '.k.'],
-    happy: ['.kkk.', 'k...k', 'k...k'],
-    happyN: ['.kk.', 'k..k', 'k..k'],
-    happyF: ['.kk', 'k..', 'k..'],
-    blink: ['.....', '.....', '.....', 'kkkkk', '.kkk.'],
-    blinkN: ['....', '....', '....', 'kkkk', '.kk.'],
-    blinkF: ['...', '...', '...', 'kkk', '.kk'],
-    sleep: ['k...k', '.kkk.'],
-    sleepN: ['k..k', '.kk.'],
-    sleepF: ['k..', '.kk'],
   };
   const EYES = EYES_S;
 
@@ -13946,8 +13946,8 @@ const Mudkip = (() => {
     };
     const look = P.look;
     const anchors = {
-      eyeN: onHead(0.5 + look, -0.06),
-      eyeF: onHead(-0.5 + look, -0.06),
+      eyeN: onHead(0.36 + look, -0.04),
+      eyeF: onHead(-0.36 + look, -0.04),
       nosN: onHead(0.13, -0.27),
       nosF: onHead(-0.13, -0.27),
       mouth: onHead(0, -0.42),
@@ -14348,32 +14348,32 @@ const Mudkip = (() => {
   /* ---------- eye stamps ---------- */
   // k = black, w = white, b = deep-blue glint, '.' = skip
   const EYES_S = {
-    open: ['.kk.', 'kwwk', 'kwkk', 'kkkk', 'kkbk', '.kk.'],
-    openN: ['.k.', 'kwk', 'kwk', 'kkk', 'kkk', '.k.'],
-    openF: ['kk', 'wk', 'kk', 'kk', '.k'],
+    open: ['.k.', 'kwk', 'kkk', 'kbk', '.k.'],
+    openN: ['.k', 'wk', 'kk', 'bk', '.k'],
+    openF: ['k', 'k', 'k', 'k'],
+    happy: ['.k.', 'k.k'],
+    happyN: ['.k', 'k.'],
+    happyF: ['k', 'k'],
+    blink: ['...', '...', 'kkk'],
+    blinkN: ['..', '..', 'kk'],
+    blinkF: ['.', '.', 'k'],
+    sleep: ['k.k', '.k.'],
+    sleepN: ['k.', '.k'],
+    sleepF: ['k'],
+  };
+  const EYES_L = {
+    open: ['.kk.', 'kwwk', 'kwkk', 'kkbk', '.kk.'],
+    openN: ['.k.', 'kwk', 'kkk', 'kbk', '.k.'],
+    openF: ['k.', 'wk', 'kk', 'kk', '.k'],
     happy: ['.kk.', 'k..k', 'k..k'],
     happyN: ['.k.', 'k.k', 'k.k'],
     happyF: ['.k', 'k.', 'k.'],
-    blink: ['....', '....', 'kkkk', '.kk.'],
-    blinkN: ['...', '...', 'kkk', '.k.'],
-    blinkF: ['..', '..', 'kk', '.k'],
+    blink: ['....', '....', '....', 'kkkk'],
+    blinkN: ['...', '...', '...', 'kkk'],
+    blinkF: ['..', '..', '..', 'kk'],
     sleep: ['k..k', '.kk.'],
     sleepN: ['k.k', '.k.'],
     sleepF: ['k.', '.k'],
-  };
-  const EYES_L = {
-    open: ['.kkk.', 'kwwkk', 'kwwkk', 'kkkkk', 'kkkbk', 'kkbbk', '.kkk.'],
-    openN: ['.kk.', 'kwwk', 'kwkk', 'kkkk', 'kkbk', 'kkbk', '.kk.'],
-    openF: ['kk.', 'wkk', 'kkk', 'kkk', 'kbk', '.k.'],
-    happy: ['.kkk.', 'k...k', 'k...k'],
-    happyN: ['.kk.', 'k..k', 'k..k'],
-    happyF: ['.kk', 'k..', 'k..'],
-    blink: ['.....', '.....', '.....', 'kkkkk', '.kkk.'],
-    blinkN: ['....', '....', '....', 'kkkk', '.kk.'],
-    blinkF: ['...', '...', '...', 'kkk', '.kk'],
-    sleep: ['k...k', '.kkk.'],
-    sleepN: ['k..k', '.kk.'],
-    sleepF: ['k..', '.kk'],
   };
   const EYES = EYES_S;
 
