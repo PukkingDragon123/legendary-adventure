@@ -15,7 +15,7 @@
    stubby splayed legs.
 
    Pose parameters (all optional):
-     jaw        0..1    mouth open (1 = very wide, ~100°)
+     jaw        0..1    mouth open (1 = very wide, ~70° upper + ~20° lower jaw)
      headPitch  −1..1   head tilt (+ = nose further up, − = level/down)
      step       radians walk-cycle phase (diagonal leg pairs, bob); 0 = standing
      eyes       'open' | 'happy' | 'closed' | 'blink'
@@ -145,7 +145,7 @@ const Trapinch = (() => {
   for (let i = 1; i < 32; i++) PRI[i] = 0;
   // 1 upper head, 2 lower head, 3 neck, 4 body, 5..8 legs, 9 mouth plates
   Object.assign(PRI, { 1: 3, 2: 2, 3: 1, 4: 0, 9: 1 });
-  const SIZE = 1.0;
+  const SIZE = 0.96;
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -165,10 +165,10 @@ const Trapinch = (() => {
 
     // --- head: pivot at the neck top; the head sits forward and up of it
     // When the jaw opens the lower jaw drops a little and the upper jaw swings up (hinge at the back).
-    const hp = chain(body, T(...neckTop), R(M3.rz(pitch - 0.22 * jaw)));
+    const hp = chain(body, T(...neckTop), R(M3.rz(pitch - 0.36 * jaw)));
     const hc = chain(hp, T(20, 30, 0));
     const HINGE = [-HD_R[0] * 0.9, HD_R[1] * SEAM_V, 0];
-    const upF = chain(hc, T(...HINGE), R(M3.rz(jaw * 1.45)), T(-HINGE[0], -HINGE[1], 0));
+    const upF = chain(hc, T(...HINGE), R(M3.rz(Math.min(jaw * 1.25, 1.62 - pitch + 0.36 * jaw))), T(-HINGE[0], -HINGE[1], 0));
     let eyeHost;
     if (jaw < 0.02) {
       eyeHost = ellF(hc, HD_R, 1, 1, headClosedMat);

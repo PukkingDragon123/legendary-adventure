@@ -66,7 +66,7 @@ const Nincada = (() => {
   }
 
   /* ---------- head with eyes (decals) ---------- */
-  const HD_R = [25, 22, 23];
+  const HD_R = [27, 21, 22];
   const EYE_AZ = 0.98, EYE_V = 0.08, EYE_RU = 0.24, EYE_RV = 0.36;
   const EC = [1, -1].map((sd) => Creature.sph(sd * EYE_AZ, EYE_V));
   let curScale = 1;
@@ -137,7 +137,7 @@ const Nincada = (() => {
     const body = chain(T(0, bob, 0), T(0, 30, 0), R(M3.rz(-0.06 - 0.1 * dig)), T(0, -30, 0));
 
     // --- head (armoured dome) + face block
-    const hf = chain(body, T(24, 40, 0), R(M3.rz(-0.1)));
+    const hf = chain(body, T(25, 40, 0), R(M3.rz(-0.18)));
     const headPrim = ellF(hf, HD_R, 1, 1, headMat(P.eyes));
     headPrim.lines = [{ pts: BROW, mat: HEAD, useLn: true }];
     prims.push(headPrim);

@@ -149,10 +149,10 @@ const Lileep = (() => {
     // --- foot: domed base + five rounded toes
     prims.push(ellF(T(0, 15, 0), [24, 17, 24], 9, 9, M_FOOT));
     prims.push(ellF(T(0, 29, 0), [11, 9, 11], 9, 9, M_FOOT));
-    TOES.forEach((a, i) => {
+    TOES.forEach((a) => {
       const o = [Math.cos(a), 0, Math.sin(a)];
       const f = chain(T(o[0] * 26, 8, o[2] * 26), R(M3.ry(-a)), R(M3.rz(-0.22)));
-      prims.push(ellF(f, [18, 8.5, 14.5], 10 + i, 10 + i, M_FOOT));
+      prims.push(ellF(f, [18, 8.5, 14.5], 9, 9, M_FOOT));
     });
     anchors.base = [0, 12, 0];
 

@@ -224,7 +224,7 @@ const Tropius = (() => {
     const low = Math.max(0, -nk), high = Math.max(0, nk);
     const phi0 = 1.62 - 1.1 * low + 0.02 * high;            // heading at the base (rad, 0 = forward)
     const turn = 2.55 - 0.35 * low - 0.8 * high;            // total forward bend along the neck
-    const NL = 312 - 60 * low, segs = 32, ds = NL / segs;
+    const NL = 312 - 60 * low, segs = 24, ds = NL / segs;
     const NECK = [], DIRS = [];
     let p = nb;
     for (let i = 0; i <= segs; i++) {

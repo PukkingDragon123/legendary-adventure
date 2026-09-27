@@ -160,7 +160,7 @@ const Kecleon = (() => {
   function tailPath(curl, sway) {
     const pts = [];
     let x = -20, y = 34, phi = Math.PI + 0.55; // heading back and down
-    const L = 250, ds = 6;
+    const L = 285, ds = 6;
     const k0 = lerp(0.006, 0.011, curl), k1 = lerp(0.00017, 0.00036, curl);
     for (let s = 0; s <= L; s += ds) {
       pts.push([x, y, sway * (s / L) * 10]);
@@ -211,7 +211,7 @@ const Kecleon = (() => {
     prims.push(ellF(chain(head, T(4, -16, 0)), [17, 12, 16], 1, 1, () => C_GREEN_L));
 
     // spiky crest along the top of the head, and spikes down the nape
-    const crestF = chain(head, T(-2, 29, 0));
+    const crestF = chain(head, T(-2, 28, 0), Creature.S(1.3, 1.3, 1));
     prims.push(PL(crestF.t, crestF.L, 5, 5, CREST, 3.4));
     const napeF = chain(body, T(-8, 104, 0), R(M3.rz(0.2)), R(M3.ry(Math.PI)));
     prims.push(PL(napeF.t, napeF.L, 14, 14, NAPE, 2.4));
