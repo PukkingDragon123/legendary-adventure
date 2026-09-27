@@ -97,8 +97,9 @@ Areas.canopy = (() => {
   // one of the giant town trees (above the deck): trunk, side branches, a huge crown, vines
   function giantTree(M, tw, seed) {
     const r = rng(seed);
-    const H = DECK - 80, w = 420, s = new ISpr(w, H + 2), bx = w / 2, by = H;
-    column(s, M, bx, 60, by + 1, tw * 0.34, tw * 0.5, M.bark, seed, { moss: M.moss, flare: true });
+    // (T0 rows of headroom so the crown's rounded top is never clipped by the sprite edge)
+    const H = DECK - 80, T0 = 70, w = 420, s = new ISpr(w, H + T0 + 2), bx = w / 2, by = H + T0;
+    column(s, M, bx, T0 + 60, by + 1, tw * 0.34, tw * 0.5, M.bark, seed, { moss: M.moss, flare: true });
     const clumps = [];
     for (let k = 0; k < 4; k++) {
       const dir = k % 2 ? 1 : -1, yb = by - 150 - k * 45 - r() * 30;
@@ -106,8 +107,8 @@ Areas.canopy = (() => {
       clumps.push([tip[0], tip[1], 22 + r() * 10], [tip[0] - dir * 18, tip[1] + 8, 16 + r() * 6], [tip[0] + dir * 10, tip[1] + 10, 14]);
     }
     const balls = [];
-    for (let k = 0; k < 34; k++) { const a = r() * Math.PI * 2, rr = Math.sqrt(r()); balls.push([bx + Math.cos(a) * rr * w * 0.42, 70 + Math.sin(a) * rr * 58, 24 + r() * 18]); }
-    for (let k = 0; k < 8; k++) balls.push([bx + (r() - 0.5) * w * 0.8, 120 + r() * 30, 18 + r() * 10]);
+    for (let k = 0; k < 34; k++) { const a = r() * Math.PI * 2, rr = Math.sqrt(r()); balls.push([bx + Math.cos(a) * rr * w * 0.42, T0 + 70 + Math.sin(a) * rr * 58, 24 + r() * 18]); }
+    for (let k = 0; k < 8; k++) balls.push([bx + (r() - 0.5) * w * 0.8, T0 + 120 + r() * 30, 18 + r() * 10]);
     balls.sort((a, b) => b[1] - a[1]);
     Paint.foliage(s, clumps.sort((a, b) => b[1] - a[1]), M.leaf, seed + 3, { topLight: 0.3 });
     Paint.foliage(s, balls, M.leaf, seed, { topLight: 0.35 });
@@ -129,7 +130,7 @@ Areas.canopy = (() => {
     for (let y = 0; y < str; y++) s.set(4, y, M.rope[0]);
     for (let x = 2; x <= 6; x++) s.set(x, str, M.ink[1]);
     const hw = [2, 3, 4, 4, 4, 4, 3, 2];
-    for (let j = 0; j < hw.length; j++) for (let x = -hw[j]; x <= hw[j]; x++) { const u = x / hw[j]; s.set(4 + x, str + 1 + j, x === 0 && j % 2 ? ramp[0] : pickR(ramp, 0.85 - (u + 1) * 0.35 - (j > 5 ? 0.15 : 0), x, j)); }
+    for (let j = 0; j < hw.length; j++) for (let x = -hw[j]; x <= hw[j]; x++) { const u = x / hw[j]; s.set(4 + x, str + 1 + j, x === 0 && j % 2 ? ramp[0] : pickR(ramp, 0.95 - (u + 1) * 0.2 - (j > 5 ? 0.15 : 0), x, j)); }
     for (let x = 2; x <= 6; x++) s.set(x, str + 9, M.ink[1]);
     s.set(4, str + 10, ramp[1]); s.set(4, str + 11, ramp[0]);
     s.ax = 4; s.ay = 0;
@@ -415,7 +416,7 @@ Areas.canopy = (() => {
     }
     // rolling canopy sea with emergent giants, mist in the hollows
     {
-      const w = P(0.12), top = 110, s = new ISpr(w, top + 500);
+      const w = P(0.12), top = 150, s = new ISpr(w, top + 500);
       for (let x = 40; x < w; x += 140 + r() * 200) { const tr = Paint.tree(M, 90 + r() * 40, Math.floor(x), { trunkRamp: M.bark, leafRamp: M.sea, crownW: 90, crownH: 50, trunkW: 3 }); s.paste(tr, Math.round(x - tr.ax), top + 10 - tr.ay); }
       let y = top - 8, sz = 9;
       for (let k = 0; y < s.h + 20; k++) { canopyRow(s, y, sz, M.sea, 90 + k, { jag: 3, bias: 0.05 - k * 0.02 }); mistOver(s, y - sz * 0.2, y + sz * 1.5, M.mist, 0.0, 0.5, 0.55 - k * 0.04, k * 53); y += sz * 2 + 8; sz = Math.min(30, sz + 3); }
@@ -426,8 +427,8 @@ Areas.canopy = (() => {
       const w = P(0.32), top = 300, s = new ISpr(w, top + 480);
       for (let x = 60; x < w; x += 190 + r() * 150) {
         const hw = 10 + r() * 6;
-        column(s, M, x, 60, s.h, hw * 0.7, hw, M.bark, Math.floor(x), { dark: 0.15 });
-        const balls = []; for (let k = 0; k < 16; k++) { const a = r() * Math.PI * 2, rr = Math.sqrt(r()); balls.push([x + Math.cos(a) * rr * 110, 70 + Math.sin(a) * rr * 44, 16 + r() * 14]); }
+        column(s, M, x, 100, s.h, hw * 0.7, hw, M.bark, Math.floor(x), { dark: 0.15 });
+        const balls = []; for (let k = 0; k < 16; k++) { const a = r() * Math.PI * 2, rr = Math.sqrt(r()); balls.push([x + Math.cos(a) * rr * 110, 110 + Math.sin(a) * rr * 44, 16 + r() * 14]); }
         for (let k = 0; k < 3; k++) { const dir = k % 2 ? 1 : -1, yb = 150 + k * 40 + r() * 30; const tip = branch(s, M.bark, x, yb, -Math.PI / 2 + dir * 1.1, 40 + r() * 30, 4, Math.floor(x) + k)[0]; balls.push([tip[0], tip[1], 14 + r() * 6]); }
         Paint.foliage(s, balls.sort((a, b) => b[1] - a[1]), M.leafD, Math.floor(x), { topLight: 0.3 });
         if (r() < 0.45) { const th = Props2.treehouse(M, 40, 28, Math.floor(x)); s.paste(th, Math.round(x - th.ax), Math.round(top - 60 - r() * 60 - th.ay)); }
@@ -442,8 +443,8 @@ Areas.canopy = (() => {
       for (let x = 100; x < w; x += 260 + r() * 200) xs.push(x);
       for (const x of xs) {
         const hw = 15 + r() * 7;
-        column(s, M, x, 40, s.h, hw * 0.7, hw, M.bark, Math.floor(x * 3), { moss: M.moss });
-        const balls = []; for (let k = 0; k < 20; k++) { const a = r() * Math.PI * 2, rr = Math.sqrt(r()); balls.push([x + Math.cos(a) * rr * 150, 50 + Math.sin(a) * rr * 50, 18 + r() * 16]); }
+        column(s, M, x, 90, s.h, hw * 0.7, hw, M.bark, Math.floor(x * 3), { moss: M.moss });
+        const balls = []; for (let k = 0; k < 20; k++) { const a = r() * Math.PI * 2, rr = Math.sqrt(r()); balls.push([x + Math.cos(a) * rr * 150, 100 + Math.sin(a) * rr * 50, 18 + r() * 16]); }
         for (let k = 0; k < 3; k++) { const dir = k % 2 ? 1 : -1, yb = 170 + k * 50 + r() * 30; const tip = branch(s, M.bark, x, yb, -Math.PI / 2 + dir * 1.15, 50 + r() * 40, 5, Math.floor(x * 3) + k)[0]; balls.push([tip[0], tip[1], 16 + r() * 8]); }
         Paint.foliage(s, balls.sort((a, b) => b[1] - a[1]), M.leaf, Math.floor(x * 3), { topLight: 0.3 });
         for (let k = 0; k < 6; k++) { const b = balls[Math.floor(r() * balls.length)]; vine(s, M.leafD, b[0], b[1] + b[2] * 0.5, 30 + r() * 80, Math.floor(x) + k); }
@@ -452,8 +453,9 @@ Areas.canopy = (() => {
       // rope bridges between neighbours
       for (let k = 0; k + 1 < xs.length; k++) {
         if (r() < 0.4) continue;
-        const a = xs[k] + 16, b = xs[k + 1] - 16, yb = top - 20 - r() * 70, sag = 10 + r() * 8;
-        for (let x = a; x < b; x++) { const u = (x - a) / (b - a), y = Math.round(yb + Math.sin(u * Math.PI) * sag); s.set(x, y, M.wood[x % 4 === 0 ? 1 : 3]); s.set(x, y + 1, M.wood[1]); s.set(x, y - 8, M.rope[1]); if ((x - a) % 8 === 0) for (let q = y - 8; q < y; q++) s.set(x, q, M.rope[0]); if ((x - a) % 50 === 25) { const L = lantern(M, 2); s.paste(L, x - 4, y - 7); } }
+        const a = xs[k] + 16, b = xs[k + 1] - 16, yb = top - 20 - r() * 70, sag = 10 + r() * 8, lz = [];
+        for (let x = a; x < b; x++) { const u = (x - a) / (b - a), y = Math.round(yb + Math.sin(u * Math.PI) * sag); s.set(x, y, M.wood[x % 4 === 0 ? 1 : 3]); s.set(x, y + 1, M.wood[1]); s.set(x, y - 8, M.rope[1]); if ((x - a) % 8 === 0) for (let q = y - 8; q < y; q++) s.set(x, q, M.rope[0]); if ((x - a) % 50 === 25) lz.push([x, y]); }
+        for (const [x, y] of lz) s.paste(lantern(M, 2), x - 4, y - 8);
       }
       mistOver(s, top + 90, s.h, M.mist, 0.0, 0.65, 0.4, 41);
       A.layer(s, 0.56, { haze: 0.2, base: top, x: 0 });

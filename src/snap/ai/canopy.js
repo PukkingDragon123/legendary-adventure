@@ -62,7 +62,7 @@ const CanopyAI = (() => {
   // where birds like to sit ([x, y] feet position)
   GEO.perches = [
     [250, 543], [88, 495], [308, 538], [692, 538], [735, 543], [858, 373], [930, 543], [958, 538],
-    [1352, 538], [1660, 543], [1830, 537], [2040, 543], [2075, 493], [2118, 361], [2298, 538], [2662, 538],
+    [1352, 538], [1640, 543], [1830, 548], [2040, 543], [2075, 493], [2118, 361], [2298, 538], [2662, 538],
     [2700, 543], [2745, 497], [3140, 543], [3330, 543],
   ];
   GEO.FEED_PERCH = [[GEO.FEEDER - 9, 519], [GEO.FEEDER + 9, 519], [GEO.FEEDER, 507]];
@@ -90,14 +90,17 @@ const CanopyAI = (() => {
     constructor(spec, o) { super(spec, o); this.flapPh = Math.random() * 6; this.goal = null; this.carry = null; }
     // fly in from above and settle on a perch
     *land(p, speed = this.speed) {
+      this.abort = false;
       if (!p) return;
       this.goal = p; this.mode = 'fly'; this.perchAt = null;
-      yield* this.flyTo(p[0] + (this.x < p[0] ? -18 : 18), p[1] - 26, speed, { act: this.flyAct || 'fly', stop: () => this.abort });
+      yield* this.flyTo(p[0] + (this.x < p[0] ? -18 : 18), p[1] - 26, speed, { act: this.flyAct || 'fly', stop: () => this.abort, near: 8, agile: 3 });
       if (this.abort) { this.goal = null; return; }
       yield* this.flyTo(p[0], p[1], Math.min(speed, 45), { near: 2, act: this.flyAct || 'fly' });
       this.x = p[0]; this.y = p[1]; this.vx = this.vy = 0;
       this.mode = 'perch'; this.perchAt = p; this.goal = null;
     }
+    // (the base circle leaves a huge velocity behind — tame it so the next flight doesn't overshoot)
+    *circle(cx, cy, R, T, act) { yield* super.circle(cx, cy, R, T, act); this.vx = clamp(this.vx, -this.speed, this.speed); this.vy = clamp(this.vy, -this.speed, this.speed); }
     *takeOff(dy = -40) { this.mode = 'fly'; this.perchAt = null; this.vy = -40; yield* this.flyTo(this.x + rnd(-40, 40), this.y + dy, this.speed, { act: this.flyAct || 'fly' }); }
     *hopPerch() { if (this.mode === 'perch') yield* this.takeOff(); const p = freePerch(this, this.x + rnd(-500, 500)); if (p) yield* this.land(p); }
     *roam(T) { this.mode = 'fly'; this.perchAt = null; let e = 0; while (e < T) { const x = clamp(this.x + rnd(-420, 420), 60, GEO.W - 60), y = rnd(330, 480); const t0 = Game.t; yield* this.flyTo(x, y, this.speed, { act: this.flyAct || 'fly', stop: () => this.abort }); e += Game.t - t0 + 0.01; if (this.abort) return; } }
@@ -196,8 +199,8 @@ const CanopyAI = (() => {
       while (e < 9) { const dt = yield; e += dt; const peck = Math.sin(e * 7) > 0.6; this.o.bob = peck ? 1 : 0; this.o.bill = peck ? 0.4 : 0; this.setAct(e > 4 ? 'hum' : 'perch', e > 4 ? 1 : 0.6); if (e > 4) { this.o.bill = 0.4 + 0.5 * Math.abs(Math.sin(e * 4)); this.o.eyes = 'happy'; S.lastHum = Game.t; if (Math.random() < dt * 2) notes(this.x, this.y - 18); } }
       yield* this.hopPerch();
     }
-    *sitAndSing(p, T, act = 'hum') {
-      yield* this.land(p, 75);
+    *sitAndSing(p, T, act = 'hum', speed = 75) {
+      yield* this.land(p, speed);
       yield* this.faceCam(0.8);
       let e = 0;
       while (e < T) { const dt = yield; e += dt; this.o.bill = 0.3 + 0.6 * Math.abs(Math.sin(e * 3.5 + this.i)); this.o.eyes = 'happy'; this.o.bob = Math.sin(e * 3.5) > 0.4 ? 0.5 : 0; this.setAct(act, 1); S.lastHum = Game.t; S.humX = this.x; if (Math.random() < dt * 2.5) notes(this.x, this.y - 20); }
@@ -205,7 +208,7 @@ const CanopyAI = (() => {
     senses(dt, t) {
       super.senses(dt, t);
       const m = mk();
-      if (!m || this.mode !== 'perch' || this.busy(3) || t - this.cleanT < 20) return;
+      if (!m || this.mode !== 'perch' || this.sleeping || this.busy(3) || t - this.cleanT < 20) return;
       if (S.stillT > 2.6 && Math.abs(m.x - this.x) < 42 && m.y > this.y && m.mode === 'land') this.doTask(this.clean(m), 4);
     }
     onSong() { if (!this.busy(4)) this.doTask(this.hum(), 3); }
@@ -294,10 +297,11 @@ const CanopyAI = (() => {
         else yield* this.hop2();
       }
     }
-    *hop2() { yield* this.takeOff(-30); yield* this.land(freePerch(this, GEO.STAGE.x + rnd(-150, 150), [...GEO.STAGE_PERCH, [2700, 543], [2745, 497], [3140, 543], [2665, 535]])); }
+    *hop2() { yield* this.takeOff(-30); yield* this.land(freePerch(this, GEO.STAGE.x + rnd(-150, 150), [...GEO.STAGE_PERCH, [2700, 543], [2745, 497], [3140, 543], [2662, 538]])); }
     *chatter(T) {
       let e = 0, k = 0;
-      while (e < T) { const dt = yield; e += dt; k -= dt; if (k <= 0) { k = rnd(0.12, 0.5); this.o.bill = chance(0.6) ? rnd(0.3, 0.9) : 0; if (chance(0.25)) Game.sfx('chirp', this.x, 0.25); } else this.o.bill = this.o.bill ?? 0; this.setAct('perch', 0.5); }
+      let bill = 0;
+      while (e < T) { const dt = yield; e += dt; k -= dt; if (k <= 0) { k = rnd(0.12, 0.5); bill = chance(0.6) ? rnd(0.3, 0.9) : 0; if (chance(0.25)) Game.sfx('chirp', this.x, 0.25); } this.o.bill = bill; this.setAct('perch', 0.5 + bill * 0.3); }
     }
     // keeping the beat: metronome tail and head bobs
     *beat(T) {
@@ -426,7 +430,7 @@ const CanopyAI = (() => {
         yield* this.faceCamNow(dt);
         this.setAct('attack', e > 0.45 ? 1 : 0.7);
       }
-      Photo.hitLens('bump');
+      Photo.hitLens('crack', { x: 0.5, y: 0.45 });
       this.annoy = 0; this.pester = 0;
       feathers(this.x, this.y - 6, 4);
       yield* this.land(GEO.NEST, 120);
@@ -565,7 +569,7 @@ const CanopyAI = (() => {
     *life() {
       if (this.mode === 'air') yield* this.arrive();
       for (;;) {
-        if (this.stay <= 0 || hourIs('night')) { yield* this.depart(); return; }
+        if (this.stay <= 0 || hourIs('night')) { this.doTask(this.depart(), 5); return; }
         const r = Math.random();
         if (r < 0.35) yield* this.walkTo(clamp(this.x + rnd(-160, 160), this.minX, this.maxX), this.speed, { act: 'walk' });
         else if (r < 0.65) yield* this.browse();
@@ -631,7 +635,7 @@ const CanopyAI = (() => {
     S = S0; A0 = A; G0 = G;
     Object.assign(S, { stillT: 0, lastHum: -99, humX: -999, duetT: -99, hinted: false, seq: [], chimeT: -9, gust: 0, feeder: { full: false, phase: 'empty', t: 0, scared: false, robber: null }, choir: null, show: 0, music: 0, altaria: null, tropius: null, tropT: rnd(25, 45), tropSeen: false, basketT: -99, lookHint: false, flash: 0 });
     const add = (m) => { if (m && m.sp) G.addMon(m); return m; };
-    if (sp('Swablu')) [[250, 543], [858, 373], [2040, 543], [1660, 543]].forEach((p, i) => add(new SwabluM(i, GEO.perches.find((q) => q[0] === p[0] && q[1] === p[1]) || p)));
+    if (sp('Swablu')) [[250, 543], [858, 373], [2040, 543], [1640, 543]].forEach((p, i) => add(new SwabluM(i, GEO.perches.find((q) => q[0] === p[0] && q[1] === p[1]) || p)));
     if (sp('Chatot')) add(new ChatotM(GEO.STAGE_PERCH[0]));
     if (sp('Taillow')) { add(new TaillowM(0, GEO.NEST)); add(new TaillowM(1, GEO.perches[8])); }
     if (sp('Kecleon')) add(new KecleonM((GEO.LEAVES.x0 + GEO.LEAVES.x1) / 2));
@@ -640,7 +644,7 @@ const CanopyAI = (() => {
   function callAltaria(x, why) {
     if (!sp('Altaria')) return null;
     if (S.altaria && S.altaria.alive) { S.altaria.leaving = false; S.altaria.stay = Math.max(S.altaria.stay, 60); return S.altaria; }
-    const a = G0.addMon(new AltariaM(x + (chance(0.5) ? -520 : 520), 180));
+    const a = G0.addMon(new AltariaM(clamp(x + (chance(0.5) ? -320 : 320), 100, GEO.W - 60), 260));
     S.altaria = a;
     if (why) HUD.toast(why, { life: 2.8 });
     return a;
@@ -651,7 +655,7 @@ const CanopyAI = (() => {
     if (m && m.mode === 'land' && !m.target && Math.abs(m.vx || 0) < 2 && !(m.air > 0)) S.stillT += dt; else S.stillT = 0;
     S.music = Math.max(0, S.music - dt);
     // Tropius drops by in daylight now and then
-    if (sp('Tropius') && !S.tropius && !hourIs('night', 'dusk')) { S.tropT -= dt; if (S.tropT <= 0) { S.tropT = rnd(90, 140); S.tropius = G.addMon(new TropiusM(3200)); } }
+    if (sp('Tropius') && !S.tropius && !hourIs('night', 'dusk')) { S.tropT -= dt; if (S.tropT <= 0) { S.tropT = rnd(90, 140); const tr = S.tropius = G.addMon(new TropiusM(3200)); tr.doTask(tr.arrive(), 5); } }
     // the feeder: a hung berry draws a thief first
     const F = S.feeder;
     if (F.full) {
@@ -666,7 +670,7 @@ const CanopyAI = (() => {
       if (F.phase === 'birds') {
         F.phase = 'feast'; F.t = 0;
         const sw = Mons.all.filter((q) => q.kind === 'swablu' && q.alive).sort((a, b) => Math.abs(a.x - GEO.FEEDER) - Math.abs(b.x - GEO.FEEDER)).slice(0, 3);
-        sw.forEach((s, i) => { s.sleeping = false; s.abort = true; s.doTask(s.feast(GEO.FEED_PERCH[i]), 4); });
+        sw.forEach((s, i) => { s.sleeping = false; s.doTask(s.feast(GEO.FEED_PERCH[i]), 4); });
         if (sw.length) HUD.toast('Swablu flutter down to the feeder!', { life: 2.2 });
       }
       if (F.phase === 'feast' && F.t > 6) {
@@ -675,7 +679,7 @@ const CanopyAI = (() => {
       }
     }
     // the choir at the lookout
-    if (S.choir) { S.choir.t -= dt; S.flash = Math.max(S.flash, 0); if (S.choir.t <= 0) S.choir = null; }
+    if (S.choir) { S.choir.t -= dt; if (S.choir.t <= 0) S.choir = null; }
     if (S.gust > 0) {
       S.gust -= dt;
       if (Math.random() < dt * 30) FX.add({ type: 'drop', x: Game.cam.x + rnd(-40, Game.VW), y: Game.cam.y + rnd(0, Game.VH * 0.7), vx: rnd(120, 220), vy: rnd(-20, 30), g: 20, life: 2.4, c: hex('#56a848'), c2: hex('#8ccc60'), size: 2, layer: 4 });
@@ -733,15 +737,14 @@ const CanopyAI = (() => {
     HUD.toast(S.tropius ? 'Fruit rolls out of the basket!' : 'Fruit rolls out of the basket... Tropius love this fruit.', { life: 2 });
   }
   function song(x) {
-    const m = mk();
     S.music = 6;
     // on the stage: Chatot performs and the birds gather to listen
     if (x > GEO.STAGE.x0 - 10 && x < GEO.STAGE.x1 + 10 && !S.show) {
       S.show = 1;
       const ch = Mons.all.find((q) => q.kind === 'chatot' && q.alive);
       if (ch) { ch.abort = true; ch.doTask(ch.perform(), 5); }
-      const aud = [[2700, 543], [2745, 497], [3140, 543], [2665, 535]];
-      Mons.all.filter((q) => q.kind === 'swablu' && q.alive).slice(0, 3).forEach((s, i) => { s.sleeping = false; s.abort = true; s.doTask(s.sitAndSing(aud[i] || GEO.STAGE_PERCH[1 + (i % 2)], 10, i === 0 ? 'hum' : 'perch'), 4); });
+      const aud = [[2700, 543], [2745, 497], [3140, 543], [2662, 538]];
+      Mons.all.filter((q) => q.kind === 'swablu' && q.alive).sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x)).slice(0, 3).forEach((s, i) => { s.sleeping = false; s.doTask(s.sitAndSing(aud[i] || GEO.STAGE_PERCH[1 + (i % 2)], 12, i === 0 ? 'hum' : 'perch', Math.max(90, Math.abs(s.x - x) / 5)), 4); });
       if (Save.discover('canopy.stage')) HUD.toast('Chatot takes the stage — and the birds gather to listen!', { life: 3 });
       else HUD.toast('An encore on the treetop stage!', { life: 2 });
     }
@@ -749,10 +752,10 @@ const CanopyAI = (() => {
     if (x > GEO.LOOKOUT.x0 - 20) {
       if (hourIs('dusk')) {
         if (!S.choir) {
-          S.choir = { t: 18 };
+          S.choir = { t: 26 };
           const a = callAltaria(x, null);
-          if (a) { a.abort = true; a.doTask((function* (s) { yield* s.land(GEO.LOOK_PERCH[0], 60); yield* s.sing(6); yield* s.sing(6); })(a), 5); }
-          Mons.all.filter((q) => q.kind === 'swablu' && q.alive).slice(0, 3).forEach((s, i) => { s.sleeping = false; s.abort = true; s.doTask(s.sitAndSing(GEO.LOOK_PERCH[1 + i], 13, 'hum'), 5); });
+          if (a) { a.abort = true; a.doTask((function* (s) { yield* s.land(GEO.LOOK_PERCH[0], Math.max(120, Math.abs(s.x - GEO.LOOKOUT.x) / 5)); yield* s.sing(7); yield* s.sing(7); yield* s.sing(5); })(a), 5); }
+          Mons.all.filter((q) => q.kind === 'swablu' && q.alive).sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x)).slice(0, 3).forEach((s, i) => { s.sleeping = false; s.doTask(s.sitAndSing(GEO.LOOK_PERCH[1 + i], 18, 'hum', Math.max(110, Math.abs(s.x - x) / 5)), 5); });
           if (Save.discover('canopy.choir')) HUD.toast('The sunset song carries over the canopy... an Altaria choir answers!', { life: 3.4 });
           else HUD.toast('The Altaria choir sings with you!', { life: 2.4 });
         }
