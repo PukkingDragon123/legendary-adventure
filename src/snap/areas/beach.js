@@ -407,6 +407,48 @@ Areas.beach = (() => {
       place((p, wx, i) => A.scatterAt(Paint.bush(M, Math.round((18 + r2() * 14) * p), Math.round((10 + r2() * 8) * p), 800 + i, { ramp: M.grass, dots: r2() < 0.5 ? M.flowerY : M.flowerP }), wx, p), 18, 0.63, 0.8, 60);
       for (const [wx, p] of [[430, 0.9], [620, 0.86], [300, 0.93]]) if (land(wx, p, 20)) A.scatterAt(Props.umbrella(M, Math.floor(wx)), wx, p);
       A.shoreW = shoreW; A.shoreE = shoreE;
+      // out on the water, all bobbing on the swell: striped buoys, sailboats, surf-ringed rocks
+      {
+        const sea = (wx, p) => wx > shoreW(p) + 50 && wx < shoreE(p) - 50;
+        const BOB = [0, 1, 1, 0];
+        const foam = (s, y, x0, x1, f) => { for (let x = x0; x <= x1; x++) if ((x + f) % 3) s.set(x, y, M.shell[3]); };
+        const buoy = (p) => BOB.map((dy, f) => {
+          const h = Math.max(5, Math.round(13 * p)), w = Math.max(3, Math.round(6 * p)), s = new ISpr(w + 4, h + 3);
+          for (let y = 0; y < h; y++) {
+            const half = Math.max(1, Math.round((w / 2) * Math.min(1, (y + 2) / (h * 0.45))));
+            for (let x = -half; x < half; x++) { const band = Math.floor(y / Math.max(2, h / 4)) % 2, lit = x < 0 ? 2 : 1; s.set(2 + (w >> 1) + x, y + dy, band ? M.tWhite[lit] : M.tRed[lit]); }
+          }
+          s.set(2 + (w >> 1), dy, M.umbB[3]);
+          foam(s, h + 1, 0, w + 3, f); s.ax = (w + 4) / 2; s.ay = h + 1;
+          return s;
+        });
+        const sail = (p, seed) => BOB.map((dy, f) => {
+          const L = Math.max(8, Math.round(30 * p)), H = Math.max(8, Math.round(34 * p)), s = new ISpr(L + 4, H + 5);
+          const mast = Math.round(L * 0.45);
+          for (let y = 0; y < H - 4; y++) {
+            const wS = Math.round((y / (H - 4)) * L * 0.42), wJ = Math.round((y / (H - 4)) * L * 0.3);
+            for (let x = 1; x <= wS; x++) s.set(2 + mast + x, y + dy, M.tWhite[x < wS * 0.4 ? 2 : 1]);
+            for (let x = 1; x <= wJ; x++) s.set(2 + mast - x, y + 2 + dy, M.tWhite[1]);
+            s.set(2 + mast, y + dy, M.wood[1]);
+          }
+          for (let y = H - 4; y < H; y++) { const inset = y - (H - 4); for (let x = inset; x < L - inset * 0.5; x++) s.set(2 + x, y + dy, y === H - 4 ? M.boatR[3] : M.boatR[1 + (x < L / 2 ? 1 : 0)]); }
+          foam(s, H + 1, 0, L + 3, f + seed); s.ax = (L + 4) / 2; s.ay = H + 1;
+          return s;
+        });
+        const islet = (p, seed) => {
+          const w = Math.round((26 + (seed % 5) * 6) * p), h = Math.round((14 + (seed % 3) * 5) * p), rk = Paint.rock(M, w, h, seed, { moss: M.moss, cracks: 2 });
+          return [0, 1, 2].map((f) => {
+            const s = new ISpr(rk.w + 6, rk.h + 3); s.paste(rk, 3, 0);
+            foam(s, rk.h, 0, rk.w + 5, f); foam(s, rk.h + 1, 2, rk.w + 3, f + 1); s.ax = s.w / 2; s.ay = rk.h;
+            return s;
+          });
+        };
+        const rs = rng(909);
+        const spot = (p0, p1, n, fn) => { for (let i = 0, g = 0; i < n && g < 200; g++) { const p = p0 + rs() * (p1 - p0), wx = 900 + rs() * 2500; if (!sea(wx, p)) continue; fn(p, wx, i); i++; } };
+        spot(0.66, 0.92, 7, (p, wx, i) => A.scatterAt(buoy(p), wx, p, { fps: 1.6, phase: i * 1.3 }));
+        spot(0.63, 0.72, 3, (p, wx, i) => A.scatterAt(sail(p, i), wx, p, { fps: 1.1, phase: i * 2 }));
+        spot(0.64, 0.84, 4, (p, wx, i) => A.scatterAt(islet(p, 31 + i * 7), wx, p, { fps: 2, phase: i }));
+      }
     }
     // east backdrop: warm sandstone sea cliffs with a grassy cap, bushes, palms and a cave mouth
     {
