@@ -185,7 +185,9 @@ Areas.forest = (() => {
     }
     // ---- foreground: giant fern fronds below, hanging vines and leaves above ----
     for (let x = -60; x < A.W; x += 110 + r() * 160) {
-      const s = Paint.clump(r() < 0.6 ? M.leaf : M.grass, 60 + r() * 40, 70 + r() * 40, Math.floor(x * 11), r() < 0.5 ? 'frond' : 'grass');
+      let s = Paint.clump(r() < 0.6 ? M.leaf : M.grass, 60 + r() * 40, 70 + r() * 40, Math.floor(x * 11), r() < 0.5 ? 'frond' : 'grass', { n: 12 });
+      if (r() < 0.5) Paint.tips(s, r() < 0.5 ? M.flower : M.flowerY, 4, Math.floor(x * 5), 1.8);
+      s = Paint.edge(s, M.ink[0]);
       A.foreItem(s, x, gy(x) + 62 + r() * 24, { p: 1.35, sway: 3, flip: r() < 0.5 });
     }
     for (let x = 40; x < A.W; x += 240 + r() * 300) {
@@ -193,7 +195,7 @@ Areas.forest = (() => {
       const v = new ISpr(s.w, s.h); for (let y = 0; y < s.h; y++) for (let xx = 0; xx < s.w; xx++) v.d[y * s.w + xx] = s.d[(s.h - 1 - y) * s.w + xx];
       A.foreItem(v, x, gy(x) - 230 - r() * 40, { p: 1.3, sway: 2, hang: true });
     }
-    A.foreDark = 0.3; A.foreTint = 0xff0a1a0a;
+    A.foreDark = 0.2; A.foreTint = 0xff0a1a0a;
     // ---- glows: institute windows at night, fireflies are weather ambient ----
     A.glows.push({ x: 1200, y: 360, r: 0, c: 0, a: 0 });
     // ---- hotspots ----

@@ -25,6 +25,7 @@ const Rewards = (() => {
     'banner.star': { slot: 'banner', name: 'Stargazer', desc: 'Sun and moon met in the cave.', cols: ['#1a1040', '#ffe890'] },
     'banner.legend': { slot: 'banner', name: 'Time Traveller', desc: 'Dialga roared for you.', cols: ['#2a4a8a', '#9fd8ff'] },
     'banner.rock': { slot: 'banner', name: 'Rock Star', desc: 'You played the big concert!', cols: ['#ff4fa8', '#6affb0'] },
+    'banner.fossil': { slot: 'banner', name: 'Fossil Hunter', desc: 'Two ancient friends, together again.', cols: ['#7a5433', '#9fe8ff'] },
     'banner.master': { slot: 'banner', name: 'Master Photographer', desc: 'Every page of the Pokédex filled.', cols: ['#e0b030', '#fff4c8'] },
     // keychains
     'key.luvdisc': { slot: 'key', name: 'Luvdisc Charm', desc: 'A tiny pink heart.' },
@@ -40,6 +41,7 @@ const Rewards = (() => {
     'deco.frost': { slot: 'deco', name: 'Frosty Frame', desc: 'A souvenir of Walrein\'s Ice Beam.' },
     'deco.leaves': { slot: 'deco', name: 'Leafy Frame', desc: 'Kecleon approves.' },
     'deco.stars': { slot: 'deco', name: 'Twinkle Frame', desc: 'Volbeat painted it with light.' },
+    'deco.fossil': { slot: 'deco', name: 'Ammonite Frame', desc: 'Trapinch took a bite out of the old one.' },
     'deco.pop': { slot: 'deco', name: 'Pop Stickers', desc: 'Pink and green concert stickers.' },
     // Mudkip outfits (pose fields for the model)
     'hat.lobster': { slot: 'hat', name: 'Lobster Hat', desc: 'Claws up! A prize from the Corphish duel.' },
@@ -79,6 +81,7 @@ const Rewards = (() => {
     if (id === 'deco.frost') for (let k = 0; k < 60; k++) { const side = k % 4, u = ((k * 37) % 100) / 100; const x = side < 2 ? Math.round(x0 + (x1 - x0) * u) : side === 2 ? x0 - 2 : x1 + 1, y = side === 0 ? y0 - 2 : side === 1 ? y1 + 1 : Math.round(y0 + (y1 - y0) * u); UI.put(fb, x, y, 0xfffff4e8); if (k % 3 === 0) { UI.put(fb, x + 1, y, 0xffffe0c8); UI.put(fb, x, y + 1, 0xffffe0c8); } }
     if (id === 'deco.leaves') corners.forEach(([x, y], i) => { UI.pix(fb, ['..gg', '.ggl', 'ggl.', 'gl..'], x, y, { g: hex('#3aa84a'), l: hex('#9fe07a') }, 3); });
     if (id === 'deco.stars') for (let k = 0; k < 16; k++) { const u = (k * 0.137 + t * 0.02) % 1; const x = Math.round(x0 + (x1 - x0) * u), y = k % 2 ? y0 - 4 : y1 + 3; if (Math.sin(t * 4 + k) > 0) Font.icon(fb, 'spark', x - 2, y - 2, 1, 0xffffe890); }
+    if (id === 'deco.fossil') corners.forEach(([x, y]) => { for (let a = 0; a < 16; a += 0.2) { const rr = a * 0.28; if (rr < 4.5) UI.put(fb, Math.round(x + 4 + Math.cos(a) * rr), Math.round(y + 4 + Math.sin(a) * rr), a > 10 ? 0xff5a86b8 : 0xff3a5a7a); } });
     if (id === 'deco.pop') corners.forEach(([x, y], i) => { Font.icon(fb, i % 2 ? 'heart' : 'note', x + 1, y + 1, 2); });
   }
   /* ---- keychain charm (drawn hanging from the Pokédex) ---- */

@@ -577,5 +577,27 @@ const Paint = (() => {
     return s;
   }
 
-  return { clump, blit, blitSway, field, shade, outline, rimDark, mask, blobMask, rock, foliage, tree, palm, tuft, fern, bush, mini, miniSpr, MINI, ridge, treeline, cloud };
+  // decorate the tips of a clump/tuft: flowers, seed heads or berries (small clusters at the highest pixels)
+  function tips(s, ramp, n, seed, size = 1.4) {
+    const r = rng(seed), m = ramp.length;
+    for (let k = 0; k < n; k++) {
+      const x = Math.floor(r() * s.w); let y = 0;
+      while (y < s.h && !s.get(x, y)) y++;
+      if (y >= s.h - 3) continue;
+      const rr = size * (0.7 + r() * 0.6);
+      for (let yy = -rr; yy <= rr; yy++) for (let xx = -rr; xx <= rr; xx++) {
+        if (xx * xx + yy * yy > rr * rr + 0.5) continue;
+        s.set(Math.round(x + xx), Math.round(y + yy), ramp[clamp(Math.round((m - 1) * (0.75 - yy / (rr * 3) - xx / (rr * 4))), 0, m - 1)]);
+      }
+      if (m > 2) s.set(x, y, ramp[m - 1]);
+    }
+    return s;
+  }
+  // an outline in the darkest ramp colour so foreground shapes read crisply
+  function edge(s, c) {
+    const out = s.clone ? s.clone() : s;
+    for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) if (!s.get(x, y) && (s.get(x - 1, y) || s.get(x + 1, y) || s.get(x, y - 1) || s.get(x, y + 1))) out.set(x, y, c);
+    return out;
+  }
+  return { tips, edge, clump, blit, blitSway, field, shade, outline, rimDark, mask, blobMask, rock, foliage, tree, palm, tuft, fern, bush, mini, miniSpr, MINI, ridge, treeline, cloud };
 })();

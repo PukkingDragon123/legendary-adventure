@@ -215,7 +215,7 @@ const Game = (() => {
     Weather.draw(fb, cx, cy, t);
     FX.draw(fb, cx, cy, 3, t);
     Stage.drawGlows(fb, cx, cy, t);
-    Stage.drawFore(fb, cx, cy, t, dof ? dof.fore : 2);
+    Stage.drawFore(fb, cx, cy, t, dof ? dof.fore : 1);
     FX.draw(fb, cx, cy, 4, t);
     if (!G.lowFx) Stage.bloom(fb, G.hour() === 'night' ? 0.9 : 0.4, G.hour() === 'night' ? 150 : 222);
     if (A.def.post) A.def.post(A, fb, cx, cy, t);

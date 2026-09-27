@@ -18,7 +18,7 @@ const SPECIES = readdirSync(join(root, 'src/species')).filter((f) => f.endsWith(
 const speciesFiles = SPECIES.map((s) => `src/species/${s}.js`);
 const opt = (list) => list.filter(has);
 const AREAS = ['beach', 'forest', 'canopy', 'falls', 'stage'];
-const AI = ['base', 'beach', 'forest', 'canopy', 'falls', 'stage'];
+const AI = ['base', 'beach', 'fossil', 'forest', 'canopy', 'falls', 'stage'];
 const files = [
   'src/px.js', 'src/scenery.js', 'src/actors.js', 'src/creature.js', 'src/mudkip.js', 'src/ball.js',
   ...speciesFiles,

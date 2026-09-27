@@ -12,11 +12,11 @@ Areas.beach = (() => {
   const DOCK = { x0: 870, x1: 1880, y: 496 };
   const def = {
     id: 'beach', name: 'Coral Cove', sub: 'Route 109 Seashore', music: 'crossing', seed: 11,
-    W: 3400, H: 1260, sea: SEA, refY: SEA, h0: 96, cy0: 290, ph: 0.06, skyH: 360, sunH: 150, band: 12, waves: 1.6,
+    W: 5000, H: 1260, sea: SEA, refY: SEA, h0: 96, cy0: 290, ph: 0.06, skyH: 360, sunH: 150, band: 12, waves: 1.6,
     camY: [-40, 1260],
     start: 300,
-    ground: [[0, 452], [90, 452], [170, 462], [240, 478], [320, 488], [460, 492], [640, 494], [800, 497], [900, 502], [1000, 509], [1100, 520], [1200, 535], [1300, 555], [1400, 580], [1500, 608], [1600, 638], [1700, 666], [1800, 690], [1900, 708], [2000, 714], [2100, 708], [2300, 702], [2450, 716], [2560, 752], [2640, 840], [2700, 1000], [2760, 1120], [2880, 1170], [2990, 1130], [3070, 980], [3130, 780], [3180, 600], [3220, 510], [3260, 486], [3330, 478], [3400, 478]],
-    water: [{ x0: 0, x1: 3400, level: SEA, kind: 'sea' }],
+    ground: [[0, 452], [90, 452], [170, 462], [240, 478], [320, 488], [460, 492], [640, 494], [800, 497], [900, 502], [1000, 509], [1100, 520], [1200, 535], [1300, 555], [1400, 580], [1500, 608], [1600, 638], [1700, 666], [1800, 690], [1900, 708], [2000, 714], [2100, 708], [2300, 702], [2450, 716], [2560, 752], [2640, 840], [2700, 1000], [2760, 1120], [2880, 1170], [2990, 1130], [3070, 980], [3130, 780], [3180, 600], [3220, 510], [3260, 486], [3330, 478], [3420, 478], [3520, 482], [3600, 480], [3660, 470], [3720, 456], [3800, 444], [3920, 440], [4040, 441], [4080, 450], [4110, 464], [4150, 470], [4190, 464], [4220, 450], [4260, 441], [4360, 440], [4390, 452], [4420, 476], [4480, 482], [4540, 478], [4570, 456], [4600, 442], [4760, 436], [4900, 430], [5000, 430]],
+    water: [{ x0: 0, x1: 3420, level: SEA, kind: 'sea' }, { x0: 4385, x1: 4580, level: 456, kind: 'pool' }],
     plats: [{ x0: DOCK.x0, x1: DOCK.x1, y: DOCK.y, kind: 'dock', ladders: [1400, 1872] }],
     mats: {
       ink: ['#161828', '#221e36'],
@@ -109,6 +109,13 @@ Areas.beach = (() => {
           if (n1 > 0.72) return e.pickR(M.rockU, t, x, y);
           return e.pickR(M.seabed, t, x, y);
         }
+        if (x > 3640 && !under) { // Fossil Cliffs: dry grass and gritty sand on a rock shelf
+          let t = 0.66 - u * 0.4 + (n - 0.5) * 0.35;
+          if (u < 0.15) t += 0.18;
+          if (n1 > 0.6) return e.pickR(M.grass, t - 0.1, x, y);
+          if (e.hash(x, y, 5) > 0.9) return e.pickR(M.rock, 0.6, x, y);
+          return e.pickR(M.sand, t - 0.12, x, y);
+        }
         if (x < 250) { // grassy dune top
           let t = 0.7 - u * 0.4 + (n - 0.5) * 0.4;
           if (u < 0.15) t += 0.18;
@@ -137,6 +144,13 @@ Areas.beach = (() => {
           return e.pickR(M.bedFace, t, x, y);
         }
         if (x < 250 && dep < 5) return dep < 3 ? M.grass[0] : M.face[1]; // grass roots overhang
+        if (x > 3640) { // layered cliff rock (sandstone over slate)
+          const cb = (dep + n1 * 8 + Math.sin(x * 0.03) * 3) / 9, ci = Math.floor(cb);
+          if (dep < 3) return dep < 2 ? M.grass[0] : M.face[0];
+          const slate = dep > 70 + n2 * 20;
+          let t = 0.7 - Math.min(0.35, dep / 300) - (ci % 2 ? 0.12 : 0) + (n2 - 0.5) * 0.16 - (cb - ci < 0.1 ? 0.12 : 0);
+          return e.pickR(slate ? M.rock : M.face, t, x, y);
+        }
         let t = 0.74 - Math.min(0.4, dep / 240) - (bi % 3 === 1 ? 0.14 : bi % 3 === 2 ? 0.06 : 0) + (n2 - 0.5) * 0.18;
         if (edge) t -= 0.1;
         return e.pickR(M.face, t, x, y);
@@ -207,6 +221,33 @@ Areas.beach = (() => {
     A.lighthouse = put(Props.lighthouse(M), 3285, -4, { sink: 4 });
     A.glows.push({ x: 3285, y: gy(3285) - 84, r: 70, c: hex('#fff0a0'), a: 0.7, flicker: false });
     put(Paint.rock(M, 60, 30, 77, { moss: M.moss }), 3215, -2, { sink: 6 });
+    // ---- Fossil Cliffs (east): rock shelf, sand pit, tide pool, the ancient altar, dig spots ----
+    {
+      // ammonite and shell imprints in the cliff face (a hint that fossils lie here)
+      const amm = new ISpr(11, 11);
+      for (let a = 0; a < 26; a += 0.15) { const rr = 0.35 * a / 2.2; const x = 5 + Math.cos(a) * rr, y = 5 + Math.sin(a) * rr; if (rr < 5.4) amm.set(Math.round(x), Math.round(y), M.rock[a > 18 ? 4 : 3]); }
+      for (let i = 0; i < 26; i++) { const x = 3700 + r() * 1280; Terrain.stamp(A, i % 3 ? amm : Paint.miniSpr('shell2', M.rock.slice(2)), x, gy(x) + 18 + r() * 90); }
+      for (let x = 3660; x < 4980; x += 30 + r() * 70) {
+        if (x > 4380 && x < 4585) continue;
+        if (x > 4070 && x < 4230) continue;
+        const k = r();
+        if (k < 0.35) put(Paint.tuft(M, 10 + r() * 8, 10 + r() * 10, Math.floor(x), { ramp: M.grass }), x, r() < 0.5 ? 3 : -3, { windFrames: true, sink: 0 });
+        else if (k < 0.6) put(Paint.rock(M, 16 + r() * 26, 10 + r() * 14, Math.floor(x), { moss: M.moss, cracks: 2 }), x, r() < 0.5 ? 2 : -3, { sink: 3 });
+        else if (k < 0.72) put(Props.driftwood(M, 20 + r() * 20, Math.floor(x)), x, 2, { sink: 1 });
+      }
+      A.fossilTree = put(Paint.tree(M, 120, 51, { trunkRamp: M.palmTrunk, leafRamp: M.grass, roots: true, crownW: 110, crownH: 60 }), 3860, -4, { sink: 4, foot: 16 });
+      for (const x of [4388, 4578]) put(Paint.rock(M, 26, 20, x, { ramp: M.rock, moss: M.algae, cracks: 2 }), x, 2, { sink: 5 });
+      put(Props.anemone(M, 8, 7), 4470, -2, { fps: 2, sink: 2 });
+      put(Props.coral(M, 'brain', 14, 44), 4520, -3, { sink: 2 });
+      // the ancient altar: a carved slab with a spiral glyph
+      const alt = new ISpr(40, 46);
+      for (let y = 0; y < 46; y++) for (let x = 0; x < 40; x++) { const top = y < 6 ? Math.abs(x - 20) > 14 + y : false; if (top) continue; alt.set(x, y, x === 0 || x === 39 || y === 45 ? M.ink[1] : Props.pick(M.rock, 0.75 - x / 80 - y / 140, x, y)); }
+      for (let a = 0; a < 20; a += 0.12) { const rr = a * 0.5; if (rr < 11) alt.set(Math.round(20 + Math.cos(a) * rr), Math.round(22 + Math.sin(a) * rr), M.rock[1]); }
+      alt.ax = 20; alt.ay = 45;
+      A.altar = put(alt, 4720, -3, { sink: 3 });
+      A.glows.push({ x: 4720, y: gy(4720) - 24, r: 26, c: hex('#9fe8ff'), a: 0.35, always: true, k: 0 });
+      A.altarGlow = A.glows[A.glows.length - 1];
+    }
     // ---- micro details on the ground strip (front and back) ----
     const det = (key, ramp, x, zd, flip) => { const s = Paint.miniSpr(key, ramp, flip); const g = gy(x); A.details.push({ s, x, y: g + zd, zd, flip: false }); };
     for (let x = 260; x < 1040; x += 5 + r() * 14) {
@@ -214,34 +255,45 @@ Areas.beach = (() => {
       if (k < 0.18) det('shell1', M.shell, x, zd); else if (k < 0.3) det('shell3', M.shellB, x, zd); else if (k < 0.4) det('conch', M.shell, x, zd);
       else if (k < 0.52) det('pebble2', M.pebble, x, zd); else if (k < 0.58) det('star', M.star, x, zd); else if (k < 0.66) det('twig', M.drift, x, zd);
     }
+    for (let x = 3660; x < 4990; x += 5 + r() * 14) { if (x > 4385 && x < 4580) continue; const k = r(), zd = (r() - 0.5) * 10; if (k < 0.2) det('pebble2', M.pebble, x, zd); else if (k < 0.3) det('shell2', M.shell, x, zd); else if (k < 0.4) det('twig', M.drift, x, zd); else if (k < 0.46) det('flower', M.flowerY, x, zd); }
     for (let x = 10; x < 250; x += 4 + r() * 8) { const k = r(), zd = (r() - 0.5) * 10; if (k < 0.3) det('flower', r() < 0.5 ? M.flowerP : M.flowerY, x, zd); else if (k < 0.45) det('clover', M.grass, x, zd); }
     for (let x = 1060; x < 3200; x += 6 + r() * 18) { if (gy(x) < SEA + 10) continue; const k = r(), zd = (r() - 0.5) * 10; if (k < 0.25) det('shell2', M.shell, x, zd); else if (k < 0.45) det('pebble', M.rockU, x, zd); else if (k < 0.55) det('star', M.star, x, zd); }
     // swaying tufts on the dunes and at the top of the beach
     for (let x = 12; x < 300; x += 9 + r() * 12) put(Paint.tuft(M, 10 + r() * 8, 8 + r() * 8, Math.floor(x), { flowers: r() < 0.3 ? [M.flowerP] : null }), x, 3 + r() * 2, { windFrames: true, sink: 0 });
     for (let x = 300; x < 900; x += 60 + r() * 90) put(Paint.tuft(M, 8 + r() * 6, 6 + r() * 6, Math.floor(x), { ramp: M.grass }), x, -4, { windFrames: true, sink: 0 });
     // ---- background layers ----
-    // horizon: Slateport skyline, the headland and far islands
+    // horizon: a smoking volcano island, a green headland with a lighthouse, and a hillside port town
     {
-      const w = 900, h = 64, s = new ISpr(w, h);
-      // headland (right)
-      Paint.ridge(s, M, { ramp: M.hill, base: h, amp: 46, seed: 4, freq: 0.012, peaks: [[760, 160, 0.9], [620, 90, 0.4]] });
-      for (let x = 0; x < 520; x++) for (let y = 0; y < h; y++) if (s.get(x, y)) s.set(x, y, 0);
-      // city towers (left/middle)
-      let x = 40;
-      while (x < 520) {
-        const bw = 8 + Math.floor(r() * 14), bh = 10 + Math.floor(r() * 40 * (x > 180 && x < 360 ? 1.2 : 0.6));
-        for (let yy = h - bh; yy < h; yy++) for (let xx = x; xx < x + bw; xx++) {
-          let c = xx === x ? M.city[3] : xx === x + bw - 1 ? M.city[0] : M.city[(yy % 4 === 0 && (xx - x) % 3 === 1) ? 2 : 1];
-          s.set(xx, yy, c);
-        }
-        if (r() < 0.3) for (let yy = h - bh - 6; yy < h - bh; yy++) s.set(x + (bw >> 1), yy, M.city[1]);
-        x += bw + Math.floor(r() * 4);
+      const w = 1000, h = 84, s = new ISpr(w, h);
+      // far volcano (left) with a smoke plume
+      Paint.ridge(s, M, { ramp: M.far || M.hill, base: h, amp: 20, seed: 21, freq: 0.02, peaks: [[150, 150, 1.25]] });
+      for (let k = 0; k < 26; k++) { const cx0 = 150 + k * 2.2 + Math.sin(k) * 3, cy0 = h - 64 - k * 1.5, rr = 3 + k * 0.28; for (let y = -rr; y <= rr; y++) for (let x = -rr; x <= rr; x++) if (x * x + y * y <= rr * rr && hash(Math.round(cx0 + x), Math.round(cy0 + y), 4) > 0.25) s.set(Math.round(cx0 + x), Math.round(cy0 + y), M.sail[(y < 0 ? 1 : 0)]); }
+      // rolling green hills behind the town, with a textured tree canopy
+      const hill = new ISpr(w, h);
+      Paint.treeline(hill, { ramp: M.hill, base: h - 18, size: 7, seed: 31, jag: 4 });
+      for (let x = 0; x < w; x++) { const top = h - 22 - Math.max(0, Math.sin((x - 280) / 420 * Math.PI)) * 16; for (let y = Math.round(top); y < h; y++) if (x > 250 && x < 720) hill.set(x, y, Props.pick(M.hill, 0.75 - (y - top) / 30, x, y)); }
+      for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) { const v = hill.get(x, y); if (v && (x > 240 && x < 740)) s.set(x, y, v); }
+      // port town: little houses stepping up the hill (coloured roofs, lit windows)
+      const roofs = [M.roof, M.boatB || M.roof, M.city];
+      for (let i = 0; i < 34; i++) {
+        const hx = 290 + Math.floor(r() * 400), bw = 7 + Math.floor(r() * 7), bh = 5 + Math.floor(r() * 5);
+        const top = h - 20 - Math.max(0, Math.sin((hx - 280) / 420 * Math.PI)) * 14 - Math.floor(r() * 6);
+        const rp = roofs[i % 3];
+        for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) s.set(hx + x, top - bh + y, x === bw - 1 ? M.wall[0] : (y % 3 === 1 && x % 3 === 1) ? M.win[0] : M.wall[2 - (x > bw / 2 ? 1 : 0)]);
+        for (let y = 0; y < 3; y++) for (let x = -1 + y; x <= bw - y; x++) s.set(hx + x, top - bh - 3 + y, rp[(y === 2 ? 1 : 2)] ?? rp[0]);
       }
-      // far islands (left)
-      const s2 = new ISpr(w, h);
-      Paint.ridge(s2, M, { ramp: M.hill, base: h, amp: 14, seed: 9, freq: 0.03, peaks: [[20, 30, 0.8], [110, 40, 0.6]] });
-      for (let xx = 0; xx < 160; xx++) for (let yy = 0; yy < h; yy++) { const v = s2.get(xx, yy); if (v && !s.get(xx, yy)) s.set(xx, yy, v); }
-      A.layer(s, 0.03, { haze: 0.62, base: h - 1, x: -40 });
+      // harbour wall + cranes + a church spire
+      for (let x = 280; x < 720; x++) { s.set(x, h - 4, M.city[1]); s.set(x, h - 3, M.city[0]); }
+      for (const cx1 of [610, 650]) { for (let y = 0; y < 18; y++) s.set(cx1, h - 4 - y, M.roof[1]); for (let x = 0; x < 12; x++) s.set(cx1 - 3 + x, h - 22, M.roof[1]); }
+      for (let y = 0; y < 22; y++) { const hw = Math.max(0, Math.round((y - 6) * 0.2)); for (let x = -hw; x <= hw; x++) s.set(470 + x, h - 44 + y, y < 8 ? M.roof[0] : M.wall[1]); }
+      // headland (right) with a forest cap and a red-and-white lighthouse
+      const hd = new ISpr(w, h);
+      Paint.ridge(hd, M, { ramp: M.hill, base: h, amp: 40, seed: 4, freq: 0.012, peaks: [[880, 150, 0.9], [760, 90, 0.4]] });
+      for (let x = 740; x < w; x++) for (let y = 0; y < h; y++) { const v = hd.get(x, y); if (v) s.set(x, y, v); }
+      const trees = new ISpr(w, h); Paint.treeline(trees, { ramp: M.hill, base: h - 30, size: 6, seed: 41, jag: 5 });
+      for (let x = 760; x < w; x++) { let top = 0; while (top < h && !hd.get(x, top)) top++; for (let y = top; y < Math.min(h, top + 6); y++) if (trees.get(x, y) || y < top + 3) s.set(x, y, Props.pick(M.hill, 0.9 - (y - top) / 8, x, y)); }
+      { let top = 0; while (top < h && !hd.get(900, top)) top++; for (let y = 0; y < 18; y++) for (let x = -2; x <= 2; x++) s.set(900 + x, top - 18 + y, Math.floor(y / 4) % 2 ? M.roof[2] : M.wall[3]); for (let x = -3; x <= 3; x++) s.set(900 + x, top - 19, M.ink[1]); s.set(900, top - 21, M.win[1]); s.set(899, top - 20, M.win[1]); s.set(901, top - 20, M.win[1]); A.farLight = [900, top - 20]; }
+      A.layer(s, 0.03, { haze: 0.55, base: h - 1, x: -60 });
     }
     // sailboats and far rocks
     {
@@ -303,11 +355,46 @@ Areas.beach = (() => {
       const L = A.layer(s, 0.62, { haze: 0.22, base: h - 1, x: 0 });
       A.nearL = L;
     }
+    // east backdrop: warm sandstone sea cliffs with a grassy cap, bushes, palms and a cave mouth
+    {
+      const w = 1500, h = 170, s = new ISpr(w, h);
+      const top = [];
+      for (let x = 0; x < w; x++) { const rise = clamp((x - 40) / 200, 0, 1); top[x] = h - 14 - rise * (70 + fbm(x * 0.007, 0.4, 8, 3) * 40); }
+      for (let x = 0; x < w; x++) for (let y = Math.max(0, Math.round(top[x])); y < h; y++) {
+        const d = y - top[x];
+        const cap = 4 + vnoise(x * 0.15, 0, 5) * 4;
+        if (d < cap) { s.set(x, y, Props.pick(M.grass, 0.85 - d / cap * 0.5, x, y)); continue; }
+        // horizontal strata (subtle, warm), vertical weathering cracks, shadow under the grass lip
+        const band = (y + Math.sin(x * 0.015) * 5 + vnoise(x * 0.03, y * 0.1, 2) * 3) / 9, bi = Math.floor(band);
+        let t = 0.78 - (d < cap + 3 ? 0.35 : 0) - (bi % 3 === 1 ? 0.14 : bi % 3 === 2 ? 0.06 : 0) - (band - bi < 0.12 ? 0.1 : 0) - d / 600;
+        if (vnoise(x * 0.09, y * 0.012, 4) > 0.78) t -= 0.25;
+        s.set(x, y, Props.pick(M.face, t + (vnoise(x * 0.2, y * 0.2, 6) - 0.5) * 0.12, x, y));
+      }
+      // hanging grass and vines over the lip
+      for (let x = 0; x < w; x += 3) if (hash(x, 3, 7) > 0.55) { const L = 2 + Math.floor(hash(x, 4, 7) * 9); for (let k = 0; k < L; k++) s.set(x, Math.round(top[x]) + 5 + k, M.grass[k < 2 ? 2 : 1]); }
+      // cave mouth: shaded arch, dark depth, dripping teeth, a faint blue glow deep inside
+      const CX = 1060, CB = h - 6, CW = 34, CH = 46;
+      for (let y = 0; y < CH + 4; y++) for (let x = -CW - 4; x <= CW + 4; x++) {
+        const q = (x * x) / (CW * CW) + ((y - CH) * (y - CH)) / (CH * CH);
+        const X = CX + x, Y = CB - y;
+        if (q < 1) { const inner = 1 - q; s.set(X, Y, inner > 0.55 ? M.ink[0] : inner > 0.25 ? M.ink[1] : M.face[0]); if (inner > 0.7 && hash(X, Y, 3) > 0.985) s.set(X, Y, M.win[0]); }
+        else if (q < 1.25) s.set(X, Y, M.face[q < 1.1 ? 1 : 2]);
+      }
+      for (let x = -CW + 6; x < CW - 6; x += 5 + Math.floor(hash(x, 9, 1) * 4)) { const L = 3 + Math.floor(hash(x, 8, 1) * 6), yy = CB - CH + Math.round(CH * (1 - Math.sqrt(Math.max(0, 1 - (x * x) / (CW * CW))))); for (let k = 0; k < L; k++) s.set(CX + x, yy + k, M.face[1]); }
+      // bushes and palms on top
+      for (let x = 60; x < w; x += 90 + Math.floor(hash(x, 5, 5) * 140)) { const b = Paint.bush(M, 20 + hash(x, 6, 5) * 16, 10 + hash(x, 7, 5) * 6, x, { ramp: M.grass, dots: hash(x, 8, 5) > 0.5 ? M.flowerY : M.flowerP }); s.paste(b, x - b.ax, Math.round(top[x]) - b.ay + 3); }
+      for (const [px, ph] of [[300, 80], [760, 96], [1280, 70]]) { const f = Paint.palm(M, ph, px, { lean: (r() - 0.5) * 0.5, nuts: false })[0]; s.paste(f, px - f.ax, Math.round(top[px]) - f.ay + 6); }
+      const L = A.layer(s, 0.62, { haze: 0.14, base: h - 1, x: 2150 });
+      L.skirt = M.face[2];
+    }
     // foreground occluders: beach grass clumps and morning-glory vines in front of the beach, coral heads and kelp over the reef
     for (let x = -40; x < 1080; x += 70 + r() * 110) {
       const kind = r() < 0.7 ? 'grass' : 'leaf';
-      const s = Paint.clump(kind === 'grass' ? M.grass : M.palmLeaf, 50 + r() * 40, 60 + r() * 40, Math.floor(x * 7), kind);
-      A.foreItem(s, x, gy(x) + 58 + r() * 26, { p: 1.35, sway: 3, flip: r() < 0.5 });
+      let s = Paint.clump(kind === 'grass' ? M.grass : M.palmLeaf, 50 + r() * 40, 60 + r() * 40, Math.floor(x * 7), kind, { n: kind === 'grass' ? 14 : 9 });
+      // sea-oat seed heads on the grass, pink morning glories on the leafy vines
+      Paint.tips(s, kind === 'grass' ? M.sand : M.flowerP, kind === 'grass' ? 7 : 5, Math.floor(x * 3), kind === 'grass' ? 1.1 : 2);
+      s = Paint.edge(s, M.ink[0]);
+      A.foreItem(s, x, gy(x) + 58 + r() * 26, { p: 1.35, sway: 3, flip: r() < 0.5, dark: 0.12 });
     }
     for (let x = 1200; x < 3200; x += 120 + r() * 200) {
       if (gy(x) < SEA + 40) continue;
@@ -315,7 +402,7 @@ Areas.beach = (() => {
       const s = k < 0.4 ? Props.coral(M, pick2(r, ['branch', 'fan', 'brain', 'table']), 50 + r() * 30, Math.floor(x)) : k < 0.75 ? Props.kelp(M, 100 + r() * 60, Math.floor(x), 1)[0] : Paint.rock(M, 60 + r() * 40, 30 + r() * 20, Math.floor(x), { ramp: M.rockU, moss: M.algae });
       A.foreItem(s, x, gy(x) + 50 + r() * 30, { p: 1.35, sway: k >= 0.4 && k < 0.75 ? 2 : 0, tint: 0xff3a1a08, dark: 0.35 });
     }
-    A.foreHaze = 0; A.foreDark = 0.22; A.foreTint = 0xff2a1c14;
+    A.foreHaze = 0; A.foreDark = 0.16; A.foreTint = 0xff2a1c14;
     // ---- hotspots ----
     A.addHot({ x0: 395, x1: 455, y0: gy(425) - 60, y1: gy(425), x: 425, reach: 40, tap() { A.umbrella.shake = 0.6; Game.sfx('boing', 425, 0.7); FX.sparkles(425, gy(425) - 50, 3, 20); } });
     A.addHot({ x0: 535, x1: 588, y0: gy(560) - 44, y1: gy(560), x: 560, reach: 40, tap() { A.castle.shake = 0.5; Game.sfx('dust', 560, 0.8); FX.poof(560, gy(560) - 20, 0xfff5dcab, 0xffdfb476, 6, 5); } });
@@ -364,6 +451,7 @@ Areas.beach = (() => {
     // distant Wailord (behind the near backdrop)
     BeachAI.drawFarSea(fb, cx, cy, t, hz, seaS);
     Stage.drawLayer(fb, A.layers[3], cx, cy, t);
+    for (let i = 4; i < A.layers.length; i++) Stage.drawLayer(fb, A.layers[i], cx, cy, t);
     BeachAI.checkFar(fb);
     // underwater backdrop below the surface line
     if (seaS < H) {
@@ -420,8 +508,9 @@ Areas.beach = (() => {
   def.update = (A, dt, t, G) => {
     for (let i = prints.length - 1; i >= 0; i--) { const p = prints[i]; p.t += dt; if (p.t > 14 || (World.groundAt(p.saved[0][0]) > SEA - 12 && p.t > 3)) { for (const [sx, sy, v] of p.saved) Terrain.put(A, sx, sy, v); prints.splice(i, 1); } }
     BeachAI.update(A, dt, t, G);
+    if (typeof FossilAI !== 'undefined') FossilAI.update(A, dt, t, G);
   };
-  def.spawn = (A, G) => BeachAI.spawn(A, G);
+  def.spawn = (A, G) => { BeachAI.spawn(A, G); if (typeof FossilAI !== 'undefined') FossilAI.spawn(A, G); };
   def.weather = (hour) => ({ rain: 0, fog: hour === 'dawn' ? 0.25 : 0 });
   def.ambient = (hour, W) => {
     const out = [
@@ -432,9 +521,9 @@ Areas.beach = (() => {
     if (hour === 'noon' || hour === 'afternoon') out.push({ kind: 'leaf', rate: 0.25, c: hex('#4ea044'), c2: hex('#80c45a'), life: 8, drift: 1, vy: 6, y: () => 380 + Math.random() * 60 });
     return out;
   };
-  def.onScan = (A) => BeachAI.onScan(A);
+  def.onScan = (A) => BeachAI.onScan(A) + (typeof FossilAI !== 'undefined' ? FossilAI.onScan(A) : 0);
   def.onSong = (x) => BeachAI.Secrets.song(x);
-  def.onWater = (tx, ty) => { if (World.waterAt(tx) !== null) for (const m of Mons.all) if (m.splash) m.splash(tx); };
+  def.onWater = (tx, ty) => { if (World.waterAt(tx) !== null && tx < 3500) for (const m of Mons.all) if (m.splash) m.splash(tx); if (typeof FossilAI !== 'undefined') FossilAI.water(tx, ty); };
   def.onFood = (A, it) => { if (it.state === 'float') for (const m of Mons.all) if (m.splash && !it.claim) { m.splash(it.x, it); it.claim = m; } };
   def.photoBonus = (A, crop, subs, main) => BeachAI.photoBonus(A, crop, subs, main);
   return def;

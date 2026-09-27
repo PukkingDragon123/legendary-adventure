@@ -173,6 +173,42 @@ const DexData = (() => {
       beh: { blink: { n: 'Space jump', tier: 3, hint: 'The Lustrous Orb is hidden in one of the moored boats.' }, rift: { n: 'Opening a rift', tier: 4, hint: 'Tap Palkia when it is calm.' } },
       obj: [{ id: 'palkia.rift', t: 'Palkia opening a space rift', beh: 'rift', reward: 'pts:1000' }] },
 
+    /* ---------------- Fossil Cliffs (Coral Cove east) ---------------- */
+    trapinch: { no: 328, name: 'Trapinch', type: ['Ground'], h: 0.7, area: ['beach'], persona: 'grumpy',
+      blurb: 'It digs a cone-shaped pit in the sand and waits at the bottom, jaws open, for prey to slide in.',
+      beh: {
+        peek: { n: 'Lying in wait', tier: 1, hint: 'Two jaws poke out of a sand pit on the cliffs.' },
+        chomp: { n: 'Chomp!', tier: 3, hint: 'Toss something tasty into the pit.' },
+        attack: { n: 'Biting the camera', tier: 4, hint: 'Walk right into the pit... if you dare.' },
+      },
+      obj: [{ id: 'trapinch.chomp', t: 'Trapinch chomping a berry', beh: 'chomp', reward: 'pts:500' }, { id: 'trapinch.attack', t: 'Trapinch biting the camera', beh: 'attack', reward: 'deco.fossil' }] },
+    nincada: { no: 290, name: 'Nincada', type: ['Bug', 'Ground'], h: 0.5, area: ['beach'], persona: 'shy', rare: 1,
+      blurb: 'It lives underground for years, feeding on tree roots. It is nearly blind and feels its way with its feelers.',
+      beh: {
+        walk: { n: 'Feeling around', tier: 1, hint: 'Once it is out, it wanders near the old tree.' },
+        dig: { n: 'Digging out', tier: 2, hint: 'Something scratches under the roots of the cliff-top tree. Soften the soil...' },
+        burrow: { n: 'Burrowing away', tier: 3, hint: 'Startle it and it vanishes into the ground.' },
+      },
+      obj: [{ id: 'nincada.dig', t: 'Nincada digging out', beh: 'dig', reward: 'pts:500' }, { id: 'nincada.burrow', t: 'Nincada burrowing away', beh: 'burrow', reward: 'pts:700' }] },
+    lileep: { no: 345, name: 'Lileep', type: ['Rock', 'Grass'], h: 1.0, area: ['beach'], persona: 'calm', rare: 1,
+      blurb: 'An ancient Pokémon revived from the Root Fossil. It anchors itself to rock and catches food with its petals.',
+      beh: {
+        sway: { n: 'Swaying', tier: 1, hint: 'Revive the Root Fossil at the ancient altar.' },
+        hide: { n: 'Hiding', tier: 2, hint: 'A gentle poke and it folds its petals shut.' },
+        grab: { n: 'Petal grab', tier: 3, hint: 'Drop a berry into the tide pool.' },
+        friends: { n: 'Ancient friends', tier: 4, hint: 'At sunset, two creatures of the old sea meet again.' },
+      },
+      obj: [{ id: 'lileep.grab', t: 'Lileep catching a berry', beh: 'grab', reward: 'pts:600' }, { id: 'lileep.friends', t: 'Lileep and Anorith together', beh: 'friends', reward: 'banner.fossil' }] },
+    anorith: { no: 347, name: 'Anorith', type: ['Rock', 'Bug'], h: 0.7, area: ['beach'], persona: 'curious', rare: 1,
+      blurb: 'Revived from the Claw Fossil. It swam the ancient seas using the eight wings on its sides.',
+      beh: {
+        walk: { n: 'Scuttling', tier: 1, hint: 'Revive the Claw Fossil at the ancient altar.' },
+        swim: { n: 'Ancient swim', tier: 2, hint: 'It paddles around the tide pool with its side wings.' },
+        slash: { n: 'Claw slash', tier: 3, hint: 'Throw a berry near it on the rocks.' },
+        friends: { n: 'Ancient friends', tier: 4, hint: 'At sunset, two creatures of the old sea meet again.' },
+      },
+      obj: [{ id: 'anorith.slash', t: 'Anorith slashing', beh: 'slash', reward: 'pts:600' }, { id: 'anorith.friends', t: 'Anorith and Lileep together', beh: 'friends', reward: 'pts:1000' }] },
+
     /* ---------------- Route 119 rainforest ---------------- */
     castform: { no: 351, name: 'Castform', type: ['Normal'], h: 0.3, area: ['forest'], persona: 'curious',
       blurb: 'Made at the Weather Institute, it changes its form to match the weather — sunny, rainy or snowy.',
