@@ -6,15 +6,16 @@
    y = 0 is the bottom of the belly in the rest pose; the lunge arches
    the body about its middle.
 
-   Design (official art): a stubby torpedo — the body is deepest at the
-   head and tapers to a slim tail stock. Dark navy back, creamy white
-   snout cap, lower jaw and belly. The skull is cut flat at the lip plane
-   over a hinged lower jaw; a maroon throat and pink tongue show through
-   the gape, big white triangular teeth ride on both jaw rims. A yellow
-   four-point star sits on top of the snout, small red eyes with three
-   curved black gill slits wrapped behind them, a tall swept dorsal fin
-   with two stepped notches on its trailing edge, long pointed navy
-   pectoral fins with pale tips, and a forked tail (navy upper lobe,
+   Design (official art / HOME model): a stout, chunky torpedo that is mostly
+   head. A big rounded skull with a blunt snout, cut flat at the lip plane over a
+   deep hinged lower jaw whose corner sits far back, under the eye. The mouth
+   gapes very wide: a maroon palate and throat, a pink tongue, big white
+   triangular teeth on both jaw rims. A white snout cap, tall at the nose, curves
+   back over the upper jaw as a lip band; a yellow four-point star sits on top of
+   the snout. Small red eyes with three curved black stripes behind them. Dark
+   navy back with a faint lighter mottling, creamy white lower jaw and belly. One
+   tall swept dorsal fin with two stepped notches on its trailing edge, long
+   pointed pectoral fins swept back, and a small forked tail (navy upper lobe,
    white notched lower lobe).
 
    Pose parameters (all optional):
@@ -28,208 +29,266 @@ const Sharpedo = (() => {
   const { chain, T, R, code } = Creature;
 
   // ---- materials
-  const NAVY = 1, WHITE = 2, STAR = 3, GILL = 4, THROAT = 5, TONGUE = 6, TOOTH = 7, FIN = 8;
-  const MAT = { NAVY, WHITE, STAR, GILL, THROAT, TONGUE, TOOTH, FIN };
+  const NAVY = 1, WHITE = 2, STAR = 3, GILL = 4, THROAT = 5, TONGUE = 6, TOOTH = 7, FIN = 8, MAW = 9, SPECK = 10;
+  const MAT = { NAVY, WHITE, STAR, GILL, THROAT, TONGUE, TOOTH, FIN, MAW, SPECK };
+  const NAVY_R = ['#12294f', '#1b3d6e', '#255591', '#336fb0', '#5690cc'];
   const PAL = Creature.palette({
-    [NAVY]:   { r: ['#10284e', '#173a68', '#1f4f86', '#2d66a2', '#4f86bf'], od: '#08152e', ol: '#123262', ln: '#0f2a54' },
-    [FIN]:    { r: ['#10284e', '#173a68', '#1f4f86', '#2d66a2', '#4f86bf'], od: '#08152e', ol: '#123262', ln: '#0f2a54' },
-    [WHITE]:  { r: ['#8c88ac', '#b5b2cf', '#dcdaec', '#f0eff8', '#ffffff'], od: '#36345e', ol: '#6c6a98', ln: '#7c7aa4' },
-    [STAR]:   { r: ['#a8822c', '#cca444', '#e6c460', '#f4dc8c', '#fff2c4'], od: '#5a3e0c', ol: '#9a7420', ln: '#94701e' },
-    [GILL]:   { r: ['#05080f', '#080c16', '#0b111e', '#101828', '#172236'], od: '#03050a', ol: '#05080f', ln: '#05080f' },
-    [THROAT]: { r: ['#4a1426', '#662036', '#86304a', '#a0445e', '#b85a72'], od: '#2a0814', ol: '#4a1426', ln: '#4a1426' },
-    [TONGUE]: { r: ['#b0506a', '#cc6a82', '#e48ca0', '#f2acbc', '#ffd0da'], od: '#661830', ol: '#8a2a44', ln: '#9a3650' },
-    [TOOTH]:  { r: ['#a09cc0', '#c8c6de', '#eeedf7', '#ffffff', '#ffffff'], od: '#3a3862', ol: '#6a6894', ln: '#8a88ae' },
+    [NAVY]:   { r: NAVY_R, od: '#0a1733', ol: '#16356a', ln: '#11294f' },
+    [FIN]:    { r: NAVY_R, od: '#0a1733', ol: '#16356a', ln: '#11294f' },
+    [SPECK]:  { r: ['#173260', '#22487e', '#2d619e', '#3c79b8', '#6098d2'], od: '#0a1733', ol: '#16356a', ln: '#11294f' },
+    [WHITE]:  { r: ['#8e93b4', '#b7bcd6', '#dfe2f0', '#f3f4fa', '#ffffff'], od: '#383c66', ol: '#6c719c', ln: '#7c81a8' },
+    [STAR]:   { r: ['#b0801c', '#d6a42a', '#f0c83c', '#fadf70', '#fff2b0'], od: '#5c3a08', ol: '#9a6c14', ln: '#96681a' },
+    [GILL]:   { r: ['#06090f', '#090d17', '#0c1220', '#111a2c', '#18233a'], od: '#03050a', ol: '#05080f', ln: '#05080f' },
+    [THROAT]: { r: ['#5a1622', '#782232', '#963242', '#b04652', '#c65e66'], od: '#2c0812', ol: '#4e1220', ln: '#561420' },
+    [MAW]:    { r: ['#4c1220', '#581626', '#641c2c', '#702232', '#7e2a3a'], od: '#2c0812', ol: '#4e1220', ln: '#4e1220' },
+    [TONGUE]: { r: ['#bc5058', '#d8686c', '#ec8682', '#f8a69c', '#ffc8bc'], od: '#661826', ol: '#8a2a3a', ln: '#9a3a48' },
+    [TOOTH]:  { r: ['#a4a8c6', '#cacde2', '#eef0f8', '#ffffff', '#ffffff'], od: '#3a3e66', ol: '#6a6e98', ln: '#8a8eb0' },
   });
   const GLOSSY = {};
-  const C_NAVY = code(NAVY), C_WHITE = code(WHITE), C_STAR = code(STAR), C_GILL = code(GILL), C_THROAT = code(THROAT, -1);
-  const C_TONGUE = code(TONGUE), C_TOOTH = code(TOOTH, 1), C_FIN = code(FIN), C_FINW = code(WHITE, 0);
 
   const DEFAULT = { mouth: 0, tail: 0, lunge: 0, eyes: 'open', side: 1 };
 
   // ---- helpers
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
   const add = V3.add, sc = V3.scale, nrm = V3.norm;
   const inF = (f, p) => add(f.t, M3.v(f.L, p));
   const E = (c, L, part, grp, mat) => ({ kind: 'ell', part, grp, c, L, mat });
   const PL = (c, L, part, grp, shape, thick) => ({ kind: 'plate', part, grp, c, L, shape, thick });
   const ellF = (f, r, part, grp, mat) => E(f.t, M3.mul(f.L, M3.diag(r[0], r[1], r[2])), part, grp, mat);
+  const plF = (f, axes, part, grp, shape, thick) => PL(f.t, M3.mul(f.L, M3.cols(...axes)), part, grp, shape, thick);
   // straight-edged polygon plate (keeps the fin notches sharp); fn(u, v) picks the material
   const polyShape = (pts, fn) => {
     const bb = Shape2D.bbox(pts, 0.5);
     return bakeShape({ bb, test: (u, v) => (Shape2D.inPoly(u, v, pts) ? fn(u, v) : 0) });
   };
   const smooth = (pts, seg = 4) => Shape2D.catmull(pts, false, seg);
+  const ellipseShape = (a, b, fn) => ({ bb: [-a - 0.5, -b - 0.5, a + 0.5, b + 0.5], test: (u, v) => (u * u / (a * a) + v * v / (b * b) < 1 ? fn(u, v) : 0) });
 
-  /* ---------- geometry (body axis frame, before the final lift and SIZE) ---------- */
-  // a sleek torpedo: long pointed skull over a long hinged lower jaw, a slim body, a long tail stock
-  const SKULL_C = [58, 9, 0], SKULL_R = [98, 42, 36];
-  const LIP_Y = -5;                                  // mouth plane (model units)
-  const LIP_S = (LIP_Y - SKULL_C[1]) / SKULL_R[1];   // ... in skull unit-sphere v
-  const HINGE = [18, LIP_Y, 0];                      // mouth corner (under / in front of the eye)
-  const JAW_C = [42, -7, 0], JAW_R = [62, 25, 33];   // lower jaw, in the hinge frame
-  const JAW_S = -JAW_C[1] / JAW_R[1];                // its lip plane in jaw unit-sphere v
-  const BODY_C = [-40, 7, 0], BODY_R = [104, 45, 38];
-  const STOCK_C = [-146, 9, 0], STOCK_R = [46, 13, 9];
-  const LIFT = 36;
-  const SIZE = 0.84;
+  /* ---------- geometry (body frame, before the final lift and SIZE) ---------- */
+  // head + body: one big egg tipped nose-up a touch, cut flat at the lip plane in front of the mouth corner
+  const SK_C = [18, 6, 0], SK_A = 0.08, SK_R = [104, 70, 62];
+  const LIP = -13;                                  // lip plane (skull frame y)
+  const LIP_S = LIP / SK_R[1];
+  const SK_K = Math.sqrt(1 - LIP_S * LIP_S);
+  const RIM_A = SK_R[0] * SK_K, RIM_B = SK_R[2] * SK_K; // skull rim ellipse (x, z half axes)
+  const HX = 0;                                   // mouth corner (skull frame x, on the lip plane)
+  // lower jaw: the lower front of the same egg (below the lip plane, ahead of the corner), hinged at the
+  // corner, so the closed head is one seamless egg; pulled in a touch so the snout overhangs the chin
+  const JAW_SX = 0.925, JAW_SZ = 0.975;
+  const JRIM_A = RIM_A * JAW_SX, JRIM_B = RIM_B * JAW_SZ, JRIM_C = HX * (1 - JAW_SX); // jaw rim (skull-frame x centre)
+  // tapering tail: a chain of overlapping ellipsoids from inside the egg back to the tail stock
+  const TAIL_X0 = -50, TAIL_X1 = -158;
+  const LIFT = 64;
+  const SIZE = 0.94;
 
-  // cut-face ellipses (x-z) of the skull and the jaw at their lip planes
-  const SK_K = Math.sqrt(1 - LIP_S * LIP_S), JW_K = Math.sqrt(1 - JAW_S * JAW_S);
-  const JAW_TIP_X = HINGE[0] + JAW_C[0] + JAW_R[0] * JW_K + 2;   // front of the lower jaw: the snout juts out beyond it
-  // white snout cap: everything ahead of a line slanting back toward the lip
-  const capWhite = (x, y) => x > 148 - 0.55 * (y - LIP_Y);
-  const tri = (x) => 1 - Math.abs((x - Math.floor(x)) * 2 - 1);
-
-  /* ---------- skull surface: navy top, white snout tip / lip rim, star, eye gills ---------- */
-  const EYE_X = 36, EYE_Y = 20;                      // skull-local-ish model coords (x, y) of the eye
-  const EYE_V = (EYE_Y - SKULL_C[1]) / SKULL_R[1];
-  const EYE_AZ = Math.acos(clamp((EYE_X - SKULL_C[0]) / SKULL_R[0] / Math.sqrt(1 - EYE_V * EYE_V), -1, 1));
-  const GILLS = [9, 13, 17], GILLS_S = [10, 17];     // arc radii (model units) behind the eye
-  let gillW = 1.2, gills = GILLS;                    // set per render from the scale
-  const skullMat = (s) => {
-    const x = SKULL_C[0] + SKULL_R[0] * s[0], y = SKULL_C[1] + SKULL_R[1] * s[1], z = SKULL_R[2] * s[2];
-    // cut at the lip plane in front of the hinge (the lower jaw and the gape live there)
-    if (s[1] < LIP_S && x > HINGE[0] - 4) return x > JAW_TIP_X ? C_WHITE : 0;
-    // yellow four-point star on top of the snout
-    if (s[1] > 0.3 && s[0] > 0) {
-      const q = Math.sqrt(Math.abs(x - 116) / 30) + Math.sqrt(Math.abs(z) / 24);
-      if (q < 1) return C_STAR;
-    }
-    // gill slits: three black arcs behind the eye
-    if (Math.abs(s[2]) > 0.45) {
-      const dx = EYE_X - x, dy = y - EYE_Y;
-      if (dx > 3 && Math.abs(dy) < dx * 1.3 + 1) {
-        const r = Math.hypot(dx, dy);
-        for (const g of gills) if (Math.abs(r - g) < gillW) return C_GILL;
+  const skullRest = (() => { const f = chain(T(...SK_C), R(M3.rz(SK_A))); return (x, y, z) => inF(f, [x, y, z]); })();
+  const HINGE_B = skullRest(HX, LIP, 0);            // mouth corner in the body frame
+  // egg profile (top / bottom / half width) at body-frame x, sampled numerically from the rotated ellipsoid
+  const eggAt = (x) => {
+    let top = -1e9, bot = 1e9, wid = 0;
+    for (let i = 0; i <= 90; i++) {
+      const a = (i / 90) * Math.PI * 2;
+      const p = skullRest(SK_R[0] * Math.cos(a), SK_R[1] * Math.sin(a), 0);
+      const q = skullRest(SK_R[0] * Math.cos(a + 0.07), SK_R[1] * Math.sin(a + 0.07), 0);
+      if ((p[0] - x) * (q[0] - x) <= 0 && p[0] !== q[0]) {
+        const y = p[1] + ((q[1] - p[1]) * (x - p[0])) / (q[0] - p[0]);
+        top = Math.max(top, y); bot = Math.min(bot, y);
       }
     }
-    // white snout tip and a thin white lip rim; navy everywhere else above the mouth
-    if (x > HINGE[0] - 4 && (y < LIP_Y + 2.5 || capWhite(x, y))) return C_WHITE;
-    // behind the hinge: white throat under a zig-zag edge
-    if (x <= HINGE[0] - 4 && y < LIP_Y - 4 + 5 * tri(x / 14)) return C_WHITE;
-    return C_NAVY;
+    const u = (x - SK_C[0]) / SK_R[0];
+    wid = SK_R[2] * Math.sqrt(Math.max(0, 1 - u * u));
+    return { top, bot, wid };
   };
-  // body / stock: navy back, white belly below a sharp zig-zag edge rising toward the tail
-  const bodyMat = (s) => {
-    const x = BODY_C[0] + BODY_R[0] * s[0], y = BODY_C[1] + BODY_R[1] * s[1];
-    return y < -9 + 7 * tri(x / 16) + 0.1 * Math.max(0, BODY_C[0] - x) ? C_WHITE : C_NAVY;
-  };
-  const stockMat = (s) => (s[1] < -0.2 + 0.35 * tri(s[0] * 2.2) ? C_WHITE : C_NAVY);
+  const herm = (t, p0, m0, p1, m1) => { const t2 = t * t, t3 = t2 * t; return (2 * t3 - 3 * t2 + 1) * p0 + (t3 - 2 * t2 + t) * m0 + (-2 * t3 + 3 * t2) * p1 + (t3 - t2) * m1; };
+  const TAIL_NODES = (() => {
+    const e0 = eggAt(TAIL_X0), e1 = eggAt(TAIL_X0 + 1);
+    const L = TAIL_X0 - TAIL_X1, n = 13, out = [];
+    const st = { top: 22, bot: -1, wid: 8 };            // tail stock at the fin
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1), x = TAIL_X0 - t * L;
+      const top = herm(t, e0.top, (e0.top - e1.top) * L, st.top, -4);
+      const bot = herm(t, e0.bot, (e0.bot - e1.bot) * L, st.bot, 3);
+      const wid = herm(t, e0.wid * 0.97, (e0.wid - e1.wid) * L, st.wid, -2);
+      out.push({ x, yc: (top + bot) / 2, ry: (top - bot) / 2, rz: wid, rx: i === n - 1 ? 9 : i === n - 2 ? 14 : 22, t });
+    }
+    return out;
+  })();
+  // white belly below a smooth line running from the mouth corner back and up toward the tail
+  const bellyY = (x) => { const d = Math.max(0, HINGE_B[0] - x); return HINGE_B[1] - 8 + 0.1 * d + 0.0001 * d * d; };
 
-  /* ---------- fins (plates: u along, v across) ---------- */
-  // dorsal: u runs back along the spine, v up; trailing edge with two stepped notches
+  // soft value noise for the faint lighter mottling on the navy skin (only at big render scales)
+  const hash3 = (a, b, c) => { let h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 1274126177); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  const vnoise = (x, y, z) => {
+    const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z), fx = x - xi, fy = y - yi, fz = z - zi;
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy), sz = fz * fz * (3 - 2 * fz);
+    let v = 0;
+    for (let k = 0; k < 8; k++) {
+      const dx = k & 1, dy = (k >> 1) & 1, dz = k >> 2;
+      v += hash3(xi + dx, yi + dy, zi + dz) * (dx ? sx : 1 - sx) * (dy ? sy : 1 - sy) * (dz ? sz : 1 - sz);
+    }
+    return v;
+  };
+  let speckOn = false;
+  const C_NAVY = code(NAVY), C_SPECK = code(SPECK), C_WHITE = code(WHITE), C_STAR = code(STAR), C_GILL = code(GILL);
+  const navyAt = (p) => (speckOn && vnoise(p[0] / 9, p[1] / 9, p[2] / 9) > 0.76 ? C_SPECK : C_NAVY);
+
+  /* ---------- skull surface: navy top, white snout cap / lip band, star, eye stripes ---------- */
+  const EYE_X = 28, EYE_Y = 16;                      // skull-frame (x, y) of the eye centre
+  const EYE_V = EYE_Y / SK_R[1];
+  const EYE_AZ = Math.acos(clamp(EYE_X / SK_R[0] / Math.sqrt(1 - EYE_V * EYE_V), -1, 1));
+  let stripeR = [12.8, 20.2, 27.6], stripeW = 1.9;   // set per render from the scale
+  const STAR_X = 74, STAR_AF = 30, STAR_AB = 30, STAR_AZ = 33;
+  const skullMat = (s) => {
+    const x = SK_R[0] * s[0], y = SK_R[1] * s[1], z = SK_R[2] * s[2];
+    // open mouth in front of the corner: palate / throat prims live there
+    if (y < LIP && x > HX) return 0;
+    // white snout cap and lip band: tall at the nose, thinning back to the corner
+    const t = clamp((x - HX) / (RIM_A - HX), 0, 1);
+    if (x > HX - 3 && y < LIP + 4.5 + 11 * t * t + 24 * smoothstep(0.76, 1, t)) return C_WHITE;
+    // yellow four-point star on top of the snout
+    if (s[1] > 0.3) {
+      const q = Math.sqrt(Math.abs(x - STAR_X) / (x > STAR_X ? STAR_AF : STAR_AB)) + Math.sqrt(Math.abs(z) / STAR_AZ);
+      if (q < 1) return C_STAR;
+    }
+    // three black stripes curving behind the eye
+    if (Math.abs(s[2]) > 0.4) {
+      const dx = EYE_X - x, dy = y - EYE_Y;
+      if (dx > 2) {
+        const r = Math.hypot(dx, dy * 0.95);
+        for (let i = 0; i < 3; i++) if (Math.abs(r - stripeR[i]) < stripeW && Math.abs(dy) < dx * (1.3 + 0.12 * i)) return C_GILL;
+      }
+    }
+    const p = skullRest(x, y, z);
+    if (p[1] < bellyY(p[0])) return C_WHITE;
+    return navyAt(p);
+  };
+  const bodyMat = (C, Rr) => (s) => {
+    const p = [C[0] + Rr[0] * s[0], C[1] + Rr[1] * s[1], C[2] + Rr[2] * s[2]];
+    return p[1] < bellyY(p[0]) ? C_WHITE : navyAt(p);
+  };
+
+  /* ---------- plates (u along, v across) ---------- */
+  const C_FIN = code(FIN), C_FINW = code(WHITE, 0);
+  // dorsal: u runs back along the spine, v up; a tall swept fin with two stepped notches on the trailing edge
   const DORSAL = polyShape([
-    [-4, -14], ...smooth([[-2, 0], [10, 30], [24, 60], [38, 88], [50, 104]], 3), [55, 103], [56, 92],
-    [56, 78], [48, 75], [57, 58], [59, 48], [51, 45], [60, 28], [70, 10], [80, -2], [80, -14],
+    [-6, -18], ...smooth([[-2, 0], [8, 30], [20, 58], [36, 84], [54, 102], [68, 110]], 4), [72, 108],
+    [68, 98], [63, 88], [54, 86], [60, 73], [57, 62], [48, 60], [52, 47], [50, 32], [48, 16], [46, 0], [44, -18],
   ], () => C_FIN);
-  // pectoral: long, pointed, swept; pale tip
+  // pectoral: long, pointed, swept back
   const PECT = polyShape([
-    [0, -11], ...smooth([[14, -12], [40, -10], [66, -6], [88, -1], [100, 2]], 3), ...smooth([[98, 5], [80, 8], [52, 12], [24, 14], [0, 12]], 3),
-  ], (u) => (u > 86 ? C_FINW : C_FIN));
-  const PELV = polyShape(smooth([[0, -5], [14, -7], [28, -6], [30, -3], [18, 3], [0, 5]], 3), () => C_FIN);
-  // tail: long forked fin — navy upper lobe, white lower lobe with a notch
+    [-4, -15], ...smooth([[10, -15], [34, -11], [58, -6], [80, -1], [92, 2], [97, 3]], 4),
+    ...smooth([[89, 6], [68, 9], [44, 12], [20, 14], [0, 14]], 4), [-4, 14],
+  ], () => C_FIN);
+  // tail: forked — navy upper lobe, white lower lobe with a notch on its trailing edge
   const TAILF = polyShape([
-    [-8, -10], [-8, 10], ...smooth([[0, 12], [18, 34], [36, 60], [54, 84], [66, 98]], 3), [72, 96],
-    ...smooth([[64, 74], [52, 46], [42, 22], [36, 4]], 3), [40, -8], [48, -22], [56, -36], [51, -37], [58, -52], [64, -68], [57, -68],
-    ...smooth([[44, -52], [28, -32], [10, -16]], 3),
-  ], (u, v) => (v < -4 ? C_FINW : C_FIN));
+    [-10, -12], [-10, 14], ...smooth([[0, 16], [14, 32], [28, 48], [40, 60], [48, 66]], 3), [52, 64],
+    ...smooth([[45, 48], [36, 28], [28, 10], [26, 0]], 3), [30, -12], [36, -26], [41, -40], [35, -41], [40, -56], [43, -70], [37, -71],
+    ...smooth([[28, -54], [18, -34], [4, -16]], 3),
+  ], (u, v) => (v < -3 ? C_FINW : C_FIN));
   // teeth: white triangles (u across the base, v toward the tip)
-  const TOOTH_S = bakeShape(Shape2D.poly([[-6, 0], [0, 0.6], [6, 0], [2.4, 8], [0, 14], [-2.4, 8]], C_TOOTH, 6));
-  // rim angles (from the snout tip) down each side of the mouth back to the hinge
-  const rimTh = (n, rx, x0, back) => { const t1 = Math.acos(clamp(back / rx, -1, 1)), o = []; for (let i = 0; i < n; i++) { const t = -t1 + (2 * t1 * (i + 0.5)) / n; if (Math.abs(t) > 0.12) o.push(t); } return o; };
-  const UPPER_TEETH = rimTh(14, SKULL_R[0] * SK_K, 0, HINGE[0] + 10 - SKULL_C[0]);
-  const LOWER_TEETH = rimTh(12, JAW_R[0] * JW_K, 0, 12 - JAW_C[0]);
+  const TOOTH_S = bakeShape(Shape2D.poly([[-8.5, 0], [0, 1], [8.5, 0], [3.2, 11], [0, 21], [-3.2, 11]], code(TOOTH, 1), 6));
+  // mouth interior plates: palate (skull lip plane) and floor (jaw rim plane)
+  const C_THROAT = code(THROAT, 1), C_MAW = code(MAW), C_TONGUE = code(TONGUE);
+  // both carry a white gum/lip margin along the rim, where the teeth are rooted
+  const LIPW = 5.5;
+  const inLip = (u, v) => u * u / (RIM_A - LIPW) ** 2 + v * v / (RIM_B - LIPW) ** 2 > 1;
+  const C_GUM = code(WHITE, -1);
+  const PALATE = ellipseShape(RIM_A - 1.5, RIM_B - 1.5, (u, v) => (u <= HX + 1 ? 0 : inLip(u, v) ? C_GUM : C_THROAT));
+  const FLOOR = ellipseShape(RIM_A - 1.5, RIM_B - 1.5, (u, v) => (u < HX + 1 ? 0 : inLip(u, v) ? C_GUM : (u - 4) ** 2 / (RIM_A * 0.64) ** 2 + v * v / (RIM_B * 0.54) ** 2 < 1 ? C_TONGUE : C_THROAT));
+  // rim angles (from the snout tip) down each side of the mouth back toward the corner
+  const rimTh = (n, t0, t1) => { const o = []; for (let i = 0; i < n; i++) { const t = t0 + ((t1 - t0) * i) / (n - 1); o.push(t, -t); } return o; };
+  const UPPER_TEETH = rimTh(5, 0.17, 1.45);
+  const LOWER_TEETH = rimTh(4, 0.5, 1.4);
 
   const PRI = {};
   for (let i = 1; i < 40; i++) PRI[i] = 0;
-  Object.assign(PRI, { 1: 1, 2: 0, 3: 1, 4: 0, 5: -1, 6: 0, 7: 3, 8: 2, 9: 2, 10: 2, 11: 2, 12: 2, 13: 2 });
+  Object.assign(PRI, { 1: 1, 2: 0, 3: 1, 5: -1, 6: 0, 7: 3, 8: 2, 9: 2, 10: 2, 11: 2 });
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [], stamps = [], anchors = {};
-    const mo = clamp(P.mouth, 0, 1), tw = clamp(P.tail, -1, 1), lg = clamp(P.lunge, 0, 1);
+    const mo = clamp(+P.mouth || 0, 0, 1), tw = clamp(+P.tail || 0, -1, 1), lg = clamp(+P.lunge || 0, 0, 1);
     const side = P.side === undefined ? 1 : clamp(P.side, -1, 1);
     // lunge: the front half rears up about the body middle, the rear half curls down
     const root = chain(T(0, LIFT + lg * 14, 0));
-    const front = chain(root, T(-30, 0, 0), R(M3.rz(lg * 0.3)), T(30, 0, 0));
-    const rear = chain(root, T(-30, 0, 0), R(M3.rz(-lg * 0.2)), T(30, 0, 0));
+    const front = chain(root, T(-50, 0, 0), R(M3.rz(lg * 0.3)), T(50, 0, 0));
+    const rear = chain(root, T(-50, 0, 0), R(M3.rz(-lg * 0.2)), T(50, 0, 0));
 
-    /* --- skull (upper jaw + head) */
-    const skullF = chain(front, T(...SKULL_C));
-    const skull = ellF(skullF, SKULL_R, 1, 1, skullMat);
+    /* --- head + body egg (upper jaw, skull, back) */
+    const skullF = chain(front, T(...SK_C), R(M3.rz(SK_A)));
+    const skull = ellF(skullF, SK_R, 1, 1, skullMat);
     prims.push(skull);
-    // long pointed snout jutting well forward of the lower jaw (white cap), drooping a touch at the tip
-    const noseMat = (NC, NR) => (q) => {
-      const x = NC[0] + NR[0] * q[0], y = NC[1] + NR[1] * q[1];
-      if (y < LIP_Y && x < JAW_TIP_X) return 0;
-      if (q[1] > 0.3 && x < 146) { const k = Math.sqrt(Math.abs(x - 116) / 30) + Math.sqrt(Math.abs(NR[2] * q[2]) / 24); if (k < 1) return C_STAR; }
-      return y < LIP_Y + 2.5 || capWhite(x, y) ? C_WHITE : C_NAVY;
-    };
-    for (const [NC, NR] of [[[128, 6, 0], [40, 28, 28]], [[160, 2, 0], [30, 17, 19]], [[186, -1, 0], [18, 10, 12]], [[200, -2.5, 0], [8, 5, 6]]]) {
-      prims.push(ellF(chain(front, T(...NC)), NR, 1, 1, noseMat(NC, NR)));
-    }
+    prims.push(plF(chain(skullF, T(0, LIP + 0.3, 0)), [[1, 0, 0], [0, 0, 1], [0, 1, 0]], 5, 5, PALATE, 1.2));
 
-    /* --- lower jaw, hinged at the back of the mouth; cut flat at its lip plane */
-    const open = 0.045 + mo * 0.6;   // a sliver of gape even when shut: the dark mouth line + teeth read from the side
-    const hingeF = chain(front, T(...HINGE), R(M3.rz(-open)));
-    const jawF = chain(hingeF, T(...JAW_C));
-    prims.push(ellF(jawF, JAW_R, 2, 2, (s) => (s[1] > JAW_S ? 0 : C_WHITE)));
-    // tongue lying on the jaw floor (visible in the gape)
-    if (mo > 0.04) prims.push(ellF(chain(jawF, T(-8, JAW_R[1] * JAW_S - 2, 0)), [JAW_R[0] * JW_K * 0.7, 3.5, JAW_R[2] * JW_K * 0.6], 6, 5, () => C_TONGUE));
-    // dark throat filling the gape (hidden inside the head when the jaws are shut)
-    prims.push(ellF(chain(front, T(58, LIP_Y - 3, 0)), [64, 9 + mo * 16, 27], 5, 5, () => C_THROAT));
+    /* --- lower jaw, hinged at the mouth corner */
+    const open = 0.17 + mo * 1.02;   // never quite shut: the interlocked teeth always read as a zig-zag grin
+    const hingeF = chain(skullF, T(HX, LIP, 0), R(M3.rz(-open)));
+    const jawF = chain(hingeF, Creature.S(JAW_SX, 1, JAW_SZ), T(-HX, -LIP, 0));   // the egg, swung about the corner
+    prims.push(ellF(jawF, SK_R, 2, 1, (s) => (SK_R[1] * s[1] < LIP && SK_R[0] * s[0] > HX ? C_WHITE : 0)));
+    prims.push(plF(chain(jawF, T(0, LIP - 0.3, 0)), [[1, 0, 0], [0, 0, 1], [0, 1, 0]], 6, 5, FLOOR, 1.2));
+    // throat: the dark back of the gape between palate and tongue (hidden inside the head when shut)
+    const thF = chain(skullF, T(HX, LIP, 0), R(M3.rz(-open * 0.5)), T(20, 0, 0));
+    const thH = 4 + 52 * Math.sin(open * 0.5);
+    prims.push(ellF(thF, [34, thH, RIM_B * 0.7], 6, 5, () => C_MAW));
 
-    /* --- teeth: upper row hangs from the skull's lip rim, lower row stands on the jaw rim */
-    const toothAt = (frame, rx, rz, th, dirY, id, grow) => {
-      const px = rx * Math.cos(th), pz = rz * Math.sin(th);
+    /* --- teeth: upper row hangs from the skull rim, lower row stands on the jaw rim */
+    const toothAt = (frame, cx, rx, rz, th, dirY, grow) => {
+      const px = cx + rx * Math.cos(th), pz = rz * Math.sin(th);
       const out = nrm([Math.cos(th) / rx, 0, Math.sin(th) / rz]);   // rim normal (outward)
       const tang = nrm([-out[2], 0, out[0]]);
-      const inset = 2.6;
+      const inset = 3.2;
       const pos = [px - out[0] * inset, 0, pz - out[2] * inset];
-      const L = M3.mul(frame.L, M3.cols(sc(tang, grow), [0, dirY * grow, 0], out));
-      return PL(inF(frame, pos), L, id, id, TOOTH_S, 1.6);
+      const lean = 0.3;   // tips lean in toward the middle of the mouth
+      const dn = [-out[0] * Math.sin(lean), dirY * Math.cos(lean), -out[2] * Math.sin(lean)];
+      const L = M3.mul(frame.L, M3.cols(sc(tang, grow), sc(dn, grow), nrm(V3.cross(tang, dn))));
+      return PL(inF(frame, pos), L, 7, 7, TOOTH_S, 1.8);
     };
-    const upF = chain(skullF, T(0, LIP_Y - SKULL_C[1] + 1.5, 0));
-    for (const th of UPPER_TEETH) if (SKULL_R[0] * SK_K * Math.cos(th) + SKULL_C[0] < JAW_TIP_X - 6) prims.push(toothAt(upF, SKULL_R[0] * SK_K, SKULL_R[2] * SK_K, th, -1, 7, 1 - 0.14 * Math.abs(th)));
-    const lowF = chain(jawF, T(0, JAW_R[1] * JAW_S - 1.5, 0));
-    for (const th of LOWER_TEETH) prims.push(toothAt(lowF, JAW_R[0] * JW_K, JAW_R[2] * JW_K, th, 1, 7, 0.92 - 0.14 * Math.abs(th)));
+    const upF = chain(skullF, T(0, LIP + 0.5, 0));
+    for (const th of UPPER_TEETH) prims.push(toothAt(upF, 0, RIM_A, RIM_B, th, -1, 1.04 - 0.22 * Math.abs(th)));
+    const lowF = chain(hingeF, T(JRIM_C - HX, -0.5, 0));
+    for (const th of LOWER_TEETH) prims.push(toothAt(lowF, 0, JRIM_A, JRIM_B, th, 1, 1.0 - 0.22 * Math.abs(th)));
 
-    /* --- body and tail */
-    const bodyF = chain(rear, T(...BODY_C));
-    prims.push(ellF(bodyF, BODY_R, 3, 1, bodyMat));
-    const stockF = chain(rear, T(STOCK_C[0] + 26, STOCK_C[1], 0), R(M3.rz(-lg * 0.25)), R(M3.ry(tw * 0.4)), T(-26, 0, 0));
-    prims.push(ellF(stockF, STOCK_R, 4, 3, stockMat));
-    const tfF = chain(stockF, T(-STOCK_R[0] + 8, 0, 0), R(M3.ry(tw * 0.3)), R(M3.rz(-lg * 0.2)));
-    prims.push(PL(tfF.t, M3.mul(tfF.L, M3.cols([-1, 0, 0], [0, 1, 0], [0, 0, -1])), 8, 8, TAILF, 2.4));
+    /* --- tapering tail: the spine bends sideways (tail) and down (lunge) progressively */
+    let tf = chain(rear, T(TAIL_X0, 0, 0)), px = TAIL_X0;
+    let tailEnd = null;
+    for (const nd of TAIL_NODES) {
+      const k = nd.t;
+      tf = chain(tf, T(nd.x - px, 0, 0), R(M3.ry(tw * 0.075 * k)), R(M3.rz(-lg * 0.05 * k)));
+      px = nd.x;
+      const C = [nd.x, nd.yc, 0], Rr = [nd.rx, nd.ry, nd.rz];
+      prims.push(ellF(chain(tf, T(0, nd.yc, 0)), Rr, 3, 1, bodyMat(C, Rr)));
+      tailEnd = chain(tf, T(0, nd.yc, 0));
+    }
+    const tfF = chain(tailEnd, T(4, 0, 0), R(M3.ry(tw * 0.3)), R(M3.rz(-lg * 0.2)));
+    prims.push(plF(tfF, [[-1, 0, 0], [0, 1, 0], [0, 0, -1]], 8, 8, TAILF, 2.6));
 
     /* --- fins */
-    const dF = chain(bodyF, T(40, BODY_R[1] * 0.88, 0), R(M3.rz(-0.06)), R(M3.rx(side * 0.05)));
-    prims.push(PL(dF.t, M3.mul(dF.L, M3.cols([-1, 0, 0], [0, 1, 0], [0, 0, -1])), 9, 1, DORSAL, 4));
+    const dF = chain(front, T(2, 74, 0), R(M3.rz(0.14)), R(M3.rx(side * 0.05)));
+    prims.push(plF(dF, [[-1, 0, 0], [0, 1, 0], [0, 0, -1]], 9, 9, DORSAL, 4));
     const finTips = [];
     for (const sd of [1, -1]) {
-      const pf = chain(front, T(4, -28, sd * 30), R(M3.ry(sd * 0.62)), R(M3.rz(-0.36)), R(M3.rx(sd * 0.5)));
-      prims.push(PL(pf.t, M3.mul(pf.L, M3.cols([-1, 0, 0], [0, 1, 0], [0, 0, sd])), sd > 0 ? 10 : 11, sd > 0 ? 10 : 11, PECT, 2.2));
-      finTips.push(inF(pf, [-98, 3, 0]));
-      const vf = chain(bodyF, T(-60, -BODY_R[1] * 0.7, sd * 12), R(M3.ry(sd * 0.4)), R(M3.rz(-0.5)));
-      prims.push(PL(vf.t, M3.mul(vf.L, M3.cols([-1, 0, 0], [0, 1, 0], [0, 0, sd])), 12, 12, PELV, 1.6));
+      const pf = chain(front, T(8, -28, sd * 50), R(M3.ry(sd * 0.7)), R(M3.rz(-0.28)), R(M3.rx(sd * 0.5)));
+      prims.push(plF(pf, [[-1, 0, 0], [0, 1, 0], [0, 0, sd]], sd > 0 ? 10 : 11, sd > 0 ? 10 : 11, PECT, 2.4));
+      finTips.push(inF(pf, [-96, 3, 0]));
     }
 
-    /* --- eyes: red target stamps (angry lids slant down toward the snout) */
+    /* --- eyes: red stamps (angry lids slant down toward the snout) */
     const eyeKind = P.eyes === 'angry' ? 'angry' : P.eyes === 'closed' || P.eyes === 'blink' || P.eyes === 'happy' ? 'blink' : 'open';
     for (const sd of [1, -1]) {
       const s = Creature.sph(sd * EYE_AZ, EYE_V);
-      const at = { prim: skull, p: inF(skullF, [s[0] * SKULL_R[0], s[1] * SKULL_R[1], s[2] * SKULL_R[2]]), s };
-      stamps.push({ at, set: null, colors: EYEC, kind: eyeKind, near: 0.6, far: 0.34, minFacing: 0.2, toFront: [SKULL_R[0] * (1 - s[0]), -s[2] * SKULL_R[2]] });
+      const at = { prim: skull, p: inF(skullF, [s[0] * SK_R[0], s[1] * SK_R[1], s[2] * SK_R[2]]), s };
+      stamps.push({ at, set: null, colors: EYEC, kind: eyeKind, near: 0.6, far: 0.34, minFacing: 0.2, toFront: [SK_R[0] * (1 - s[0]), -s[2] * SK_R[2]] });
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = at.p;
     }
 
     Object.assign(anchors, {
-      top: inF(dF, [-52, 104, 0]),
-      head: skullF.t,
-      mouth: inF(front, [(HINGE[0] + JAW_TIP_X) / 2 + 10, LIP_Y - 12 * mo, 0]),
-      jawTip: inF(jawF, [JAW_R[0] * 0.95, 0, 0]),
-      body: bodyF.t,
-      tail: inF(tfF, [-60, 0, 0]),
+      top: inF(dF, [-70, 110, 0]),
+      head: inF(skullF, [40, 10, 0]),
+      mouth: inF(skullF, [(HX + RIM_A) / 2 + 16, LIP - 30 * mo, 0]),
+      jawTip: inF(hingeF, [JRIM_C + JRIM_A - HX, 0, 0]),
+      body: inF(skullF, [-40, 0, 0]),
+      tail: inF(tfF, [-46, 0, 0]),
       finN: finTips[0], finF: finTips[1],
     });
     if (SIZE !== 1) {
@@ -237,40 +296,40 @@ const Sharpedo = (() => {
       for (const st of stamps) st.at.p = sc(st.at.p, SIZE);
       for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
     }
-    return { prims, anchors, pose: P, stamps, dots: [], pri: PRI, glossy: GLOSSY, baseMat: NAVY, shadowSteps: 14, shadowDepth: 28 };
+    return { prims, anchors, pose: P, stamps, dots: [], pri: PRI, glossy: GLOSSY, baseMat: NAVY, shadowSteps: 14, shadowDepth: 30 };
   }
 
-  /* ---------- eye stamps: k = black ring / pupil, r = red iris, w = glint ---------- */
+  /* ---------- eye stamps: k = black ring, r = red iris, w = white glint ---------- */
   const mk = (o, oN, oF, a, aN, aF, b, bN, bF) => ({ open: o, openN: oN, openF: oF, angry: a, angryN: aN, angryF: aF, blink: b, blinkN: bN, blinkF: bF });
   const EYES_S = mk(
-    ['.kk.', 'krrk', 'krwk', '.kk.'], ['.k.', 'krk', 'kwk', '.k.'], ['k', 'r', 'k'],
-    ['kk..', 'krkk', 'krwk', '.kk.'], ['kk.', 'krk', '.k.'], ['k', 'k'],
+    ['.kk.', 'krrk', 'kwrk', '.kk.'], ['.k.', 'krk', 'kwk', '.k.'], ['k', 'r', 'k'],
+    ['kk..', 'kkkk', 'kwrk', '.kk.'], ['kk.', 'kwk', '.k.'], ['k', 'k'],
     ['kkkk'], ['kkk'], ['kk'],
   );
   const EYES_M = mk(
-    ['.kkk.', 'krrrk', 'krkwk', 'krrrk', '.kkk.'], ['.kk.', 'krrk', 'krwk', 'krrk', '.kk.'], ['.k.', 'krk', 'kkk', '.k.'],
-    ['kk...', 'krkkk', 'krkwk', 'krrrk', '.kkk.'], ['kk..', 'krkk', 'krwk', '.kk.'], ['k.', 'kk', 'kk'],
+    ['.kkk.', 'krrrk', 'krwrk', 'krrrk', '.kkk.'], ['.kk.', 'krrk', 'kwrk', 'krrk', '.kk.'], ['.k.', 'krk', 'kwk', 'krk', '.k.'],
+    ['kk...', 'kkkkk', 'krwrk', 'krrrk', '.kkk.'], ['kk..', 'kkkk', 'kwrk', '.kk.'], ['k.', 'kk', 'kk'],
     ['kkkkk', '.kkk.'], ['kkkk', '.kk.'], ['kkk'],
   );
+  const EYES_L = mk(
+    ['..kkkk..', '.krrrrk.', 'krwwrrrk', 'krwwrrrk', 'krrrrrrk', 'krrrrrrk', '.krrrrk.', '..kkkk..'],
+    ['.kkkk.', 'krrrrk', 'kwwrrk', 'kwwrrk', 'krrrrk', 'krrrrk', '.kkkk.'],
+    ['.kk.', 'krrk', 'kwrk', 'kwrk', 'krrk', '.kk.'],
+    ['kk......', 'kkkk....', 'krkkkkk.', 'krwwrkkk', 'krrrrrrk', 'krrrrrrk', '.krrrrk.', '..kkkk..'],
+    ['kk....', 'kkkk..', 'kwkkkk', 'kwwrrk', 'krrrrk', '.kkkk.'],
+    ['kk..', 'kkkk', 'kwrk', 'krrk', '.kk.'],
+    ['kkkkkkkk', '.kkkkkk.'], ['kkkkkk', '.kkkk.'], ['kkkk'],
+  );
   const EYES_XL = mk(
-    ['...kkkk...', '.kkrrrrkk.', '.krrrrrrk.', 'krrrkkrrrk', 'krrkkwkrrk', 'krrkkkkrrk', 'krrrkkrrrk', '.krrrrrrk.', '.kkrrrrkk.', '...kkkk...'],
-    ['..kkkk..', '.krrrrk.', 'krrkkrrk', 'krkkwkrk', 'krkkkkrk', 'krrkkrrk', '.krrrrk.', '..kkkk..'],
-    ['.kkk.', 'krrrk', 'krkwk', 'krkkk', 'krrrk', '.kkk.'],
-    ['kkk.......', 'krrkkk....', '.krrrrkkk.', 'krrrkkrrkk', 'krrkkwkrrk', 'krrkkkkrrk', 'krrrkkrrrk', '.krrrrrrk.', '.kkrrrrkk.', '...kkkk...'],
-    ['kk......', 'krkkk...', 'krrkkkkk', 'krkkwkrk', 'krkkkkrk', 'krrkkrrk', '.krrrrk.', '..kkkk..'],
-    ['kk...', 'krkk.', 'krkwk', 'krkkk', 'krrrk', '.kkk.'],
+    ['...kkkk...', '.kkrrrrkk.', '.krrrrrrk.', 'krrwwrrrrk', 'krrwwrrrrk', 'krrrrrrrrk', 'krrrrrrrrk', '.krrrrrrk.', '.kkrrrrkk.', '...kkkk...'],
+    ['..kkkk..', '.krrrrk.', 'krwwrrrk', 'krwwrrrk', 'krrrrrrk', 'krrrrrrk', '.krrrrk.', '..kkkk..'],
+    ['.kkk.', 'krrrk', 'kwwrk', 'kwwrk', 'krrrk', '.kkk.'],
+    ['kkk.......', 'kkkkkk....', '.kkkkkkkk.', 'krrwwkkkkk', 'krrwwrrrrk', 'krrrrrrrrk', 'krrrrrrrrk', '.krrrrrrk.', '.kkrrrrkk.', '...kkkk...'],
+    ['kk......', 'kkkkk...', 'krkkkkkk', 'krwwrrrk', 'krwwrrrk', 'krrrrrrk', '.krrrrk.', '..kkkk..'],
+    ['kk...', 'kkkk.', 'kwwkk', 'kwwrk', 'krrrk', '.kkk.'],
     ['kkkkkkkkkk', '.kkkkkkkk.'], ['kkkkkkkk', '.kkkkkk.'], ['kkkkk', '.kkk.'],
   );
-  const EYES_L = mk(
-    ['..kkk..', '.krrrk.', 'krrkkrk', 'krkkwrk', 'krkkkrk', '.krrrk.', '..kkk..'],
-    ['.kkk.', 'krrrk', 'krkwk', 'krkkk', 'krrrk', '.kkk.'],
-    ['.kk.', 'krrk', 'kkwk', 'krrk', '.kk.'],
-    ['kk.....', 'krkk...', 'krrkkkk', 'krkkwrk', 'krkkkrk', '.krrrk.', '..kkk..'],
-    ['kk...', 'krkkk', 'krkwk', 'krrrk', '.kkk.'],
-    ['kk..', 'krkk', 'kkwk', '.kk.'],
-    ['kkkkkkk', '.kkkkk.'], ['kkkkk', '.kkk.'], ['kkkk'],
-  );
-  const EYEC = { k: '#0c0d14', r: '#e0283c', w: '#ffffff' };
+  const EYEC = { k: '#0c0d16', r: '#e02838', w: '#ffffff' };
 
   // drop tiny detached islands (a fin seen edge-on can leave lone outlined pixels)
   function despeckle(d, depth, part, w, h) {
@@ -290,12 +349,16 @@ const Sharpedo = (() => {
     }
   }
 
-  /* ---------- render: eye size by scale, angry lids flipped toward the snout, cropped ray-cast ---------- */
+  /* ---------- render: eye size / stripes by scale, angry lids flipped toward the snout, cropped ray-cast ---------- */
   function render(model, opt) {
     const { yaw = 1.05, pitch = 0.16, scale = 1, W = 96, H = 96, ox = 48, oy = 82 } = opt;
-    gills = scale * SIZE < 0.45 ? GILLS_S : GILLS;
-    gillW = Math.max(1.1, 0.55 / (scale * SIZE));
-    const set = scale >= 0.8 ? EYES_XL : scale >= 0.58 ? EYES_L : scale >= 0.4 ? EYES_M : EYES_S;
+    const k = scale * SIZE;
+    // stripes: at least ~1 px wide with a clear gap; spread a little at small sizes so they don't merge
+    stripeW = k < 0.5 ? 0.6 / k : 1.9;
+    const gap = Math.max(7.4, 2.1 / k);
+    stripeR = [12.8, 12.8 + gap, 12.8 + 2 * gap];
+    speckOn = k >= 0.6;
+    const set = k >= 0.6 ? EYES_XL : k >= 0.45 ? EYES_L : k >= 0.3 ? EYES_M : EYES_S;
     const cy = Math.cos(yaw), sy = Math.sin(yaw);
     for (const st of model.stamps) { st.set = set; st.flipX = st.kind === 'angry' && cy * st.toFront[0] - sy * st.toFront[1] < 0; }
     const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(scale, scale, scale)));
@@ -327,9 +390,9 @@ const Sharpedo = (() => {
       part.set(r.part.subarray(s0, s0 + w), d0);
     }
     const anchors = {};
-    for (const k in r.anchors) { const a = r.anchors[k]; anchors[k] = [a[0] + bx0, a[1] + by0, a[2]]; }
+    for (const k2 in r.anchors) { const a = r.anchors[k2]; anchors[k2] = [a[0] + bx0, a[1] + by0, a[2]]; }
     return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.8, bw: 460, bh: 312, oy: 0.775 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.8, bw: 440, bh: 300, oy: 0.82 } };
 })();

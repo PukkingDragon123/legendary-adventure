@@ -35,7 +35,7 @@ const SeaAI = (() => {
   /* ================= WAILMER ================= */
   class WailmerM extends Swimmer {
     constructor(x) {
-      super(sp('Wailmer'), { kind: 'wailmer', dex: 'wailmer', x, y: SEA + 90, yaw: 0.6, z: 1.3, scale: 0.26, qPose: 0.06, qFields: { swim: 0.5, puff: 0.2, blow: 0.25, mouth: 0.25, roll: 0.25 }, persona: 'curious', speed: 30, box: { x0: 2050, x1: 3150, y0: SEA + 40, y1: SEA + 220 } });
+      super(sp('Wailmer'), { kind: 'wailmer', dex: 'wailmer', x, y: SEA + 90, yaw: 0.6, z: 1.3, scale: 0.28, qPose: 0.06, qFields: { swim: 0.5, puff: 0.2, blow: 0.25, mouth: 0.25, roll: 0.25 }, persona: 'curious', speed: 30, box: { x0: 2050, x1: 3150, y0: SEA + 40, y1: SEA + 220 } });
       this.swimTop = 16; this.senseR = 160;
     }
     animate(dt, t) { const P = { swim: t * 2 + this.seed, puff: 0.2, blow: 0, mouth: 0.3, eyes: this.blink(t, dt) ? 'blink' : 'open', roll: Math.sin(t * 0.7) * 0.2 }; Object.assign(P, this.o); this.pose = P; }
@@ -85,11 +85,11 @@ const SeaAI = (() => {
   /* ================= CLAMPERL ================= */
   class ClamperlM extends Mons.Mon {
     constructor(x) {
-      super(sp('Clamperl'), { kind: 'clamperl', dex: 'clamperl', x, y: gy(x), yaw: 1.3, z: 1.6, scale: 0.44, qPose: 0.06, qFields: { open: 0.2, pearl: 0.25, mouth: 0.25 }, persona: 'shy', mode: 'rooted' });
+      super(sp('Clamperl'), { kind: 'clamperl', dex: 'clamperl', x, y: gy(x), yaw: 1.3, z: 1.6, scale: 0.5, qPose: 0.06, qFields: { open: 0.2, pearl: 0.25, mouth: 0.25 }, persona: 'shy', mode: 'rooted' });
       this.noShadow = true; this.senseR = 70; this.alert = 1.4; this.openK = 0;
     }
     physics() { this.y = gy(this.x); }
-    animate(dt, t) { const P = { open: this.openK, pearl: hourIs('night') ? 0.7 + 0.3 * Math.sin(t * 2) : 0.2, eyes: this.blink(t, dt) ? 'blink' : 'open', mouth: 0 }; Object.assign(P, this.o); this.pose = P; if (hourIs('night') && this.openK > 0.5) this.glowOn = true; else this.glowOn = false; }
+    animate(dt, t) { const P = { open: this.openK, pearl: hourIs('night') ? 0.7 + 0.3 * Math.sin(t * 2) : 0.2, eyes: this.act.id === 'feed' ? 'happy' : 'closed', mouth: 0 }; Object.assign(P, this.o); this.pose = P; if (hourIs('night') && this.openK > 0.5) this.glowOn = true; else this.glowOn = false; }
     brain() { return this.life(); }
     *life() {
       yield* wait(rnd(0.5, 3));

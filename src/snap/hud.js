@@ -217,6 +217,7 @@ const HUD = (() => {
     drawBanner(fb, S, t);
     drawToasts(fb, S, t);
     Quests.drawPop(fb, t);
+    if (WorldMap.reveal) WorldMap.drawReveal(fb, t);
   }
   return Object.assign(H, { btn, down, move, up, hover, pressed, toast, banner, tool, update, draw, iconAt, ICONS });
 })();
