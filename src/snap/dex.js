@@ -56,7 +56,10 @@ const Dex = (() => {
     const p = D.press; D.press = null;
     if (!p || (p.moved && p.scroll)) return;
     const b = hit(ux, uy);
-    if (b && b === p.b && b.fn) { b.fn(ux, uy); if (!b.silent) SFX.blip(); }
+    if (b && b === p.b && b.fn) { b.fn(ux, uy); if (!b.silent) SFX.blip(); return; }
+    // tap outside the device closes it (mobile friendly)
+    const R = D.dev;
+    if (!b && !p.b && R && !(ux >= R.x && ux < R.x + R.w && uy >= R.y && uy < R.y + R.h) && !(p.x >= R.x && p.x < R.x + R.w && p.y >= R.y && p.y < R.y + R.h)) close();
   }
   function wheel(dy) { const s = D.page === 'entry' ? 'entry' : D.page; D.scroll[s] = Math.max(0, (D.scroll[s] || 0) + dy * 0.3); }
   function key(k) {
@@ -91,12 +94,28 @@ const Dex = (() => {
     const r0 = g.render(g.build(Object.assign({ side: Math.cos(yaw) }, pose)), { yaw, pitch: 0.16, scale: sc, W: Math.ceil(m.bw * sc), H: Math.ceil(m.bh * sc), ox: Math.ceil(m.bw * sc) >> 1, oy: Math.floor(Math.ceil(m.bh * sc) * m.oy), pal: g.PAL, light: { dir: [-0.5, 0.72, 0.5] } });
     const bb = Creature.bounds(r0);
     // fit into size×size by re-rendering at the right scale
-    const k = Math.min(size / Math.max(1, bb.w), size / Math.max(1, bb.h)) * sc;
+    // supersample: render SS× bigger then shrink, so fixed-size eye stamps and outlines end up
+    // in proportion (small direct renders made every Pokémon look big-eyed)
+    const SS = 3;
+    const k = Math.min(size / Math.max(1, bb.w), size / Math.max(1, bb.h)) * sc * SS;
     const W = Math.ceil(m.bw * k) + 4, H = Math.ceil(m.bh * k) + 4;
     const r = g.render(g.build(Object.assign({ side: Math.cos(yaw) }, pose)), { yaw, pitch: 0.16, scale: k, W, H, ox: W >> 1, oy: Math.floor(H * m.oy), pal: g.PAL, light: { dir: [-0.5, 0.72, 0.5] } });
     const b2 = Creature.bounds(r);
-    const out = new PX.Buf(Math.max(1, b2.w), Math.max(1, b2.h));
-    for (let y = 0; y < out.h; y++) for (let x = 0; x < out.w; x++) { const v = r.buf.d[(y + b2.y0) * r.buf.w + x + b2.x0]; out.d[y * out.w + x] = v ? (sil ? 0xff1a1e30 : v) : 0; }
+    const out = new PX.Buf(Math.max(1, Math.ceil(b2.w / SS)), Math.max(1, Math.ceil(b2.h / SS)));
+    const lum = (c) => (c & 255) * 0.3 + ((c >>> 8) & 255) * 0.59 + ((c >>> 16) & 255) * 0.11;
+    for (let y = 0; y < out.h; y++) for (let x = 0; x < out.w; x++) {
+      // mode of the SS×SS block (ties → darker, keeps outlines); mostly-empty blocks stay empty
+      const cnt = new Map(); let n = 0;
+      for (let j = 0; j < SS; j++) for (let i = 0; i < SS; i++) {
+        const X = b2.x0 + x * SS + i, Y = b2.y0 + y * SS + j;
+        if (X >= b2.x0 + b2.w || Y >= b2.y0 + b2.h) continue;
+        const v = r.buf.d[Y * r.buf.w + X]; if (!v) continue;
+        n++; cnt.set(v, (cnt.get(v) || 0) + 1);
+      }
+      let best = 0, bc = -1;
+      for (const [c, m] of cnt) if (m > bc || (m === bc && lum(c) < lum(best))) { best = c; bc = m; }
+      out.d[y * out.w + x] = n >= Math.ceil(SS * SS * 0.34) ? (sil ? 0xff1a1e30 : best) : 0;
+    }
     D.thumbs.set(key, out);
     D.budget -= performance.now() - t0;
     return out;
@@ -185,10 +204,18 @@ const Dex = (() => {
     // screens
     if (L) UI.screen(fb, L.x - 3, L.y - 3, L.w + 6, L.h + 6, { fill: S.screen, rim: S.ink, glare: false });
     UI.screen(fb, R.x - 2, R.y - 2, R.w + 4, R.h + 4, { fill: S.screen, rim: S.ink, glare: false });
-    // close X on the right half
+    // close X on the right half (generous touch target)
     UI.panel(fb, R.x + R.w - 14, oy + 8, 16, 14, { r: 3, ol: S.ink, fill: S.btn });
     Font.icon(fb, 'cross', R.x + R.w - 9, oy + 12, 1);
-    btn('x', R.x + R.w - 16, oy + 6, 20, 18, () => close());
+    btn('x', R.x + R.w - 24, oy - 4, 34, 32, () => close());
+    D.dev = { x: ox, y: oy, w: DW, h: DH };
+    // big close bar under the device when there is room (portrait phones)
+    if (H - (oy + DH) > 34 && !D.closing) {
+      const cw = Math.min(DW, 150), cx = Math.round((W - cw) / 2), cy = oy + DH + 10;
+      UI.panel(fb, cx, cy, cw, 22, { r: 6, ol: S.ink, fill: S.body });
+      Font.draw(fb, 'CLOSE', cx + cw / 2, cy + 7, 0xffffffff, { font: 'small', align: 'center' });
+      btn('closebar', cx, cy, cw, 22, () => close());
+    }
     if (boot < 1) { drawBoot(fb, S, L || R, R, boot, t); return; }
     // tabs along the top of the right half
     let tx = R.x - 2;
@@ -574,7 +601,7 @@ const Dex = (() => {
     row('Sound', Sound.on ? 'ON' : 'OFF', () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); });
     row('Song', Music.cur ? Music.TRACKS[Music.cur].title : '—', () => Music.next());
     row('Camera grid', Photo.grid ? 'ON' : 'OFF', () => { Photo.grid = !Photo.grid; });
-    row('Time of day', Game.hour(), () => Game.nextHour());
+    row('Time of day', Game.hour() + (Game.canTime() ? '' : ' (locked)'), () => Game.tryTime());
     row('Reset journal', D.confirm ? 'Tap again!' : '...', () => { if (D.confirm) { Save.reset(); D.confirm = null; HUD.toast('Journal reset.'); } else { D.confirm = true; setTimeout(() => { D.confirm = null; }, 2500); } });
     if (L) {
       Font.draw(fb, 'How to play', L.x + 6, L.y + 8, S.screenText, { font: 'title' });

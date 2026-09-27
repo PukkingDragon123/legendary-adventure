@@ -25,14 +25,25 @@ const Player = (() => {
     get inWater() { return this.mode === 'swim'; }
     setLook(look) { this.look = Object.assign({}, look); }
     // ---- orders ----
-    goTo(tg) { this.target = tg; this.keyDir = 0; }
+    goTo(tg) { this.target = tg; this.keyDir = 0; this.wakeUp(); }
+    // idle antics are low-priority tasks any order cancels
+    wakeUp() { this.idleT = 0; if (this.task && this.task.idle && !this.task.done) { this.task.done = true; this.sleepy = false; } }
+    idleTask(g) { if (this.doTask(g, 1)) this.task.idle = true; }
     stop() { this.target = null; }
     brain() { return (function* () { for (;;) yield; })(); }
 
     update(dt, t) {
       this.st += dt; this.o = {}; this.moving = 0;
+      if ((this.keyDir || this.keyY) && this.task && this.task.idle) this.wakeUp();
       if (this.task && !this.task.done) this.task.step(dt);
       else this.control(dt, t);
+      // idle antics after standing still for a while
+      const free = !this.task || this.task.done;
+      const still = !this.target && !this.keyDir && !this.keyY && (free || this.task.idle) && Game.mode === 'explore';
+      this.idleT = still ? (this.idleT || 0) + dt : 0;
+      if (still && free && this.idleT > 5 && (this.nextIdle ?? 0) < this.idleT) { this.nextIdle = this.idleT + rnd(3, 6); this.pickIdle(); }
+      if (!still) this.nextIdle = 0;
+      if (!free && this.mode === 'land' && !this.task.idle) this.vx = 0;
       this.physics(dt, t);
       this.animate(dt, t);
     }
@@ -42,9 +53,10 @@ const Player = (() => {
       if (this.keyDir || this.keyY) {
         this.target = null;
         if (this.mode === 'swim') { this.vx = lerp(this.vx, this.keyDir * speed, dt * 5); this.vy = lerp(this.vy, this.keyY * speed * 0.8, dt * 5); }
-        else if (this.keyDir) { this.turn(this.face(this.keyDir), dt, 9); this.x += this.keyDir * speed * dt; this.moving = speed; if (this.keyY < 0 && this.air <= 0) this.jumpOn(); }
+        else { this.turn(this.face(this.keyDir || Math.sign(Math.cos(this.yaw))), dt, 11); this.drive(this.keyDir * speed, dt); if (this.keyY < 0 && this.air <= 0) this.jumpOn(); }
         return;
       }
+      if (this.mode !== 'swim' && !this.target) this.drive(0, dt);
       const tg = this.target;
       if (!tg) { if (this.mode === 'swim') { this.vx *= Math.pow(0.1, dt); this.vy *= Math.pow(0.1, dt); } return; }
       if (this.mode === 'swim') {
@@ -69,7 +81,7 @@ const Player = (() => {
       let tx = tg.x;
       if (tg.kind === 'swim') {
         // walk to the water's edge (or off the end of the dock)
-        tx = this.plat ? (tg.x > this.plat.x1 || tg.x > (this.plat.x0 + this.plat.x1) / 2 ? this.plat.x1 + 12 : this.plat.x0 - 12) : World.shoreX + 30;
+        tx = this.plat ? (tg.x > this.plat.x1 || tg.x > (this.plat.x0 + this.plat.x1) / 2 ? this.plat.x1 + 12 : this.plat.x0 - 12) : this.edgeToward(tg.x);
       } else if (tg.kind === 'plat' && !this.plat) {
         const p = tg.plat;
         if (Math.abs(World.groundAt(p.x0) - World.platY(p, p.x0)) < 10) tx = p.x0 + 4; // step on from the land
@@ -78,18 +90,86 @@ const Player = (() => {
       }
       const dx = tx - this.x;
       if (Math.abs(dx) < 3) {
+        this.vx = 0;
         if (tg.kind === 'plat' && !this.plat) { this.plat = tg.plat; return; }
-        if (tg.kind === 'swim' && this.plat) { this.doTask(this.diveOff(tg), 3); return; }
+        if (tg.kind === 'swim') { this.doTask(this.diveOff(tg), 3); return; }
         if (tg.kind === 'walk' || tg.kind === 'plat') this.arrive();
         return;
       }
       const d = Math.sign(dx);
-      this.turn(this.face(d), dt, 9);
-      if (Math.sign(Math.cos(this.yaw)) === d) { this.x += d * Math.min(Math.abs(dx), speed * dt); this.moving = speed; }
+      this.turn(this.face(d), dt, 11);
+      // ease in and out: accelerate, cruise, slow down on arrival (no snapping)
+      this.drive(d * Math.min(speed, 20 + Math.abs(dx) * 3.2), dt);
+      if (Math.sign(this.vx) === d && Math.abs(this.vx * dt) > Math.abs(dx)) this.x = tx - d * 2.5;
       // step onto a dock from the sand when walking across its start
       if (!this.plat) { const p = World.platAt(this.x); if (p && Math.abs(World.groundAt(this.x) - World.platY(p, this.x)) < 8 && (tg.kind === 'plat' || tg.plat === p)) this.plat = p; }
     }
-    arrive() { const tg = this.target; this.target = null; if (tg && tg.then) tg.then(); }
+    arrive() { const tg = this.target; this.target = null; if (Game.pin) Game.pin.done = true; if (tg && tg.then) tg.then(); }
+    // horizontal motion with acceleration (land)
+    drive(want, dt) {
+      const acc = Math.abs(want) > Math.abs(this.vx) ? 520 : 700;
+      this.vx = approach(this.vx, want, acc * dt);
+      // turning round: slow through zero instead of snapping
+      this.x += this.vx * dt;
+      if (Math.abs(this.vx) > 4) this.moving = Math.abs(this.vx);
+    }
+    // nearest point on land just before the water, going toward x1
+    edgeToward(x1) {
+      const d = x1 > this.x ? 1 : -1;
+      for (let x = this.x; d > 0 ? x <= x1 : x >= x1; x += d * 4) if (World.isWet(x, 16)) return x - d * 10;
+      return x1;
+    }
+    /* ---- idle antics: look around, hop, tail chase, yawn, nap; splash and bob in the water ---- */
+    pickIdle() {
+      if (this.mode === 'swim') { this.idleTask(this.surfaceSplash()); return; }
+      if (this.mode !== 'land') return;
+      if (this.idleT > 24) { this.idleTask(this.nap()); return; }
+      const r = Math.random();
+      this.idleTask(r < 0.3 ? this.lookAround() : r < 0.5 ? this.joyHop() : r < 0.7 ? this.tailChase() : r < 0.85 ? this.yawn() : this.faceTo(Math.random() < 0.5 ? 1 : -1, false));
+    }
+    *lookAround() { let e = 0; while (e < 2.4) { const dt = yield; e += dt; this.o.look = Math.sin(e * 2.6) * 0.5; this.o.headRoll = Math.sin(e * 2.6) * 0.08; } }
+    *joyHop(n = 2) {
+      for (let i = 0; i < n; i++) { this.vair = 210; this.air = 0.5; Game.sfx('boing', this.x, 0.35); this.happyT = 0.6; yield* until(() => this.air <= 0 && this.vair === 0, 2); yield* wait(0.08); }
+    }
+    *tailChase() {
+      const y0 = this.yaw; let e = 0;
+      while (e < 1.6) { const dt = yield; e += dt; this.yaw = y0 + e * 7.8; this.o.tailWag = Math.sin(e * 20) * 0.5; this.happyT = 0.2; }
+      this.yaw = this.face(Math.cos(this.yaw) >= 0 ? 1 : -1, false); this.dizzy = 0.8;
+    }
+    *yawn() { let e = 0; while (e < 1.6) { const dt = yield; e += dt; const k = Math.sin(Math.min(1, e / 1.2) * Math.PI); this.o.mouth = 0.6 + k * 0.4; this.o.eyes = k > 0.5 ? 'sleep' : 'open'; this.o.headPitch = -0.15 * k; } }
+    *nap() {
+      this.sleepy = true; let e = 0, z = 0;
+      yield* this.faceTo(Math.cos(this.yaw) >= 0 ? 1 : -1, false);
+      while (this.sleepy) {
+        const dt = yield; e += dt; z -= dt;
+        const k = Math.min(1, e / 0.8);
+        this.o.bodyDip = 2 * k; this.o.legSplay = 0.7 * k; this.o.eyes = 'sleep'; this.o.mouth = 0.2; this.o.headPitch = 0.12 * k;
+        this.o.squash = Math.sin(e * 1.6) * 0.03 * k; this.o.tailWag = Math.sin(e * 0.8) * 0.1;
+        if (z <= 0 && k >= 1) { z = 1.6; FX.add({ type: 'icon', icon: 'swirl', x: this.x + 6, y: this.y - 26, vx: 5, vy: -9, life: 1.6, layer: 3 }); }
+      }
+    }
+    *surfaceSplash() {
+      // bob at the surface, flick the tail, splash
+      const s = WorldRender.surfaceAt(this.x, Game.t);
+      if (this.y > s + 30) { let e = 0; while (e < 2) { const dt = yield; e += dt; this.o.tailWag = Math.sin(e * 8) * 0.4; this.o.finSway = Math.sin(e * 5) * 0.2; } return; }
+      let e = 0;
+      Game.sfx('splash', this.x, 0.4);
+      while (e < 1.2) {
+        const dt = yield; e += dt;
+        this.o.tailWag = Math.sin(e * 14) * 0.6; this.o.tailLift = 0.5; this.happyT = 0.2;
+        if (Math.random() < dt * 12) FX.add({ type: 'drop', x: this.x - Math.cos(this.yaw) * 12, y: s - 2, vx: rnd(-50, 50), vy: -rnd(60, 140), g: 420, life: 0.8, c: 0xffffffff, c2: U.hex('#8fd6ee'), size: 2, floor: s + 2, layer: 3 });
+      }
+      FX.add({ type: 'ripple', x: this.x, y: s + 1, r0: 2, r1: 14, flat: 0.3, life: 1, c: 0xffffffff, layer: 2 });
+    }
+    *shakeOff() {
+      let e = 0;
+      while (e < 0.9) {
+        const dt = yield; e += dt;
+        this.o.headRoll = Math.sin(e * 40) * 0.25 * (1 - e / 0.9); this.o.eyes = 'blink'; this.o.squash = Math.sin(e * 40) * 0.04;
+        if (Math.random() < dt * 30) FX.add({ type: 'drop', x: this.x + rnd(-10, 10), y: this.y - rnd(10, 26), vx: rnd(-70, 70), vy: -rnd(30, 90), g: 420, life: 0.6, c: 0xffffffff, c2: U.hex('#8fd6ee'), size: 1, floor: World.groundAt(this.x), layer: 3 });
+      }
+      this.happyT = 0.5;
+    }
     jumpOn() { this.vair = 230; this.air = 0.5; }
     *climbUp(p, x) {
       this.vx = this.vy = 0; this.mode = 'climb';
@@ -103,8 +183,10 @@ const Player = (() => {
     }
     *diveOff(tg) {
       const dir = tg.x > this.x ? 1 : -1;
-      this.mode = 'fall'; this.plat = null;
-      this.vx = dir * 90; this.vy = -230;
+      // crouch, then leap
+      let e = 0; while (e < 0.18) { const dt = yield; e += dt; this.o.bodyDip = 1.6; this.o.squash = 0.08; }
+      this.mode = 'fall'; this.plat = null; this.diving = true;
+      this.vx = dir * 95; this.vy = -250;
       this.happyT = 1;
       Game.sfx('boing', this.x, 0.5);
       yield* until(() => this.mode !== 'fall', 4);
@@ -136,17 +218,18 @@ const Player = (() => {
         const s = WorldRender.surfaceAt(this.x, t), g = World.groundAt(this.x);
         if (this.y < s + 10) { this.y = s + 10; this.vy = Math.max(0, this.vy); }
         if (this.y > g - 8) { this.y = g - 8; this.vy = Math.min(0, this.vy); }
-        if (!World.isWet(this.x, 12)) { this.mode = 'land'; this.air = 0; this.target = this.target && this.target.kind === 'swim' ? null : this.target; }
+        if (!World.isWet(this.x, 12)) { this.mode = 'land'; this.air = 0; this.vx = 0; this.target = this.target && this.target.kind === 'swim' ? null : this.target; if (!this.target) this.idleTask(this.shakeOff()); }
         if ((Math.abs(this.vx) + Math.abs(this.vy) > 25) && Math.random() < dt * 4) FX.bubbles(this.x + Math.cos(this.yaw) * 8, this.y - 6, 1, WorldRender.surfaceAt(this.x, t));
         if (Math.abs(this.vx) + Math.abs(this.vy) > 20) this.moving = 60;
       } else if (this.mode === 'fall') {
         this.vy += 800 * dt; this.x += this.vx * dt; this.y += this.vy * dt;
         const s = WorldRender.surfaceAt(this.x, t), g = World.groundAt(this.x);
         if (World.waterAt(this.x) !== null && this.y > s + 4 && this.vy > 0) {
-          this.mode = 'swim'; FX.splashAt(this.x, s, { power: Math.min(1.3, this.vy / 350) }); Game.sfx('splash', this.x, 1);
+          this.mode = 'swim'; this.diving = false; FX.splashAt(this.x, s, { power: Math.min(1.3, this.vy / 350) }); Game.sfx('splash', this.x, 1);
+          FX.add({ type: 'ring', x: this.x, y: s, r0: 2, r1: 16, flat: 0.3, life: 0.6, c: 0xffffffff, layer: 2 });
           for (const m of Mons.all) if (m !== this) m.hear('splash', this.x, 0.8);
           this.vy = 60; this.vx *= 0.3;
-        } else if (this.y >= g && this.vy > 0) { this.mode = 'land'; this.y = g; this.sq.kick(0.9); Game.sfx('pat', this.x, 0.8); }
+        } else if (this.y >= g && this.vy > 0) { this.mode = 'land'; this.diving = false; this.y = g; this.sq.kick(0.9); Game.sfx('pat', this.x, 0.8); }
       }
       this.x = clamp(this.x, 16, World.W - 16);
     }
@@ -172,6 +255,8 @@ const Player = (() => {
       P.mouth = 0.6;
       P.eyes = this.blink(t, dt) ? 'blink' : 'open';
       if (this.air > 0 || this.mode === 'fall') { P.legF = -0.5; P.legB = 0.5; }
+      if (this.mode === 'fall' && this.diving) { P.headPitch = clamp(this.vy * 0.0022, -0.45, 0.6); P.legF = -0.9; P.legB = 0.9; P.tailLift = 0.3; P.eyes = this.vy < 0 ? 'happy' : 'open'; }
+      if (swim) { P.headPitch = clamp(this.vy * 0.004, -0.45, 0.5); P.lean = clamp(-this.vy * 0.002, -0.2, 0.2); }
       if (this.dizzy > 0) { this.dizzy -= dt; P.eyes = 'blink'; P.headRoll = Math.sin(t * 9) * 0.18; P.mouth = 0.3; }
       if (this.happyT > 0) { this.happyT -= dt; P.eyes = 'happy'; P.mouth = 1; }
       Object.assign(P, this.look);

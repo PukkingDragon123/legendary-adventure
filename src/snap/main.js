@@ -95,7 +95,15 @@ const Game = (() => {
     U.emit('hour', G.hour());
   }
   G.setHour = setHour;
-  G.nextHour = () => { setHour(G.hourIdx + 1); sfx('timewave', null, 0.6); };
+  G.nextHour = () => { setHour(G.hourIdx + 1); sfx('timewave', null, 0.6); G.hourT = 0; };
+  // the player may only bend time once they have met Dialga; otherwise time flows by itself
+  G.canTime = () => Save.found('dialga.met') || qs.has('debug');
+  G.tryTime = () => {
+    if (G.canTime()) { G.nextHour(); HUD.toast(G.hour()[0].toUpperCase() + G.hour().slice(1), { life: 1.4 }); return true; }
+    sfx('error'); HUD.toast('Time will not budge... Only the Pokémon that rules time could change it. (Something hums under a rock on the beach.)', { life: 3.4 });
+    return false;
+  };
+  G.hourT = 0; G.HOUR_LEN = 180;
 
   /* ---------- areas ---------- */
   function enterArea(id, o = {}) {
@@ -140,6 +148,7 @@ const Game = (() => {
     if (G.mode === 'dex' || G.mode === 'map') { if (G.mode === 'dex') Dex.update(dt); if (G.mode === 'map') WorldMap.update(dt); HUD.update(dt); Music.update(dt); return; }
     G.t += dt;
     const t = G.t;
+    G.hourT += dt; if (G.hourT > G.HOUR_LEN) G.nextHour();
     Wind.update(dt); Ripples.step(dt);
     Stage.update(dt, t);
     Weather.update(dt, t);
@@ -193,6 +202,7 @@ const Game = (() => {
     const mids = G.mons.filter((m) => !m.layer && m.visible && m.alive).sort((a, b) => (a.zd - b.zd) || (a.z - b.z));
     for (const m of mids) { m.draw(fb, cx, cy, occ); if (m.drawExtra) m.drawExtra(fb, cx, cy, P, t, occ); }
     Items.draw(fb, cx, cy, t);
+    if (!o.ids) drawPin(fb, cx, cy);
     Stage.drawProps(fb, cx, cy, t, true);
     Stage.drawLate(fb, cx, cy, t);
     if (A.def.drawFront) A.def.drawFront(A, fb, cx, cy, t);
@@ -250,6 +260,8 @@ const Game = (() => {
       else if (tool === 'berry') { if (Save.useItem('berry')) mk.doTask(mk.throwBerry(wx, wy), 2); else HUD.toast('No berries left! Shake a berry bush.'); }
       return;
     }
+    // tap Mudkip itself: a happy hop (or wake it from a nap)
+    if (mk.hit(wx, wy, 3)) { mk.wakeUp(); if (mk.mode === 'land') mk.idleTask(mk.joyHop(1)); else if (mk.mode === 'swim') mk.idleTask(mk.surfaceSplash()); return; }
     // Pokémon / hotspots first
     const hits = G.hitsAt(wx, wy, 8);
     if (hits.length) {
@@ -270,7 +282,29 @@ const Game = (() => {
         return;
       }
     }
-    mk.goTo(targetFor(wx, wy));
+    const tg = targetFor(wx, wy);
+    mk.goTo(tg);
+    G.pin = { x: tg.x, y: tg.y, t: 0, done: false, kind: tg.kind };
+  }
+  // the destination pin: drops in, bounces, fades when Mudkip arrives
+  function drawPin(fb, cx, cy) {
+    const p = G.pin; if (!p) return;
+    p.t += 1 / 60;
+    if (p.done || !G.mudkip.target) { p.fade = (p.fade || 0) + 0.08; if (p.fade >= 1) { G.pin = null; return; } }
+    const fade = p.fade || 0;
+    const drop = Math.max(0, 1 - p.t * 5), bob = Math.abs(Math.sin(p.t * 5)) * 3 * (1 - drop);
+    const X = Math.round(p.x - cx), Y = Math.round(p.y - cy - 1 - drop * 30 - bob);
+    const d = fb.d, W = fb.w, H = fb.h;
+    const put = (x, y, c, a = 1) => { if (x >= 0 && y >= 0 && x < W && y < H) d[y * W + x] = a >= 1 && !fade ? c : U.mix(d[y * W + x], c, a * (1 - fade)); };
+    // ground ring
+    const gx = Math.round(p.x - cx), gy = Math.round(p.y - cy);
+    const rr = 4 + (1 - drop) * 2 + Math.sin(p.t * 5) * 0.8;
+    for (let a = 0; a < 40; a++) { const t = a / 40 * Math.PI * 2; put(Math.round(gx + Math.cos(t) * rr), Math.round(gy + Math.sin(t) * rr * 0.35), 0xffffffff, 0.7); }
+    // pin: red head with a white glint and a dark outline, thin stem
+    const col = p.kind === 'swim' ? 0xffe8a02f : 0xff3a3ae8;
+    for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) { const r = x * x + y * y; if (r <= 12) put(X + x, Y - 9 + y, r > 7 ? 0xff201018 : col); }
+    put(X - 1, Y - 10, 0xffffffff); put(X, Y - 11, 0xffffffff);
+    for (let y = -5; y <= 0; y++) put(X, Y + y, y === 0 ? 0xff201018 : 0xff5a5a6a);
   }
   // classify a tap: water (swim), a platform (dock/bridge) or plain ground
   function targetFor(wx, wy) {
@@ -366,7 +400,7 @@ const Game = (() => {
     else if (k === 'p' || k === 'Tab') { Dex.open(); e.preventDefault(); }
     else if (k === 'm') WorldMap.open();
     else if (k === 'Escape') { if (G.mode === 'camera') Photo.close(); }
-    else if (k === 't') G.nextHour();
+    else if (k === 't') G.tryTime();
     else if (k === '+' || k === '=') G.mode === 'camera' ? Photo.setZoom(Photo.zoom * 1.25) : setZoom(G.zoom + 1);
     else if (k === '-' || k === '_') G.mode === 'camera' ? Photo.setZoom(Photo.zoom / 1.25) : setZoom(G.zoom - 1);
     else if (k === '1') HUD.tool('water'); else if (k === '2') HUD.tool('song'); else if (k === '3') HUD.tool('berry'); else if (k === '4') HUD.tool('scan');

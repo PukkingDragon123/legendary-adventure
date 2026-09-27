@@ -148,7 +148,7 @@ const HUD = (() => {
     UI.rrect(fb, x, y + 2, 22, 22, 4, 0xff0a0e1a);
     UI.panel(fb, x, y + p, 22, 22, { r: 4, ol: S.ink, fill: S.btn });
     Font.icon(fb, hr === 'night' || hr === 'dusk' ? 'moon' : 'sun', x + 4, y + 4 + p, 2);
-    btn('clock', x - 1, y - 1, 24, 26, () => { Game.nextHour(); toast(Game.hour()[0].toUpperCase() + Game.hour().slice(1), { life: 1.4 }); });
+    btn('clock', x - 1, y - 1, 24, 26, () => Game.tryTime());
     UI.panel(fb, x + 26, y + 3 + p * 0, 64, 16, { r: 3, ol: S.ink, fill: U.mix(S.btn, 0xff000000, 0.2), hi: null, sh: null });
     Font.draw(fb, '{coin}' + Save.data.points, x + 30, y + 8, 0xffffffff, { font: 'small' });
   }

@@ -286,6 +286,8 @@ const Stage = (() => {
       const gy = World.groundAt(wx);
       const yEnd = Math.min(H, Math.ceil(gy - cy + 40));
       const ys = Math.max(0, sy);
+      // shallow water near the shore tints less, so the beach slides gently under the sea (no hard seam)
+      const sk = clamp(0.3 + (gy - lvl) / 80, 0.3, 1);
       // light shafts (slanted, swaying)
       for (let y = ys; y < yEnd; y++) {
         const i = y * W + x;
@@ -295,7 +297,7 @@ const Stage = (() => {
         if (o) {
           const k = clamp(dep / maxD, 0, 1);
           // foreground things in water get tinted by depth; the seabed also picks up caustics near the top
-          let c = mix(d[i], k < 0.5 ? mid : deep, 0.18 + k * 0.62);
+          let c = mix(d[i], k < 0.5 ? mid : deep, (0.18 + k * 0.62) * sk);
           if (o === 1 && dep < 260) {
             const cv = CAUS.c[((y + cy + Math.round(t * 9)) & 63) * 64 + ((wx + Math.round(Math.sin(t * 0.7 + y * 0.05) * 6)) & 63)];
             if (cv) c = U.screen(c, top, (cv / 255) * 0.32 * (1 - dep / 260));

@@ -15,7 +15,7 @@ Areas.beach = (() => {
     W: 3400, H: 1260, sea: SEA, refY: SEA, h0: 96, cy0: 290, ph: 0.06, skyH: 360, sunH: 150, band: 12, waves: 1.6,
     camY: [-40, 1260],
     start: 300,
-    ground: [[0, 452], [90, 452], [170, 462], [240, 478], [320, 488], [460, 492], [640, 494], [800, 497], [900, 502], [980, 512], [1050, 528], [1130, 556], [1240, 604], [1360, 660], [1500, 694], [1700, 712], [1900, 716], [2100, 708], [2300, 702], [2450, 716], [2560, 752], [2640, 840], [2700, 1000], [2760, 1120], [2880, 1170], [2990, 1130], [3070, 980], [3130, 780], [3180, 600], [3220, 510], [3260, 486], [3330, 478], [3400, 478]],
+    ground: [[0, 452], [90, 452], [170, 462], [240, 478], [320, 488], [460, 492], [640, 494], [800, 497], [900, 502], [1000, 509], [1100, 520], [1200, 535], [1300, 555], [1400, 580], [1500, 608], [1600, 638], [1700, 666], [1800, 690], [1900, 708], [2000, 714], [2100, 708], [2300, 702], [2450, 716], [2560, 752], [2640, 840], [2700, 1000], [2760, 1120], [2880, 1170], [2990, 1130], [3070, 980], [3130, 780], [3180, 600], [3220, 510], [3260, 486], [3330, 478], [3400, 478]],
     water: [{ x0: 0, x1: 3400, level: SEA, kind: 'sea' }],
     plats: [{ x0: DOCK.x0, x1: DOCK.x1, y: DOCK.y, kind: 'dock', ladders: [1400, 1872] }],
     mats: {
@@ -100,7 +100,7 @@ Areas.beach = (() => {
     Terrain.paint(A, {
       bb: 7, bf: 5,
       strip(x, y, u, e) {
-        const g = gy(x), under = g > SEA + 3;
+        const g = gy(x), wv = clamp((g - SEA - 2) / 60, 0, 1), under = wv > 0 && U.bayer4(x, y) < wv;
         const n = e.n2(x, y * 3), n1 = e.n1(x, y);
         if (under) {
           const rip = Math.sin(x * 0.19 + n1 * 5) > 0.55 ? 0.12 : 0;
@@ -123,7 +123,8 @@ Areas.beach = (() => {
         return e.pickR(M.sand, t, x, y);
       },
       face(x, y, dep, e) {
-        const g = gy(x), under = g > SEA + 3;
+        // sand fades into seabed over the shallows (ordered dither), so the slope reads as one continuous beach
+        const g = gy(x), wv = clamp((g - SEA - 2) / 60 + dep / 900, 0, 1), under = wv > 0 && U.bayer4(x, y) < wv;
         const n1 = e.n1(x, y), n2 = e.n2(x, y);
         if (dep <= 1) return under ? M.bedFace[0] : M.face[0]; // shadow under the lip
         // sediment bands that follow the surface, with soft wavy boundaries
