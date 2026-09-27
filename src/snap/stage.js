@@ -199,8 +199,8 @@ const Stage = (() => {
     if (L.tile) {
       const w = spr.w;
       let x0 = ((sx % w) + w) % w - w;
-      for (let x = x0; x < fb.w; x += w) Paint.blit(fb, spr, x, sy, pal);
-    } else Paint.blit(fb, spr, sx, sy, pal);
+      for (let x = x0; x < fb.w; x += w) Paint.blit(fb, spr, x, sy, pal, { idb: S.idOn ? S.idb : null });
+    } else Paint.blit(fb, spr, sx, sy, pal, { idb: S.idOn ? S.idb : null });
     if (L.draw) L.draw(fb, sx, sy, pal, t, cx, cy);
     // solid skirt below the layer so nothing behind ever peeks through
     if (L.skirt) {
@@ -216,7 +216,7 @@ const Stage = (() => {
   function drawTerrain(fb, cx, cy, t) {
     const A = S.A, T = A.terr;
     if (!T) return;
-    const pal = framePal(0, t), occ = S.occ, W = fb.w, H = fb.h, d = fb.d, td = T.d, tw = T.w;
+    const pal = framePal(0, t), occ = S.occ, W = fb.w, H = fb.h, d = fb.d, td = T.d, tw = T.w, idb = S.idOn ? S.idb : null;
     const y0 = Math.max(0, T.y0 - cy), y1 = Math.min(H, T.y0 + T.h - cy);
     const x0 = Math.max(0, -cx), x1 = Math.min(W, tw - cx);
     for (let y = y0; y < y1; y++) {
@@ -226,6 +226,7 @@ const Stage = (() => {
         if (!v) continue;
         d[row + x] = pal[v];
         if (occ) occ[row + x] = 1;
+        if (idb) idb[row + x] = 0;
       }
     }
   }
@@ -339,13 +340,13 @@ const Stage = (() => {
       const s = f.spr;
       // closer than the lane: displacement from the view centre scales by p
       const ax = W / 2 + (f.x - cxm) * f.p, ay = H / 2 + (f.y - cym) * f.p;
-      const X = Math.round(ax - s.w / 2), Y = Math.round(ay - s.h);
+      const X = Math.round(ax - s.w / 2), Y = Math.round(f.hang ? ay : ay - s.h);
       if (X > W || X + s.w < 0 || Y > H || Y + s.h < 0) continue;
       const sway = f.sway ? Math.sin(t * 1.1 + f.x) * f.sway * ((typeof Wind !== 'undefined' ? Wind.v : 0.4) + 0.4) : 0;
       const tint = f.tint ?? A.foreTint ?? 0xff201a2a, dk = f.dark ?? dark;
       for (let yy = 0; yy < s.h; yy++) {
         const ty = Y + yy; if (ty < 0 || ty >= H) continue;
-        const k = 1 - yy / s.h;
+        const k = f.hang ? yy / s.h : 1 - yy / s.h;
         const off = Math.round(sway * k * k);
         for (let xx = 0; xx < s.w; xx++) {
           const v = s.d[yy * s.w + (f.flip ? s.w - 1 - xx : xx)]; if (!v) continue;

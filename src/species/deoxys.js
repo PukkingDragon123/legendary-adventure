@@ -12,7 +12,7 @@
    Pose params:
      wave   radians   tentacle wave phase (animate continuously; arms undulate and twist)
      lean   -0.35..0.35  body lean (+ = forward)
-     spread 0..1      arm spread (0 = hanging down, 0.5 = relaxed out/down, 1 = stretched out sideways)
+     spread 0..1      arm spread (0 = hanging down, 0.5 = relaxed out/down, 1 = stretched out sideways; >1 = 1)
      fly    0..1      flight: body tips forward, legs and arms trail back
      punch  0..1      near (+z) arm drives straight forward, far arm pulls back
      kick   0..1      near leg swings forward (up to ~horizontal)

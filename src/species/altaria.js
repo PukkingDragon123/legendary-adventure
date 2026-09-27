@@ -55,7 +55,6 @@ const Altaria = (() => {
     const d = sub(b, a), len = Math.hypot(d[0], d[1], d[2]);
     return E(scl(add(a, b), 0.5), M3.mul(frameY(d, hint), M3.diag(rx, (len / 2) * ext, rz)), part, grp, mat);
   }
-  const ball = (p, r, part, grp, mat) => E(p, M3.diag(r, r, r), part, grp, mat);
   function crPt(P, t) {
     const n = P.length, i = Math.min(n - 2, Math.max(0, Math.floor(t))), u = t - i;
     const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(n - 1, i + 2)];

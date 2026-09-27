@@ -58,6 +58,11 @@ const SFX = (() => {
     scratch(pan = 0, v = 1) { const d = out(pan, v * 0.6), t = now(); noise(d, t, 0.18, 0.4, 'bandpass', 900, 2, 3000); noise(d, t + 0.2, 0.14, 0.3, 'bandpass', 2600, 2, 700); },
     sparkle(pan = 0, v = 1) { const d = out(pan, v * 0.35), t = now(); [96, 100, 103, 108].forEach((n, i) => tone(d, 'sine', N(n), N(n), t + i * 0.05, 0.12, 0.06)); },
     whistle(pan = 0, v = 1) { const d = out(pan, v * 0.4), t = now(); tone(d, 'sine', N(84), N(88), t, 0.12, 0.2); tone(d, 'sine', N(91), N(84), t + 0.16, 0.2, 0.2); },
+    lever(pan = 0, v = 1) { const d = out(pan, v * 0.6), t = now(); noise(d, t, 0.08, 0.5, 'lowpass', 900); tone(d, 'square', 180, 120, t, 0.08, 0.15); tone(d, 'sawtooth', 70, 150, t + 0.1, 0.9, 0.07); tone(d, 'sine', N(79), N(86), t + 0.95, 0.2, 0.12); },
+    tongue(pan = 0, v = 1) { const d = out(pan, v * 0.6), t = now(); tone(d, 'sine', 300, 1400, t, 0.09, 0.3); noise(d, t + 0.06, 0.12, 0.25, 'bandpass', 1800, 3, 600); tone(d, 'sine', 900, 200, t + 0.2, 0.12, 0.2); },
+    evolve(pan = 0, v = 1) { const d = out(pan, v * 0.5), t = now(); for (let i = 0; i < 16; i++) tone(d, 'triangle', N(60 + i * 2), N(60 + i * 2), t + i * 0.2, 0.22, 0.07 + i * 0.004); [72, 76, 79, 84].forEach((n) => tone(d, 'sine', N(n), N(n), t + 3.4, 1.4, 0.1)); noise(d, t + 3.3, 1.2, 0.2, 'highpass', 4000, 1, 9000); },
+    chirp(pan = 0, v = 1) { const d = out(pan, v * 0.25), t = now(); tone(d, 'sine', N(96), N(100), t, 0.05, 0.1); tone(d, 'sine', N(100), N(96), t + 0.07, 0.05, 0.08); },
+    bongo(pan = 0, v = 1) { const d = out(pan, v * 0.5), t = now(); tone(d, 'sine', 220, 150, t, 0.12, 0.4); tone(d, 'sine', 330, 240, t + 0.16, 0.1, 0.3); noise(d, t, 0.03, 0.2, 'bandpass', 2000, 2); },
     unlock(pan = 0, v = 1) { const d = out(pan, v * 0.45), t = now(); [60, 64, 67, 72, 76, 79, 84].forEach((n, i) => { tone(d, 'square', N(n), N(n), t + i * 0.06, 0.12, 0.09); }); tone(d, 'triangle', N(72), N(72), t + 0.5, 0.6, 0.14); },
   };
   const api = {};

@@ -16,6 +16,7 @@
      flap   -1..1   wing beat (+ up, - down); small twitch when folded
      spread  0..1   wings folded over the back -> fully spread
      bill    0..1   beak open (singing); `mouth` is accepted as an alias
+     pitch  -1..1   whole-body pitch about the chest: - nose down (dive, use with spread 0), + nose up
      eyes   'open' | 'happy' | 'closed' | 'blink'
 ------------------------------------------------------------------- */
 const Taillow = (() => {
@@ -35,7 +36,7 @@ const Taillow = (() => {
   });
   const GLOSSY = { [NAVY]: 1, [BEAK]: 1 };
 
-  const DEFAULT = { flap: 0, spread: 0, bill: 0, eyes: 'open', side: 1 };
+  const DEFAULT = { flap: 0, spread: 0, bill: 0, pitch: 0, eyes: 'open', side: 1 };
 
   /* ---------- small math helpers ---------- */
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -74,7 +75,7 @@ const Taillow = (() => {
     return E(scl(add(a, b), 0.5), M3.mul(frameY(d, hint), M3.diag(rx, (len / 2) * ext, rz)), part, grp, mat);
   }
   const C = (m, b = 0) => code(m, b);
-  const M_NAVY = () => C(NAVY), M_FEET = () => C(FEET);
+  const M_FEET = () => C(FEET);
 
   /* ---------- proportions ---------- */
   const HEAD_R = [15.4, 14.6, 14.6];
@@ -146,7 +147,8 @@ const Taillow = (() => {
     const sp = clamp(+P.spread || 0, 0, 1), fl = clamp(+P.flap || 0, -1, 1);
     const bo = clamp(+((pose && pose.bill !== undefined ? pose.bill : pose && pose.mouth !== undefined ? pose.mouth : 0)) || 0, 0, 1);
     const prims = [];
-    const root = chain(T(0, 20, 0), R(M3.rz(-sp * 0.1)), T(0, -20, 0));
+    const pt = clamp(+P.pitch || 0, -1, 1);
+    const root = chain(T(0, 22, 0), R(M3.rz(-sp * 0.1 + pt * (pt < 0 ? 0.75 : 0.45))), T(0, -22, 0));
 
     // --- body + head
     const bodyF = chain(root, T(-3, 19, 0), R(M3.rz(0.22)));
@@ -167,7 +169,7 @@ const Taillow = (() => {
     const tips = [];
     for (const side of [1, -1]) {
       const Rf = M3.mul(M3.rx(-fl * 0.12), frameUW([-0.95, -0.24, 0.16], [0.1, 0.3, 1]));
-      const Rs = M3.mul(M3.rx(-fl * 0.9), frameUW([-0.3, 0.22, 1], [0.05, 1, -0.1]));
+      const Rs = M3.mul(M3.rx(-fl * 0.9), frameUW([-0.3, 0.22, 1], [0.38, 0.92, -0.05]));
       let Rw = slerpM(Rf, Rs, sp);
       let sh = [lerp(1, 2.5, sp), lerp(29, 30, sp), lerp(12.2, 9, sp)];
       if (side < 0) { Rw = M3.mul(MIRZ, M3.mul(Rw, MIRZ)); sh = [sh[0], sh[1], -sh[2]]; }

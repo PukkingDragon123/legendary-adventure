@@ -611,7 +611,7 @@ const BeachAI = (() => {
   }
   // far-away giant on the horizon sea band (projected with parallax)
   class FarWailord extends Mons.Mon {
-    constructor() { super(sp('Wailord'), { kind: 'wailord', dex: 'wailord', x: 2200, y: 460, yaw: 0.35, z: 0, scale: 0.034, qPose: 0.08, persona: 'calm' }); this.layer = 'sea'; this.always = true; this.p = 0.12; this.wx = 2200; this.spout = 0; this.visible = true; this.noShadow = true; this.breach = 0; }
+    constructor() { super(sp('Wailord'), { kind: 'wailord', dex: 'wailord', x: 2200, y: 460, yaw: 0.35, z: 0, scale: 0.026, qPose: 0.08, persona: 'calm' }); this.layer = 'sea'; this.always = true; this.p = 0.12; this.wx = 2200; this.spout = 0; this.visible = true; this.noShadow = true; this.breach = 0; }
     senses() {}
     animate(dt, t) { const P = { tail: Math.sin(t * 0.8) * 0.3, fin: Math.sin(t * 0.6) * 0.3, mouth: 0, eyes: 'open', blow: this.spout, roll: 0 }; Object.assign(P, this.o); this.pose = P; }
     brain() { return this.life(); }
@@ -650,7 +650,8 @@ const BeachAI = (() => {
       const lift = Math.round(this.breach * s.h * 1.4);
       // store world coords so photo/aim logic can find it
       this.x = sx + cx; this.y = sy + cy + s.h * 0.3 - lift;
-      const X = sx - Math.round(s.w / 2), Y = sy - Math.round(s.h * 0.7) - lift;
+      const X = sx - Math.round(s.w / 2), Y = sy - Math.round(s.h * 0.35) - lift;
+      this.cpx = [sx, Y + Math.round(s.h * 0.2)];
       const W = fb.w, H = fb.h, d = fb.d, idb = Stage.S.idOn ? Stage.S.idb : null;
       const haze = Pal.LOOK[Stage.S.hour].hazeC;
       for (let yy = 0; yy < s.h; yy++) {
@@ -735,7 +736,9 @@ const BeachAI = (() => {
     // Wailord breach request: a song at the end of the dock at dusk
     Secrets.update(A, dt, t, G);
   }
-  function drawFarSea(fb, cx, cy, t, hz, seaS) { if (S.wailord && S.wailord.alive) S.wailord.draw(fb, cx, cy, null); }
+  function drawFarSea(fb, cx, cy, t, hz, seaS) { if (S.wailord && S.wailord.alive) { S.wailord.draw(fb, cx, cy, null); const c = S.wailord.cpx; S.wailord.ccol = c && c[0] >= 0 && c[1] >= 0 && c[0] < fb.w && c[1] < fb.h ? fb.d[c[1] * fb.w + c[0]] : null; } }
+  // after the near backdrop is drawn: is the far giant still visible?
+  function checkFar(fb) { const w = S.wailord; if (!w || !w.cpx) return; const c = w.cpx; w.occluded = !(c[0] >= 0 && c[1] >= 0 && c[0] < fb.w && c[1] < fb.h) || fb.d[c[1] * fb.w + c[0]] !== w.ccol; }
   function drawUnderBackdrop(fb, cx, cy, t, C) {
     // distant reef silhouettes, hazy toward the water colour
     const W = fb.w, H = fb.h, d = fb.d;
@@ -927,5 +930,5 @@ const BeachAI = (() => {
   };
   const DOCKY = 496;
 
-  return { S, spawn, update, drawFarSea, drawUnderBackdrop, chest, boatTap, crystalRock, shakeBush, onScan, photoBonus, Secrets, Legends, classes: { SphealM, SealeoM, WalreinM, CorphishM, LuvdiscM, PelipperM, MantineM, RemoraidM, CorsolaM, SharpedoM, WingullM, FarWailord, KyogreM } };
+  return { S, spawn, update, drawFarSea, checkFar, drawUnderBackdrop, chest, boatTap, crystalRock, shakeBush, onScan, photoBonus, Secrets, Legends, classes: { SphealM, SealeoM, WalreinM, CorphishM, LuvdiscM, PelipperM, MantineM, RemoraidM, CorsolaM, SharpedoM, WingullM, FarWailord, KyogreM } };
 })();

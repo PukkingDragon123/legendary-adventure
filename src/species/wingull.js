@@ -14,7 +14,7 @@
    Pose parameters (all optional):
      flap    -1..1   wing beat: wings down (-1) .. up (+1) (only when spread)
      spread   0..1   wings folded along the body (0) .. fully spread (1); default 1
-     bill     0..1   bill closed .. wide open (call)
+     bill     0..1   bill closed .. wide open (call); `mouth` is accepted as an alias
      feet     0..1   feet tucked back (0) .. legs down for landing / perching (1)
      tilt    -1..1   body pitch: nose down (-1, dive) .. nose up (+1, flare) (±0.5 rad)
      eyes    'open' | 'happy' | 'closed' | 'blink'
@@ -103,9 +103,11 @@ const Wingull = (() => {
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [], stamps = [], anchors = {};
-    const fl = clamp(P.flap, -1, 1), sp = clamp(P.spread, 0, 1), bo = clamp(P.bill, 0, 1), ft = clamp(P.feet, 0, 1), tilt = clamp(P.tilt, -1, 1);
+    const fl = clamp(P.flap, -1, 1), sp = clamp(P.spread, 0, 1), ft = clamp(P.feet, 0, 1), tilt = clamp(P.tilt, -1, 1);
+    const bo = clamp(Math.max(P.bill, P.mouth || 0), 0, 1);
     const CG = [-2, 36, 0];
-    const top = chain(T(...CG), R(M3.rz(tilt * 0.5)), T(-CG[0], -CG[1], -CG[2]));
+    // (the model sits 9 units low so the extended feet touch y = 0)
+    const top = chain(T(0, -9, 0), T(...CG), R(M3.rz(tilt * 0.5)), T(-CG[0], -CG[1], -CG[2]));
 
     /* --- head + body (one white teardrop) */
     const headF = chain(top, T(...HEAD_C));
@@ -114,19 +116,19 @@ const Wingull = (() => {
     const bodyF = chain(top, T(...BODY_C), R(M3.rz(0.12)));
     prims.push(ellF(bodyF, BODY_R, 2, 1, M_WHITE));
     // tufts: two feather points at the back of the head
-    for (const [dz, a] of [[3.2, 0.55], [-3.2, 0.55]]) {
-      const tf = chain(headF, T(-14, 11, dz), R(M3.rz(Math.PI - a)));
+    for (const [dz, a] of [[3, 0.42], [-3, 0.42]]) {
+      const tf = chain(headF, T(-15, 8, dz), R(M3.rz(Math.PI - a)));
       prims.push(PL(tf.t, tf.L, 5, 5, TUFT, 2.2));
     }
 
     /* --- bill: yellow base, dark hooked tip; the lower bill hinges open */
     const hingeF = chain(headF, T(16, -4, 0));
     const ubF = chain(hingeF, R(M3.rz(-0.1 + bo * 0.12)));
-    const ubMat = (s) => (s[0] > 0.08 ? C_TIP : C_BILL);
-    prims.push(ellF(chain(ubF, T(15, 1.5, 0)), [19, 6.4, 7], 3, 3, ubMat));
-    prims.push(ellF(chain(ubF, T(31, -1.8, 0), R(M3.rz(-0.7))), [5.2, 3.2, 3.6], 3, 3, () => C_TIP)); // hook
+    const ubMat = (s) => (s[0] > 0.28 ? C_TIP : C_BILL);
+    prims.push(ellF(chain(ubF, T(16, 1.2, 0)), [21, 5.8, 6.4], 3, 3, ubMat));
+    prims.push(ellF(chain(ubF, T(34, -1.6, 0), R(M3.rz(-0.75))), [4.6, 2.8, 3.2], 3, 3, () => C_TIP)); // hook
     const lbF = chain(hingeF, R(M3.rz(-0.16 - bo * 0.5)));
-    prims.push(ellF(chain(lbF, T(13, -2.8, 0)), [15.5, 3.6, 5.4], 4, 4, (s) => (s[0] > 0.3 ? C_TIP : s[1] > 0.55 && bo > 0.05 ? C_MOUTH : C_BILL)));
+    prims.push(ellF(chain(lbF, T(14, -2.6, 0)), [17, 3.4, 5.2], 4, 4, (s) => (s[0] > 0.42 ? C_TIP : s[1] > 0.55 && bo > 0.05 ? C_MOUTH : C_BILL)));
     if (bo > 0.08) prims.push(ellF(chain(hingeF, R(M3.rz(-0.1 - bo * 0.22)), T(10, -1.2, 0)), [11, 2.4, 4.4], 4, 4, () => C_MOUTH));
 
     /* --- eyes */
@@ -194,7 +196,7 @@ const Wingull = (() => {
       top: inF(headF, [-6, HEAD_R[1] + 6, 0]),
       head: headF.t,
       mouth: inF(hingeF, [8, -2, 0]),
-      billTip: inF(ubF, [34, -3, 0]),
+      billTip: inF(ubF, [37, -3, 0]),
       body: bodyF.t,
       tail: inF(bodyF, [-BODY_R[0] - 24, 4, 0]),
       feet: sc(add(feetPts[0], feetPts[1]), 0.5),
@@ -214,12 +216,42 @@ const Wingull = (() => {
   const EYES_L = mk(['.kk', 'kkk', 'kkk', 'kkk', 'kkk', 'kk.'], ['.k', 'kk', 'kk', 'kk', 'kk', 'k.'], ['k', 'k', 'k', 'k', 'k'], ['.kkk.', 'k...k', 'k...k'], ['.kk.', 'k..k', 'k..k'], ['.k', 'k.', 'k.'], ['kkkkk', '.kkk.'], ['kkkk', '.kk.'], ['kkk']);
   const EYEC = { k: '#141a26', w: '#ffffff' };
 
+  /* ---------- render: pick the eye size, ray-cast only the sprite's screen box, paste into the buffer ---------- */
   function render(model, opt) {
-    const scale = opt.scale || 1;
+    const { yaw = 1.05, pitch = 0.16, scale = 1, W = 96, H = 96, ox = 48, oy = 82 } = opt;
     const set = scale >= 0.9 ? EYES_L : scale >= 0.5 ? EYES_M : EYES_S;
     for (const st of model.stamps) st.set = set;
-    return Creature.render(model, opt);
+    const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(scale, scale, scale)));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const p of model.prims) {
+      const cv = M3.v(V, p.c), Lv = M3.mul(V, p.L);
+      if (p.kind === 'ell') {
+        const rx = Math.hypot(Lv[0], Lv[1], Lv[2]), ry = Math.hypot(Lv[3], Lv[4], Lv[5]);
+        x0 = Math.min(x0, cv[0] - rx); x1 = Math.max(x1, cv[0] + rx); y0 = Math.min(y0, -cv[1] - ry); y1 = Math.max(y1, -cv[1] + ry);
+      } else {
+        const [a, b, c, d] = p.shape.bb;
+        for (const u of [a, c]) for (const v of [b, d]) for (const w of [-p.thick, p.thick]) {
+          const qx = cv[0] + Lv[0] * u + Lv[1] * v + Lv[2] * w, qy = cv[1] + Lv[3] * u + Lv[4] * v + Lv[5] * w;
+          x0 = Math.min(x0, qx); x1 = Math.max(x1, qx); y0 = Math.min(y0, -qy); y1 = Math.max(y1, -qy);
+        }
+      }
+    }
+    const bx0 = Math.max(0, Math.floor(ox + x0) - 3), bx1 = Math.min(W - 1, Math.ceil(ox + x1) + 3);
+    const by0 = Math.max(0, Math.floor(oy + y0) - 3), by1 = Math.min(H - 1, Math.ceil(oy + y1) + 3);
+    if (bx1 - bx0 < 4 || by1 - by0 < 4 || (bx1 - bx0 + 1) * (by1 - by0 + 1) > 0.8 * W * H) return Creature.render(model, opt);
+    const w = bx1 - bx0 + 1, h = by1 - by0 + 1;
+    const r = Creature.render(model, Object.assign({}, opt, { W: w, H: h, ox: ox - bx0, oy: oy - by0 }));
+    const buf = new PX.Buf(W, H), depth = new Float32Array(W * H).fill(-1e9), part = new Uint8Array(W * H);
+    for (let y = 0; y < h; y++) {
+      const s0 = y * w, d0 = (y + by0) * W + bx0;
+      buf.d.set(r.buf.d.subarray(s0, s0 + w), d0);
+      depth.set(r.depth.subarray(s0, s0 + w), d0);
+      part.set(r.part.subarray(s0, s0 + w), d0);
+    }
+    const anchors = {};
+    for (const k in r.anchors) { const a = r.anchors[k]; anchors[k] = [a[0] + bx0, a[1] + by0, a[2]]; }
+    return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 330, bh: 280, oy: 0.62 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 248, bh: 232, oy: 0.63 } };
 })();

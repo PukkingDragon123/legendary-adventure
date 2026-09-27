@@ -363,6 +363,7 @@ Areas.beach = (() => {
     // distant Wailord (behind the near backdrop)
     BeachAI.drawFarSea(fb, cx, cy, t, hz, seaS);
     Stage.drawLayer(fb, A.layers[3], cx, cy, t);
+    BeachAI.checkFar(fb);
     // underwater backdrop below the surface line
     if (seaS < H) {
       const ys = Math.max(0, Math.round(seaS));

@@ -28,12 +28,13 @@ const World = (() => {
   function waterAt(x) { const v = W0.WL ? W0.WL[clamp(Math.round(x), 0, W0.W)] : NaN; return isNaN(v) ? null : v; }
   const isWet = (x, pad = 10) => { const l = waterAt(x); return l !== null && groundAt(x) - l > pad; };
   function platAt(x) { for (const p of W0.plats) if (x >= p.x0 && x <= p.x1 && !p.off) return p; return null; }
+  const platY = (p, x) => (p.fy ? p.fy(x) : p.y);
   // the surface something standing at (x, y) would stand on: a platform just below/at y, else the ground
   function standY(x, y = -1e9, onPlat = null) {
-    if (onPlat && x >= onPlat.x0 && x <= onPlat.x1) return onPlat.y;
+    if (onPlat && x >= onPlat.x0 && x <= onPlat.x1) return platY(onPlat, x);
     return groundAt(x);
   }
-  return Object.assign(W0, { load, groundAt, slopeAt, waterAt, isWet, platAt, standY });
+  return Object.assign(W0, { load, groundAt, slopeAt, waterAt, isWet, platAt, platY, standY });
 })();
 
 const WorldRender = (() => {

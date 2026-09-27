@@ -15,6 +15,7 @@
      flap   -1..1   cloud-wing beat (+ up, - down)
      bill    0..1   beak open (singing); `mouth` is accepted as an alias
      bob     0..1   bounce: the body squashes down a little and tips forward
+     fold    0..1   cloud wings wrapped round the body like a blanket (perching / cloud nap)
      eyes   'open' | 'happy' | 'closed' | 'blink'
 ------------------------------------------------------------------- */
 const Swablu = (() => {
@@ -33,11 +34,10 @@ const Swablu = (() => {
   });
   const GLOSSY = { [BODY]: 1 };
 
-  const DEFAULT = { flap: 0, bill: 0, bob: 0, eyes: 'open', side: 1 };
+  const DEFAULT = { flap: 0, bill: 0, bob: 0, fold: 0, eyes: 'open', side: 1 };
 
   /* ---------- small math helpers ---------- */
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-  const lerp = (a, b, t) => a + (b - a) * t;
   const add = V3.add, sub = V3.sub, scl = V3.scale, dot = V3.dot, cross = V3.cross, nrm = V3.norm;
   const P2W = (f, p) => add(f.t, M3.v(f.L, p));
   const V2W = (f, d) => M3.v(f.L, d);
@@ -98,7 +98,7 @@ const Swablu = (() => {
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
-    const fl = clamp(+P.flap || 0, -1, 1), bob = clamp(+P.bob || 0, 0, 1);
+    const fl = clamp(+P.flap || 0, -1, 1), bob = clamp(+P.bob || 0, 0, 1), fd = clamp(+P.fold || 0, 0, 1);
     const bo = clamp(+((pose && pose.bill !== undefined ? pose.bill : pose && pose.mouth !== undefined ? pose.mouth : 0)) || 0, 0, 1);
     const prims = [];
 
@@ -133,13 +133,22 @@ const Swablu = (() => {
     // --- cloud wings: clusters of puffs, pivoting at the shoulders
     const tips = [];
     for (const side of [1, -1]) {
-      const a = 0.35 + fl * 0.6;
+      const a = (0.35 + fl * 0.6) * (1 - fd);
       const wing = chain(root, T(-1.5, 27, side * 12), R(M3.rx(-side * a)), R(M3.ry(side * 0.2)));
       PUFFS.forEach((q, i) => {
-        const c = P2W(wing, [q[0], q[1], side * q[2]]);
-        prims.push(E(c, M3.diag(q[3], q[3] * 0.92, q[3]), side > 0 ? 7 : 8, (side > 0 ? 7 : 9) + (i % 2), M_CLOUD));
+        let c = P2W(wing, [q[0], q[1], side * q[2]]);
+        let r = q[3];
+        if (fd > 0) {
+          // folded: the puffs wrap round the flank and the lower front like a cotton blanket
+          const t = q[2] / 31, az = side * (1.5 - 1.3 * t);
+          const R0 = 14.5 + q[3] * 0.3;
+          const w = P2W(root, [Math.cos(az) * R0 - 1, 15.5 + q[1] * 0.45 + (i % 2) * 3.5, Math.sin(az) * R0]);
+          c = add(scl(c, 1 - fd), scl(w, fd));
+          r = q[3] * (1 - 0.06 * fd);
+        }
+        prims.push(E(c, M3.diag(r, r * 0.92, r), side > 0 ? 7 : 8, (side > 0 ? 7 : 9) + (i % 2), M_CLOUD));
       });
-      tips.push(P2W(wing, [0, 0, side * 34]));
+      tips.push(P2W(wing, [0, 0, side * 34 * (1 - 0.6 * fd)]));
     }
 
     // --- tail feathers: a thin blue pair pointing down and back

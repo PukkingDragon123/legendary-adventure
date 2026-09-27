@@ -16,12 +16,13 @@
      mouth   0..1   closed slit .. wide round jet mouth (Water Gun)
      tail   -1..1   tail sway toward -z (-1) .. +z (+1) (swimming wiggle)
      fins    0..1   fins folded (0) .. flared out (1); default 0.35
-     aim    -1..1   body pitched nose down (-1) .. nose up (+1) (±0.5 rad), for aiming shots
+     aim    -1..1   body pitched nose down (-1) .. nose up (+1) (±0.5 rad), for aiming shots;
+                    `pitch` is accepted as an alias (same sign: + = nose up)
      eyes   'open' | 'happy' | 'closed' | 'blink' | 'angry'
    Anchors: top, head, mouth (jet nozzle), eyeN, eyeF, body, tail, dorsal, finN, finF.
 ------------------------------------------------------------------- */
 const Remoraid = (() => {
-  const { chain, T, R, F, code } = Creature;
+  const { chain, T, R, code } = Creature;
 
   // ---- materials
   const BODY = 1, STRIPE = 2, FIN = 3, MUZZLE = 4, MOUTH = 5, VEIN = 6;
@@ -35,15 +36,14 @@ const Remoraid = (() => {
     [VEIN]:   { r: ['#8ea69c', '#a3b9af', '#b6cac1', '#c8d8d0', '#dae6e0'], od: '#4f6a62', ol: '#7f978e', ln: '#8aa097' },
   });
   const GLOSSY = { [BODY]: 1, [MUZZLE]: 1 };
-  const C_BODY = code(BODY), C_STRIPE = code(STRIPE), C_FIN = code(FIN, 1), C_MUZZLE = code(MUZZLE), C_MOUTH = code(MOUTH);
+  const C_BODY = code(BODY), C_STRIPE = code(STRIPE), C_FIN = code(FIN, 1), C_MUZZLE = code(MUZZLE);
   const M_BODY = () => C_BODY;
 
   const DEFAULT = { mouth: 0, tail: 0, fins: 0.35, aim: 0, eyes: 'open', side: 1 };
 
   // ---- helpers
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-  const lerp = (a, b, t) => a + (b - a) * t;
-  const add = V3.add, sub = V3.sub, sc = V3.scale, nrm = V3.norm, cross = V3.cross;
+  const add = V3.add, sc = V3.scale, nrm = V3.norm, cross = V3.cross;
   const inF = (f, p) => add(f.t, M3.v(f.L, p));
   const E = (c, L, part, grp, mat) => ({ kind: 'ell', part, grp, c, L, mat });
   const PL = (c, L, part, grp, shape, thick) => ({ kind: 'plate', part, grp, c, L, shape, thick });
@@ -90,7 +90,8 @@ const Remoraid = (() => {
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [], stamps = [], anchors = {};
-    const mo = clamp(P.mouth, 0, 1), tw = clamp(P.tail, -1, 1), fins = clamp(P.fins, 0, 1), aim = clamp(P.aim, -1, 1);
+    const mo = clamp(P.mouth, 0, 1), tw = clamp(P.tail, -1, 1), fins = clamp(P.fins, 0, 1);
+    const aim = clamp(P.aim || P.pitch || 0, -1, 1);
     const side = P.side === undefined ? 1 : clamp(P.side, -1, 1);
     const body = chain(T(0, 26, 0), R(M3.rz(aim * 0.5)), T(0, -26, 0));
 
@@ -137,12 +138,12 @@ const Remoraid = (() => {
       return C_BODY;
     };
     prims.push(ellF(bodyF, BODY_R, 2, 1, stripeMat));
-    const tailF = chain(body, T(REAR_C[0] + 10, REAR_C[1], 0), R(M3.ry(-tw * 0.45)), T(-10, 0, 0));
+    const tailF = chain(body, T(REAR_C[0] + 10, REAR_C[1], 0), R(M3.ry(tw * 0.45)), T(-10, 0, 0));
     prims.push(ellF(tailF, REAR_R, 3, 1, M_BODY));
 
     /* --- fins */
     // tail fin: vertical plate behind the peduncle, swaying further than the body
-    const tfF = chain(tailF, T(-REAR_R[0] + 3, 0, 0), R(M3.ry(-tw * 0.35)));
+    const tfF = chain(tailF, T(-REAR_R[0] + 3, 0, 0), R(M3.ry(tw * 0.35)));
     const tailFin = PL(tfF.t, M3.mul(tfF.L, M3.cols([-1, 0, 0], [0, 1, 0], [0, 0, -1])), 7, 7, TAILF.shape, 1.4);
     tailFin.lines = TAILF.lines;
     prims.push(tailFin);
@@ -199,7 +200,7 @@ const Remoraid = (() => {
   function eyeGlyph(n, sx, kind) {
     const w = Math.max(2, Math.round(n * sx)), h = n;
     const cx = w / 2, cy = h / 2;
-    const inD = (x, y, rx = w / 2, ry = h / 2, ox = 0, oy = 0) => x >= 0 && y >= 0 && x < w && y < h && ((x + 0.5 - cx - ox) / rx) ** 2 + ((y + 0.5 - cy - oy) / ry) ** 2 <= 1;
+    const inD = (x, y) => x >= 0 && y >= 0 && x < w && y < h && ((x + 0.5 - cx) / (w / 2)) ** 2 + ((y + 0.5 - cy) / (h / 2)) ** 2 <= 1;
     const G = [];
     for (let y = 0; y < h; y++) G.push(new Array(w).fill('.'));
     const ringOf = (test) => {
@@ -208,8 +209,7 @@ const Remoraid = (() => {
       return out;
     };
     if (kind === 'blink') {
-      const ww = Math.max(2, w - 2), y0 = Math.floor(h / 2);
-      const rows = [];
+      const ww = Math.max(2, w - 2);
       let r0 = '', r1 = '';
       for (let x = 0; x < w; x++) {
         r0 += x >= (w - ww) / 2 && x < (w + ww) / 2 ? 'k' : '.';
@@ -226,8 +226,7 @@ const Remoraid = (() => {
     }
     const D = (x, y) => inD(x, y);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (D(x, y)) G[y][x] = 'w';
-    let ring = ringOf(D);
-    for (const [x, y] of ring) G[y][x] = 'k';
+    for (const [x, y] of ringOf(D)) G[y][x] = 'k';
     if (n >= 13) { // thicker ring on big eyes
       const D2 = (x, y) => D(x, y) && G[y][x] !== 'k';
       for (const [x, y] of ringOf(D2)) if (Math.abs(y + 0.5 - cy) > h * 0.25 || Math.abs(x + 0.5 - cx) > w * 0.3) G[y][x] = 'k';
@@ -288,7 +287,7 @@ const Remoraid = (() => {
     const cy = Math.cos(yaw), sy = Math.sin(yaw);
     for (const st of model.stamps) {
       st.set = set;
-      st.flipX = cy * st.toFront[0] - sy * st.toFront[1] < 0; // angry lids slant down toward the snout
+      st.flipX = st.kind === 'angry' && cy * st.toFront[0] - sy * st.toFront[1] < 0; // angry lids slant down toward the snout
     }
     // 1-px decals (cross-hairs on the head, the closed mouth slit on the muzzle), culled when facing away
     const V = M3.mul(M3.rx(pitch), M3.mul(M3.ry(-yaw), M3.diag(scale, scale, scale)));

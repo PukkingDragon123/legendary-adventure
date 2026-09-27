@@ -10,22 +10,22 @@
    Model space: x = forward (the face), y = up, z = near side at yaw 0,
    ground (bottom of the ball) at y = 0.
 
-   Minior.core(i) → full palette for core colour i:
+   Minior.core(i) → full palette for core colour i (wraps modulo 8, cached):
      0 red, 1 orange, 2 yellow, 3 green, 4 blue, 5 indigo, 6 violet, 7 pink.
    (Minior.PAL is the pink core.)
 
    Pose params:
      crack  0..1   0 = intact Meteor Form (thin dark fracture lines);
-                   0..0.3 the fracture lines light up with the core's glow and
+                   0..0.37 the fracture lines light up with the core's glow and
                    spread; 0.35..1 shell chunks fall away one by one (the two
-                   face chunks go together at ~0.68), showing the glossy core
+                   face chunks go together at ~0.65), showing the glossy core
                    through the holes with glowing broken edges; 1 = Core Form.
      shell  'meteor' | 'core'  convenience: 'core' forces crack = 1
      spin   radians — tumbling rotation (about an axis tilted off vertical)
      glow   0..1   bursting: brighter core ramp, wider/brighter glowing seams
-     eyes   'open' | 'happy' | 'closed' | 'blink'
+     eyes   'open' | 'happy' | 'closed' | 'blink'  (anything else = 'open')
      mouth  0..1   small open mouth (Core Form: the smile opens)
-     squash -0.5..0.5  vertical squash (+ = flattened, for bounces)
+     squash -0.35..0.5  vertical squash (+ = flattened, for bounces)
    Anchors: top, head, body, core, mouth, eyeN, eyeF.
 ------------------------------------------------------------------- */
 const Minior = (() => {
@@ -100,8 +100,8 @@ const Minior = (() => {
     return { sd, e, u: out, v: t2, phc: sd > 0 ? -0.55 : 0.55 };
   });
   const E_HOLE = 0.31;     // meteor eye hole angular radius
-  const E_WHITE = 0.175, E_PALE = 0.225; // core eye: white glow, pale rim
-  const SW_IN = 0.3, SW_T = 0.155, SW_SPAN = 1.62; // swirl crescent: inner radius, max thickness, half-span (rad)
+  const E_WHITE = 0.2, E_PALE = 0.25; // core eye: white glow, pale rim
+  const SW_IN = 0.325, SW_T = 0.19, SW_SPAN = 1.78; // swirl crescent: inner radius, max thickness, half-span (rad)
   const SMILE = sph(0, -0.24);
   const [SM_U, SM_V] = tangents(SMILE);
   const KNOB = sph(-0.84, -0.32);
@@ -116,10 +116,13 @@ const Minior = (() => {
     }
     for (const ph of [0.5, 2.6, 4.7]) SPIKES.push(nrm([-0.78, 0.62 * Math.cos(ph), 0.62 * Math.sin(ph)]));
   }
-  const SOCK = 0.27; // socket ring angular radius on the shell
+  const SOCK = 0.22; // socket ring angular radius on the shell
   // spike: one long ellipsoid sunk deep into the ball, so the part outside is a smooth, slightly
   // rounded cone ("bullet"): centre at -SPK_C·LS below the core surface, half-length SPK_A·LS, radius SPK_B·LS
   const SPK_C = 1.2, SPK_A = 2.2, SPK_B = 0.6;
+  // meteor tip (the part of a core spike poking through the shell): centre MT_C below the shell,
+  // half-length MT_A (protrudes MT_A − MT_C ≈ 5.6), radius MT_B (≈ 3.3 wide at the shell)
+  const MT_C = 8, MT_A = 13.6, MT_B = 4.1;
   // shell chunks (Voronoi cells); the two face chunks are centred on the eyes
   const SEEDS = [
     EYES[0].e, EYES[1].e, sph(0, 0.62), sph(0, -0.62),
@@ -149,7 +152,7 @@ const Minior = (() => {
   }
   const nearEye = (d, lim) => EYES.some((E) => dot(d, E.e) > Math.cos(lim));
   const nearSpike = (d, lim) => SPIKES.some((q) => dot(d, q) > Math.cos(lim));
-  const TRIS = makeTris(40, 0.15, (d) => nearEye(d, E_HOLE + 0.12) || nearSpike(d, SOCK + 0.1) || dot(d, KNOB) > Math.cos(0.3));
+  const TRIS = makeTris(66, 0.165, (d) => nearEye(d, E_HOLE + 0.11) || nearSpike(d, SOCK + 0.09) || dot(d, KNOB) > Math.cos(0.28));
   const CTRIS = makeTris(13, 0.15, (d) => nearEye(d, 0.62) || nearSpike(d, 0.38) || dot(d, SMILE) > Math.cos(0.4));
   function triAt(list, s) {
     for (const m of list) {
@@ -304,11 +307,19 @@ const Minior = (() => {
       const meteor = shellOn && !gone[chunkOf(d)];
       const [b1, b2] = tangents(d);
       const Lf = M3.mul(body.L, M3.cols(b1, b2, d));
+      if (meteor) {
+        // only the small grey-white tip pokes out of its socket in the shell
+        const f = { L: Lf, t: V3.add(body.t, M3.v(body.L, V3.scale(d, RS - MT_C))) };
+        prims.push(ell(f, [MT_B, MT_B, MT_A], { part: 4 + k, grp: 3, mat: (s) => {
+          if (s[2] < 0.3) return 0;
+          const h = -MT_C + MT_A * s[2]; // height above the shell
+          return h > 3.9 ? code(SPIKE, 1) : code(SPIKE, h < 1.3 ? -1 : 0);
+        } }));
+        return;
+      }
       const H = -SPK_C * LS, A = SPK_A * LS;
       const f = { L: Lf, t: V3.add(body.t, M3.v(body.L, V3.scale(d, RC + H))) };
-      const mat = meteor
-        ? (s) => { if (s[2] < 0.4) return 0; const h = (H + A * s[2]) / LS; return h > 0.8 ? code(SPIKE, 1) : code(SPIKE, h < 0.4 ? -1 : 0); }
-        : (s) => { if (s[2] < 0.4) return 0; const h = (H + A * s[2]) / LS; return h > 0.76 ? code(EYEW, 1) : h > 0.58 ? code(SWIRL, 0) : code(CORE); };
+      const mat = (s) => { if (s[2] < 0.4) return 0; const h = (H + A * s[2]) / LS; return h > 0.76 ? code(EYEW, 1) : h > 0.58 ? code(SWIRL, 0) : code(CORE); };
       prims.push(ell(f, [SPK_B * LS, SPK_B * LS, A], { part: 4 + k, grp: 3, mat }));
     });
 

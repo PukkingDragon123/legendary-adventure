@@ -87,7 +87,7 @@ const Mons = (() => {
       switch (this.persona) {
         case 'shy': this.doTask(this.flee(mk), 4); break;
         case 'curious': this.doTask(this.curiousLook(mk), 3); break;
-        case 'showoff': this.doTask(this.pose(mk), 3); break;
+        case 'showoff': this.doTask(this.posing(mk), 3); break;
         case 'grumpy': if (this.annoy > 0.5 && this.attackCam) this.doTask(this.attackCam(mk), 5); else this.doTask(this.stare(mk), 2); break;
         default: this.doTask(this.stare(mk), 2);
       }
@@ -107,7 +107,7 @@ const Mons = (() => {
       while (e < 2.2) { const dt = yield; e += dt; this.setAct('curious', e > 0.6 && e < 1.8 ? 1 : 0.4); this.o.eyes = e % 1 < 0.1 ? 'blink' : 'open'; this.headTilt = Math.sin(e * 3) * 0.2; }
       this.emote(pick(['heart', 'note']), 1.2);
     }
-    *pose(mk) {
+    *posing(mk) {
       this.emote('star', 1);
       yield* this.faceCam(1);
       let e = 0;
@@ -163,7 +163,7 @@ const Mons = (() => {
           this.vair -= 900 * dt; this.air += this.vair * dt;
           if (this.air <= 0) { this.air = 0; if (this.vair < -150) { this.landed && this.landed(-this.vair); } this.vair = 0; }
         }
-        const base = this.plat && this.x >= this.plat.x0 && this.x <= this.plat.x1 ? this.plat.y : World.groundAt(this.x);
+        const base = this.plat && this.x >= this.plat.x0 && this.x <= this.plat.x1 ? World.platY(this.plat, this.x) : World.groundAt(this.x);
         if (this.plat && (this.x < this.plat.x0 || this.x > this.plat.x1)) this.plat = null;
         this.y = base - this.air + this.zd;
       } else if (this.mode === 'swim') {
@@ -186,7 +186,7 @@ const Mons = (() => {
     draw(fb, cx, cy, occ) {
       const s = this.spr;
       if (!s || !this.visible || this.hideK >= 0.999) return;
-      const X = this.ox() - cx, Y = this.oy() - cy;
+      const X = this.ox() - cx, Y = this.oy() - cy + (this.bury ? Math.round(s.h * this.bury) : 0);
       const W = fb.w, H = fb.h, d = fb.d;
       const rows = this.bury ? Math.max(1, Math.round(s.h * (1 - this.bury))) : s.h;
       const x0 = Math.max(0, -X), x1 = Math.min(s.w, W - X), y0 = Math.max(0, -Y), y1 = Math.min(rows, H - Y);

@@ -70,10 +70,13 @@ const Mantine = (() => {
   const BODY_R = [62, 40, 58];       // head / belly dome
   const REAR_C = [-40, -5, 0], REAR_R = [54, 29, 42];
   const YH = 10;                     // wing-root height above the body centre
-  // navy cap boundary on the dome (unit-sphere v as a function of azimuth): high over the face,
-  // dropping to the wing-root line on the sides and back
+  // navy cap boundary on the dome (unit-sphere v as a function of azimuth): an arch over the face,
+  // dropping below the wing roots on the flanks (so a lowered wing never uncovers a lilac band)
   const WING_V = YH / BODY_R[1];
-  const capV = (az) => Math.max(WING_V, 0.52 - 0.5 * az * az);
+  const capV = (az) => {
+    const t = clamp((Math.abs(az) - 0.75) / 0.6, 0, 1);
+    return Math.max(WING_V - 0.36 * t * t * (3 - 2 * t), 0.52 - 0.5 * az * az);
+  };
 
   /* ---------- wing planform (x forward, z outward; body-centre coordinates, near wing) ---------- */
   const LE = [[44, 30], [36, 55], [22, 85], [4, 115], [-16, 142], [-38, 164], [-58, 178], [-72, 186]];
@@ -159,6 +162,21 @@ const Mantine = (() => {
   }
   CORES.forEach((e, k) => wingEll(e, k, false));
   MEMBS.forEach((e, k) => wingEll(e, k, true));
+  // end caps: thin discs closing each core's outboard cut face (where the next, thinner section
+  // would otherwise let you look into the hollow end of the thicker one)
+  const CAPS = CORES.slice(0, 2).map((e, k) => {
+    const z0 = ZLIM[k][1], c = Math.cos(e.psi), sn = Math.sin(e.psi);
+    let x0 = Infinity, x1 = -Infinity, rmin = 1;
+    for (let x = -120; x <= 80; x += 0.25) {
+      const dx = x - e.cx, dz = z0 - e.cz;
+      const w = dx * c + dz * sn, u = -dx * sn + dz * c; // chord / span coordinates
+      const r = Math.hypot(w / e.Rw, u / e.Ru);
+      if (r < 1) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); rmin = Math.min(rmin, r); }
+    }
+    const cap = { k, x: (x0 + x1) / 2, z: z0 - 0.6, a: (x1 - x0) / 2, b: e.Ry * Math.sqrt(1 - rmin * rmin) };
+    cap.mat = (sv) => (sv[1] >= 0 ? C_BACK : under(cap.x + cap.a * sv[0], z0));
+    return cap;
+  });
 
   /* ---------- tail ---------- */
   const TAIL_BEND = [0.2, 0.08, 0.0, -0.05, -0.07, -0.06, -0.02, 0.02, 0.05, 0.06, 0.04, 0.02];
@@ -223,8 +241,8 @@ const Mantine = (() => {
 
     /* --- rear body tapering into the tail */
     const rearF = chain(body, T(...REAR_C));
-    const rearV = (YH - REAR_C[1]) / REAR_R[1];
-    prims.push(ellF(rearF, REAR_R, 2, 1, (s) => (s[1] > rearV * clamp(0.35 + s[0], -0.3, 1) ? C_BACK : C_BELLY)));
+    const rearV = (YH - 14 - REAR_C[1]) / REAR_R[1];
+    prims.push(ellF(rearF, REAR_R, 2, 1, (s) => (s[1] > rearV - 0.3 * Math.max(0, -s[0]) ? C_BACK : C_BELLY)));
 
     /* --- wings (near side built, far side mirrored); rest pose: roots droop a little, tips curl up */
     // each section's span axis is turned up by th[k] while its thickness stays vertical, so
@@ -251,6 +269,11 @@ const Mantine = (() => {
           wingPrims.push(w, side);
         }
       }
+      for (const cap of CAPS) {
+        const w = E(inF(hw[cap.k], [cap.x, 0, cap.z - HZ[cap.k]]), M3.mul(hw[cap.k].L, M3.diag(cap.a, cap.b, 1.2)), pid + cap.k, 1, cap.mat);
+        prims.push(w);
+        wingPrims.push(w, side);
+      }
       tips.push(inF(body, tipP));
     }
 
@@ -275,14 +298,14 @@ const Mantine = (() => {
     let prev = tf.t;
     for (let k = 0; k < TAIL_N; k++) {
       const u = k / (TAIL_N - 1);
-      tf = chain(tf, R(M3.ry(-tailS * (0.03 + 0.07 * u))), R(M3.rz(TAIL_BEND[k])));
+      tf = chain(tf, R(M3.ry(tailS * (0.03 + 0.07 * u))), R(M3.rz(TAIL_BEND[k])));
       const nxt = inF(tf, [-TAIL_L, 0, 0]);
       const r = lerp(TAIL_R0, TAIL_R1, Math.sqrt(u));
       prims.push(segX(prev, nxt, r, r, M3.v(tf.L, [0, 1, 0]), 10, 10, M_TAIL, TAIL_L * 0.55));
       tf = chain(tf, T(-TAIL_L, 0, 0));
       prev = nxt;
     }
-    const blade = chain(tf, R(M3.ry(-tailS * 0.25)), R(M3.rz(0.06)), R(M3.rx(0.3)), T(-BLADE_R[0] + 6, 0, 0));
+    const blade = chain(tf, R(M3.ry(tailS * 0.25)), R(M3.rz(0.06)), R(M3.rx(0.3)), T(-BLADE_R[0] + 6, 0, 0));
     prims.push(ellF(blade, BLADE_R, 10, 10, (s) => (s[0] < -0.2 ? C_TIP : C_TAIL)));
 
     /* --- eyes */

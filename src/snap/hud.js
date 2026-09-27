@@ -162,8 +162,8 @@ const HUD = (() => {
     Font.draw(fb, b.name, fb.w / 2, y + 10, S.screenText, { font: 'title', align: 'center' });
     Font.draw(fb, b.sub, fb.w / 2, y + h + 4, 0xffffffff, { font: 'small', align: 'center', outline: INK });
   }
-  function drawToasts(fb, S, t) {
-    let y = H.ban ? 84 : 36;
+  function drawToasts(fb, S, t, bottom = false) {
+    let y = bottom ? fb.h - 24 - 22 * Math.max(0, H.toasts.length - 1) : H.ban ? 84 : 36;
     for (const tt of H.toasts) {
       const k = Math.min(1, tt.t / 0.2, (tt.life - tt.t) / 0.3);
       if (k <= 0) continue;
@@ -202,8 +202,8 @@ const HUD = (() => {
     H.btns.length = 0;
     const S = UI.skin();
     if (Game.mode === 'title') { drawTitle(fb, t); return; }
-    if (Game.mode === 'dex') { Dex.draw(fb, t); drawToasts(fb, S, t); return; }
-    if (Game.mode === 'map') { WorldMap.draw(fb, t); drawToasts(fb, S, t); return; }
+    if (Game.mode === 'dex') { Dex.draw(fb, t); drawToasts(fb, S, t, true); return; }
+    if (Game.mode === 'map') { WorldMap.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'camera') { Photo.drawUI(fb, t); Music.drawUI(fb, t, 'camera'); drawToasts(fb, S, t); return; }
     drawScan(fb, S, t);
     drawTop(fb, S, t);

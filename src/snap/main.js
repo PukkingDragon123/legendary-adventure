@@ -184,18 +184,20 @@ const Game = (() => {
     // contact shadows
     for (const m of G.mons) {
       if (!m.visible || !m.alive || m.layer === 'far' || m.mode === 'swim' || m.hideK > 0.9 || m.noShadow) continue;
-      const base = m.plat ? m.plat.y : World.groundAt(m.x);
+      const base = m.plat ? World.platY(m.plat, m.x) : World.groundAt(m.x);
       const h = base - (m.y - m.zd);
       if (h > 160 || h < -4) continue;
       Critters.shadow(fb, cx, cy, m.x, base + 1 + m.zd, m.width() * 0.36 * (1 - h / 400), 2.6, 0.85 * (1 - h / 160));
     }
     Items.drawBack(fb, cx, cy, t);
-    const mids = G.mons.filter((m) => m.layer !== 'far' && m.layer !== 'sea' && m.visible && m.alive).sort((a, b) => (a.zd - b.zd) || (a.z - b.z));
+    const mids = G.mons.filter((m) => !m.layer && m.visible && m.alive).sort((a, b) => (a.zd - b.zd) || (a.z - b.z));
     for (const m of mids) { m.draw(fb, cx, cy, occ); if (m.drawExtra) m.drawExtra(fb, cx, cy, P, t, occ); }
     Items.draw(fb, cx, cy, t);
     Stage.drawProps(fb, cx, cy, t, true);
     Stage.drawLate(fb, cx, cy, t);
     if (A.def.drawFront) A.def.drawFront(A, fb, cx, cy, t);
+    // big creatures nearer than the lane's front props (e.g. Milotic in front of the bridge)
+    for (const m of G.mons) if (m.layer === 'near' && m.visible && m.alive) { m.draw(fb, cx, cy, occ); if (m.drawExtra) m.drawExtra(fb, cx, cy, P, t, occ); }
     mark('scene');
     Stage.drawWater(fb, cx, cy, t);
     mark('water');
@@ -274,11 +276,11 @@ const Game = (() => {
   function targetFor(wx, wy) {
     const lvl = World.waterAt(wx);
     const p = World.platAt(wx);
-    if (p && Math.abs(wy - p.y) < 26) return { kind: 'plat', x: wx, y: p.y, plat: p };
+    if (p && Math.abs(wy - World.platY(p, wx)) < 26) return { kind: 'plat', x: wx, y: World.platY(p, wx), plat: p };
     if (lvl !== null) {
       const s = WorldRender.surfaceAt(wx, G.t);
       if (wy > s - 6) return { kind: 'swim', x: wx, y: clamp(wy, s + 12, World.groundAt(wx) - 10) };
-      if (p) return { kind: 'plat', x: wx, y: p.y, plat: p };
+      if (p) return { kind: 'plat', x: wx, y: World.platY(p, wx), plat: p };
       return { kind: 'swim', x: wx, y: s + 14 };
     }
     return { kind: 'walk', x: wx, y: World.groundAt(wx) };
@@ -388,6 +390,7 @@ const Game = (() => {
     Music.unlock();
     const want = U.store.get('mk-snap-sound', true);
     Sound.set(!!want);
+    Music.onSound(Sound.on);
     G.mode = 'explore';
     const st = $('#start'); if (st) { st.classList.add('open'); setTimeout(() => { st.hidden = true; }, 650); }
     sfx('chime', null, 0.7);
@@ -417,6 +420,7 @@ const Game = (() => {
     const wk = document.getElementById('wk-src');
     if (wk && !qs.has('noworker')) Critters.Pool.init(wk.textContent);
     Save.load();
+    if (qs.get('unlock') === 'all') for (const id of Object.keys(Areas)) Save.unlock(id);
     layout();
     window.addEventListener('resize', layout);
     setHour(qs.has('time') ? Math.max(0, Pal.HOURS.indexOf(qs.get('time'))) : 1, true);

@@ -59,7 +59,7 @@ const Rewards = (() => {
     'neck.bow': { slot: 'neck', name: 'Bow Tie', desc: 'Very dapper.' },
     'neck.scarf': { slot: 'neck', name: 'Red Scarf', desc: 'A gift from a fluffy friend.' },
   };
-  const SLOTS = [['hat', 'Hats'], ['shirt', 'Shirts'], ['glasses', 'Glasses'], ['neck', 'Neck'], ['skin', 'Device skins'], ['banner', 'Banners'], ['key', 'Keychains'], ['deco', 'Camera frames']];
+  const SLOTS = [['hat', 'Hats'], ['shirt', 'Shirts'], ['glasses', 'Shades'], ['neck', 'Neck'], ['skin', 'Skins'], ['banner', 'Banners'], ['key', 'Charms'], ['deco', 'Frames']];
   const name = (id) => (C[id] ? C[id].name : id);
   // pts:N / item:berry:N / catalog id
   function grant(id) {

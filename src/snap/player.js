@@ -72,7 +72,7 @@ const Player = (() => {
         tx = this.plat ? (tg.x > this.plat.x1 || tg.x > (this.plat.x0 + this.plat.x1) / 2 ? this.plat.x1 + 12 : this.plat.x0 - 12) : World.shoreX + 30;
       } else if (tg.kind === 'plat' && !this.plat) {
         const p = tg.plat;
-        if (Math.abs(World.groundAt(p.x0) - p.y) < 10) tx = p.x0 + 4; // step on from the beach
+        if (Math.abs(World.groundAt(p.x0) - World.platY(p, p.x0)) < 10) tx = p.x0 + 4; // step on from the land
       } else if (tg.kind === 'walk' && this.plat) {
         tx = clamp(tg.x, this.plat.x0 - 20, this.plat.x1 + 20);
       }
@@ -87,18 +87,18 @@ const Player = (() => {
       this.turn(this.face(d), dt, 9);
       if (Math.sign(Math.cos(this.yaw)) === d) { this.x += d * Math.min(Math.abs(dx), speed * dt); this.moving = speed; }
       // step onto a dock from the sand when walking across its start
-      if (!this.plat) { const p = World.platAt(this.x); if (p && Math.abs(World.groundAt(this.x) - p.y) < 8 && (tg.kind === 'plat' || tg.plat === p)) this.plat = p; }
+      if (!this.plat) { const p = World.platAt(this.x); if (p && Math.abs(World.groundAt(this.x) - World.platY(p, this.x)) < 8 && (tg.kind === 'plat' || tg.plat === p)) this.plat = p; }
     }
     arrive() { const tg = this.target; this.target = null; if (tg && tg.then) tg.then(); }
     jumpOn() { this.vair = 230; this.air = 0.5; }
     *climbUp(p, x) {
       this.vx = this.vy = 0; this.mode = 'climb';
-      const y0 = this.y, y1 = p.y;
+      const y0 = this.y, y1 = World.platY(p, x);
       let e = 0;
       Game.sfx('pat', x, 0.6);
       while (e < 0.7) { const dt = yield; e += dt; this.x = lerp(this.x, x, dt * 8); this.y = lerp(y0, y1, U.ease.inOut(e / 0.7)); this.o.legF = Math.sin(e * 20) * 0.7; this.o.legB = -Math.sin(e * 20) * 0.7; }
       FX.splashAt(x, WorldRender.surfaceAt(x, Game.t), { power: 0.3, n: 6 });
-      this.mode = 'land'; this.plat = p; this.air = 0; this.y = p.y;
+      this.mode = 'land'; this.plat = p; this.air = 0; this.y = World.platY(p, this.x);
       const tg = this.target; if (tg && tg.kind === 'plat') { /* keep walking to the tapped spot */ }
     }
     *diveOff(tg) {
@@ -124,10 +124,10 @@ const Player = (() => {
         }
         if (this.plat && (x < this.plat.x0 || x > this.plat.x1)) {
           // walked off the end of a dock/bridge
-          if (World.groundAt(x) > this.plat.y + 12) { this.mode = 'fall'; this.vx = Math.cos(this.yaw) > 0 ? 60 : -60; this.vy = -60; this.plat = null; }
+          if (World.groundAt(x) > World.platY(this.plat, x) + 12) { this.mode = 'fall'; this.vx = Math.cos(this.yaw) > 0 ? 60 : -60; this.vy = -60; this.plat = null; }
           else this.plat = null;
         }
-        const base = this.plat ? this.plat.y : World.groundAt(this.x);
+        const base = this.plat ? World.platY(this.plat, this.x) : World.groundAt(this.x);
         this.y = base - this.air;
         // sandy footprints
         if (this.moving && !this.plat && Game.area && Game.area.footprint && Math.floor(this.phase / Math.PI) !== this.lastStep) { this.lastStep = Math.floor(this.phase / Math.PI); Game.area.footprint(this.x - Math.cos(this.yaw) * 6, this.y, this.lastStep & 1); }

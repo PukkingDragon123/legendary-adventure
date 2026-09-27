@@ -46,14 +46,16 @@ const Music = (() => {
     M.unlocked = true;
     Sound.init();
     const a = el();
-    if (M.want && Sound.on) start(M.want);
-    else { try { a.play().then(() => a.pause()).catch(() => {}); } catch (e) { /* ignore */ } }
+    if (M.want && Sound.on) { start(M.want); return; }
+    // iOS: an element that has played once during a gesture can be started later without one
+    try { a.muted = true; a.play().then(() => { if (!(Sound.on && M.want && M.playing)) a.pause(); a.muted = false; }).catch(() => { a.muted = false; }); } catch (e) { a.muted = false; }
   }
   function start(id) {
     const T = TRACKS[id]; if (!T) return;
     const a = el();
     // beat visuals use the song's tempo rather than an analyser: routing <audio> through WebAudio can silence it in sandboxed or file:// pages
-    if (M.cur !== id) { M.cur = id; a.src = T.file; M.showT = 5; M.marq = 0; }
+    if (M.loaded !== id) { M.loaded = id; a.src = T.file; M.showT = 5; M.marq = 0; }
+    M.cur = id;
     if (Sound.on && M.unlocked) { a.volume = M.vol; a.play().catch(() => { M.playing = false; }); }
   }
   // an area asks for its song (cross-fades)
@@ -195,7 +197,7 @@ const Music = (() => {
     if (M.melo) Melo.draw(fb, t);
   }
   function tapRecord() {
-    if (M.melo) return;
+    if (M.melo || !M.rect) return;
     Game.sfx('scratch');
     if (typeof Meloetta === 'undefined') { for (let i = 0; i < 10; i++) M.notes.push({ x: M.rect.x + rnd(-10, 10), y: M.rect.y, vx: rnd(-30, 30), vy: -rnd(30, 60), t: 0, life: 2, c: i % 2 ? hex('#ff7ac8') : hex('#6affb0'), k: 'note', ph: i }); return; }
     M.melo = Melo.start(M.rect);

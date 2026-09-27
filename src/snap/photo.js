@@ -70,8 +70,19 @@ const Photo = (() => {
     else { P.focus = null; P.focusMode = 'point'; P.focusPt = { x: wx, y: wy, far: wy < World.groundAt(wx) - 90 && World.waterAt(wx) === null }; }
     P.focusK = 0; P.focusT = 0.01;
   }
-  // crop (visible part of the frame buffer) in fb pixels
-  function crop() { const w = Math.round(Game.VW / P.zs), h = Math.round(Game.VH / P.zs); return { x: Math.round((Game.VW - w) / 2), y: Math.round((Game.VH - h) / 2), w, h }; }
+  // the viewfinder window inside the device frame (UI pixels); a = open animation 0..1
+  function frameRect(W, H, a = 1) {
+    const bw = Math.round(14 * a) + 2, inset = Math.round((1 - a) * 30);
+    return { x0: bw + inset, y0: bw + 8 + inset, x1: W - bw - 34 - inset, y1: H - bw - inset };
+  }
+  // crop = the part of the frame buffer visible through the viewfinder
+  function crop() {
+    const f = frameRect(Game.UW, Game.UH, 1), k = Game.US / Game.zoom, VW = Game.VW, VH = Game.VH;
+    const toFb = (ux, uy) => [(ux * k - VW / 2) / P.zs + VW / 2, (uy * k - VH / 2) / P.zs + VH / 2];
+    const [ax, ay] = toFb(f.x0, f.y0), [bx, by] = toFb(f.x1, f.y1);
+    const x = clamp(Math.round(ax), 0, VW - 2), y = clamp(Math.round(ay), 0, VH - 2);
+    return { x, y, w: clamp(Math.round(bx) - x, 8, VW - x), h: clamp(Math.round(by) - y, 8, VH - y) };
+  }
   function inView(m) {
     if (!P.on) return false;
     const c = crop(), sx = m.x - Game.cam.x, sy = m.y - 10 - Game.cam.y;
@@ -81,7 +92,7 @@ const Photo = (() => {
     const c = crop();
     let best = null, bd = 1e9;
     for (const m of Game.mons) {
-      if (m === Game.mudkip || !m.alive || !m.visible || m.hideK > 0.8) continue;
+      if (m === Game.mudkip || !m.alive || !m.visible || m.hideK > 0.8 || m.occluded) continue;
       const [mx, my] = m.center ? m.center() : [m.x, m.y];
       const sx = mx - Game.cam.x - (c.x + c.w / 2), sy = my - Game.cam.y - (c.y + c.h / 2);
       if (Math.abs(sx) > c.w / 2 || Math.abs(sy) > c.h / 2) continue;
@@ -300,18 +311,15 @@ const Photo = (() => {
   function drawUI(fb, t) {
     const S = UI.skin(), W = fb.w, H = fb.h;
     const a = U.ease.outCubic(P.anim);
-    const bw = Math.round(14 * a) + 2; // device frame thickness
-    // frame: device body around the viewfinder
-    const inset = Math.round((1 - a) * 30);
-    const x0 = bw + inset, y0 = bw + 8 + inset, x1 = W - bw - 34 - inset, y1 = H - bw - inset;
+    const { x0, y0, x1, y1 } = frameRect(W, H, a);
     // outer body
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       if (x >= x0 && x < x1 && y >= y0 && y < y1) continue;
       // rounded inner corners
       fb.d[y * W + x] = S.body;
     }
-    // inner rounded corner masks + dark rim
-    for (let k = 0; k < 4; k++) { const cx = k & 1 ? x1 - 1 : x0, cy = k & 2 ? y1 - 1 : y0; for (let dy = 0; dy < 5; dy++) for (let dx = 0; dx < 5; dx++) { if (Math.hypot(4 - dx, 4 - dy) > 4.5) UI.put(fb, k & 1 ? cx - dx + 4 - 4 + (4 - dx) - (4 - dx) : cx + dx, k & 2 ? cy - dy : cy + dy, S.body); } }
+    // rounded inner corners
+    for (let k = 0; k < 4; k++) { const sx = k & 1 ? -1 : 1, sy = k & 2 ? -1 : 1, cx = k & 1 ? x1 - 1 : x0, cy = k & 2 ? y1 - 1 : y0; for (let dy = 0; dy < 4; dy++) for (let dx = 0; dx < 4; dx++) if (Math.hypot(3.5 - dx, 3.5 - dy) > 3.6) UI.put(fb, cx + sx * dx, cy + sy * dy, S.body); }
     UI.rrect(fb, x0 - 2, y0 - 2, x1 - x0 + 4, 2, 0, S.ink);
     UI.rect(fb, x0 - 2, y1, x1 - x0 + 4, 2, S.ink); UI.rect(fb, x0 - 2, y0 - 2, 2, y1 - y0 + 4, S.ink); UI.rect(fb, x1, y0 - 2, 2, y1 - y0 + 4, S.ink);
     UI.hline(fb, 0, W - 1, 0, S.ink); UI.hline(fb, 1, W - 2, 1, S.bodyL); UI.hline(fb, 0, W - 1, H - 1, S.ink); UI.vline(fb, 0, 0, H - 1, S.ink); UI.vline(fb, W - 1, 0, H - 1, S.ink);
@@ -415,5 +423,5 @@ const Photo = (() => {
       if (r.rec && (r.rec.newSpecies || r.rec.newBeh) && Math.sin(r.t * 10) > -0.4) Font.icon(fb, 'new', x + w - 13, y + 1, 1);
     } else Font.draw(fb, 'No Pokémon', x + w / 2, y + th + 12, 0xff6a7088, { font: 'small', align: 'center' });
   }
-  return Object.assign(P, { open, close, setZoom, aimDrag, aimEnd, keyAim, updateCam, tapFocus, update, dof, shoot, hitLens, drawLens, drawUI, drawRecent, inView, crop });
+  return Object.assign(P, { frameRect, open, close, setZoom, aimDrag, aimEnd, keyAim, updateCam, tapFocus, update, dof, shoot, hitLens, drawLens, drawUI, drawRecent, inView, crop });
 })();

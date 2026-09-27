@@ -81,13 +81,6 @@ const Chatot = (() => {
     return E(scl(add(a, b), 0.5), M3.mul(frameY(d, hint), M3.diag(rx, (len / 2) * ext, rz)), part, grp, mat);
   }
   const ball = (p, r, part, grp, mat) => E(p, M3.diag(r, r, r), part, grp, mat);
-  function crPt(P, t) {
-    const n = P.length, i = Math.min(n - 2, Math.max(0, Math.floor(t))), u = t - i;
-    const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(n - 1, i + 2)];
-    const u2 = u * u, u3 = u2 * u, o = [0, 0, 0];
-    for (let k = 0; k < 3; k++) o[k] = 0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * u + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * u2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * u3);
-    return o;
-  }
   const C = (m, b = 0) => code(m, b);
   const M_BLACK = () => C(BLACK), M_RUFF = () => C(RUFF), M_BLUE = () => C(BLUE), M_FEET = () => C(FEET);
 
@@ -118,7 +111,7 @@ const Chatot = (() => {
       if (v < edge + notch) return 0;
       if (v < -0.35 && ph < 0.12 && k > 0.1) return C(BLUE, -1);
     }
-    return u > 0.35 && v < 0.1 ? C(BLUE, v < -0.3 ? 0 : 0) : C(BLUE);
+    return C(BLUE);
   }
 
   /* ---------- note crest outline (head-local x = forward, y = up; plate normal = z) ---------- */
@@ -210,7 +203,7 @@ const Chatot = (() => {
         const base = P2W(neckF, [Math.cos(a) * 6, row ? -2.6 : 0.6, Math.sin(a) * 6]);
         const c = add(base, scl(dir, len * 0.72));
         const up = V2W(neckF, [0, 1, 0]);
-        prims.push(E(c, M3.mul(frameY(dir, up), M3.diag(2.6, len, 4.3)), 7, 7, (s) => C(RUFF, s[1] > 0.55 ? 0 : 0)));
+        prims.push(E(c, M3.mul(frameY(dir, up), M3.diag(2.6, len, 4.3)), 7, 7, M_RUFF));
       }
     }
 
@@ -218,14 +211,14 @@ const Chatot = (() => {
     const tips = [];
     for (const side of [1, -1]) {
       const Rf = M3.mul(M3.rx(-fl * 0.12), frameUW([-0.8, -0.5, 0.2], [-0.1, 0.2, 1]));
-      const Rs = M3.mul(M3.rx(-fl * 0.95), frameUW([-0.22, 0.28, 1], [0, 1, -0.1]));
+      const Rs = M3.mul(M3.rx(-fl * 0.95), frameUW([-0.26, 0.26, 1], [0.5, 0.86, -0.05])); // high angle of attack: the spread wing shows its surface from the front
       let Rw = slerpM(Rf, Rs, sp);
       let sh = [lerp(0, 1, sp), lerp(35.5, 38, sp), lerp(10.4, 9, sp)];
       if (side < 0) { Rw = M3.mul(MIRZ, M3.mul(Rw, MIRZ)); sh = [sh[0], sh[1], -sh[2]]; }
       const wf = chain(root, F(Rw, sh));
       // local: x = along (u), y = chord (v), z = normal  -> ellipsoid axes (y along, x chord, z thin)
-      const L = M3.mul(wf.L, M3.mul(M3.cols([0, 1, 0], [1, 0, 0], [0, 0, 1]), M3.diag(lerp(7.8, 9.4, sp), lerp(15.5, 17, sp), 2.3)));
-      const c = P2W(wf, [lerp(14, 15, sp), 0, side * 0.5]);
+      const L = M3.mul(wf.L, M3.mul(M3.cols([0, 1, 0], [1, 0, 0], [0, 0, 1]), M3.diag(lerp(7.8, 11, sp), lerp(15.5, 18, sp), 2.3)));
+      const c = P2W(wf, [lerp(14, 16, sp), 0, side * 0.5]);
       prims.push(E(c, L, side > 0 ? 8 : 9, side > 0 ? 8 : 9, wingMat));
       tips.push(P2W(wf, [29, 0, 0]));
     }

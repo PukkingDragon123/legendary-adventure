@@ -168,8 +168,10 @@ const Dex = (() => {
     if (two) {
       UI.lens(fb, ox + 20, oy + 16, 8, S, boot < 1 ? 0.5 + 0.5 * Math.sin(t * 20) : 0.25 + 0.15 * Math.sin(t * 2), t);
       UI.led(fb, ox + 38, oy + 10, 0xffff4a4a, Math.sin(t * 3) > 0); UI.led(fb, ox + 46, oy + 10, 0xffffd23a, true); UI.led(fb, ox + 54, oy + 10, 0xff4ade6a, Math.sin(t * 3 + 1.5) > 0);
-      // speaker grille
+      // speaker grille + page title
       for (let k = 0; k < 4; k++) UI.hline(fb, ox + half - 40, ox + half - 20, oy + 10 + k * 3, S.bodyD);
+      const pt = D.page === 'entry' ? 'ENTRY' : (TABS.find((x) => x[0] === D.page) || ['', ''])[1].toUpperCase();
+      Font.draw(fb, 'POKéDEX · ' + pt, ox + 64, oy + 8, S.trim, { font: 'small' });
       // bottom controls
       const by = oy + DH - 36;
       UI.disc(fb, ox + 24, by + 16, 9, S.btn); UI.rect(fb, ox + 18, by + 14, 13, 5, 0xff2a3040); UI.rect(fb, ox + 22, by + 10, 5, 13, 0xff2a3040);
@@ -375,11 +377,11 @@ const Dex = (() => {
       const seenB = Save.data.beh[sp] || {};
       for (const k in d.beh) {
         const bh = d.beh[k], got = k in seenB;
-        UI.rrect(b, x - 2, y - 3, I.w - 8, got ? 12 : 22, 2, got ? U.mix(S.screen, 0xffffffff, 0.3) : U.mix(S.screen, 0xff000000, 0.12));
+        UI.rrect(b, x - 2, y - 3, I.w - 8, got ? 12 : 13 + Font.wrap('Clue: ' + bh.hint, 'small', I.w - 26).length * 9, 2, got ? U.mix(S.screen, 0xffffffff, 0.3) : U.mix(S.screen, 0xff000000, 0.12));
         Font.draw(b, got ? '{check}' : '{lock}', x, y - 1, 0, { font: 'small' });
         Font.draw(b, got ? bh.n : '???', x + 10, y, S.screenText, { font: 'small' });
         for (let s = 0; s < bh.tier; s++) Font.icon(b, got ? 'star' : 'star0', I.x + I.w - 14 - (bh.tier - 1 - s) * 7, y - 1, 1);
-        if (!got) { Font.draw(b, 'Clue: ' + bh.hint, x + 10, y + 10, U.mix(S.screenText, S.screen, 0.3), { font: 'small', clip: { x0: I.x, y0: I.y, x1: I.x + I.w - 4, y1: I.y + I.h } }); y += 10; }
+        if (!got) { const cl = Font.wrap('Clue: ' + bh.hint, 'small', I.w - 26); cl.forEach((ln, j) => Font.draw(b, ln, x + 10, y + 10 + j * 9, U.mix(S.screenText, S.screen, 0.3), { font: 'small' })); y += cl.length * 9; }
         y += 13;
       }
       y += 4;
