@@ -26,7 +26,7 @@ const files = [
   'src/snap/world.js', 'src/game/waves.js', 'src/game/fx.js', 'src/game/critters.js', 'src/game/audio.js',
   'src/snap/terrain.js', 'src/snap/stage.js', 'src/snap/props.js', 'src/snap/props2.js',
   'src/snap/sfx.js', 'src/snap/save.js', 'src/snap/dexdata.js', 'src/snap/ui.js', 'src/snap/mons.js', 'src/snap/player.js',
-  'src/snap/items.js', 'src/snap/weather.js', 'src/snap/hud.js', 'src/snap/photo.js',
+  'src/snap/items.js', 'src/snap/weather.js', 'src/snap/hud.js', 'src/snap/photo.js', 'src/snap/toys.js',
   ...opt(['src/snap/rewards.js', 'src/snap/quests.js', 'src/snap/music.js', 'src/snap/dex.js', 'src/snap/worldmap.js']),
   ...opt(['src/snap/stubs.js']),
   'src/snap/areas/index.js',

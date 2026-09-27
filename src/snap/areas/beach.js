@@ -85,6 +85,8 @@ Areas.beach = (() => {
     dusk: { far: '#4a3a78', near: '#7a5a8e', glint: '#ffc070', top: '#5a5288', mid: '#342e6c', deep: '#1a1846', abyss: '#07061a', foam: '#ffe0c8', ray: '#ffb888' },
     night: { far: '#0c183c', near: '#193660', glint: '#cfe0ff', top: '#183660', mid: '#0e2446', deep: '#071430', abyss: '#02050e', foam: '#bff8f0', ray: '#8fb0e8' },
   };
+  const SIN = new Float32Array(4096); for (let i = 0; i < 4096; i++) SIN[i] = Math.sin(i / 4096 * Math.PI * 2);
+  const SINK = 4096 / (Math.PI * 2);
   const SC = {}; for (const k in SEAC) { SC[k] = {}; for (const j in SEAC[k]) SC[k][j] = hex(SEAC[k][j]); }
   def.waterCols = (hour, w) => {
     const c = SC[hour];
@@ -319,7 +321,7 @@ Areas.beach = (() => {
     }
     // near backdrop: dunes, beach grass, the Seashore House, fence (land side only)
     {
-      const w = 1100, h = 150, FR = 150, s = new ISpr(w, h + FR);
+      const w = 1100, h = 150, FR = 0, s = new ISpr(w, h + FR); // (the sand in front is now a real perspective floor)
       const top = [];
       for (let x = 0; x < w; x++) { const end = x < 520 ? 0 : (x - 520) * 0.45; top[x] = h - 30 - fbm(x * 0.008, 0.3, 5, 3) * 34 - 10 + end; }
       for (let x = 0; x < w; x++) for (let y = Math.max(0, Math.round(top[x])); y < h; y++) {
@@ -354,6 +356,51 @@ Areas.beach = (() => {
       }
       const L = A.layer(s, 0.62, { haze: 0.22, base: h - 1, x: 0 });
       A.nearL = L;
+    }
+    // ---- 2.5D depth: the sand between the dunes and the lane is a perspective plane; the shoreline
+    // curves away into the bay and waves lap along it; palms, rocks and grass stand at many depths ----
+    {
+      const SH0 = World.shoreX;
+      const shoreW = (p) => { const k = (1 - p) / 0.38; return SH0 + k * (760 - SH0) + Math.sin(k * 3.1) * 34 * k; };
+      const shoreE = (p) => { const k = (1 - p) / 0.38; return 3395 + k * 50 + Math.sin(k * 2.3) * 20 * k; };
+      A.depthP0 = 0.62; A.depthHaze = 0.22;
+      const land = (wx, p, m = 0) => wx < shoreW(p) - m || wx > shoreE(p) + m;
+      A.floor = { p0: 0.62, D: 110,
+        row(wz, p, t) { const lap = Math.sin(t * 0.8 + wz * 0.07) * 5 + Math.sin(t * 1.9 + wz * 0.21) * 1.5; return { sw: shoreW(p) + lap, se: shoreE(p) - lap, C: SC[Stage.S.hour], foam: 2.4 / p }; },
+        tex(wx, wz, p, t, R) {
+        const sw = R.sw, se = R.se;
+        const dist = wx < sw ? sw - wx : wx > se ? wx - se : -Math.min(wx - sw, se - wx);
+        if (dist < -30) return 0; // open sea: the sea band shows through
+        const C = R.C;
+        if (dist < 0) { // clear shallows over sand, with sun glints
+          const k = -dist / 30, g = hash(Math.floor(wx / 3), Math.floor(wz), Math.floor(t * 3)) > 0.97;
+          return g ? C.glint : mix(mix(C.near, C.glint, 0.35), C.near, k);
+        }
+        if (dist < R.foam) return M.shell[3]; // foam line
+        const n = Stage.noiseAt(wx * 0.45, wz * 1.4);
+        if (dist < 18) return M.sandW[Math.min(3, 1 + (n > 0.55 ? 1 : 0) + (dist > 12 ? 1 : 0))];
+        if (wx < 240 || (wx > 3600 && n > 0.62)) return M.grass[n > 0.7 ? 3 : 2];
+        if (hash(Math.floor(wx / 2), Math.floor(wz / 1.2), 7) > 0.996) return M.shell[2];
+        if (hash(Math.floor(wx / 2), Math.floor(wz / 1.2), 9) > 0.997) return M.pebble[2];
+        const rip = Math.sin(wz * 0.9 + n * 7 + wx * 0.015);
+        return M.sand[Math.max(1, Math.min(5, 3 + (rip > 0.7 ? 1 : 0) + (n > 0.64 ? 1 : 0) - (n < 0.34 ? 1 : 0)))];
+      } };
+      const r2 = rng(777);
+      const place = (make, n, p0, p1, m, xr = [60, A.W - 60]) => {
+        for (let i = 0, g = 0; i < n && g < n * 20; g++) {
+          const p = p0 + r2() * (p1 - p0), wx = xr[0] + r2() * (xr[1] - xr[0]);
+          if (!land(wx, p, m)) continue;
+          const it = make(p, wx, i); if (it) i++;
+        }
+      };
+      // palms (painted at their distance's size — nothing is scaled, so pixels stay crisp)
+      place((p, wx, i) => A.scatterAt(Paint.palm(M, Math.round((100 + r2() * 50) * p), 900 + i, { lean: (r2() - 0.5) * 0.5 }), wx, p, { windFrames: true }), 16, 0.64, 0.93, 40);
+      place((p, wx, i) => A.scatterAt(Paint.rock(M, Math.round((16 + r2() * 30) * p), Math.round((10 + r2() * 16) * p), 300 + i, { moss: M.moss, cracks: 1 }), wx, p), 30, 0.63, 0.97, 20);
+      place((p, wx, i) => A.scatterAt(Paint.tuft(M, Math.round((10 + r2() * 12) * p), Math.round((10 + r2() * 14) * p), 500 + i, { ramp: M.grass, flowers: r2() < 0.3 ? [M.flowerP] : null }), wx, p, { windFrames: true }), 90, 0.63, 0.86, 30);
+      place((p, wx, i) => A.scatterAt(Props.driftwood(M, Math.round((22 + r2() * 26) * p), 700 + i), wx, p), 10, 0.7, 0.97, 30);
+      place((p, wx, i) => A.scatterAt(Paint.bush(M, Math.round((18 + r2() * 14) * p), Math.round((10 + r2() * 8) * p), 800 + i, { ramp: M.grass, dots: r2() < 0.5 ? M.flowerY : M.flowerP }), wx, p), 18, 0.63, 0.8, 60);
+      for (const [wx, p] of [[430, 0.9], [620, 0.86], [300, 0.93]]) if (land(wx, p, 20)) A.scatterAt(Props.umbrella(M, Math.floor(wx)), wx, p);
+      A.shoreW = shoreW; A.shoreE = shoreE;
     }
     // east backdrop: warm sandstone sea cliffs with a grassy cap, bushes, palms and a cave mouth
     {
@@ -404,8 +451,12 @@ Areas.beach = (() => {
     }
     A.foreHaze = 0; A.foreDark = 0.16; A.foreTint = 0xff2a1c14;
     // ---- hotspots ----
-    A.addHot({ x0: 395, x1: 455, y0: gy(425) - 60, y1: gy(425), x: 425, reach: 40, tap() { A.umbrella.shake = 0.6; Game.sfx('boing', 425, 0.7); FX.sparkles(425, gy(425) - 50, 3, 20); } });
-    A.addHot({ x0: 535, x1: 588, y0: gy(560) - 44, y1: gy(560), x: 560, reach: 40, tap() { A.castle.shake = 0.5; Game.sfx('dust', 560, 0.8); FX.poof(560, gy(560) - 20, 0xfff5dcab, 0xffdfb476, 6, 5); } });
+    // toys: bounce on the umbrella, build the sandcastle, nap in the hammock, ring the dock bell, collect shells
+    { const u = A.umbrella, us = u.frames[0]; Toys.springy(A, 425, u.y - us.ay + 8, { prop: u, secret: 'toy.umbrella', w: 26 }); }
+    Toys.castle(A, M, A.castle, 560);
+    Toys.hammock(A, M, 178, 328, gy(250) - 46);
+    Toys.bell(A, M, 1800, DOCK.y);
+    Toys.shells(A, M, [280, 1000]);
     A.addHot({ x0: 2318, x1: 2342, y0: gy(2330) - 20, y1: gy(2330) + 2, x: 2330, reach: 34, stand: gy(2330) - 10, tap() { BeachAI.chest(A); } });
     for (const b of A.boats) A.addHot({ x0: b.x - 36, x1: b.x + 36, y0: SEA - 16, y1: SEA + 12, x: b.x, reach: 60, stand: DOCK.y, boat: b, tap() { BeachAI.boatTap(A, b); } });
     A.addHot({ x0: 930, x1: 966, y0: gy(948) - 24, y1: gy(948), x: 948, reach: 40, rock: crystalRock, tap() { BeachAI.crystalRock(A, crystalRock); } });
@@ -431,16 +482,16 @@ Areas.beach = (() => {
       const base = mix(far, near, Math.pow(u, 0.7));
       const row = y * W;
       const lines = 1 + Math.floor(u * 3);
+      // wave texture via a sine lookup table (this band covers a lot of pixels)
+      const fa = (0.3 - u * 0.2) * SINK, pa = (y * 1.7 + t * (0.8 + u)) * SINK, fb2 = 0.071 * SINK, pb = (y * 0.9 - t * 0.6) * SINK;
+      const thr = 1.25 - u * 0.2, gl = mix(base, C.glint, 0.35 + u * 0.25), tr = mix(base, far, 0.35);
+      const off = cx * (0.1 + u * 0.9), sw = 10 + u * 60, tq = Math.floor(t * 4);
       for (let x = 0; x < W; x++) {
-        let c = base;
-        const wx = x + cx * (0.1 + u * 0.9);
-        // wave texture: dark troughs + bright glints, bigger nearer
-        const wv = Math.sin(wx * (0.3 - u * 0.2) + y * 1.7 + t * (0.8 + u)) + Math.sin(wx * 0.071 - t * 0.6 + y * 0.9) * 0.6;
-        if (wv > 1.25 - u * 0.2 && ((x + y) & 1)) c = mix(c, C.glint, 0.35 + u * 0.25);
-        else if (wv < -1.3) c = mix(c, far, 0.35);
-        // sun glitter path
-        const ds = Math.abs(x - sunX) / (10 + u * 60);
-        if (ds < 1 && hash(Math.floor(wx / 2), y, Math.floor(t * 4)) > 0.6 + ds * 0.35) c = mix(c, C.glint, 0.8 - ds * 0.5);
+        const wx = x + off;
+        const wv = SIN[(wx * fa + pa) & 4095] + SIN[(wx * fb2 + pb) & 4095] * 0.6;
+        let c = wv > thr && ((x + y) & 1) ? gl : wv < -1.3 ? tr : base;
+        const ds = Math.abs(x - sunX) / sw;
+        if (ds < 1 && hash(Math.floor(wx / 2), y, tq) > 0.6 + ds * 0.35) c = mix(c, C.glint, 0.8 - ds * 0.5);
         d[row + x] = c;
       }
       if (u < 0.04) for (let x = 0; x < W; x++) d[row + x] = mix(d[row + x], Pal.LOOK[hr].hazeC, 0.5 - u * 10);
@@ -452,6 +503,8 @@ Areas.beach = (() => {
     BeachAI.drawFarSea(fb, cx, cy, t, hz, seaS);
     Stage.drawLayer(fb, A.layers[3], cx, cy, t);
     for (let i = 4; i < A.layers.length; i++) Stage.drawLayer(fb, A.layers[i], cx, cy, t);
+    // the beach receding in perspective: sand plane, curving shoreline with lapping waves, depth scenery
+    Stage.drawDepthFrom(fb, cx, cy, t, 0.6);
     BeachAI.checkFar(fb);
     // underwater backdrop below the surface line
     if (seaS < H) {

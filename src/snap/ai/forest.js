@@ -399,6 +399,7 @@ const ForestAI = (() => {
       this.evolving = true;
       yield* this.swimTo((POOL.x0 + POOL.x1) / 2, RIVER.level + 16, 30, 4);
       HUD.toast('What? Feebas is evolving!', { life: 3 });
+      Game.cine.pan(this.x, RIVER.level - 10, { hold: 4, zoom: 1.18 });
       Game.sfx('evolve', this.x, 1);
       this.mode = 'air';
       let e = 0; const T = 4.6, y0 = this.y;
@@ -503,6 +504,7 @@ const ForestAI = (() => {
       this.x = x0; this.y = s0 + 30;
       FX.splashAt(x0, s0, { power: 1.1 }); Game.sfx('splash', x0, 1);
       HUD.toast('The music drew a Ludicolo out of the pond!', { life: 2.6 });
+      Game.cine.pan(BANK + 60, gy(BANK) - 20, { hold: 2.4 });
       let e = 0; const T = 1.2;
       while (e < T) { const dt = yield; e += dt; const k = e / T; this.x = lerp(x0, x1, k); this.y = lerp(s0 + 30, gy(x1), k) - Math.sin(k * Math.PI) * 90; this.o.mouth = 1; this.o.eyes = 'happy'; this.setAct('dance', 0.6); }
       this.mode = 'land'; this.zd = 1;
@@ -646,7 +648,7 @@ const ForestAI = (() => {
     if (r > 0.6) S.rainWas = 1;
     if (S.rainWas && r < 0.2) {
       S.rainWas = 0;
-      if (!hourIs('night') && S.weather !== 'snow') { S.rainbow = 50; S.rbT = 0; Game.sfx('chime', null, 0.7); HUD.toast(Save.found('forest.rainbow') ? 'A rainbow!' : 'A rainbow arcs over the woods! Rare Pokémon love rainbows...', { life: 3 }); Save.discover('forest.rainbow'); }
+      if (!hourIs('night') && S.weather !== 'snow') { S.rainbow = 50; S.rbT = 0; Game.cine.pan(mk().x + 60, mk().y - 150, { hold: 2.5, zoom: 1.05 }); Game.sfx('chime', null, 0.7); HUD.toast(Save.found('forest.rainbow') ? 'A rainbow!' : 'A rainbow arcs over the woods! Rare Pokémon love rainbows...', { life: 3 }); Save.discover('forest.rainbow'); }
     }
     if (S.rainbow > 0) { S.rainbow -= dt; S.rbT += dt; }
     if (S.storm > 0) { S.storm -= dt; if (S.storm <= 0) { S.storm = 0; Weather.set(S.weather === 'rain' ? { rain: 1, fog: 0.25 } : S.weather === 'snow' ? { snow: 1, fog: 0.2 } : { rain: 0, fog: 0.1 }); } }

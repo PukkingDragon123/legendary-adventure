@@ -201,7 +201,7 @@ const Player = (() => {
       this.target = tg;
     }
     physics(dt, t) {
-      if (this.mode === 'ride') return;
+      if (this.mode === 'ride' || this.mode === 'toy') return;
       const x = this.x;
       if (this.mode === 'land') {
         if (World.isWet(x, 16) && this.air <= 0 && !this.plat) {

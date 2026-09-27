@@ -759,7 +759,7 @@ const BeachAI = (() => {
     if (!Save.found('beach.chest')) {
       Save.discover('beach.chest');
       A.chest.frames = [Props.chest(A.M, true)];
-      FX.sparkles(2330, gy(2330) - 14, 14, 40); FX.bubbles(2330, gy(2330) - 10, 10, SEA);
+      FX.sparkles(2330, gy(2330) - 14, 14, 40); FX.bubbles(2330, gy(2330) - 10, 10, SEA); Game.cine.pan(2330, gy(2330) - 20, { hold: 1.6 });
       Game.sfx('chest', 2330, 1); SFX.reward();
       Save.addItem('berry', 3); Save.addItem('blueorb', 1);
       HUD.toast('Found the Blue Orb and 3 berries!', { life: 3.5, icon: 'spark' });
@@ -836,11 +836,11 @@ const BeachAI = (() => {
     update(A, dt, t, G) {
       const m = G.mudkip;
       // Kyogre: the Blue Orb in the trench at night
-      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 2760 && m.x < 3160 && m.y > 850 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); }
+      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 2760 && m.x < 3160 && m.y > 850 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(2980, 820, { dur: 1.6, hold: 4, zoom: 1.1 }); }
     },
     song(x) {
       const m = Game.mudkip;
-      if (hourIs('dusk') && m.plat && m.x > 1760 && S.wailord) { S.breachReq = true; HUD.toast('Far out at sea, something answers the song...', { life: 3 }); Save.discover('wailord.song'); }
+      if (hourIs('dusk') && m.plat && m.x > 1760 && S.wailord) { S.breachReq = true; Game.cine.pan(m.x + 120, m.y - 110, { dur: 1.4, hold: 5, zoom: 1.06 }); HUD.toast('Far out at sea, something answers the song...', { life: 3 }); Save.discover('wailord.song'); }
       if (S.heartOn) { S.leap = true; }
     },
     boat(A, b) {
@@ -899,7 +899,7 @@ const BeachAI = (() => {
         }
       })();
       G.addMon(d);
-      if (entrance) { FX.sparkles(x, gy(x) - 30, 20, 50, 0xffffffff, hex('#9fd8ff')); Game.sfx('portal', x, 1); }
+      if (entrance) { FX.sparkles(x, gy(x) - 30, 20, 50, 0xffffffff, hex('#9fd8ff')); Game.sfx('portal', x, 1); Game.cine.pan(x, gy(x) - 30, { hold: 2.5, zoom: 1.15 }); }
       return d;
     },
     palkia(A, G, x, entrance = false) {
@@ -924,7 +924,7 @@ const BeachAI = (() => {
         }
       })();
       G.addMon(p);
-      if (entrance) { FX.sparkles(x, DOCKY - 30, 20, 50, 0xffffffff, hex('#ffc8f0')); Game.sfx('portal', x, 1); }
+      if (entrance) { FX.sparkles(x, DOCKY - 30, 20, 50, 0xffffffff, hex('#ffc8f0')); Game.sfx('portal', x, 1); Game.cine.pan(x, DOCKY - 30, { hold: 2.5, zoom: 1.15 }); }
       return p;
     },
   };

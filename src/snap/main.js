@@ -131,6 +131,7 @@ const Game = (() => {
     if (def.weather) Weather.set(def.weather(G.hour()), true); else Weather.set({ rain: 0, fog: 0 }, true);
     Stage.setHour(G.hour(), true);
     G.cam.x = G.mudkip.x - G.VW * 0.45; G.cam.y = G.mudkip.y - G.VH * (A.frameY ?? 0.7); clampCam();
+    if (G.started && !o.noIntro) G.cine.intro();
     Save.visit(id);
     Music.areaTrack(def.music);
     U.emit('area', id);
@@ -140,11 +141,64 @@ const Game = (() => {
   G.addMon = (m) => { G.mons.push(m); return m; };
 
   /* ---------- update ---------- */
+  /* ---------- camera director: establishing pans, event pans, smooth zoom punches ---------- */
+  const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+  G.cine = {
+    shot: null, zk: 1, zGoal: 1,
+    // sweep in from a landmark (or from high above and ahead) down to Mudkip
+    intro() {
+      const A = G.area, mk = G.mudkip; if (!A || !mk) return;
+      const it = A.def.intro || {};
+      const fx = it.x ?? clamp(mk.x + (mk.x < A.W / 2 ? 1 : -1) * G.VW * 1.1, G.VW / 2, A.W - G.VW / 2), fy = it.y ?? mk.y - G.VH * 0.55;
+      this.shot = { kind: 'intro', t: 0, dur: it.dur ?? 3.2, fromX: fx - G.VW / 2, fromY: fy - G.VH / 2, zoom: 1.12 };
+      G.cam.x = this.shot.fromX; G.cam.y = this.shot.fromY; clampCam();
+    },
+    // pan to a world point, hold, then glide back to Mudkip
+    pan(x, y, o = {}) {
+      if (G.mode !== 'explore') return;
+      this.shot = { kind: 'pan', t: 0, dur: o.dur ?? 1.1, hold: o.hold ?? 2.2, toX: x - G.VW / 2, toY: y - G.VH * (o.frame ?? 0.55), fromX: G.cam.x, fromY: G.cam.y, zoom: o.zoom ?? 1.12 };
+    },
+    skip() { if (this.shot && this.shot.kind === 'intro') this.shot.t = Math.max(this.shot.t, this.shot.dur * 0.8); },
+    update(dt) {
+      const sh = this.shot;
+      this.zGoal = 1;
+      if (sh) {
+        sh.t += dt;
+        const c = G.cam;
+        if (sh.kind === 'intro') {
+          const k = ease(Math.min(1, sh.t / sh.dur));
+          const mk = G.mudkip, tx = mk.x - G.VW * 0.5, ty = mk.y - G.VH * (G.area.frameY ?? 0.7);
+          c.x = lerp(sh.fromX, tx, k); c.y = lerp(sh.fromY, ty, k); clampCam();
+          this.zGoal = lerp(sh.zoom, 1, k);
+          if (sh.t >= sh.dur) this.shot = null;
+          return true;
+        }
+        if (sh.kind === 'pan') {
+          const k = ease(Math.min(1, sh.t / sh.dur));
+          c.x = lerp(sh.fromX, sh.toX, k); c.y = lerp(sh.fromY, sh.toY, k); clampCam();
+          this.zGoal = lerp(1, sh.zoom, k);
+          if (sh.t > sh.dur + sh.hold) this.shot = null;
+          return true;
+        }
+      }
+      return false;
+    },
+  };
+  // smooth CSS zoom around the screen centre (used by the director; integer zoom steps stay crisp)
+  function applyCineZoom(dt) {
+    const C = G.cine;
+    C.zk += (C.zGoal - C.zk) * Math.min(1, dt * 2.5);
+    if (Math.abs(C.zk - 1) < 0.002 && C.zGoal === 1) { if (C.zOn) { cv.style.transform = ''; C.zOn = false; } return; }
+    C.zOn = true;
+    cv.style.transition = 'none'; cv.style.transformOrigin = '50% 55%'; cv.style.transform = `scale(${C.zk.toFixed(4)})`;
+  }
   function updateCamera(dt) {
     const c = G.cam, mk = G.mudkip;
     if (!mk) return;
-    if (G.mode === 'camera') { Photo.updateCam(dt); return; }
-    const lead = mk.moving ? Math.cos(mk.yaw) * 36 : 0;
+    if (G.mode === 'camera') { G.cine.shot = null; G.cine.zGoal = 1; applyCineZoom(dt); Photo.updateCam(dt); return; }
+    if (G.cine.update(dt)) { applyCineZoom(dt); return; }
+    applyCineZoom(dt);
+    const lead = mk.moving ? Math.cos(mk.yaw) * (36 + clamp((Math.abs(mk.vx || 0) - 90) / 40, 0, 1) * 34) : 0;
     // cinematic framing: lean toward a rare moment happening nearby, drift gently when idle
     let fx = 0, fy = 0;
     let best = null, bd = 260;
@@ -227,6 +281,7 @@ const Game = (() => {
     const mids = G.mons.filter((m) => !m.layer && m.visible && m.alive).sort((a, b) => (a.zd - b.zd) || (a.z - b.z));
     for (const m of mids) { m.draw(fb, cx, cy, occ); if (m.drawExtra) m.drawExtra(fb, cx, cy, P, t, occ); }
     Items.draw(fb, cx, cy, t);
+    if (typeof Toys !== 'undefined') { Toys.drawShells(fb, cx, cy, t); if (!o.ids) Toys.drawPrompts(fb, cx, cy, t); }
     if (!o.ids) drawPin(fb, cx, cy);
     Stage.drawProps(fb, cx, cy, t, true);
     Stage.drawLate(fb, cx, cy, t);
@@ -324,6 +379,7 @@ const Game = (() => {
   };
   function tapWorld(wx, wy) {
     const mk = G.mudkip, A = G.area;
+    if (G.cine.shot && G.cine.shot.kind === 'intro') { G.cine.skip(); }
     FX.add({ type: 'ring', x: wx, y: wy, r0: 1, r1: 6, life: 0.3, c: 0xffffffff, layer: 4 });
     // tools armed from the action bar
     if (HUD.armed) {
@@ -501,6 +557,7 @@ const Game = (() => {
     const st = $('#start'); if (st) { st.classList.add('open'); setTimeout(() => { st.hidden = true; }, 650); }
     sfx('chime', null, 0.7);
     HUD.banner(G.area.def.name, G.area.def.sub || '');
+    G.cine.intro();
     Quests.onStart();
   }
   G.start = start;

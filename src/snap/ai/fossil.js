@@ -233,6 +233,7 @@ const FossilAI = (() => {
   function revive(A, G, which) {
     Save.discover('fossil.' + which);
     Game.sfx('evolve', ALTAR, 1); Game.shake(1.5);
+    Game.cine.pan(which === 'lileep' ? (ALTAR + 4470) / 2 : ALTAR - 30, gy(ALTAR) - 26, { hold: 3.5, zoom: 1.14 });
     A.altarGlow.k = 1; setTimeout(() => { A.altarGlow.k = 0.25; }, 4000);
     FX.sparkles(ALTAR, gy(ALTAR) - 30, 30, 50, 0xffffffff, hex('#9fe8ff'));
     setTimeout(() => {

@@ -22,7 +22,7 @@ const Stage = (() => {
       Object.assign(this, def);
       this.def = def;
       this.M = new Pal.Table(def.mats);
-      this.layers = []; this.props = []; this.details = []; this.fore = []; this.glows = []; this.hot = [];
+      this.layers = []; this.props = []; this.details = []; this.fore = []; this.glows = []; this.hot = []; this.scatter = [];
       this.t = 0;
       this.band = def.band ?? 12; // depth of the walkable ground strip (drawn as a top surface)
       this.ph = def.ph ?? 0.06;
@@ -52,6 +52,9 @@ const Stage = (() => {
     }
     // foreground occluder anchored at world (x, y) (bottom centre), nearer than the lane by factor p
     foreItem(spr, x, y, o = {}) { const f = Object.assign({ spr, x, y, p: 1.35 }, o); this.fore.push(f); return f; }
+    // 2.5D scenery standing on the ground plane behind the lane at depth p (0 = horizon, 1 = lane):
+    // it slides at its own parallax speed, so the world reads as a real receding space
+    scatterAt(spr, wx, p, o = {}) { const frames = Array.isArray(spr) ? spr : [spr]; const it = Object.assign({ frames, spr: frames[0], wx, x: wx, p }, o); this.scatter.push(it); return it; }
   }
 
   /* ================= loading ================= */
@@ -62,6 +65,7 @@ const Stage = (() => {
     const t0 = performance.now();
     def.build(A);
     A.props.sort((a, b) => a.zd - b.zd || a.y - b.y);
+    A.scatter.sort((a, b) => a.p - b.p);
     A.buildMs = performance.now() - t0;
     S.A = A;
     S.pal = null; S.skyKey = '';
@@ -204,12 +208,72 @@ const Stage = (() => {
     if (L.draw) L.draw(fb, sx, sy, pal, t, cx, cy);
     // solid skirt below the layer so nothing behind ever peeks through
     if (L.skirt) {
+      // only under the layer's own horizontal extent (a layer that ends mid-screen must not paint the rest)
       const y0 = Math.max(0, sy + spr.h), c = pal[L.skirt];
-      for (let y = y0; y < fb.h; y++) fb.d.fill(c, y * fb.w, y * fb.w + fb.w);
+      const xa = L.tile ? 0 : Math.max(0, sx), xb = L.tile ? fb.w : Math.min(fb.w, sx + spr.w);
+      if (xb > xa) for (let y = y0; y < fb.h; y++) fb.d.fill(c, y * fb.w + xa, y * fb.w + xb);
     }
   }
   function drawLayers(fb, cx, cy, t, filter) {
-    for (const L of S.A.layers) if (!filter || filter(L)) drawLayer(fb, L, cx, cy, t);
+    // layers, the perspective floor and depth scenery, all in depth order
+    const A = S.A, sc = A.scatter;
+    let si = 0, floorDone = !A.floor;
+    for (const L of A.layers) {
+      if (filter && !filter(L)) continue;
+      while (si < sc.length && sc[si].p < L.p) drawScatterItem(fb, sc[si++], cx, cy, t);
+      if (!floorDone && A.floor.p0 < L.p) { drawFloor(fb, cx, cy, t); floorDone = true; }
+      drawLayer(fb, L, cx, cy, t);
+    }
+    if (!floorDone) drawFloor(fb, cx, cy, t);
+    while (si < sc.length) drawScatterItem(fb, sc[si++], cx, cy, t);
+  }
+  // for areas that draw their own backdrop order: the floor and all scenery from depth pFrom on
+  function drawDepthFrom(fb, cx, cy, t, pFrom = 0) {
+    const A = S.A;
+    if (A.floor && A.floor.p0 >= pFrom - 0.001) drawFloor(fb, cx, cy, t);
+    for (const it of A.scatter) if (it.p >= pFrom) drawScatterItem(fb, it, cx, cy, t);
+  }
+
+  /* ================= 2.5D: perspective ground plane + depth scenery ================= */
+  // a world point (wx, depth p) projects to screen x = W/2 + (wx - cx - W/2) * p (one-point perspective
+  // toward the screen centre) and to the ground-plane row hz + (planeS - hz) * p
+  const NT = (() => { const N = 256, a = new Uint8Array(N * N); for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const u = x / N * 16, v = y / N * 16; a[y * N + x] = Math.round(U.fbm(u, v, 41, 3) * 255); } return a; })();
+  const noiseAt = (x, y) => NT[((y | 0) & 255) * 256 + ((x | 0) & 255)] / 255;
+  function depthHaze(p) { const A = S.A; const p0 = A.depthP0 ?? 0.5; return Math.round(Math.min(0.85, Math.max(0, (A.depthHaze ?? 0.35) * (1 - p) / (1 - p0))) * 20) / 20; }
+  function drawFloor(fb, cx, cy, t) {
+    const A = S.A, F = A.floor; if (!F) return;
+    const W = fb.w, H = fb.h, d = fb.d;
+    const hz = horizonS(cy), pl = planeS(cy);
+    if (pl - hz < 8) return;
+    const y0 = Math.max(0, Math.ceil(hz + (pl - hz) * F.p0)), y1 = Math.min(H, Math.ceil(hz + (pl - hz) * (F.p1 ?? 1)) + (F.extra ?? 12));
+    const base = cx + W / 2, D = F.D ?? 120;
+    let lastH = -1, pal = null;
+    for (let y = y0; y < y1; y++) {
+      const p = Math.min(1.2, (y + 0.5 - hz) / (pl - hz));
+      if (p <= 0.05) continue;
+      const hzz = depthHaze(Math.min(1, p));
+      if (hzz !== lastH) { pal = framePal(hzz, t); lastH = hzz; }
+      const inv = 1 / p, wz = D * (inv - 1), row = y * W;
+      const ctx = F.row ? F.row(wz, p, t) : null; // per-row work (shorelines, river edges) done once
+      if (ctx === false) continue;
+      let wx = base - (W / 2) * inv;
+      for (let x = 0; x < W; x++, wx += inv) {
+        const v = F.tex(wx, wz, p, t, ctx);
+        if (v) d[row + x] = v < 256 ? pal[v] : v;
+      }
+    }
+  }
+  function drawScatterItem(fb, it, cx, cy, t) {
+    if (it.hidden) return;
+    const W = fb.w, hz = horizonS(cy), pl = planeS(cy);
+    if (pl - hz < 8) return;
+    const s = it.frames.length > 1 ? propFrame(it, t) : it.spr;
+    const X = Math.round(W / 2 + (it.wx - cx - W / 2) * it.p - s.ax), Y = Math.round(hz + (pl - hz) * it.p - s.ay + (it.yoff || 0));
+    if (X > W || X + s.w < 0 || Y > fb.h || Y + s.h < 0) return;
+    const pal = framePal(depthHaze(it.p), t);
+    if (it.sway) Paint.blitSway(fb, s, X, Y, pal, Math.sin(t * 1.3 + it.wx * 0.01) * it.sway * ((typeof Wind !== 'undefined' ? Wind.v : 0.4) + 0.3), { flip: it.flip });
+    else Paint.blit(fb, s, X, Y, pal, { flip: it.flip });
+    if (it.draw) it.draw(fb, X, Y, pal, t, cx, cy);
   }
 
   /* ================= lane: terrain + props ================= */
@@ -502,5 +566,5 @@ const Stage = (() => {
     if (A) { A.t += dt; for (const p of A.props) if (p.shake > 0) p.shake = Math.max(0, p.shake - dt * 2); }
   }
 
-  return { S, Area, load, setHour, setWeather, palFor, framePal, drawSky, drawLayers, drawLayer, layerY, horizonS, planeS, drawTerrain, drawProps, drawProp, drawLate, drawWater, drawFore, blurFrame, drawGlows, bloom, vignette, update, get A() { return S.A; } };
+  return { S, Area, load, setHour, setWeather, palFor, framePal, drawSky, drawLayers, drawLayer, layerY, drawDepthFrom, drawFloor, noiseAt, depthHaze, horizonS, planeS, drawTerrain, drawProps, drawProp, drawLate, drawWater, drawFore, blurFrame, drawGlows, bloom, vignette, update, get A() { return S.A; } };
 })();

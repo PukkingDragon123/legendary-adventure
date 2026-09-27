@@ -157,7 +157,7 @@ Areas.forest = (() => {
       const ins = Props2.institute(M, 3);
       s.paste(ins, 690 - ins.ax, h - 60 - ins.ay + 4);
       A.instGlow = true;
-      A.layer(s, 0.3, { haze: 0.3, base: h - 1, x: 60 }).skirt = M.hill[1];
+      A.layer(s, 0.24, { haze: 0.34, base: h - 1, x: 60 }).skirt = M.hill[1];
     }
     // mid forest: big trunks and canopy clumps, a waterfall feeding the river
     {
@@ -170,7 +170,7 @@ Areas.forest = (() => {
       const fall = Props2.waterfall(M, 26, 150, 4);
       const fx = Math.round(1200 * 0.52 + 40);
       s.paste(fall, fx - 13, h - 150);
-      A.layer(s, 0.52, { haze: 0.28, base: h - 1, x: 40 }).skirt = M.leafD[1];
+      A.layer(s, 0.36, { haze: 0.3, base: h - 1, x: 40 }).skirt = M.leafD[1];
     }
     // near forest wall: huge trunks and vines, skirting down to the lane
     {
@@ -180,8 +180,62 @@ Areas.forest = (() => {
         s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 2);
       }
       for (let x = 0; x < w; x += 12 + r() * 20) { const f = Paint.fern(M, 14 + r() * 8, Math.floor(x * 7), { ramp: M.leafD }); s.paste(f, Math.round(x - f.ax), h - f.ay - 1); }
-      const L = A.layer(s, 0.74, { haze: 0.16, base: h - 1, x: 0 });
+      const L = A.layer(s, 0.5, { haze: 0.24, base: h - 1, x: 0 });
       L.skirt = M.leafD[0];
+    }
+    // ---- 2.5D depth: the forest floor recedes in perspective from the tree wall to the lane; the river
+    // and the pond reach back into the distance; trees, ferns, mushrooms and rocks stand at many depths ----
+    {
+      A.depthP0 = 0.5; A.depthHaze = 0.24;
+      const riverC = (p) => 1200 + (1 - p) / 0.5 * 230 + Math.sin((1 - p) * 9) * 40 * (1 - p);
+      const RHW = 270, PC = 2515, PHW = 262;
+      const pondHW = (p) => { const k = (1 - p) / 0.42; return k >= 1 ? 0 : PHW * Math.sqrt(1 - k * k); };
+      const inWater = (wx, p, m = 0) => Math.abs(wx - riverC(p)) < RHW + m || Math.abs(wx - PC) < pondHW(p) + m;
+      A.floor = { p0: 0.5, D: 130,
+        row(wz, p, t) {
+          const wc = def.waterCols(Stage.S.hour);
+          return { rc: riverC(p), phw: pondHW(p), top: wc.top, hi: wc.hi, mid: wc.mid, flow: t * 3, rain: Weather.W.rain > 0.3, tq: Math.floor(t * 4) };
+        },
+        tex(wx, wz, p, t, R) {
+          const dr = Math.abs(wx - R.rc) - RHW, dp = R.phw > 0 ? Math.abs(wx - PC) - R.phw : 99;
+          const dw = dr < dp ? dr : dp;
+          if (dw < 0) {
+            // water reaching into the distance: current streaks flowing toward you, glints, lily pads on the pond
+            if (dp < 0 && Stage.noiseAt(wx * 0.6, wz * 2) > 0.72) return Stage.noiseAt(wx * 1.3, wz * 3) > 0.8 ? M.lotus[1] : M.pad[2];
+            if (dw > -3) return R.hi;
+            const st = Math.sin(wz * 0.55 + R.flow + Stage.noiseAt(wx * 0.3, wz) * 5);
+            if (st > 0.93) return R.hi;
+            if (hash(Math.floor(wx / 3), Math.floor(wz), R.tq) > 0.985) return 0xffffffff;
+            return st < -0.6 ? R.mid : R.top;
+          }
+          if (dw < 7) return M.soil[dw < 3 ? 2 : 3];            // muddy bank
+          if (dw < 14) return M.moss[Stage.noiseAt(wx, wz) > 0.5 ? 2 : 1];
+          const n = Stage.noiseAt(wx * 0.4, wz * 1.2), n2 = Stage.noiseAt(wx * 1.7 + 50, wz * 3.1);
+          if (R.rain && n2 > 0.84) return n2 > 0.9 ? R.hi : R.top;  // rain puddles
+          if (n2 > 0.95) return (Math.floor(wx) & 1) ? M.flower[1] : M.flowerY[1];
+          if (n > 0.6) return M.moss[n > 0.72 ? 3 : 2];
+          if (n < 0.3) return M.litter[n < 0.2 ? 1 : 2];
+          return M.grass[n2 > 0.5 ? 3 : 2];
+        } };
+      const r2 = rng(4242);
+      const place = (make, n, p0, p1, m) => {
+        for (let i = 0, g = 0; i < n && g < n * 25; g++) {
+          const p = p0 + r2() * (p1 - p0), wx = 40 + r2() * (A.W - 80);
+          if (inWater(wx, p, m)) continue;
+          if (make(p, wx, i)) i++;
+        }
+      };
+      // trees at every depth (painted at their distance's size), then the undergrowth
+      place((p, wx, i) => A.scatterAt(Paint.tree(M, Math.round((220 + r2() * 90) * p), 2000 + i, { trunkRamp: M.bark, leafRamp: r2() < 0.5 ? M.leaf : M.leafD, roots: true, vines: r2() < 0.6, crownW: Math.round((180 + r2() * 60) * p), crownH: Math.round((110 + r2() * 40) * p), trunkW: Math.max(3, Math.round(12 * p)) }), wx, p), 22, 0.53, 0.9, 40);
+      place((p, wx, i) => A.scatterAt(Paint.fern(M, Math.round((14 + r2() * 12) * p), 2100 + i, { ramp: r2() < 0.5 ? M.leaf : M.grass }), wx, p, { sway: 0.8 }), 70, 0.52, 0.97, 12);
+      place((p, wx, i) => A.scatterAt(Paint.bush(M, Math.round((22 + r2() * 20) * p), Math.round((12 + r2() * 10) * p), 2200 + i, { ramp: M.leaf, dots: r2() < 0.4 ? M.berry : r2() < 0.5 ? M.flower : null, nd: 5 }), wx, p), 30, 0.52, 0.95, 20);
+      place((p, wx, i) => A.scatterAt(Props2.mushroom(M, Math.max(2, Math.round((3 + r2() * 4) * p)), 2300 + i, r2() < 0.35 ? 1 : 0), wx, p), 40, 0.6, 0.98, 8);
+      place((p, wx, i) => A.scatterAt(Paint.rock(M, Math.round((14 + r2() * 22) * p), Math.round((9 + r2() * 12) * p), 2400 + i, { moss: M.moss }), wx, p), 30, 0.52, 0.97, 10);
+      place((p, wx, i) => A.scatterAt(Props2.log(M, Math.round((40 + r2() * 30) * p), 2500 + i, r2() < 0.5), wx, p), 6, 0.6, 0.95, 30);
+      place((p, wx, i) => A.scatterAt(Paint.tuft(M, Math.round((8 + r2() * 8) * p), Math.round((10 + r2() * 14) * p), 2600 + i, { ramp: M.grass, flowers: r2() < 0.35 ? [r2() < 0.5 ? M.flower : M.flowerY] : null }), wx, p, { windFrames: true }), 80, 0.55, 0.98, 6);
+      // reeds along the receding river banks
+      for (let k = 0; k < 40; k++) { const p = 0.52 + r2() * 0.45, side = r2() < 0.5 ? -1 : 1, wx = riverC(p) + side * (RHW + 8 + r2() * 10); A.scatterAt(Props2.reeds(M, Math.round((18 + r2() * 12) * p), 2700 + k), wx, p); }
+      A.riverC = riverC;
     }
     // ---- foreground: giant fern fronds below, hanging vines and leaves above ----
     for (let x = -60; x < A.W; x += 110 + r() * 160) {
@@ -203,6 +257,9 @@ Areas.forest = (() => {
     A.addHot({ x0: 520, x1: 600, y0: gy(560) - 150, y1: gy(560) - 50, x: 560, reach: 60, tap() { ForestAI.shakeTree(A); } });
     for (const bx of [330, 1580, 2860]) A.addHot({ x0: bx - 14, x1: bx + 14, y0: gy(bx) - 16, y1: gy(bx), x: bx, reach: 34, tap() { ForestAI.bush(A, bx); } });
     A.addHot({ x0: 1150, x1: 1250, y0: RIVER.level - 4, y1: RIVER.level + 50, x: 1200, reach: 120, remote: false, stand: 552, tap() { ForestAI.pool(A); }, onScan() { if (!Save.found('forest.feebas')) { FX.add({ type: 'ripple', x: 1205, y: RIVER.level + 1, r0: 2, r1: 16, flat: 0.3, life: 1.4, c: 0xffffffff, layer: 2 }); HUD.toast('Scan: odd ripples in the quiet pool under the bridge...', { life: 3 }); return true; } return false; } });
+    // toys: a vine to swing across the river, a giant mushroom to bounce on
+    Toys.vine(A, M, RIVER.x0 - 52, RIVER.x1 + 42, 560);
+    { const mu = put(Props2.mushroom(M, 13, 77, 0), 2188, -2, { sink: 1 }); const ms = mu.frames[0]; Toys.springy(A, 2188, mu.y - ms.ay + 6, { prop: mu, secret: 'toy.mushroom', w: 22 }); }
     A.addHot({ x0: 2842, x1: 2878, y0: gy(2860) - 24, y1: gy(2860), x: 2860, reach: 40, tap() { HUD.toast('A mossy stump... like a little stage.', { life: 2.4 }); } });
   };
 
