@@ -178,6 +178,7 @@ const SeaAI = (() => {
     constructor(x, home) {
       super(sp('Staryu'), { kind: 'staryu', dex: 'staryu', x, y: gy(x), yaw: Math.PI / 2, z: 1.8, scale: 0.36, qPose: 0.06, qFields: { spin: 0.2, glow: 0.2, bend: 0.25 }, persona: 'shy', mode: 'land' });
       this.homeZone = home; this.spinA = rnd(0, 6); this.glowK = 0; this.senseR = 70; this.noShadow = false;
+      this.slot = (StaryuM.n = (StaryuM.n || 0) + 1) * 0.37 % 1; // each keeps its own spot on the sand
     }
     animate(dt, t) {
       const flash = dark() ? Math.max(0, Math.sin(t * 2.2 + this.seed * 3)) ** 6 : 0;
@@ -191,7 +192,7 @@ const SeaAI = (() => {
       yield* wait(rnd(0.3, 2));
       for (;;) {
         const Z = this.zone();
-        if (this.x < Z.x0 - 4 || this.x > Z.x1 + 4) { yield* this.roll(clamp(this.x, Z.x0 + 10, Z.x1 - 10), 60); continue; }
+        if (this.x < Z.x0 - 4 || this.x > Z.x1 + 4) { yield* this.roll(lerp(Z.x0 + 12, Z.x1 - 12, this.slot), 60); continue; }
         if (dark() && this.homeZone !== 'pool') { yield* this.twinkle(rnd(4, 8)); continue; }
         const r = Math.random();
         if (r < 0.4) yield* this.roll(rnd(Z.x0 + 10, Z.x1 - 10), 50);
