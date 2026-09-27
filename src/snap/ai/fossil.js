@@ -29,7 +29,7 @@ const FossilAI = (() => {
   /* ================= TRAPINCH ================= */
   class TrapinchM extends Walker {
     constructor() {
-      super(sp('Trapinch'), { kind: 'trapinch', dex: 'trapinch', x: PIT.c, y: gy(PIT.c), yaw: Math.PI / 2 - 0.3, z: 1.6, scale: 0.5, qPose: 0.06, qFields: { jaw: 0.2, headPitch: 0.2, step: 0.5 }, persona: 'grumpy', speed: 20, minX: PIT.x0 + 20, maxX: PIT.x1 - 20 });
+      super(sp('Trapinch'), { kind: 'trapinch', dex: 'trapinch', x: PIT.c, y: gy(PIT.c), yaw: Math.PI / 2 - 0.3, z: 1.6, scale: 0.44, qPose: 0.06, qFields: { jaw: 0.2, headPitch: 0.2, step: 0.5 }, persona: 'grumpy', speed: 20, minX: PIT.x0 + 20, maxX: PIT.x1 - 20 });
       this.bury = 0.55; this.senseR = 90; this.lastBite = -99; this.noShadow = true;
     }
     animate(dt, t) { const P = { jaw: 0.15 + (Math.sin(t * 0.9 + this.seed) > 0.92 ? 0.4 : 0), headPitch: 0.2, step: 0, eyes: this.blink(t, dt) ? 'blink' : 'open' }; Object.assign(P, this.o); this.pose = P; }
@@ -77,7 +77,7 @@ const FossilAI = (() => {
   /* ================= NINCADA ================= */
   class NincadaM extends Walker {
     constructor() {
-      super(sp('Nincada'), { kind: 'nincada', dex: 'nincada', x: TREE - 20, y: gy(TREE - 20), yaw: 1.1, z: 1.7, scale: 0.55, qPose: 0.06, qFields: { step: 0.5, dig: 0.25, feelers: 0.25 }, persona: 'shy', speed: 38, minX: 3700, maxX: 4040 });
+      super(sp('Nincada'), { kind: 'nincada', dex: 'nincada', x: TREE - 20, y: gy(TREE - 20), yaw: 1.1, z: 1.7, scale: 0.5, qPose: 0.06, qFields: { step: 0.5, dig: 0.25, feelers: 0.25 }, persona: 'shy', speed: 38, minX: 3700, maxX: 4040 });
       this.under = true; this.bury = 1; this.visible = false; this.stepPh = 0; this.senseR = 100; this.alert = 1.3;
     }
     animate(dt, t) { if (this.moving) this.stepPh += dt * 12; const P = { step: this.moving ? this.stepPh : 0, dig: 0, feelers: Math.sin(t * 3 + this.seed) * 0.6, eyes: this.blink(t, dt) ? 'blink' : 'open' }; Object.assign(P, this.o); this.pose = P; }

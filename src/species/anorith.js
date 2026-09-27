@@ -115,7 +115,7 @@ const Anorith = (() => {
       // closed / blink: sage lid over the ball, dark lash line
       const lid = kind === 'blink' ? -0.05 : 0.05;
       if (d > 0.2 && Math.abs(ls[1] - lid) < 0.1) return C_PUPIL;
-      return ls[1] > lid ? C_SHELL : kind === 'blink' ? C_PUPIL : C_SHELL;
+      return ls[1] > lid || kind === 'blink' ? C_SHELL : C_EYEW;
     };
   }
 
