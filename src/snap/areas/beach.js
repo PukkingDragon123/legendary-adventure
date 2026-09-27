@@ -221,6 +221,12 @@ Areas.beach = (() => {
     put(Props.anchor(M), 2520, 2, { sink: 4 });
     // the islet
     A.lighthouse = put(Props.lighthouse(M), 3362, -4, { sink: 4 });
+    // the lighthouse keeper's telescope: look far out to sea
+    A.addHot({ x0: 3346, x1: 3378, y0: gy(3362) - 40, y1: gy(3362), x: 3362, reach: 44, tap() {
+      HUD.scope(4.4); Game.sfx('select', 3362, 0.6);
+      Game.cine.pan(2750, SEA - 60, { dur: 1.4, hold: 2.6, zoom: 1.28, frame: 0.5 });
+      HUD.toast(Game.hour() === 'night' ? 'From the lighthouse: the beam sweeps the dark waves... something glows deep in the trench.' : 'From the lighthouse: the open sea, a volcano island on the horizon, and Wailord spouting far away!', { life: 3.2 });
+    } });
     A.glows.push({ x: 3362, y: gy(3362) - 84, r: 70, c: hex('#fff0a0'), a: 0.7, flicker: false });
     put(Paint.rock(M, 60, 30, 77, { moss: M.moss }), 3330, -2, { sink: 6 });
     // ---- Fossil Cliffs (east): rock shelf, sand pit, tide pool, the ancient altar, dig spots ----

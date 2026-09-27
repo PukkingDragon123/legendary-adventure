@@ -500,7 +500,16 @@ Areas.canopy = (() => {
     A.addHot({ x0: GEO.FEEDER - 14, x1: GEO.FEEDER + 14, y0: DECK - 54, y1: DECK - 30, x: GEO.FEEDER, reach: 40, tap() { CanopyAI.feeder(A); } });
     A.addHot({ x0: GEO.BASKET - 12, x1: GEO.BASKET + 12, y0: DECK - 16, y1: DECK, x: GEO.BASKET, reach: 36, tap() { CanopyAI.basket(A); } });
     A.addHot({ x0: GEO.STAGE.x0, x1: GEO.STAGE.x1, y0: DECK - 64, y1: DECK - 50, x: GEO.STAGE.x, reach: 60, tap() { HUD.toast('A little treetop stage, strung with bunting. It\'s waiting for a song...', { life: 2.6 }); } });
-    A.addHot({ x0: GEO.LOOKOUT.x + 14, x1: GEO.LOOKOUT.x + 36, y0: DECK - 40, y1: DECK - 20, x: GEO.LOOKOUT.x + 24, reach: 40, tap() { HUD.toast(Game.hour() === 'dusk' ? 'Through the telescope the sun sinks into the canopy sea... a perfect moment for a song.' : 'Through the telescope: an endless sea of treetops, and mountains far away.', { life: 3 }); } });
+    A.addHot({ x0: GEO.LOOKOUT.x + 14, x1: GEO.LOOKOUT.x + 36, y0: DECK - 40, y1: DECK - 20, x: GEO.LOOKOUT.x + 24, reach: 40, tap() {
+      // look through the telescope: the camera swings out to whatever is worth seeing
+      const pick = (k) => Mons.all.find((m) => m.kind === k && m.alive && m.visible !== false);
+      const tgt = pick('altaria') || pick('tropius') || pick('swablu') || pick('chatot');
+      const x = tgt ? tgt.x : 1200, y = tgt ? tgt.y - 20 : DECK - 140;
+      HUD.scope(4.4); Game.sfx('select', GEO.LOOKOUT.x, 0.6);
+      Game.cine.pan(x, y, { dur: 1.3, hold: 2.6, zoom: 1.3, frame: 0.5 });
+      const name = tgt ? ({ altaria: 'an Altaria gliding over the canopy', tropius: 'Tropius munching leaves', swablu: 'a Swablu fluffing its wings', chatot: 'Chatot keeping the beat' })[tgt.kind] : 'an endless sea of treetops';
+      HUD.toast(Game.hour() === 'dusk' ? 'Through the telescope: the sun sinks into the canopy sea... and ' + name + '.' : 'Through the telescope: ' + name + '!', { life: 3 });
+    } });
   };
 
   /* ---------------- drawing ---------------- */

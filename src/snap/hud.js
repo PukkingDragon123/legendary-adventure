@@ -46,7 +46,24 @@ const HUD = (() => {
     if (A.def.onScan) found += A.def.onScan(A) || 0;
     if (!found) setTimeout(() => toast('Scan: nothing unusual nearby.', { life: 1.8 }), 900);
   }
+  // look through a telescope: a round vignette while the camera director pans far away
+  function scope(dur = 4) { H.scopeV = { t: 0, dur }; }
+  function drawScope(fb, t) {
+    const V = H.scopeV; if (!V) return;
+    const W = fb.w, Hh = fb.h, k = Math.min(1, V.t / 0.35, (V.dur - V.t) / 0.35);
+    if (k <= 0) return;
+    const R0 = Math.hypot(W, Hh) * 0.55, R = R0 + (Math.min(W, Hh) * 0.46 - R0) * U.ease.outCubic(k), cx = W / 2, cy = Hh / 2, R2 = R * R;
+    for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+      const d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+      if (d2 > R2) fb.d[y * W + x] = 0xff08060a;
+      else if (d2 > (R - 2) * (R - 2)) fb.d[y * W + x] = 0xff40302a;
+      else if (d2 > (R - 5) * (R - 5)) fb.d[y * W + x] = fb.d[y * W + x] ? U.mix(fb.d[y * W + x], 0xff000000, 0.5) : 0x80000000;
+    }
+    // a little glare arc on the lens
+    for (let a = -2.4; a < -1.5; a += 0.02) UI.put(fb, Math.round(cx + Math.cos(a) * (R - 12)), Math.round(cy + Math.sin(a) * (R - 12)), 0x60ffffff);
+  }
   function update(dt) {
+    if (H.scopeV) { H.scopeV.t += dt; if (H.scopeV.t > H.scopeV.dur) H.scopeV = null; }
     for (const t of H.toasts) t.t += dt;
     H.toasts = H.toasts.filter((t) => t.t < t.life);
     if (H.ban) { H.ban.t += dt; if (H.ban.t > 4) H.ban = null; }
@@ -163,9 +180,9 @@ const HUD = (() => {
     Font.draw(fb, b.sub, fb.w / 2, y + h + 4, 0xffffffff, { font: 'small', align: 'center', outline: INK });
   }
   // notifications: a quiet feed that slides in at the top-left (no pop-up boxes)
-  function drawToasts(fb, S, t, bottom = false) {
+  function drawToasts(fb, S, t, bottom = false, top = 34) {
     const maxW = Math.min(190, Math.round(fb.w * 0.42));
-    let y = bottom ? fb.h - 18 - 14 * H.toasts.length : 34;
+    let y = bottom ? fb.h - 18 - 14 * H.toasts.length : top;
     for (const tt of H.toasts) {
       const k = Math.min(1, tt.t / 0.25, (tt.life - tt.t) / 0.4);
       if (k <= 0) continue;
@@ -207,7 +224,7 @@ const HUD = (() => {
     if (Game.mode === 'title') { drawTitle(fb, t); return; }
     if (Game.mode === 'dex') { Dex.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'map') { WorldMap.draw(fb, t); drawToasts(fb, S, t, true); return; }
-    if (Game.mode === 'camera') { Photo.drawUI(fb, t); Music.drawUI(fb, t, 'camera'); drawToasts(fb, S, t); return; }
+    if (Game.mode === 'camera') { Photo.drawUI(fb, t); Music.drawUI(fb, t, 'camera'); drawToasts(fb, S, t, false, Music.rect ? 60 : 34); return; }
     drawScan(fb, S, t);
     drawTop(fb, S, t);
     drawTools(fb, S, t);
@@ -215,9 +232,10 @@ const HUD = (() => {
     Music.drawUI(fb, t, 'explore');
     Photo.drawRecent(fb, t);
     drawBanner(fb, S, t);
+    drawScope(fb, t);
     drawToasts(fb, S, t);
     Quests.drawPop(fb, t);
     if (WorldMap.reveal) WorldMap.drawReveal(fb, t);
   }
-  return Object.assign(H, { btn, down, move, up, hover, pressed, toast, banner, tool, update, draw, iconAt, ICONS });
+  return Object.assign(H, { btn, down, move, up, hover, pressed, toast, banner, tool, update, draw, iconAt, ICONS, scope });
 })();
