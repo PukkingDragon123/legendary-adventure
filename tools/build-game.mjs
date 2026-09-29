@@ -34,7 +34,7 @@ const files = [
   ...opt(AI.map((a) => `src/snap/ai/${a}.js`)),
   ...opt(AREAS.map((a) => `src/snap/areas/${a}.js`)),
   ...opt(['src/snap/gallery.js']),
-  'src/snap/mailman.js', 'src/snap/rhythm.js', 'src/snap/wild.js',
+  'src/snap/mailman.js', 'src/snap/rhythm.js', 'src/snap/wild.js', 'src/snap/bite.js',
   'src/snap/main.js',
 ];
 const names = ['Mudkip', ...SPECIES.map(cap)];

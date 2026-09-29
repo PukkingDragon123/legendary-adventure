@@ -254,6 +254,7 @@ const Game = (() => {
     if (typeof Harvest !== 'undefined') Harvest.update(dt, t);
     for (const m of G.mons) if (m.alive) m.update(dt, t);
     if (typeof Social !== 'undefined') Social.update(dt, t);
+    if (typeof Bite !== 'undefined') Bite.update(dt);
     G.mons = G.mons.filter((m) => m.alive);
     if (G.area.def.update) G.area.def.update(G.area, dt, t, G);
     FX.update(dt);

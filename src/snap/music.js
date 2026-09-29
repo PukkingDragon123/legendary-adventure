@@ -178,7 +178,7 @@ const Music = (() => {
     const tw = Math.max(Font.measure('{note} ' + title, 'body'), Font.measure(sub, 'small')) + 14;
     const show = M.showT > 0 || M.hoverRec || mode === 'explore';
     if (show) {
-      const px = cx + R + 8, py = cy - 12, pw = Math.min(tw, fb.w - px - 90), ph = 24;
+      const right = cx > fb.w / 2, pw = Math.min(tw, right ? cx - R - 14 : fb.w - cx - R - 20), px = right ? cx - R - 10 - pw : cx + R + 8, py = cy - 12, ph = 24;
       UI.rectA(fb, px, py, pw, ph, 0xff120e22, 0.72);
       UI.hline(fb, px, px + pw - 1, py, 0xffff7ac8); UI.hline(fb, px, px + pw - 1, py + ph - 1, 0xff6affb0);
       const clip = { x0: px + 2, y0: py, x1: px + pw - 2, y1: py + ph };

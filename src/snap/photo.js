@@ -299,7 +299,7 @@ const Photo = (() => {
     } catch (e) { return null; }
   }
   function cropBuf(fb, c, quick = false) {
-    const k = Math.max(1, Math.ceil(c.w / 180));
+    const k = Math.max(1, Math.ceil(c.w / 520));
     const w = Math.floor(c.w / k), h = Math.floor(c.h / k);
     const b = new PX.Buf(w, h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -449,6 +449,11 @@ const Photo = (() => {
     // hold ring: the camera is watching for the best moment
     if (P.hold) {
       const H = P.hold, k = Math.min(1, H.t / 5);
+      // charging flash: light gathers at the frame edges, sparks stream into the lens, the glow pulses faster
+      const pulse = 0.5 + 0.5 * Math.sin(t * (6 + k * 18)), glowA = (0.08 + k * 0.28) * (0.6 + 0.4 * pulse);
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const e = Math.min(x - x0, x1 - 1 - x, y - y0, y1 - 1 - y); if (e < 14) { const i = y * fb.w + x; fb.d[i] = U.screen(fb.d[i], 0xffd8f4ff, glowA * (1 - e / 14)); } }
+      for (let i = 0; i < 10 + k * 20; i++) { const a = U.hash(i, 1, 7) * 6.283 + t * 0.7, rr = (1 - ((t * (0.8 + k * 1.6) + U.hash(i, 2, 7)) % 1)) * Math.max(x1 - x0, y1 - y0) * 0.6; const px = Math.round((x0 + x1) / 2 + Math.cos(a) * rr), py = Math.round((y0 + y1) / 2 + Math.sin(a) * rr * 0.7); UI.put(fb, px, py, 0xffffffff); UI.put(fb, px + 1, py, 0xffbfeaff); }
+      if (Math.floor(H.t * (2 + k * 8)) !== Math.floor((H.t - 0.016) * (2 + k * 8))) Game.sfx('blip', null, 0.12 + k * 0.2);
       for (let a = 0; a < 64 * k; a++) { const an = -Math.PI / 2 + (a / 64) * Math.PI * 2; UI.put(fb, Math.round(scx + Math.cos(an) * (sr + 4)), Math.round(scy + Math.sin(an) * (sr + 4)), H.newBest > 0 ? 0xff5aff7a : 0xffffffff); UI.put(fb, Math.round(scx + Math.cos(an) * (sr + 5)), Math.round(scy + Math.sin(an) * (sr + 5)), 0xff1b2240); }
       const secs = Math.max(0, 5 - H.t).toFixed(1);
       Font.draw(fb, 'CAPTURING  ' + secs, (x0 + x1) / 2, y0 + 6, Math.sin(t * 10) > 0 ? 0xff4a4aff : 0xffffffff, { font: 'small', align: 'center', outline: 0xff0a0e1a });

@@ -166,7 +166,7 @@ const Dex = (() => {
     const ox = Math.round((W - DW) / 2), oy0 = Math.round((H - DH) / 2);
     const tOpen = D.t;
     const rise = D.closing ? U.ease.inCubic(D.closing / 0.55) : 1 - U.ease.outBack(clamp(tOpen / 0.35, 0, 1));
-    const oy = Math.round(oy0 + rise * (H - oy0 + 20));
+    const oy = Math.round(oy0 + rise * (H - oy0 + 20) + Math.sin(t * 2.2) * 2);
     const unfold = D.closing ? clamp(1 - D.closing / 0.3, 0, 1) : U.ease.outCubic(clamp((tOpen - 0.3) / 0.35, 0, 1));
     const half = two ? Math.round(DW / 2) : DW;
     // right half (the lid you see first) + the left half unfolding from the hinge
@@ -189,12 +189,12 @@ const Dex = (() => {
     const R = two ? { x: hingeX + 10, y: oy + 30, w: half - 20, h: DH - 44 } : { x: ox + 10, y: oy + 30, w: DW - 20, h: DH - 44 };
     // left half decorations: big lens, LEDs, speaker, d-pad and buttons
     if (two) {
-      UI.lens(fb, ox + 20, oy + 16, 8, S, boot < 1 ? 0.5 + 0.5 * Math.sin(t * 20) : 0.25 + 0.15 * Math.sin(t * 2), t);
+      rotomFace(fb, ox + 30, oy + 16, t, boot);
       UI.led(fb, ox + 38, oy + 10, 0xffff4a4a, Math.sin(t * 3) > 0); UI.led(fb, ox + 46, oy + 10, 0xffffd23a, true); UI.led(fb, ox + 54, oy + 10, 0xff4ade6a, Math.sin(t * 3 + 1.5) > 0);
       // speaker grille + page title
       for (let k = 0; k < 4; k++) UI.hline(fb, ox + half - 40, ox + half - 20, oy + 10 + k * 3, S.bodyD);
       const pt = D.page === 'entry' ? 'ENTRY' : (TABS.find((x) => x[0] === D.page) || ['', ''])[1].toUpperCase();
-      Font.draw(fb, 'POKéDEX · ' + pt, ox + 64, oy + 8, S.trim, { font: 'small' });
+      Font.draw(fb, 'ROTOM DEX · ' + pt, ox + 64, oy + 8, S.trim, { font: 'small' });
       // bottom controls
       const by = oy + DH - 36;
       UI.disc(fb, ox + 24, by + 16, 9, S.btn); UI.rect(fb, ox + 18, by + 14, 13, 5, 0xff2a3040); UI.rect(fb, ox + 22, by + 10, 5, 13, 0xff2a3040);
@@ -220,6 +220,7 @@ const Dex = (() => {
       Font.draw(fb, 'CLOSE', cx + cw / 2, cy + 7, 0xffffffff, { font: 'small', align: 'center' });
       btn('closebar', cx, cy, cw, 22, () => close());
     }
+    rotomBits(fb, ox, oy, DW, DH, t);
     if (boot < 1) { drawBoot(fb, S, L || R, R, boot, t); return; }
     // tabs along the top of the right half
     let tx = R.x - 2;
@@ -241,13 +242,43 @@ const Dex = (() => {
     // subtle LCD scanlines
     for (const Q of L ? [L, R] : [R]) for (let y = Q.y; y < Q.y + Q.h; y += 2) for (let x = Q.x; x < Q.x + Q.w; x++) { const i = y * fb.w + x; if (i >= 0 && i < fb.d.length && fb.d[i]) fb.d[i] = U.mix(fb.d[i], 0xff000000, 0.04); }
   }
+  /* ---------- Rotom lives in here: big blue eyes, lightning antennae, floating arms, chatter ---------- */
+  const ROTOM = { grid: ['Bzzt! Who do you want to see?', 'So many Pokémon! Zzt!', 'Tap a card, I will tell you everything!'], entry: ['Ooh, this one! Bzzt!', 'Snap its secret moves for stars!', 'I love this Pokémon! Zzzt!'], quests: ['Jobs to do! Bzzt!', 'Go go go! Zzt!'], album: ['Nice shots! Bzzzt!', 'You are a real pro!'], def: ['Bzzt! Rotom Dex at your service!', 'Zzzt! What are we researching today?'] };
+  const RT = { line: '', t: 0, page: '' };
+  function rotomFace(fb, cx, cy, t, boot) {
+    const blink = (t % 3.7) < 0.12 || boot < 1 && Math.sin(t * 20) > 0.6, look = Math.sin(t * 0.7) * 2;
+    for (const ex of [-11, 11]) {
+      UI.disc(fb, cx + ex, cy, 8, 0xff1a0a0a);
+      if (blink) { UI.hline(fb, cx + ex - 6, cx + ex + 6, cy, 0xffbfe8ff); continue; }
+      UI.disc(fb, cx + ex, cy, 7, 0xffffffff); UI.disc(fb, cx + ex + look, cy + 1, 5, 0xff4ab0ff); UI.disc(fb, cx + ex + look, cy + 1, 3, 0xff1a4ad8);
+      UI.put(fb, cx + ex + look - 2, cy - 2, 0xffffffff); UI.put(fb, cx + ex + look - 1, cy - 2, 0xffffffff);
+    }
+  }
+  function rotomBits(fb, ox, oy, DW, DH, t) {
+    // lightning-bolt antennae above the device
+    const Y = 0xff3ad8ff, Yd = 0xff1a9ad8;
+    for (const [bx, dir] of [[ox + DW * 0.3, -1], [ox + DW * 0.7, 1]]) {
+      const x0 = Math.round(bx), y0 = oy - 2 + Math.round(Math.sin(t * 3 + dir) * 1.5);
+      const pts = [[0, 0], [dir * 4, -6], [dir * 1, -7], [dir * 6, -15]];
+      for (let i = 0; i < 3; i++) UI.line(fb, x0 + pts[i][0], y0 + pts[i][1], x0 + pts[i + 1][0], y0 + pts[i + 1][1], i % 2 ? Yd : Y);
+      if (Math.sin(t * 9 + bx) > 0.8) UI.put(fb, x0 + dir * 7, y0 - 17, 0xffffffff);
+    }
+    // floating electric hands at the sides
+    for (const [hx, s] of [[ox - 7, -1], [ox + DW + 6, 1]]) { const hy = Math.round(oy + DH * 0.55 + Math.sin(t * 2.5 + s) * 4); UI.disc(fb, hx, hy, 4, 0xff1a0a0a); UI.disc(fb, hx, hy, 3, 0xffff9a5a); if (Math.random() < 0.3) UI.put(fb, hx + s * 5, hy + ((Math.random() * 6) | 0) - 3, Y); }
+    // chatter
+    const page = D.page || 'grid';
+    RT.t -= 1 / 60;
+    if (RT.page !== page || RT.t <= 0) { const L = ROTOM[page] || ROTOM.def; RT.line = L[(Math.random() * L.length) | 0]; RT.t = 7; if (RT.page !== page) Game.sfx('blip', null, 0.3); RT.page = page; }
+    const w = Font.measure(RT.line, 'small') + 10, bx = Math.round(ox + 62), by = oy + 20;
+    if (w < DW / 2 - 70) { UI.panel(fb, bx, by, w, 13, { r: 4, ol: 0xff1a0a0a, fill: 0xffffffff }); UI.put(fb, bx + w / 2, by + 13, 0xff1a0a0a); Font.draw(fb, RT.line, bx + 5, by + 4, 0xff2a0a0a, { font: 'small' }); }
+  }
   function drawLid(fb, S, hx, oy, half, DH, t) {
     // closed Pokédex front: big lens, LEDs, a Poké Ball emblem, the lid edge
     const x = hx - 2, w = half + 2;
     UI.lens(fb, x + 26, oy + 24, 14, S, 0.4 + 0.3 * Math.sin(t * 8), t);
     UI.led(fb, x + 52, oy + 14, 0xffff4a4a, true); UI.led(fb, x + 61, oy + 14, 0xffffd23a, Math.sin(t * 9) > 0); UI.led(fb, x + 70, oy + 14, 0xff4ade6a, true);
     UI.hline(fb, x + 6, x + w - 8, oy + 48, S.bodyD); UI.hline(fb, x + 6, x + w - 8, oy + 49, S.bodyL);
-    Font.draw(fb, 'SNAP-DEX', x + w / 2, oy + DH / 2 - 6, S.trim, { font: 'title', align: 'center', sc: 2, outline: S.ink });
+    rotomFace(fb, x + w / 2, oy + DH / 2 - 30, t, 1); Font.draw(fb, 'ROTOM DEX', x + w / 2, oy + DH / 2 - 6, S.trim, { font: 'title', align: 'center', sc: 2, outline: S.ink });
     Font.draw(fb, 'Hoenn Photo Edition', x + w / 2, oy + DH / 2 + 30, S.trim, { font: 'small', align: 'center' });
     Font.icon(fb, 'pb', x + w / 2 - 7, oy + DH - 40, 2);
   }

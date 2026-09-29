@@ -7,7 +7,7 @@ const Rewards = (() => {
   const { clamp, hex, mix } = U;
   const C = {
     // skins (UI.SKINS holds the colours)
-    'skin.classic': { slot: 'skin', name: 'Classic Red', desc: 'The original red Pokédex.' },
+    'skin.classic': { slot: 'skin', name: 'Rotom Dex', desc: 'A Pokédex with a Rotom living inside. Bzzt!' },
     'skin.sapphire': { slot: 'skin', name: 'Sapphire Blue', desc: 'Deep-sea blue, from the surfing Mantine.' },
     'skin.emerald': { slot: 'skin', name: 'Emerald', desc: 'Rainforest green with a golden trim.' },
     'skin.luvdisc': { slot: 'skin', name: 'Luvdisc Pink', desc: 'Covered in little hearts.' },

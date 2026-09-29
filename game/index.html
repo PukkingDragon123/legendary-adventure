@@ -45475,7 +45475,7 @@ const UI = (() => {
 
   /* ---- device skins (Pokédex + camera share them) ---- */
   const SKINS = {
-    'skin.classic': { name: 'Classic Red', body: '#dc2a3a', bodyL: '#ff5a62', bodyD: '#9a1422', ink: '#2a0a14', screen: '#9fd8a8', screenD: '#3c7a52', accent: '#2f7ae8', lens: '#4ab8ff', trim: '#f4f4f8', btn: '#26303e' },
+    'skin.classic': { name: 'Rotom Dex', body: '#e8502a', bodyL: '#ff9a5a', bodyD: '#a8321a', ink: '#2a0a0a', screen: '#c8ecff', screenD: '#4a8ac8', accent: '#2f7ae8', lens: '#4ab8ff', trim: '#f4f4f8', btn: '#26303e' },
     'skin.sapphire': { name: 'Sapphire Blue', body: '#2a5ad8', bodyL: '#5a8aff', bodyD: '#16318a', ink: '#0a1034', screen: '#a8e4f0', screenD: '#3a7a9a', accent: '#ffd23a', lens: '#8ae0ff', trim: '#f0f4ff', btn: '#1c2448' },
     'skin.emerald': { name: 'Emerald', body: '#1f9a52', bodyL: '#4ad07a', bodyD: '#0e5a2e', ink: '#062414', screen: '#d8f4b0', screenD: '#6a9a3a', accent: '#ffcc30', lens: '#7affc0', trim: '#f0fff4', btn: '#12301f' },
     'skin.luvdisc': { name: 'Luvdisc Pink', body: '#f06c9a', bodyL: '#ffa0c0', bodyD: '#b03a64', ink: '#3a0a1e', screen: '#ffe2ec', screenD: '#c07a92', accent: '#ff3a6a', lens: '#ffd0e0', trim: '#fff4f8', btn: '#4a1a2e', heart: 1 },
@@ -47193,7 +47193,8 @@ const Pad = (() => {
   function down(ux, uy, pid, touch) {
     if (touch) P.touch = true;
     const L = P.L; if (!L || Game.mode !== 'explore') return false;
-    if (P.touch && !P.stick && (inC(ux, uy, L.sx, L.sy, L.R * 1.9) || (ux < L.sx + L.R * 2.2 && uy > L.sy - L.R * 2.2))) { P.stick = { pid, x0: L.sx, y0: L.sy }; stickMove(ux, uy); return true; }
+    // floating stick: a finger landing anywhere in the lower-left zone becomes the stick's centre
+    if (P.touch && !P.stick && ux < Game.VW * 0.42 && uy > Game.VH * 0.38 && !inC(ux, uy, L.bx, L.by, L.bR + 8)) { P.stick = { pid, x0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sx : ux, y0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sy : uy }; stickMove(ux, uy); return true; }
     if (inC(ux, uy, L.ax, L.ay, L.aR + 6)) { P.a = { pid }; P.jumpHeld = true; Game.mudkip && Game.mudkip.jumpPress(); P.hint = 0; return true; }
     if (inC(ux, uy, L.bx, L.by, L.bR + 6)) { P.b = { pid, t: 0 }; Moves.press(); return true; }
     return false;
@@ -47201,6 +47202,8 @@ const Pad = (() => {
   function stickMove(ux, uy) {
     const S = P.stick; if (!S) return;
     const R = P.L.R, dx = (ux - S.x0) / R, dy = (uy - S.y0) / R, d = Math.hypot(dx, dy);
+    // drag past the rim and the stick follows the finger (no dead stick after a long swipe)
+    if (d > 1.4) { S.x0 += (dx / d) * (d - 1.4) * R; S.y0 += (dy / d) * (d - 1.4) * R; }
     const k = d > 1 ? 1 / d : 1;
     P.dx = dx * k; P.dy = dy * k;
   }
@@ -47217,12 +47220,12 @@ const Pad = (() => {
     if (!mk) return;
     if (Game.mode !== 'explore' || (typeof Talk !== 'undefined' && Talk.busy())) { mk.keyDir = 0; mk.keyY = 0; mk.running = false; mk.jumpHeld = false; return; }
     const K = P.keys;
-    const sx = Math.abs(P.dx) > 0.28 ? Math.sign(P.dx) : 0, sy = Math.abs(P.dy) > 0.55 ? Math.sign(P.dy) : 0;
+    const sx = Math.abs(P.dx) > 0.2 ? Math.sign(P.dx) : 0, sy = Math.abs(P.dy) > 0.6 && Math.abs(P.dy) > Math.abs(P.dx) ? Math.sign(P.dy) : 0;
     const swim = mk.mode === 'swim';
     mk.keyDir = K.dx || sx;
     mk.keyY = K.dy || (swim ? (Math.abs(P.dy) > 0.25 ? P.dy : 0) : sy > 0 ? 1 : 0);
-    mk.running = K.run || Math.abs(P.dx) > 0.88;
-    mk.sneak = K.sneak || (!K.dx && sx !== 0 && Math.abs(P.dx) < 0.55);
+    mk.running = K.run || Math.abs(P.dx) > 0.85;
+    mk.sneak = K.sneak;
     mk.jumpHeld = K.jump || P.jumpHeld;
   }
   function draw(fb, S, t) {
@@ -47231,6 +47234,7 @@ const Pad = (() => {
     // joystick (touch screens)
     if (P.touch) {
       const on = !!P.stick;
+      if (on) { L.sx = Math.round(P.stick.x0); L.sy = Math.round(P.stick.y0); }
       for (let y = -L.R; y <= L.R; y++) for (let x = -L.R; x <= L.R; x++) { const q = x * x + y * y; if (q > L.R * L.R) continue; const X = L.sx + x, Y = L.sy + y; if (X < 0 || Y < 0 || X >= W || Y >= H) continue; const i = Y * W + X, v = fb.d[i]; const a = q > (L.R - 2) ** 2 ? 0.55 : on ? 0.3 : 0.2; fb.d[i] = v ? U.mix(v, 0xff0a0e20, a) : (((a * 255) | 0) << 24 | 0x200e0a) >>> 0; }
       UI.ring(fb, L.sx, L.sy, L.R, 0x90ffffff, 1);
       for (const [ax, ay] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { const x = L.sx + ax * (L.R - 6), y = L.sy + ay * (L.R - 6); for (let k = 0; k < 3; k++) for (let j = -k; j <= k; j++) UI.put(fb, Math.round(x + (ax ? -ax * k : j)), Math.round(y + (ay ? -ay * k : j)), 0xa0ffffff); }
@@ -48254,7 +48258,7 @@ const Photo = (() => {
     } catch (e) { return null; }
   }
   function cropBuf(fb, c, quick = false) {
-    const k = Math.max(1, Math.ceil(c.w / 180));
+    const k = Math.max(1, Math.ceil(c.w / 520));
     const w = Math.floor(c.w / k), h = Math.floor(c.h / k);
     const b = new PX.Buf(w, h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -48404,6 +48408,11 @@ const Photo = (() => {
     // hold ring: the camera is watching for the best moment
     if (P.hold) {
       const H = P.hold, k = Math.min(1, H.t / 5);
+      // charging flash: light gathers at the frame edges, sparks stream into the lens, the glow pulses faster
+      const pulse = 0.5 + 0.5 * Math.sin(t * (6 + k * 18)), glowA = (0.08 + k * 0.28) * (0.6 + 0.4 * pulse);
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const e = Math.min(x - x0, x1 - 1 - x, y - y0, y1 - 1 - y); if (e < 14) { const i = y * fb.w + x; fb.d[i] = U.screen(fb.d[i], 0xffd8f4ff, glowA * (1 - e / 14)); } }
+      for (let i = 0; i < 10 + k * 20; i++) { const a = U.hash(i, 1, 7) * 6.283 + t * 0.7, rr = (1 - ((t * (0.8 + k * 1.6) + U.hash(i, 2, 7)) % 1)) * Math.max(x1 - x0, y1 - y0) * 0.6; const px = Math.round((x0 + x1) / 2 + Math.cos(a) * rr), py = Math.round((y0 + y1) / 2 + Math.sin(a) * rr * 0.7); UI.put(fb, px, py, 0xffffffff); UI.put(fb, px + 1, py, 0xffbfeaff); }
+      if (Math.floor(H.t * (2 + k * 8)) !== Math.floor((H.t - 0.016) * (2 + k * 8))) Game.sfx('blip', null, 0.12 + k * 0.2);
       for (let a = 0; a < 64 * k; a++) { const an = -Math.PI / 2 + (a / 64) * Math.PI * 2; UI.put(fb, Math.round(scx + Math.cos(an) * (sr + 4)), Math.round(scy + Math.sin(an) * (sr + 4)), H.newBest > 0 ? 0xff5aff7a : 0xffffffff); UI.put(fb, Math.round(scx + Math.cos(an) * (sr + 5)), Math.round(scy + Math.sin(an) * (sr + 5)), 0xff1b2240); }
       const secs = Math.max(0, 5 - H.t).toFixed(1);
       Font.draw(fb, 'CAPTURING  ' + secs, (x0 + x1) / 2, y0 + 6, Math.sin(t * 10) > 0 ? 0xff4a4aff : 0xffffffff, { font: 'small', align: 'center', outline: 0xff0a0e1a });
@@ -48788,7 +48797,7 @@ const Rewards = (() => {
   const { clamp, hex, mix } = U;
   const C = {
     // skins (UI.SKINS holds the colours)
-    'skin.classic': { slot: 'skin', name: 'Classic Red', desc: 'The original red Pokédex.' },
+    'skin.classic': { slot: 'skin', name: 'Rotom Dex', desc: 'A Pokédex with a Rotom living inside. Bzzt!' },
     'skin.sapphire': { slot: 'skin', name: 'Sapphire Blue', desc: 'Deep-sea blue, from the surfing Mantine.' },
     'skin.emerald': { slot: 'skin', name: 'Emerald', desc: 'Rainforest green with a golden trim.' },
     'skin.luvdisc': { slot: 'skin', name: 'Luvdisc Pink', desc: 'Covered in little hearts.' },
@@ -49181,7 +49190,7 @@ const Music = (() => {
     const tw = Math.max(Font.measure('{note} ' + title, 'body'), Font.measure(sub, 'small')) + 14;
     const show = M.showT > 0 || M.hoverRec || mode === 'explore';
     if (show) {
-      const px = cx + R + 8, py = cy - 12, pw = Math.min(tw, fb.w - px - 90), ph = 24;
+      const right = cx > fb.w / 2, pw = Math.min(tw, right ? cx - R - 14 : fb.w - cx - R - 20), px = right ? cx - R - 10 - pw : cx + R + 8, py = cy - 12, ph = 24;
       UI.rectA(fb, px, py, pw, ph, 0xff120e22, 0.72);
       UI.hline(fb, px, px + pw - 1, py, 0xffff7ac8); UI.hline(fb, px, px + pw - 1, py + ph - 1, 0xff6affb0);
       const clip = { x0: px + 2, y0: py, x1: px + pw - 2, y1: py + ph };
@@ -49474,7 +49483,7 @@ const Dex = (() => {
     const ox = Math.round((W - DW) / 2), oy0 = Math.round((H - DH) / 2);
     const tOpen = D.t;
     const rise = D.closing ? U.ease.inCubic(D.closing / 0.55) : 1 - U.ease.outBack(clamp(tOpen / 0.35, 0, 1));
-    const oy = Math.round(oy0 + rise * (H - oy0 + 20));
+    const oy = Math.round(oy0 + rise * (H - oy0 + 20) + Math.sin(t * 2.2) * 2);
     const unfold = D.closing ? clamp(1 - D.closing / 0.3, 0, 1) : U.ease.outCubic(clamp((tOpen - 0.3) / 0.35, 0, 1));
     const half = two ? Math.round(DW / 2) : DW;
     // right half (the lid you see first) + the left half unfolding from the hinge
@@ -49497,12 +49506,12 @@ const Dex = (() => {
     const R = two ? { x: hingeX + 10, y: oy + 30, w: half - 20, h: DH - 44 } : { x: ox + 10, y: oy + 30, w: DW - 20, h: DH - 44 };
     // left half decorations: big lens, LEDs, speaker, d-pad and buttons
     if (two) {
-      UI.lens(fb, ox + 20, oy + 16, 8, S, boot < 1 ? 0.5 + 0.5 * Math.sin(t * 20) : 0.25 + 0.15 * Math.sin(t * 2), t);
+      rotomFace(fb, ox + 30, oy + 16, t, boot);
       UI.led(fb, ox + 38, oy + 10, 0xffff4a4a, Math.sin(t * 3) > 0); UI.led(fb, ox + 46, oy + 10, 0xffffd23a, true); UI.led(fb, ox + 54, oy + 10, 0xff4ade6a, Math.sin(t * 3 + 1.5) > 0);
       // speaker grille + page title
       for (let k = 0; k < 4; k++) UI.hline(fb, ox + half - 40, ox + half - 20, oy + 10 + k * 3, S.bodyD);
       const pt = D.page === 'entry' ? 'ENTRY' : (TABS.find((x) => x[0] === D.page) || ['', ''])[1].toUpperCase();
-      Font.draw(fb, 'POKéDEX · ' + pt, ox + 64, oy + 8, S.trim, { font: 'small' });
+      Font.draw(fb, 'ROTOM DEX · ' + pt, ox + 64, oy + 8, S.trim, { font: 'small' });
       // bottom controls
       const by = oy + DH - 36;
       UI.disc(fb, ox + 24, by + 16, 9, S.btn); UI.rect(fb, ox + 18, by + 14, 13, 5, 0xff2a3040); UI.rect(fb, ox + 22, by + 10, 5, 13, 0xff2a3040);
@@ -49528,6 +49537,7 @@ const Dex = (() => {
       Font.draw(fb, 'CLOSE', cx + cw / 2, cy + 7, 0xffffffff, { font: 'small', align: 'center' });
       btn('closebar', cx, cy, cw, 22, () => close());
     }
+    rotomBits(fb, ox, oy, DW, DH, t);
     if (boot < 1) { drawBoot(fb, S, L || R, R, boot, t); return; }
     // tabs along the top of the right half
     let tx = R.x - 2;
@@ -49549,13 +49559,43 @@ const Dex = (() => {
     // subtle LCD scanlines
     for (const Q of L ? [L, R] : [R]) for (let y = Q.y; y < Q.y + Q.h; y += 2) for (let x = Q.x; x < Q.x + Q.w; x++) { const i = y * fb.w + x; if (i >= 0 && i < fb.d.length && fb.d[i]) fb.d[i] = U.mix(fb.d[i], 0xff000000, 0.04); }
   }
+  /* ---------- Rotom lives in here: big blue eyes, lightning antennae, floating arms, chatter ---------- */
+  const ROTOM = { grid: ['Bzzt! Who do you want to see?', 'So many Pokémon! Zzt!', 'Tap a card, I will tell you everything!'], entry: ['Ooh, this one! Bzzt!', 'Snap its secret moves for stars!', 'I love this Pokémon! Zzzt!'], quests: ['Jobs to do! Bzzt!', 'Go go go! Zzt!'], album: ['Nice shots! Bzzzt!', 'You are a real pro!'], def: ['Bzzt! Rotom Dex at your service!', 'Zzzt! What are we researching today?'] };
+  const RT = { line: '', t: 0, page: '' };
+  function rotomFace(fb, cx, cy, t, boot) {
+    const blink = (t % 3.7) < 0.12 || boot < 1 && Math.sin(t * 20) > 0.6, look = Math.sin(t * 0.7) * 2;
+    for (const ex of [-11, 11]) {
+      UI.disc(fb, cx + ex, cy, 8, 0xff1a0a0a);
+      if (blink) { UI.hline(fb, cx + ex - 6, cx + ex + 6, cy, 0xffbfe8ff); continue; }
+      UI.disc(fb, cx + ex, cy, 7, 0xffffffff); UI.disc(fb, cx + ex + look, cy + 1, 5, 0xff4ab0ff); UI.disc(fb, cx + ex + look, cy + 1, 3, 0xff1a4ad8);
+      UI.put(fb, cx + ex + look - 2, cy - 2, 0xffffffff); UI.put(fb, cx + ex + look - 1, cy - 2, 0xffffffff);
+    }
+  }
+  function rotomBits(fb, ox, oy, DW, DH, t) {
+    // lightning-bolt antennae above the device
+    const Y = 0xff3ad8ff, Yd = 0xff1a9ad8;
+    for (const [bx, dir] of [[ox + DW * 0.3, -1], [ox + DW * 0.7, 1]]) {
+      const x0 = Math.round(bx), y0 = oy - 2 + Math.round(Math.sin(t * 3 + dir) * 1.5);
+      const pts = [[0, 0], [dir * 4, -6], [dir * 1, -7], [dir * 6, -15]];
+      for (let i = 0; i < 3; i++) UI.line(fb, x0 + pts[i][0], y0 + pts[i][1], x0 + pts[i + 1][0], y0 + pts[i + 1][1], i % 2 ? Yd : Y);
+      if (Math.sin(t * 9 + bx) > 0.8) UI.put(fb, x0 + dir * 7, y0 - 17, 0xffffffff);
+    }
+    // floating electric hands at the sides
+    for (const [hx, s] of [[ox - 7, -1], [ox + DW + 6, 1]]) { const hy = Math.round(oy + DH * 0.55 + Math.sin(t * 2.5 + s) * 4); UI.disc(fb, hx, hy, 4, 0xff1a0a0a); UI.disc(fb, hx, hy, 3, 0xffff9a5a); if (Math.random() < 0.3) UI.put(fb, hx + s * 5, hy + ((Math.random() * 6) | 0) - 3, Y); }
+    // chatter
+    const page = D.page || 'grid';
+    RT.t -= 1 / 60;
+    if (RT.page !== page || RT.t <= 0) { const L = ROTOM[page] || ROTOM.def; RT.line = L[(Math.random() * L.length) | 0]; RT.t = 7; if (RT.page !== page) Game.sfx('blip', null, 0.3); RT.page = page; }
+    const w = Font.measure(RT.line, 'small') + 10, bx = Math.round(ox + 62), by = oy + 20;
+    if (w < DW / 2 - 70) { UI.panel(fb, bx, by, w, 13, { r: 4, ol: 0xff1a0a0a, fill: 0xffffffff }); UI.put(fb, bx + w / 2, by + 13, 0xff1a0a0a); Font.draw(fb, RT.line, bx + 5, by + 4, 0xff2a0a0a, { font: 'small' }); }
+  }
   function drawLid(fb, S, hx, oy, half, DH, t) {
     // closed Pokédex front: big lens, LEDs, a Poké Ball emblem, the lid edge
     const x = hx - 2, w = half + 2;
     UI.lens(fb, x + 26, oy + 24, 14, S, 0.4 + 0.3 * Math.sin(t * 8), t);
     UI.led(fb, x + 52, oy + 14, 0xffff4a4a, true); UI.led(fb, x + 61, oy + 14, 0xffffd23a, Math.sin(t * 9) > 0); UI.led(fb, x + 70, oy + 14, 0xff4ade6a, true);
     UI.hline(fb, x + 6, x + w - 8, oy + 48, S.bodyD); UI.hline(fb, x + 6, x + w - 8, oy + 49, S.bodyL);
-    Font.draw(fb, 'SNAP-DEX', x + w / 2, oy + DH / 2 - 6, S.trim, { font: 'title', align: 'center', sc: 2, outline: S.ink });
+    rotomFace(fb, x + w / 2, oy + DH / 2 - 30, t, 1); Font.draw(fb, 'ROTOM DEX', x + w / 2, oy + DH / 2 - 6, S.trim, { font: 'title', align: 'center', sc: 2, outline: S.ink });
     Font.draw(fb, 'Hoenn Photo Edition', x + w / 2, oy + DH / 2 + 30, S.trim, { font: 'small', align: 'center' });
     Font.icon(fb, 'pb', x + w / 2 - 7, oy + DH - 40, 2);
   }
@@ -60555,6 +60595,64 @@ const Wild = (() => {
   return {};
 })();
 
+/* ==== src/snap/bite.js ==== */
+/* ------------------------------------------------------------------
+   Bite — grumpy Pokémon have a cartoon temper. Get too close to one
+   that is already cross and it puffs steam, glows red with a throbbing
+   anger mark... then CHOMP! Mudkip rockets sky-high, spinning, and
+   bawls its eyes out when it lands. Only a bite — no harm done.
+------------------------------------------------------------------- */
+const Bite = (() => {
+  const { rnd } = U;
+  const S = { cool: 0, cry: 0 };
+  function* rage(m, mk) {
+    let e = 0; Game.sfx('grr', m.x, 0.8); m.emote('anger', 1.2);
+    if (typeof Talk !== 'undefined') Talk.bubble(() => m.headPt(), 'GRRRR!!', { life: 1, who: m });
+    while (e < 0.7) {
+      const dt = yield; e += dt;
+      m.turn(m.face(mk.x > m.x ? 1 : -1, false), dt, 10);
+      m.tint = 0xff3a3aff; m.tintK = 0.25 + 0.25 * Math.sin(e * 30);
+      m.rot = Math.sin(e * 50) * 0.05; m.o.mouth = 0.2; m.o.eyes = 'angry';
+      if (Math.random() < dt * 14) { const [hx, hy] = m.headPt(); FX.add({ type: 'dust', x: hx + rnd(-6, 6), y: hy - 2, vx: rnd(-20, 20), vy: -rnd(20, 50), r: 2, life: 0.5, c: 0xffe8e8e8, c2: 0xffb0b0b0, layer: 3 }); }
+      m.setAct('attack', 0.7);
+    }
+    m.rot = 0; m.tintK = 0;
+    if (Math.abs(mk.x - m.x) > 60 || mk.mode === 'swim') { m.emote('anger', 0.8); return; }
+    // CHOMP
+    m.o.mouth = 1; m.setAct('attack', 1);
+    Game.sfx('snip', m.x, 1); Game.sfx('bonk', m.x, 0.8); Game.shake(4);
+    FX.add({ type: 'ring', x: mk.x, y: mk.y - 10, r0: 4, r1: 22, life: 0.35, c: 0xffffffff, layer: 4 });
+    mk.task && (mk.task.done = true);
+    mk.mode = 'fall'; mk.air = 0; mk.vair = 0; mk.plat = null; mk.y -= 4;
+    mk.vx = (mk.x > m.x ? 1 : -1) * rnd(70, 110); mk.vy = -720; mk.jumping = false; mk.pound = false;
+    mk.flipT = 1.4; mk.flipLen = 1.4; mk.flipSpins = 3; mk.flipDir = mk.x > m.x ? 1 : -1; mk.flipped = true; mk.dizzy = 2.5;
+    if (typeof Talk !== 'undefined') Talk.bubble(() => mk.headPt(), 'YEEOWCH!!', { life: 1.2, who: mk });
+    S.cry = 3.2; m.annoy = 0;
+    let q = 0; while (q < 1.2) { const dt = yield; q += dt; m.o.eyes = 'happy'; m.o.mouth = 0.5; m.setAct('attack', 0.6); }
+  }
+  function update(dt) {
+    const mk = Game.mudkip; if (!mk || Game.mode !== 'explore') return;
+    S.cool -= dt;
+    // crying after landing: big tears and sobs
+    if (S.cry > 0) {
+      S.cry -= dt;
+      if (mk.mode === 'land' && mk.air <= 0) {
+        mk.o && (mk.o.eyes = 'closed', mk.o.mouth = 1);
+        if (Math.random() < dt * 18) { const [hx, hy] = mk.headPt(); const d = Math.random() < 0.5 ? -1 : 1; FX.add({ type: 'drop', x: hx + d * 5, y: hy + 6, vx: d * rnd(40, 80), vy: -rnd(40, 90), g: 420, life: 0.8, c: 0xffffe0a0, c2: 0xffffb060, size: 2, floor: World.groundAt(mk.x), layer: 4 }); }
+        if (Math.floor(S.cry * 2) !== Math.floor((S.cry + dt) * 2)) { Game.sfx('squeak', mk.x, 0.4); if (S.cry > 2.4 && typeof Talk !== 'undefined') Talk.bubble(() => mk.headPt(), 'WAAAAH!', { life: 1.2, who: mk }); }
+      }
+    }
+    if (S.cool > 0 || mk.mode !== 'land') return;
+    for (const m of Mons.all) {
+      if (m === mk || !m.alive || m.sleeping || m.mode !== 'land' || m.layer || !m.doTask || m.busy(4)) continue;
+      if (!((m.annoy || 0) > (m.persona === 'grumpy' ? 0.35 : 0.7))) continue;
+      if (Math.abs(m.x - mk.x) > 26 + m.width() * 0.3 || Math.abs(m.y - mk.y) > 30) continue;
+      S.cool = 7; m.doTask(rage(m, mk), 5); break;
+    }
+  }
+  return { update, S };
+})();
+
 /* ==== src/snap/main.js ==== */
 /* ------------------------------------------------------------------
    Game — Mudkip Snap's shell: world canvas at an integer zoom, a pixel
@@ -60812,6 +60910,7 @@ const Game = (() => {
     if (typeof Harvest !== 'undefined') Harvest.update(dt, t);
     for (const m of G.mons) if (m.alive) m.update(dt, t);
     if (typeof Social !== 'undefined') Social.update(dt, t);
+    if (typeof Bite !== 'undefined') Bite.update(dt);
     G.mons = G.mons.filter((m) => m.alive);
     if (G.area.def.update) G.area.def.update(G.area, dt, t, G);
     FX.update(dt);

@@ -93,7 +93,7 @@ const UI = (() => {
 
   /* ---- device skins (Pokédex + camera share them) ---- */
   const SKINS = {
-    'skin.classic': { name: 'Classic Red', body: '#dc2a3a', bodyL: '#ff5a62', bodyD: '#9a1422', ink: '#2a0a14', screen: '#9fd8a8', screenD: '#3c7a52', accent: '#2f7ae8', lens: '#4ab8ff', trim: '#f4f4f8', btn: '#26303e' },
+    'skin.classic': { name: 'Rotom Dex', body: '#e8502a', bodyL: '#ff9a5a', bodyD: '#a8321a', ink: '#2a0a0a', screen: '#c8ecff', screenD: '#4a8ac8', accent: '#2f7ae8', lens: '#4ab8ff', trim: '#f4f4f8', btn: '#26303e' },
     'skin.sapphire': { name: 'Sapphire Blue', body: '#2a5ad8', bodyL: '#5a8aff', bodyD: '#16318a', ink: '#0a1034', screen: '#a8e4f0', screenD: '#3a7a9a', accent: '#ffd23a', lens: '#8ae0ff', trim: '#f0f4ff', btn: '#1c2448' },
     'skin.emerald': { name: 'Emerald', body: '#1f9a52', bodyL: '#4ad07a', bodyD: '#0e5a2e', ink: '#062414', screen: '#d8f4b0', screenD: '#6a9a3a', accent: '#ffcc30', lens: '#7affc0', trim: '#f0fff4', btn: '#12301f' },
     'skin.luvdisc': { name: 'Luvdisc Pink', body: '#f06c9a', bodyL: '#ffa0c0', bodyD: '#b03a64', ink: '#3a0a1e', screen: '#ffe2ec', screenD: '#c07a92', accent: '#ff3a6a', lens: '#ffd0e0', trim: '#fff4f8', btn: '#4a1a2e', heart: 1 },
