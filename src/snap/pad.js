@@ -23,7 +23,7 @@ const Pad = (() => {
     if (touch) P.touch = true;
     const L = P.L; if (!L || Game.mode !== 'explore') return false;
     // floating stick: a finger landing anywhere in the lower-left zone becomes the stick's centre
-    if (P.touch && !P.stick && ux < Game.VW * 0.42 && uy > Game.VH * 0.38 && !inC(ux, uy, L.bx, L.by, L.bR + 8)) { P.stick = { pid, x0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sx : ux, y0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sy : uy }; stickMove(ux, uy); return true; }
+    if (P.touch && !P.stick && ux < (P.UW || 400) * 0.42 && uy > (P.UH || 240) * 0.38 && !inC(ux, uy, L.bx, L.by, L.bR + 8) && !inC(ux, uy, L.ax, L.ay, L.aR + 8)) { P.stick = { pid, x0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sx : ux, y0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sy : uy }; stickMove(ux, uy); return true; }
     if (inC(ux, uy, L.ax, L.ay, L.aR + 6)) { P.a = { pid }; P.jumpHeld = true; Game.mudkip && Game.mudkip.jumpPress(); P.hint = 0; return true; }
     if (inC(ux, uy, L.bx, L.by, L.bR + 6)) { P.b = { pid, t: 0 }; Moves.press(); return true; }
     return false;
@@ -59,7 +59,7 @@ const Pad = (() => {
     mk.jumpHeld = K.jump || P.jumpHeld;
   }
   function draw(fb, S, t) {
-    const W = fb.w, H = fb.h, L = (P.L = layout(W, H));
+    const W = fb.w, H = fb.h, L = (P.L = layout(W, H)); P.UW = W; P.UH = H;
     if (Game.mode !== 'explore' || (typeof Talk !== 'undefined' && Talk.busy())) return;
     if (typeof Arcade !== 'undefined' && Arcade.live && !Arcade.freeMove()) return;
     // joystick (touch screens)
