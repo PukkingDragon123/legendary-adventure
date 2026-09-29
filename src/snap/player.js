@@ -156,6 +156,8 @@ const Player = (() => {
         const sp = (run ? 140 : 95) + (this.dashT > 0 ? 120 : 0);
         this.vx = lerp(this.vx, kx * sp, dt * (this.dashT > 0 ? 2 : 5)); this.vy = lerp(this.vy, ky * sp * 0.8, dt * 5);
         if (kx) this.turn(this.face(kx, true), dt, 8);
+        // dive: press down at the surface for a nose-first plunge
+        if (ky > 0 && !(this.diveT > 0) && this.y < WorldRender.surfaceAt(this.x, t) + 16 && (this.diveCool || 0) < t) { this.diveT = 0.6; this.diveCool = t + 1; FX.splashAt(this.x, WorldRender.surfaceAt(this.x, t), { power: 0.5, n: 8 }); Game.sfx('splash', this.x, 0.5); FX.bubbles(this.x, this.y, 8, WorldRender.surfaceAt(this.x, t)); }
         if (this.jumpBuf > 0) {
           this.jumpBuf = 0;
           const s = WorldRender.surfaceAt(this.x, t);
@@ -225,6 +227,7 @@ const Player = (() => {
       Game.sfx('whoosh', this.x, 0.5);
     }
     leapOut(s) {
+      this.rot = 0;
       this.mode = 'fall'; this.plat = null; this.floe = null;
       this.jumping = true; this.cut = false; this.flipped = false; this.pound = false;
       this.vy = -(this.running ? 360 : 325); this.vx = (this.keyDir || this.dirX()) * (this.running ? 140 : 105);
@@ -530,11 +533,13 @@ const Player = (() => {
         // sandy footprints
         if (this.moving && !this.plat && !this.floe && this.air <= 0 && Game.area && Game.area.footprint && Math.floor(this.phase / Math.PI) !== this.lastStep) { this.lastStep = Math.floor(this.phase / Math.PI); Game.area.footprint(this.x - Math.cos(this.yaw) * 6, this.y, this.lastStep & 1); }
       } else if (this.mode === 'swim') {
+        if (this.kickNow) { this.kickNow = false; const sp = Math.hypot(this.vx, this.vy) || 1; const dx = this.keyDir || this.keyY ? (this.keyDir || 0) : this.vx / sp, dy = this.keyDir || this.keyY ? (this.keyY || 0) : this.vy / sp; const n = Math.hypot(dx, dy) || 1; this.vx += (dx / n) * 55; this.vy += (dy / n) * 55; }
+        if (this.diveT > 0) { this.diveT -= dt; this.vy = Math.max(this.vy, 120 * (this.diveT / 0.6) + 20); }
         this.x += this.vx * dt; this.y += this.vy * dt;
         const s = WorldRender.surfaceAt(this.x, t), g = World.groundAt(this.x);
         if (this.y < s + 10) { this.y = s + 10; this.vy = Math.max(0, this.vy); }
         if (this.y > g - 8) { this.y = g - 8; this.vy = Math.min(0, this.vy); }
-        if (!World.isWet(this.x, 12)) { this.mode = 'land'; this.air = 0; this.vx = 0; this.target = this.target && this.target.kind === 'swim' ? null : this.target; if (!this.target && !this.keyDir) this.idleTask(this.shakeOff()); }
+        if (!World.isWet(this.x, 12)) { this.mode = 'land'; this.air = 0; this.vx = 0; this.rot = 0; this.target = this.target && this.target.kind === 'swim' ? null : this.target; if (!this.target && !this.keyDir) this.idleTask(this.shakeOff()); }
         const sp2 = Math.abs(this.vx) + Math.abs(this.vy);
         if (sp2 > 25 && Math.random() < dt * (4 + sp2 * 0.08)) FX.bubbles(this.x - Math.cos(this.yaw) * 12, this.y - 6, 1, WorldRender.surfaceAt(this.x, t));
         if (Math.sign(this.vx) !== (this.lastVxS || 0) && Math.abs(this.vx) > 30) { this.lastVxS = Math.sign(this.vx); FX.bubbles(this.x, this.y - 8, 4, WorldRender.surfaceAt(this.x, t)); }
@@ -559,7 +564,7 @@ const Player = (() => {
           if (big) { Game.shake(2.5); if (typeof Ripples !== 'undefined') Ripples.poke(this.x, -120, 8); }
           FX.add({ type: 'ring', x: this.x, y: s, r0: 2, r1: 16, flat: 0.3, life: 0.6, c: 0xffffffff, layer: 2 });
           for (const m of Mons.all) if (m !== this) m.hear('splash', this.x, big ? 1 : 0.8);
-          this.vy = 60; this.vx *= 0.3;
+          this.vy = 60; this.vx *= 0.3; this.diveT = 0.5;
         } else if (this.y >= g && (this.vy > 0 || this.y > g + 3)) {
           this.mode = 'land'; this.diving = false; const v = this.vy; this.y = g; this.air = 0; this.vair = 0; this.vx *= 0.7;
           this.landed(Math.max(0, v));
@@ -612,7 +617,24 @@ const Player = (() => {
         if (this.pound) { P.legF = -1; P.legB = 1; P.squash = this.hang > 0 ? -0.1 : 0.06; P.eyes = this.hang > 0 ? 'open' : 'blink'; P.mouth = 1; P.headPitch = 0.25; P.finSway = -0.2; }
       }
       if (this.mode === 'fall' && this.diving) { P.headPitch = clamp(this.vy * 0.0022, -0.45, 0.6); P.legF = -0.9; P.legB = 0.9; P.tailLift = 0.3; P.eyes = this.vy < 0 ? 'happy' : 'open'; }
-      if (swim) { P.headPitch = clamp(this.vy * 0.004, -0.45, 0.5); P.lean = clamp(-this.vy * 0.002, -0.2, 0.2); if (this.dashT > 0) { P.tailWag = Math.sin(t * 30) * 0.6; P.finSway = -0.2; P.eyes = 'happy'; } }
+      if (swim) {
+        // frog-style breaststroke: both back legs kick together, arms sweep, then a long glide
+        const sp = Math.hypot(this.vx, this.vy), moving = sp > 18 || this.keyDir || this.keyY;
+        this.strokeP = (this.strokeP || 0) + dt * (moving ? 1.5 + (this.running ? 0.6 : 0) : 0.55);
+        const f = this.strokeP % 1;
+        if (f < (this.lastStroke ?? 0)) { this.kickNow = moving; if (moving) { FX.bubbles(this.x - this.dirX() * 12, this.y - 4, 3, WorldRender.surfaceAt(this.x, t)); if (this.y < WorldRender.surfaceAt(this.x, t) + 14) Game.sfx('plop', this.x, 0.2); } }
+        this.lastStroke = f;
+        const kick = f < 0.2 ? Math.sin((f / 0.2) * Math.PI / 2) : Math.max(0, 1 - (f - 0.2) / 0.8);
+        P.legB = -0.6 + 1.5 * kick; P.legF = 0.5 - 1.1 * kick; P.legSplay = 0.7 * (1 - kick) + 0.1;
+        P.squash = -0.07 * kick + 0.04 * (1 - kick); P.bodyDip = 0;
+        P.tailWag = Math.sin(t * 3) * 0.15 + kick * 0.3; P.tailLift = 0.2 + kick * 0.2; P.finSway = -0.18 * kick + 0.05;
+        P.headPitch = clamp(this.vy * 0.003, -0.35, 0.4); P.lean = 0.06;
+        P.mouth = kick > 0.8 ? 0.8 : 0.35; if (kick > 0.9 && moving) P.eyes = 'happy';
+        if (this.dashT > 0) { P.tailWag = Math.sin(t * 30) * 0.6; P.finSway = -0.2; P.eyes = 'happy'; P.legB = 0.9; P.legF = -0.6; }
+        // the whole body tilts along the swim direction (diving nose-first)
+        const tilt = this.diveT > 0 ? this.dirX() * 1.1 * Math.sin((this.diveT / 0.6) * Math.PI) : clamp(Math.atan2(this.vy, Math.abs(this.vx) + 30) * 0.6, -0.5, 0.7) * this.dirX();
+        if (this.flipT <= 0 && !(this.task && !this.task.done)) this.rot = this.rot + (tilt - this.rot) * Math.min(1, dt * 6);
+      }
       if (this.crouch > 0) { P.bodyDip = Math.max(P.bodyDip, this.crouch * 2.2); P.headPitch += this.crouch * 0.3; P.legSplay = this.crouch * 0.4; P.look = 0.2 * this.crouch; }
       if (this.skidT > 0) { this.skidT -= dt; P.lean = -0.14; P.headPitch = -0.12; P.eyes = 'open'; P.mouth = 1; P.legF = 0.8; P.legB = 0.3; }
       if (this.splatT > 0) { this.splatT -= dt; const k = Math.min(1, this.splatT / 0.3); P.squash = Math.max(P.squash, 0.3 * k); P.bodyDip = 3 * k; P.legSplay = 1 * k; P.eyes = 'blink'; P.mouth = 1; }

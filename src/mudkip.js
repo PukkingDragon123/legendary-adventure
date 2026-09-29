@@ -517,6 +517,21 @@ const Mudkip = (() => {
       }
       add(eA(chain(h, T(...tip)), [1.1, 0.9, 1.1], G.HAT5, () => K(GOLD, 1)));
     },
+    // a big red ribbon bow on the camera side of the head
+    bow(h, add, sd) {
+      const q = headPt(V3.norm([-0.1, 0.75, 0.62 * sd]), 0.8), ax = basis(q.n);
+      add(eAx(h, q.p, ax, [2.6, 2.6, 2.0], G.HAT3, () => K(RED, 1)));
+      for (const sg of [1, -1]) {
+        add(eAx(h, V3.add(q.p, V3.scale(ax[0], sg * 5.6)), [V3.norm(V3.add(ax[0], V3.scale(ax[1], 0.3 * sg))), ax[1], ax[2]], [6.0, 4.2, 1.6], G.HAT, (s) => K(RED, s[1] > 0.4 ? 1 : 0)));
+        add(eAx(h, V3.add(q.p, V3.add(V3.scale(ax[0], sg * 2.2), V3.scale(ax[1], -4.2))), [ax[1], ax[0], ax[2]], [3.6, 1.3, 1.0], G.HAT2, () => K(RED, -1)));
+      }
+    },
+    // chef's toque: a puffy white top on a band, around the fin
+    chef(h, add) {
+      const n = V3.norm([-0.1, 1, 0]), d = 0.36, k = 1.08;
+      add(eA(h, [HR[0] * k, HR[1] * k, HR[2] * k], G.HAT, (s) => { const q = dot3(s, n) - d; return q < 0 || q > 0.24 ? 0 : K(WHITE, q < 0.05 ? -1 : 0); }));
+      for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; add(eA(chain(h, T(-1 + Math.cos(a) * 5.5, 17.5 + (i % 2) * 1.2, Math.sin(a) * 6)), [5.2, 5.0, 5.2], G.HAT2, (s) => K(WHITE, s[1] > 0.3 ? 1 : 0))); }
+    },
     // plush lobster: red cap with tail segments down the back, eyes on stalks, antennae, two claws
     lobster(h, add) {
       const n = V3.norm([-0.16, 1, 0]), d = 0.24;
@@ -679,6 +694,14 @@ const Mudkip = (() => {
           add(eA(chain(f, T(3.0, -4.6, 0)), [1.3, 0.7, 2.0], ids[id], () => K(WHITE, 1)));
         }
       }
+    }
+    if (P.neck === 'lei') {
+      // a Hawaiian flower lei round the neck
+      for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; add(eA(chain(body, T(12.8 - Math.sin(a) * 2.5, 3.2 + Math.cos(a) * 5.4, Math.sin(a) * 10.6)), [2.6, 2.6, 2.6], G.NECK, () => K([PINK, YELLOW, WHITE, MAGENTA][i % 4], 1))); }
+    }
+    if (P.fun === 'floaties') {
+      // orange arm floaties on the front legs
+      for (const id of [2, 3]) { const f = legs[id]; if (!f) continue; add(eA(chain(f, T(0.2, -2.6, 0)), [4.6, 2.6, 4.4], id === 2 ? G.FUN : G.FUN2, (s) => K(Math.abs(s[1]) < 0.25 ? WHITE : ORANGE, s[1] > 0.5 ? 1 : 0))); }
     }
     // fun extras
     if (P.fun === 'ring') {

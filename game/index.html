@@ -1227,6 +1227,21 @@ const Mudkip = (() => {
       }
       add(eA(chain(h, T(...tip)), [1.1, 0.9, 1.1], G.HAT5, () => K(GOLD, 1)));
     },
+    // a big red ribbon bow on the camera side of the head
+    bow(h, add, sd) {
+      const q = headPt(V3.norm([-0.1, 0.75, 0.62 * sd]), 0.8), ax = basis(q.n);
+      add(eAx(h, q.p, ax, [2.6, 2.6, 2.0], G.HAT3, () => K(RED, 1)));
+      for (const sg of [1, -1]) {
+        add(eAx(h, V3.add(q.p, V3.scale(ax[0], sg * 5.6)), [V3.norm(V3.add(ax[0], V3.scale(ax[1], 0.3 * sg))), ax[1], ax[2]], [6.0, 4.2, 1.6], G.HAT, (s) => K(RED, s[1] > 0.4 ? 1 : 0)));
+        add(eAx(h, V3.add(q.p, V3.add(V3.scale(ax[0], sg * 2.2), V3.scale(ax[1], -4.2))), [ax[1], ax[0], ax[2]], [3.6, 1.3, 1.0], G.HAT2, () => K(RED, -1)));
+      }
+    },
+    // chef's toque: a puffy white top on a band, around the fin
+    chef(h, add) {
+      const n = V3.norm([-0.1, 1, 0]), d = 0.36, k = 1.08;
+      add(eA(h, [HR[0] * k, HR[1] * k, HR[2] * k], G.HAT, (s) => { const q = dot3(s, n) - d; return q < 0 || q > 0.24 ? 0 : K(WHITE, q < 0.05 ? -1 : 0); }));
+      for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; add(eA(chain(h, T(-1 + Math.cos(a) * 5.5, 17.5 + (i % 2) * 1.2, Math.sin(a) * 6)), [5.2, 5.0, 5.2], G.HAT2, (s) => K(WHITE, s[1] > 0.3 ? 1 : 0))); }
+    },
     // plush lobster: red cap with tail segments down the back, eyes on stalks, antennae, two claws
     lobster(h, add) {
       const n = V3.norm([-0.16, 1, 0]), d = 0.24;
@@ -1389,6 +1404,14 @@ const Mudkip = (() => {
           add(eA(chain(f, T(3.0, -4.6, 0)), [1.3, 0.7, 2.0], ids[id], () => K(WHITE, 1)));
         }
       }
+    }
+    if (P.neck === 'lei') {
+      // a Hawaiian flower lei round the neck
+      for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; add(eA(chain(body, T(12.8 - Math.sin(a) * 2.5, 3.2 + Math.cos(a) * 5.4, Math.sin(a) * 10.6)), [2.6, 2.6, 2.6], G.NECK, () => K([PINK, YELLOW, WHITE, MAGENTA][i % 4], 1))); }
+    }
+    if (P.fun === 'floaties') {
+      // orange arm floaties on the front legs
+      for (const id of [2, 3]) { const f = legs[id]; if (!f) continue; add(eA(chain(f, T(0.2, -2.6, 0)), [4.6, 2.6, 4.4], id === 2 ? G.FUN : G.FUN2, (s) => K(Math.abs(s[1]) < 0.25 ? WHITE : ORANGE, s[1] > 0.5 ? 1 : 0))); }
     }
     // fun extras
     if (P.fun === 'ring') {
@@ -20124,6 +20147,21 @@ const Mudkip = (() => {
       }
       add(eA(chain(h, T(...tip)), [1.1, 0.9, 1.1], G.HAT5, () => K(GOLD, 1)));
     },
+    // a big red ribbon bow on the camera side of the head
+    bow(h, add, sd) {
+      const q = headPt(V3.norm([-0.1, 0.75, 0.62 * sd]), 0.8), ax = basis(q.n);
+      add(eAx(h, q.p, ax, [2.6, 2.6, 2.0], G.HAT3, () => K(RED, 1)));
+      for (const sg of [1, -1]) {
+        add(eAx(h, V3.add(q.p, V3.scale(ax[0], sg * 5.6)), [V3.norm(V3.add(ax[0], V3.scale(ax[1], 0.3 * sg))), ax[1], ax[2]], [6.0, 4.2, 1.6], G.HAT, (s) => K(RED, s[1] > 0.4 ? 1 : 0)));
+        add(eAx(h, V3.add(q.p, V3.add(V3.scale(ax[0], sg * 2.2), V3.scale(ax[1], -4.2))), [ax[1], ax[0], ax[2]], [3.6, 1.3, 1.0], G.HAT2, () => K(RED, -1)));
+      }
+    },
+    // chef's toque: a puffy white top on a band, around the fin
+    chef(h, add) {
+      const n = V3.norm([-0.1, 1, 0]), d = 0.36, k = 1.08;
+      add(eA(h, [HR[0] * k, HR[1] * k, HR[2] * k], G.HAT, (s) => { const q = dot3(s, n) - d; return q < 0 || q > 0.24 ? 0 : K(WHITE, q < 0.05 ? -1 : 0); }));
+      for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; add(eA(chain(h, T(-1 + Math.cos(a) * 5.5, 17.5 + (i % 2) * 1.2, Math.sin(a) * 6)), [5.2, 5.0, 5.2], G.HAT2, (s) => K(WHITE, s[1] > 0.3 ? 1 : 0))); }
+    },
     // plush lobster: red cap with tail segments down the back, eyes on stalks, antennae, two claws
     lobster(h, add) {
       const n = V3.norm([-0.16, 1, 0]), d = 0.24;
@@ -20286,6 +20324,14 @@ const Mudkip = (() => {
           add(eA(chain(f, T(3.0, -4.6, 0)), [1.3, 0.7, 2.0], ids[id], () => K(WHITE, 1)));
         }
       }
+    }
+    if (P.neck === 'lei') {
+      // a Hawaiian flower lei round the neck
+      for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2; add(eA(chain(body, T(12.8 - Math.sin(a) * 2.5, 3.2 + Math.cos(a) * 5.4, Math.sin(a) * 10.6)), [2.6, 2.6, 2.6], G.NECK, () => K([PINK, YELLOW, WHITE, MAGENTA][i % 4], 1))); }
+    }
+    if (P.fun === 'floaties') {
+      // orange arm floaties on the front legs
+      for (const id of [2, 3]) { const f = legs[id]; if (!f) continue; add(eA(chain(f, T(0.2, -2.6, 0)), [4.6, 2.6, 4.4], id === 2 ? G.FUN : G.FUN2, (s) => K(Math.abs(s[1]) < 0.25 ? WHITE : ORANGE, s[1] > 0.5 ? 1 : 0))); }
     }
     // fun extras
     if (P.fun === 'ring') {
@@ -40662,7 +40708,7 @@ const SFX = (() => {
 const Save = (() => {
   const KEY = 'mudkip-snap-v1';
   const fresh = () => ({
-    v: 1, points: 0, photos: {}, seen: {}, beh: {}, obj: {}, quests: {}, owned: { 'skin.classic': 1, 'neck.camera': 1, 'banner.rookie': 1, 'deco.none': 1, 'hat.straw': 1, 'glasses.round': 1, 'fun.stache': 1 },
+    v: 1, points: 0, photos: {}, seen: {}, beh: {}, obj: {}, quests: {}, owned: { 'skin.classic': 1, 'neck.camera': 1, 'banner.rookie': 1, 'deco.none': 1, 'hat.straw': 1, 'glasses.round': 1, 'fun.stache': 1, 'hat.bow': 1 },
     equip: { skin: 'skin.classic', banner: 'banner.rookie', key: null, deco: 'deco.none', hat: null, shirt: null, glasses: null, neck: 'neck.camera', shoes: null, fun: null },
     items: { berry: 3 }, areas: { beach: 1 }, visits: {}, disc: {}, album: [], lastArea: 'beach', songs: {}, tut: {}, shots: 0, stats: {},
   });
@@ -41614,15 +41660,25 @@ const Mons = (() => {
     const px = this.ox() - cx + s.w / 2, py = this.oy() - cy + s.h / 2 + (this.rotY || 0) + (this.jy || 0) - (jy - 1) * s.h / 2;
     const ca = Math.cos(this.rot || 0), sa = Math.sin(this.rot || 0), R = Math.ceil(Math.hypot(s.w, s.h) / 2 * Math.max(jx, jy)) + 1;
     const PX0 = Math.round(px), PY0 = Math.round(py), hw = s.w / 2, hh = s.h / 2;
+    const s2 = Critters.HDS.on && this.spr2 ? this.spr2.s : null, P2x = Math.round(px * 2), P2y = Math.round(py * 2);
     const idb = Stage.S.idOn ? Stage.S.idb : null, pid = this.pid || 0, rawb = Stage.S.rawb, occV = this.occV;
     const tint = this.tint || 0, tk = this.tintK || 0;
     for (let y = -R; y <= R; y++) {
       const Y = PY0 + y; if (Y < 0 || Y >= H) continue;
       for (let x = -R; x <= R; x++) {
         const X = PX0 + x; if (X < 0 || X >= W) continue;
-        const u = Math.floor((x * ca + y * sa) / jx + hw), v = Math.floor((-x * sa + y * ca) / jy + hh);
-        if (u < 0 || v < 0 || u >= s.w || v >= s.h) continue;
-        const c = s.d[v * s.w + (this.flip ? s.w - 1 - u : u)]; if (!c) continue;
+        let c;
+        if (s2) {
+          // sample the 2× sprite so the low-res silhouette matches the HD pass exactly (no see-through edges)
+          const dx = (X * 2 + 1) - P2x, dy = (Y * 2 + 1) - P2y;
+          const u2 = Math.floor((dx * ca + dy * sa) / jx + s2.w / 2), v2 = Math.floor((-dx * sa + dy * ca) / jy + s2.h / 2);
+          if (u2 < 0 || v2 < 0 || u2 >= s2.w || v2 >= s2.h) continue;
+          c = s2.d[v2 * s2.w + (this.flip ? s2.w - 1 - u2 : u2)]; if (!c) continue;
+        } else {
+          const u = Math.floor((x * ca + y * sa) / jx + hw), v = Math.floor((-x * sa + y * ca) / jy + hh);
+          if (u < 0 || v < 0 || u >= s.w || v >= s.h) continue;
+          c = s.d[v * s.w + (this.flip ? s.w - 1 - u : u)]; if (!c) continue;
+        }
         const cc = tk ? U.mix(c, tint, tk) : c, i = Y * W + X;
         d[i] = cc; if (occ) occ[i] = occV;
         if (idb) { idb[i] = pid; if (rawb) rawb[i] = cc; }
@@ -41792,6 +41848,8 @@ const Player = (() => {
         const sp = (run ? 140 : 95) + (this.dashT > 0 ? 120 : 0);
         this.vx = lerp(this.vx, kx * sp, dt * (this.dashT > 0 ? 2 : 5)); this.vy = lerp(this.vy, ky * sp * 0.8, dt * 5);
         if (kx) this.turn(this.face(kx, true), dt, 8);
+        // dive: press down at the surface for a nose-first plunge
+        if (ky > 0 && !(this.diveT > 0) && this.y < WorldRender.surfaceAt(this.x, t) + 16 && (this.diveCool || 0) < t) { this.diveT = 0.6; this.diveCool = t + 1; FX.splashAt(this.x, WorldRender.surfaceAt(this.x, t), { power: 0.5, n: 8 }); Game.sfx('splash', this.x, 0.5); FX.bubbles(this.x, this.y, 8, WorldRender.surfaceAt(this.x, t)); }
         if (this.jumpBuf > 0) {
           this.jumpBuf = 0;
           const s = WorldRender.surfaceAt(this.x, t);
@@ -41861,6 +41919,7 @@ const Player = (() => {
       Game.sfx('whoosh', this.x, 0.5);
     }
     leapOut(s) {
+      this.rot = 0;
       this.mode = 'fall'; this.plat = null; this.floe = null;
       this.jumping = true; this.cut = false; this.flipped = false; this.pound = false;
       this.vy = -(this.running ? 360 : 325); this.vx = (this.keyDir || this.dirX()) * (this.running ? 140 : 105);
@@ -42166,11 +42225,13 @@ const Player = (() => {
         // sandy footprints
         if (this.moving && !this.plat && !this.floe && this.air <= 0 && Game.area && Game.area.footprint && Math.floor(this.phase / Math.PI) !== this.lastStep) { this.lastStep = Math.floor(this.phase / Math.PI); Game.area.footprint(this.x - Math.cos(this.yaw) * 6, this.y, this.lastStep & 1); }
       } else if (this.mode === 'swim') {
+        if (this.kickNow) { this.kickNow = false; const sp = Math.hypot(this.vx, this.vy) || 1; const dx = this.keyDir || this.keyY ? (this.keyDir || 0) : this.vx / sp, dy = this.keyDir || this.keyY ? (this.keyY || 0) : this.vy / sp; const n = Math.hypot(dx, dy) || 1; this.vx += (dx / n) * 55; this.vy += (dy / n) * 55; }
+        if (this.diveT > 0) { this.diveT -= dt; this.vy = Math.max(this.vy, 120 * (this.diveT / 0.6) + 20); }
         this.x += this.vx * dt; this.y += this.vy * dt;
         const s = WorldRender.surfaceAt(this.x, t), g = World.groundAt(this.x);
         if (this.y < s + 10) { this.y = s + 10; this.vy = Math.max(0, this.vy); }
         if (this.y > g - 8) { this.y = g - 8; this.vy = Math.min(0, this.vy); }
-        if (!World.isWet(this.x, 12)) { this.mode = 'land'; this.air = 0; this.vx = 0; this.target = this.target && this.target.kind === 'swim' ? null : this.target; if (!this.target && !this.keyDir) this.idleTask(this.shakeOff()); }
+        if (!World.isWet(this.x, 12)) { this.mode = 'land'; this.air = 0; this.vx = 0; this.rot = 0; this.target = this.target && this.target.kind === 'swim' ? null : this.target; if (!this.target && !this.keyDir) this.idleTask(this.shakeOff()); }
         const sp2 = Math.abs(this.vx) + Math.abs(this.vy);
         if (sp2 > 25 && Math.random() < dt * (4 + sp2 * 0.08)) FX.bubbles(this.x - Math.cos(this.yaw) * 12, this.y - 6, 1, WorldRender.surfaceAt(this.x, t));
         if (Math.sign(this.vx) !== (this.lastVxS || 0) && Math.abs(this.vx) > 30) { this.lastVxS = Math.sign(this.vx); FX.bubbles(this.x, this.y - 8, 4, WorldRender.surfaceAt(this.x, t)); }
@@ -42195,7 +42256,7 @@ const Player = (() => {
           if (big) { Game.shake(2.5); if (typeof Ripples !== 'undefined') Ripples.poke(this.x, -120, 8); }
           FX.add({ type: 'ring', x: this.x, y: s, r0: 2, r1: 16, flat: 0.3, life: 0.6, c: 0xffffffff, layer: 2 });
           for (const m of Mons.all) if (m !== this) m.hear('splash', this.x, big ? 1 : 0.8);
-          this.vy = 60; this.vx *= 0.3;
+          this.vy = 60; this.vx *= 0.3; this.diveT = 0.5;
         } else if (this.y >= g && (this.vy > 0 || this.y > g + 3)) {
           this.mode = 'land'; this.diving = false; const v = this.vy; this.y = g; this.air = 0; this.vair = 0; this.vx *= 0.7;
           this.landed(Math.max(0, v));
@@ -42248,7 +42309,24 @@ const Player = (() => {
         if (this.pound) { P.legF = -1; P.legB = 1; P.squash = this.hang > 0 ? -0.1 : 0.06; P.eyes = this.hang > 0 ? 'open' : 'blink'; P.mouth = 1; P.headPitch = 0.25; P.finSway = -0.2; }
       }
       if (this.mode === 'fall' && this.diving) { P.headPitch = clamp(this.vy * 0.0022, -0.45, 0.6); P.legF = -0.9; P.legB = 0.9; P.tailLift = 0.3; P.eyes = this.vy < 0 ? 'happy' : 'open'; }
-      if (swim) { P.headPitch = clamp(this.vy * 0.004, -0.45, 0.5); P.lean = clamp(-this.vy * 0.002, -0.2, 0.2); if (this.dashT > 0) { P.tailWag = Math.sin(t * 30) * 0.6; P.finSway = -0.2; P.eyes = 'happy'; } }
+      if (swim) {
+        // frog-style breaststroke: both back legs kick together, arms sweep, then a long glide
+        const sp = Math.hypot(this.vx, this.vy), moving = sp > 18 || this.keyDir || this.keyY;
+        this.strokeP = (this.strokeP || 0) + dt * (moving ? 1.5 + (this.running ? 0.6 : 0) : 0.55);
+        const f = this.strokeP % 1;
+        if (f < (this.lastStroke ?? 0)) { this.kickNow = moving; if (moving) { FX.bubbles(this.x - this.dirX() * 12, this.y - 4, 3, WorldRender.surfaceAt(this.x, t)); if (this.y < WorldRender.surfaceAt(this.x, t) + 14) Game.sfx('plop', this.x, 0.2); } }
+        this.lastStroke = f;
+        const kick = f < 0.2 ? Math.sin((f / 0.2) * Math.PI / 2) : Math.max(0, 1 - (f - 0.2) / 0.8);
+        P.legB = -0.6 + 1.5 * kick; P.legF = 0.5 - 1.1 * kick; P.legSplay = 0.7 * (1 - kick) + 0.1;
+        P.squash = -0.07 * kick + 0.04 * (1 - kick); P.bodyDip = 0;
+        P.tailWag = Math.sin(t * 3) * 0.15 + kick * 0.3; P.tailLift = 0.2 + kick * 0.2; P.finSway = -0.18 * kick + 0.05;
+        P.headPitch = clamp(this.vy * 0.003, -0.35, 0.4); P.lean = 0.06;
+        P.mouth = kick > 0.8 ? 0.8 : 0.35; if (kick > 0.9 && moving) P.eyes = 'happy';
+        if (this.dashT > 0) { P.tailWag = Math.sin(t * 30) * 0.6; P.finSway = -0.2; P.eyes = 'happy'; P.legB = 0.9; P.legF = -0.6; }
+        // the whole body tilts along the swim direction (diving nose-first)
+        const tilt = this.diveT > 0 ? this.dirX() * 1.1 * Math.sin((this.diveT / 0.6) * Math.PI) : clamp(Math.atan2(this.vy, Math.abs(this.vx) + 30) * 0.6, -0.5, 0.7) * this.dirX();
+        if (this.flipT <= 0 && !(this.task && !this.task.done)) this.rot = this.rot + (tilt - this.rot) * Math.min(1, dt * 6);
+      }
       if (this.crouch > 0) { P.bodyDip = Math.max(P.bodyDip, this.crouch * 2.2); P.headPitch += this.crouch * 0.3; P.legSplay = this.crouch * 0.4; P.look = 0.2 * this.crouch; }
       if (this.skidT > 0) { this.skidT -= dt; P.lean = -0.14; P.headPitch = -0.12; P.eyes = 'open'; P.mouth = 1; P.legF = 0.8; P.legB = 0.3; }
       if (this.splatT > 0) { this.splatT -= dt; const k = Math.min(1, this.splatT / 0.3); P.squash = Math.max(P.squash, 0.3 * k); P.bodyDip = 3 * k; P.legSplay = 1 * k; P.eyes = 'blink'; P.mouth = 1; }
@@ -44596,6 +44674,10 @@ const Rewards = (() => {
     'shoes.boots': { slot: 'shoes', name: 'Rain Boots', desc: 'Yellow boots for dancing in puddles.' },
     'shoes.sneakers': { slot: 'shoes', name: 'Red Sneakers', desc: 'Very fast looking. Mudkip is not faster.' },
     'fun.stache': { slot: 'fun', name: 'Fancy Moustache', desc: 'Distinguished. Extremely distinguished.' },
+    'hat.bow': { slot: 'hat', name: 'Big Red Bow', desc: 'Adorable. Possibly too adorable.' },
+    'hat.chef': { slot: 'hat', name: 'Chef Hat', desc: 'Makes berry stew. In theory.' },
+    'neck.lei': { slot: 'neck', name: 'Flower Lei', desc: 'Aloha from Coral Cove!' },
+    'fun.floaties': { slot: 'fun', name: 'Arm Floaties', desc: 'Safety first. Even for a Water type.' },
     'fun.ring': { slot: 'fun', name: 'Swim Ring', desc: 'Mudkip can swim. It just likes the ring.' },
   };
   const SLOTS = [['hat', 'Hats'], ['shirt', 'Shirts'], ['glasses', 'Shades'], ['neck', 'Neck'], ['shoes', 'Shoes'], ['fun', 'Fun'], ['skin', 'Skins'], ['banner', 'Banners'], ['key', 'Charms'], ['deco', 'Frames']];
@@ -48107,19 +48189,19 @@ const Style = (() => {
   const INK = 0xff1b2240, WHITE = 0xffffffff;
   const ST = { t: 0, tab: 0, sel: 0, pt: null, buf: null, fresh: {}, hover: -1, spin: 0 };
   const CATS = [
-    { slot: 'hat', name: 'Hats', items: ['hat.party', 'hat.crown', 'hat.propeller', 'hat.straw', 'hat.bucket', 'hat.beanie', 'hat.sailor', 'hat.flower', 'hat.star', 'hat.lobster'] },
+    { slot: 'hat', name: 'Hats', items: ['hat.party', 'hat.crown', 'hat.propeller', 'hat.bow', 'hat.chef', 'hat.straw', 'hat.bucket', 'hat.beanie', 'hat.sailor', 'hat.flower', 'hat.star', 'hat.lobster'] },
     { slot: 'shirt', name: 'Shirts', items: ['shirt.heart', 'shirt.stripe', 'shirt.hoodie', 'shirt.pop'] },
     { slot: 'glasses', name: 'Shades', items: ['glasses.round', 'glasses.star'] },
-    { slot: 'neck', name: 'Neck', items: ['neck.bow', 'neck.scarf', 'neck.camera'] },
+    { slot: 'neck', name: 'Neck', items: ['neck.lei', 'neck.bow', 'neck.scarf', 'neck.camera'] },
     { slot: 'shoes', name: 'Shoes', items: ['shoes.sneakers', 'shoes.boots'] },
-    { slot: 'fun', name: 'Fun', items: ['fun.stache', 'fun.ring'] },
+    { slot: 'fun', name: 'Fun', items: ['fun.stache', 'fun.floaties', 'fun.ring'] },
   ];
   // how to get what you do not have yet
   const HOW = {
     'hat.party': 'Help a hungry Spheal at the cove.', 'hat.crown': 'Photograph Bagon smashing the boulder.', 'hat.propeller': 'Nap next to Slakoth in the forest.',
     'shoes.boots': 'Throw Ludicolo a dance party.', 'shoes.sneakers': 'A memory from the edge of space.', 'fun.ring': 'A memory from the deep blue sea.',
   };
-  const PRICE = { 'shoes.sneakers': 1200, 'fun.ring': 900, 'shirt.stripe': 700, 'neck.bow': 500, 'neck.scarf': 600 };
+  const PRICE = { 'hat.bow': 400, 'hat.chef': 700, 'neck.lei': 500, 'fun.floaties': 800, 'shoes.sneakers': 1200, 'fun.ring': 900, 'shirt.stripe': 700, 'neck.bow': 500, 'neck.scarf': 600 };
   function open() {
     if (Game.mode !== 'explore') return;
     Game.mode = 'style'; Game.frozenFrame = false; ST.t = 0;
@@ -48188,7 +48270,7 @@ const Style = (() => {
     'hat.beanie': ['#86a1e4', '#ffffff'], 'hat.sailor': ['#ffffff', '#3150ae'], 'hat.flower': ['#f890b8', '#ffffff'], 'hat.star': ['#f0c038', '#f890b8'], 'hat.lobster': ['#e84a44', '#ffffff'],
     'shirt.heart': ['#f890b8', '#e84a44'], 'shirt.stripe': ['#ffffff', '#3150ae'], 'shirt.hoodie': ['#fb8f3c', '#ffffff'], 'shirt.pop': ['#c43cbc', '#f0c038'],
     'glasses.round': ['#262e40', '#58a0d8'], 'glasses.star': ['#f890b8', '#7c285c'], 'neck.bow': ['#e84a44', '#8e1c2c'], 'neck.scarf': ['#e84a44', '#ff7a62'], 'neck.camera': ['#e84a44', '#ffffff'],
-    'shoes.sneakers': ['#e84a44', '#ffffff'], 'shoes.boots': ['#f4d272', '#262e40'], 'fun.stache': ['#3a2a20', '#6a4a36'], 'fun.ring': ['#e84a44', '#ffffff'],
+    'shoes.sneakers': ['#e84a44', '#ffffff'], 'hat.bow': ['#e84a44', '#ff7a62'], 'hat.chef': ['#ffffff', '#c2cde0'], 'neck.lei': ['#f890b8', '#f4d272'], 'fun.floaties': ['#fb8f3c', '#f4d272'], 'shoes.boots': ['#f4d272', '#262e40'], 'fun.stache': ['#3a2a20', '#6a4a36'], 'fun.ring': ['#e84a44', '#ffffff'],
   };
   function swatch(fb, id, x, y, s, locked) {
     const cols = (SW[id] || ['#8a8ea0']).map(U.hex);
@@ -55673,6 +55755,7 @@ const Game = (() => {
       for (let x = 0; x < W; x++) { const c = d[r0 + x], o = o0 + x * 2; hb[o] = c; hb[o + 1] = c; hb[o + W2] = c; hb[o + W2 + 1] = c; }
     }
     const P = G.P;
+    if (!hm || hm.length !== W2 * H * 2) hm = new Uint8Array(W2 * H * 2); else hm.fill(0);
     for (const m of G.mons) {
       if (!m.visible || !m.alive || !m.spr || m.hideK >= 0.999 || !m.pid || m.layer === 'sea') continue;
       if (m.x + m.SW < cx - 20 || m.x - m.SW > cx + W + 20) continue;
@@ -55701,12 +55784,28 @@ const Game = (() => {
             r = r + ((fin & 255) - rr); g = g + (((fin >>> 8) & 255) - rg); b = b + (((fin >>> 16) & 255) - rb);
             r = r < 0 ? 0 : r > 255 ? 255 : r; g = g < 0 ? 0 : g > 255 ? 255 : g; b = b < 0 ? 0 : b > 255 ? 255 : b;
           }
-          hb[Y * W2 + X] = 0xff000000 | (b << 16) | (g << 8) | r;
+          hb[Y * W2 + X] = 0xff000000 | (b << 16) | (g << 8) | r; hm[Y * W2 + X] = 1;
         }
       }
     }
+    outlineHD(W, H);
   }
 
+  // a crisp dark outline round every Pokémon (drawn where the creature meets open background)
+  let hm = null;
+  const OUTL = U.hex('#1a1426');
+  function outlineHD(W, H) {
+    const W2 = W * 2, H2 = H * 2;
+    for (let y = 1; y < H2 - 1; y++) {
+      const row = y * W2;
+      for (let x = 1; x < W2 - 1; x++) {
+        const i = row + x;
+        if (hm[i]) continue;
+        if (!(hm[i - 1] === 1 || hm[i + 1] === 1 || hm[i - W2] === 1 || hm[i + W2] === 1)) continue;
+        hb[i] = U.mix(hb[i], OUTL, 0.85); hm[i] = 2;
+      }
+    }
+  }
   // the HD pass for a rotated creature: rotate its 2× sprite about the same centre as the 1× one
   function composeRot(m, h2, cx, cy, W, H, W2, d) {
     const s = h2.s, s1 = m.spr, pid = m.pid;
@@ -55715,12 +55814,14 @@ const Game = (() => {
     const ca = Math.cos(m.rot || 0), sa = Math.sin(m.rot || 0), R = Math.ceil(Math.hypot(s.w, s.h) / 2 * Math.max(jx, jy)) + 2;
     const PX0 = Math.round(px), PY0 = Math.round(py), hw = s.w / 2, hh = s.h / 2;
     const tint = m.tint || 0, tk = m.tintK || 0;
+    // (dx measured from pixel centres, like the 1× pass)
     for (let y = -R; y <= R; y++) {
       const Y = PY0 + y; if (Y < 0 || Y >= H * 2) continue;
       const ly = Y >> 1;
       for (let x = -R; x <= R; x++) {
         const X = PX0 + x; if (X < 0 || X >= W2) continue;
-        const u = Math.floor((x * ca + y * sa) / jx + hw), v = Math.floor((-x * sa + y * ca) / jy + hh);
+        const ex = X + 0 - PX0, ey = Y - PY0;
+        const u = Math.floor((ex * ca + ey * sa) / jx + hw), v = Math.floor((-ex * sa + ey * ca) / jy + hh);
         if (u < 0 || v < 0 || u >= s.w || v >= s.h) continue;
         let c = s.d[v * s.w + (m.flip ? s.w - 1 - u : u)]; if (!c) continue;
         const li = ly * W + (X >> 1);
@@ -55732,7 +55833,7 @@ const Game = (() => {
           r += (fin & 255) - (raw & 255); g += ((fin >>> 8) & 255) - ((raw >>> 8) & 255); b += ((fin >>> 16) & 255) - ((raw >>> 16) & 255);
           r = r < 0 ? 0 : r > 255 ? 255 : r; g = g < 0 ? 0 : g > 255 ? 255 : g; b = b < 0 ? 0 : b > 255 ? 255 : b;
         }
-        hb[Y * W2 + X] = 0xff000000 | (b << 16) | (g << 8) | r;
+        hb[Y * W2 + X] = 0xff000000 | (b << 16) | (g << 8) | r; hm[Y * W2 + X] = 1;
       }
     }
   }

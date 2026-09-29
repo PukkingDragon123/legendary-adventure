@@ -66,6 +66,10 @@ const Rewards = (() => {
     'shoes.boots': { slot: 'shoes', name: 'Rain Boots', desc: 'Yellow boots for dancing in puddles.' },
     'shoes.sneakers': { slot: 'shoes', name: 'Red Sneakers', desc: 'Very fast looking. Mudkip is not faster.' },
     'fun.stache': { slot: 'fun', name: 'Fancy Moustache', desc: 'Distinguished. Extremely distinguished.' },
+    'hat.bow': { slot: 'hat', name: 'Big Red Bow', desc: 'Adorable. Possibly too adorable.' },
+    'hat.chef': { slot: 'hat', name: 'Chef Hat', desc: 'Makes berry stew. In theory.' },
+    'neck.lei': { slot: 'neck', name: 'Flower Lei', desc: 'Aloha from Coral Cove!' },
+    'fun.floaties': { slot: 'fun', name: 'Arm Floaties', desc: 'Safety first. Even for a Water type.' },
     'fun.ring': { slot: 'fun', name: 'Swim Ring', desc: 'Mudkip can swim. It just likes the ring.' },
   };
   const SLOTS = [['hat', 'Hats'], ['shirt', 'Shirts'], ['glasses', 'Shades'], ['neck', 'Neck'], ['shoes', 'Shoes'], ['fun', 'Fun'], ['skin', 'Skins'], ['banner', 'Banners'], ['key', 'Charms'], ['deco', 'Frames']];

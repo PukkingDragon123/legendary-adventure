@@ -239,15 +239,25 @@ const Mons = (() => {
     const px = this.ox() - cx + s.w / 2, py = this.oy() - cy + s.h / 2 + (this.rotY || 0) + (this.jy || 0) - (jy - 1) * s.h / 2;
     const ca = Math.cos(this.rot || 0), sa = Math.sin(this.rot || 0), R = Math.ceil(Math.hypot(s.w, s.h) / 2 * Math.max(jx, jy)) + 1;
     const PX0 = Math.round(px), PY0 = Math.round(py), hw = s.w / 2, hh = s.h / 2;
+    const s2 = Critters.HDS.on && this.spr2 ? this.spr2.s : null, P2x = Math.round(px * 2), P2y = Math.round(py * 2);
     const idb = Stage.S.idOn ? Stage.S.idb : null, pid = this.pid || 0, rawb = Stage.S.rawb, occV = this.occV;
     const tint = this.tint || 0, tk = this.tintK || 0;
     for (let y = -R; y <= R; y++) {
       const Y = PY0 + y; if (Y < 0 || Y >= H) continue;
       for (let x = -R; x <= R; x++) {
         const X = PX0 + x; if (X < 0 || X >= W) continue;
-        const u = Math.floor((x * ca + y * sa) / jx + hw), v = Math.floor((-x * sa + y * ca) / jy + hh);
-        if (u < 0 || v < 0 || u >= s.w || v >= s.h) continue;
-        const c = s.d[v * s.w + (this.flip ? s.w - 1 - u : u)]; if (!c) continue;
+        let c;
+        if (s2) {
+          // sample the 2× sprite so the low-res silhouette matches the HD pass exactly (no see-through edges)
+          const dx = (X * 2 + 1) - P2x, dy = (Y * 2 + 1) - P2y;
+          const u2 = Math.floor((dx * ca + dy * sa) / jx + s2.w / 2), v2 = Math.floor((-dx * sa + dy * ca) / jy + s2.h / 2);
+          if (u2 < 0 || v2 < 0 || u2 >= s2.w || v2 >= s2.h) continue;
+          c = s2.d[v2 * s2.w + (this.flip ? s2.w - 1 - u2 : u2)]; if (!c) continue;
+        } else {
+          const u = Math.floor((x * ca + y * sa) / jx + hw), v = Math.floor((-x * sa + y * ca) / jy + hh);
+          if (u < 0 || v < 0 || u >= s.w || v >= s.h) continue;
+          c = s.d[v * s.w + (this.flip ? s.w - 1 - u : u)]; if (!c) continue;
+        }
         const cc = tk ? U.mix(c, tint, tk) : c, i = Y * W + X;
         d[i] = cc; if (occ) occ[i] = occV;
         if (idb) { idb[i] = pid; if (rawb) rawb[i] = cc; }

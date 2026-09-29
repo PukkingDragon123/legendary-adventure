@@ -365,6 +365,7 @@ const Game = (() => {
       for (let x = 0; x < W; x++) { const c = d[r0 + x], o = o0 + x * 2; hb[o] = c; hb[o + 1] = c; hb[o + W2] = c; hb[o + W2 + 1] = c; }
     }
     const P = G.P;
+    if (!hm || hm.length !== W2 * H * 2) hm = new Uint8Array(W2 * H * 2); else hm.fill(0);
     for (const m of G.mons) {
       if (!m.visible || !m.alive || !m.spr || m.hideK >= 0.999 || !m.pid || m.layer === 'sea') continue;
       if (m.x + m.SW < cx - 20 || m.x - m.SW > cx + W + 20) continue;
@@ -393,12 +394,28 @@ const Game = (() => {
             r = r + ((fin & 255) - rr); g = g + (((fin >>> 8) & 255) - rg); b = b + (((fin >>> 16) & 255) - rb);
             r = r < 0 ? 0 : r > 255 ? 255 : r; g = g < 0 ? 0 : g > 255 ? 255 : g; b = b < 0 ? 0 : b > 255 ? 255 : b;
           }
-          hb[Y * W2 + X] = 0xff000000 | (b << 16) | (g << 8) | r;
+          hb[Y * W2 + X] = 0xff000000 | (b << 16) | (g << 8) | r; hm[Y * W2 + X] = 1;
         }
       }
     }
+    outlineHD(W, H);
   }
 
+  // a crisp dark outline round every Pokémon (drawn where the creature meets open background)
+  let hm = null;
+  const OUTL = U.hex('#1a1426');
+  function outlineHD(W, H) {
+    const W2 = W * 2, H2 = H * 2;
+    for (let y = 1; y < H2 - 1; y++) {
+      const row = y * W2;
+      for (let x = 1; x < W2 - 1; x++) {
+        const i = row + x;
+        if (hm[i]) continue;
+        if (!(hm[i - 1] === 1 || hm[i + 1] === 1 || hm[i - W2] === 1 || hm[i + W2] === 1)) continue;
+        hb[i] = U.mix(hb[i], OUTL, 0.85); hm[i] = 2;
+      }
+    }
+  }
   // the HD pass for a rotated creature: rotate its 2× sprite about the same centre as the 1× one
   function composeRot(m, h2, cx, cy, W, H, W2, d) {
     const s = h2.s, s1 = m.spr, pid = m.pid;
@@ -407,12 +424,14 @@ const Game = (() => {
     const ca = Math.cos(m.rot || 0), sa = Math.sin(m.rot || 0), R = Math.ceil(Math.hypot(s.w, s.h) / 2 * Math.max(jx, jy)) + 2;
     const PX0 = Math.round(px), PY0 = Math.round(py), hw = s.w / 2, hh = s.h / 2;
     const tint = m.tint || 0, tk = m.tintK || 0;
+    // (dx measured from pixel centres, like the 1× pass)
     for (let y = -R; y <= R; y++) {
       const Y = PY0 + y; if (Y < 0 || Y >= H * 2) continue;
       const ly = Y >> 1;
       for (let x = -R; x <= R; x++) {
         const X = PX0 + x; if (X < 0 || X >= W2) continue;
-        const u = Math.floor((x * ca + y * sa) / jx + hw), v = Math.floor((-x * sa + y * ca) / jy + hh);
+        const ex = X + 0 - PX0, ey = Y - PY0;
+        const u = Math.floor((ex * ca + ey * sa) / jx + hw), v = Math.floor((-ex * sa + ey * ca) / jy + hh);
         if (u < 0 || v < 0 || u >= s.w || v >= s.h) continue;
         let c = s.d[v * s.w + (m.flip ? s.w - 1 - u : u)]; if (!c) continue;
         const li = ly * W + (X >> 1);
@@ -424,7 +443,7 @@ const Game = (() => {
           r += (fin & 255) - (raw & 255); g += ((fin >>> 8) & 255) - ((raw >>> 8) & 255); b += ((fin >>> 16) & 255) - ((raw >>> 16) & 255);
           r = r < 0 ? 0 : r > 255 ? 255 : r; g = g < 0 ? 0 : g > 255 ? 255 : g; b = b < 0 ? 0 : b > 255 ? 255 : b;
         }
-        hb[Y * W2 + X] = 0xff000000 | (b << 16) | (g << 8) | r;
+        hb[Y * W2 + X] = 0xff000000 | (b << 16) | (g << 8) | r; hm[Y * W2 + X] = 1;
       }
     }
   }
