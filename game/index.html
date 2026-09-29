@@ -38835,7 +38835,7 @@ const Critters = (() => {
     },
     pump() {
       for (const w of this.workers) {
-        while (w.ok && !w.dead && w.busy < 2 && this.queue.size) {
+        while (w.ok && !w.dead && w.busy < 4 && this.queue.size) {
           const [id, job] = this.queue.entries().next().value;
           this.queue.delete(id);
           if (cache.has(job.key) || this.pending.has(job.key)) continue;
@@ -38920,6 +38920,18 @@ const Critters = (() => {
       return o;
     }
     sprite(P, force = false) {
+      // HD: hold on to the pose being rendered until both resolutions arrive (otherwise a pose that changes
+      // every frame never gets a matching pair and the creature freezes)
+      let live = null;
+      if (HDS.on && !this.noHD) {
+        if (this.latch && this.latch.P === P.key) { live = { pose: this.pose, yaw: this.yaw }; this.pose = this.latch.pose; this.yaw = this.latch.yaw; }
+        else this.latch = { pose: this.pose, yaw: this.yaw, P: P.key };
+      }
+      const r = this.sprite0(P, force);
+      if (live) { this.pose = live.pose; this.yaw = live.yaw; }
+      return r;
+    }
+    sprite0(P, force = false) {
       const key = this.keyOf(P);
       let s = cacheGet(key);
       const useWorker = Pool.ready && !force && Pool.nameOf(this.sp);
@@ -38947,7 +38959,7 @@ const Critters = (() => {
       if (s) {
         if (HDS.on && !this.noHD) {
           const h2 = this.sprite2(P);
-          if (h2) { this.spr = s; this.spr2 = h2; }
+          if (h2) { this.spr = s; this.spr2 = h2; this.latch = null; }
           else if (!this.spr) this.spr = s; // anchors / hit tests only: not drawn until its HD sprite exists
         } else this.spr = s;
       }
@@ -41419,6 +41431,22 @@ const Mons = (() => {
       this.physics(dt, t);
       this.animate(dt, t);
       this.hideK = approach(this.hideK, this.hidden ? 1 : 0, dt * 2.5);
+      this.juice(dt, t);
+    }
+    // bouncy "juice" on top of the model pose: breathing, hop bob when moving, squash on landing
+    juice(dt, t) {
+      if (this.noJuice || this.layer === 'sea') { this.jOn = false; return; }
+      const air = (this.air || 0) > 0.5 || this.mode === 'fall';
+      if (this.wasAir && !air) this.jv = (this.jv || 0) - 3.2;
+      this.wasAir = air;
+      const k = 180, c = 11; this.jv = (this.jv || 0) + (-k * (this.jq || 0) - c * (this.jv || 0)) * dt; this.jq = (this.jq || 0) + this.jv * dt;
+      const mv = this.moving ? Math.min(1, this.moving / 60) : 0;
+      this.jb = (this.jb || 0) + dt * (6 + mv * 8);
+      const breathe = Math.sin(t * 2.6 + this.seed) * 0.035, hop = mv * Math.abs(Math.sin(this.jb)), q = clamp(this.jq, -0.35, 0.35);
+      const st = air ? 0.08 : breathe - hop * 0.06 + q;
+      this.jsy = 1 + st; this.jsx = 1 - st * 0.7;
+      this.jy = -hop * 2.5 - (this.mode === 'swim' || this.mode === 'fly' || this.mode === 'float' ? Math.sin(t * 2 + this.seed) * 1.5 : 0);
+      this.jOn = true;
     }
     /* ---- awareness of Mudkip & the camera ---- */
     senses(dt, t) {
@@ -41552,7 +41580,7 @@ const Mons = (() => {
       const s = this.spr;
       if (!s || !this.visible || this.hideK >= 0.999) return;
       if (Critters.HDS.on && !this.spr2 && !this.noHD && this.layer !== 'sea') return;
-      if (this.rot) { this.drawRot(fb, cx, cy, occ); return; }
+      if (this.rot || this.jOn) { this.drawRot(fb, cx, cy, occ); return; }
       const X = this.ox() - cx, Y = this.oy() - cy + (this.bury ? Math.round(s.h * this.bury) : 0);
       const W = fb.w, H = fb.h, d = fb.d;
       const rows = this.bury ? Math.max(1, Math.round(s.h * (1 - this.bury))) : s.h;
@@ -41582,8 +41610,9 @@ const Mons = (() => {
   // rotated blit (somersaults, faceplants, playing dead): nearest-neighbour around the sprite centre
   Mon.prototype.drawRot = function (fb, cx, cy, occ) {
     const s = this.spr, W = fb.w, H = fb.h, d = fb.d;
-    const px = this.ox() - cx + s.w / 2, py = this.oy() - cy + s.h / 2 + (this.rotY || 0);
-    const ca = Math.cos(this.rot), sa = Math.sin(this.rot), R = Math.ceil(Math.hypot(s.w, s.h) / 2) + 1;
+    const jx = this.jsx || 1, jy = this.jsy || 1;
+    const px = this.ox() - cx + s.w / 2, py = this.oy() - cy + s.h / 2 + (this.rotY || 0) + (this.jy || 0) - (jy - 1) * s.h / 2;
+    const ca = Math.cos(this.rot || 0), sa = Math.sin(this.rot || 0), R = Math.ceil(Math.hypot(s.w, s.h) / 2 * Math.max(jx, jy)) + 1;
     const PX0 = Math.round(px), PY0 = Math.round(py), hw = s.w / 2, hh = s.h / 2;
     const idb = Stage.S.idOn ? Stage.S.idb : null, pid = this.pid || 0, rawb = Stage.S.rawb, occV = this.occV;
     const tint = this.tint || 0, tk = this.tintK || 0;
@@ -41591,7 +41620,7 @@ const Mons = (() => {
       const Y = PY0 + y; if (Y < 0 || Y >= H) continue;
       for (let x = -R; x <= R; x++) {
         const X = PX0 + x; if (X < 0 || X >= W) continue;
-        const u = Math.floor(x * ca + y * sa + hw), v = Math.floor(-x * sa + y * ca + hh);
+        const u = Math.floor((x * ca + y * sa) / jx + hw), v = Math.floor((-x * sa + y * ca) / jy + hh);
         if (u < 0 || v < 0 || u >= s.w || v >= s.h) continue;
         const c = s.d[v * s.w + (this.flip ? s.w - 1 - u : u)]; if (!c) continue;
         const cc = tk ? U.mix(c, tint, tk) : c, i = Y * W + X;
@@ -41674,6 +41703,7 @@ const Player = (() => {
       if (!free && this.mode === 'land' && !this.task.idle && !this.task.keepV && this.air <= 0) this.vx = 0;
       this.physics(dt, t);
       this.animate(dt, t);
+      this.juice(dt, t);
     }
     control(dt, t) {
       const direct = this.keyDir || this.keyY || this.jumpBuf > 0 || this.mode === 'fall' || (this.mode === 'land' && (this.air > 0 || this.vair !== 0) && !this.target);
@@ -48181,12 +48211,12 @@ const Style = (() => {
     const sceneH = portrait ? Math.round(H * 0.56) : H;
     if (ST.pt) {
       ST.pt.draw(ST.buf);
-      const sc = Math.max(1, Math.round(Math.max(W / ST.buf.w, sceneH / ST.buf.h) + 0.49));
+      const sc = Math.max(1, Math.ceil(Math.max(W / ST.buf.w, sceneH / ST.buf.h)));
       const mk = actor(), fx = mk ? mk.x : ST.buf.w / 2;
       const panelW = portrait ? 0 : Math.min(230, Math.round(W * 0.42));
       // keep Mudkip in the middle of the free space
       let ox = Math.round((W - panelW) / 2 - fx * sc), oy = Math.round(sceneH / 2 - ST.buf.h * 0.62 * sc);
-      ox = clamp(ox, W - panelW - ST.buf.w * sc, 0); oy = clamp(oy, sceneH - ST.buf.h * sc, 0);
+      ox = clamp(ox, W - ST.buf.w * sc, 0); oy = clamp(oy, sceneH - ST.buf.h * sc, 0);
       const src = ST.buf.d, bw = ST.buf.w;
       for (let y = 0; y < sceneH; y++) { const sy = Math.floor((y - oy) / sc); if (sy < 0 || sy >= ST.buf.h) continue; const row = y * W; for (let x = 0; x < W; x++) { const sx = Math.floor((x - ox) / sc); if (sx < 0 || sx >= bw) continue; fb.d[row + x] = src[sy * bw + sx] | 0xff000000; } }
       ST.view = { ox, oy, sc, h: sceneH };
@@ -48196,9 +48226,11 @@ const Style = (() => {
     // title ribbon
     UI.panel(fb, 8, 8, 104, 18, { r: 5, ol: INK, fill: 0xffc04a9a }); Font.draw(fb, 'WARDROBE', 60, 12, WHITE, { font: 'small', align: 'center' });
     // the panel
-    const pw = portrait ? W - 16 : Math.min(230, Math.round(W * 0.42)), px = portrait ? 8 : W - pw - 8, py = portrait ? sceneH + 4 : 34, ph = portrait ? H - sceneH - 12 : H - 42;
+    const pw = portrait ? W - 16 : Math.min(230, Math.round(W * 0.42)), px = portrait ? 8 : W - pw - 8, py = portrait ? sceneH + 4 : 34;
+    const rowsN = Math.ceil(CATS[ST.tab].items.length / Math.max(1, Math.floor((pw - 12) / 40)));
+    const ph = portrait ? H - sceneH - 12 : Math.min(H - 42, 32 + rowsN * 42 + 40);
     UI.rrect(fb, px, py + 3, pw, ph, 10, 0x800a0e1a);
-    UI.rrect(fb, px, py, pw, ph, 10, INK); UI.rrect(fb, px + 1, py + 1, pw - 2, ph - 2, 9, 0xfff6f0e4);
+    UI.rrect(fb, px, py, pw, ph, 10, INK); UI.rrect(fb, px + 1, py + 1, pw - 2, ph - 2, 9, 0xfff6f0e4); UI.rectA(fb, px + 4, py + 30, pw - 8, ph - 64, 0xfff6f0e4, 0.0);
     // category tabs (icons + names)
     const tw = Math.floor((pw - 12) / CATS.length);
     CATS.forEach((c, i) => {
@@ -55646,7 +55678,7 @@ const Game = (() => {
       if (m.x + m.SW < cx - 20 || m.x - m.SW > cx + W + 20) continue;
       const h2 = m.spr2;
       if (!h2 || m.noHD) continue;
-      if (m.rot) { composeRot(m, h2, cx, cy, W, H, W2, d); continue; }
+      if (m.rot || m.jOn) { composeRot(m, h2, cx, cy, W, H, W2, d); continue; }
       const s = h2.s, pid = m.pid;
       const bury2 = m.bury ? Math.round(s.h * m.bury) : 0;
       const X0 = m.flip ? Math.round(m.x) * 2 + h2.OX - s.x0 - s.w + 1 - cx * 2 : Math.round(m.x) * 2 - h2.OX + s.x0 - cx * 2;
@@ -55678,8 +55710,9 @@ const Game = (() => {
   // the HD pass for a rotated creature: rotate its 2× sprite about the same centre as the 1× one
   function composeRot(m, h2, cx, cy, W, H, W2, d) {
     const s = h2.s, s1 = m.spr, pid = m.pid;
-    const px = (m.ox() - cx + s1.w / 2) * 2, py = (m.oy() - cy + s1.h / 2 + (m.rotY || 0)) * 2;
-    const ca = Math.cos(m.rot), sa = Math.sin(m.rot), R = Math.ceil(Math.hypot(s.w, s.h) / 2) + 2;
+    const jx = m.jsx || 1, jy = m.jsy || 1;
+    const px = (m.ox() - cx + s1.w / 2) * 2, py = (m.oy() - cy + s1.h / 2 + (m.rotY || 0) + (m.jy || 0) - (jy - 1) * s1.h / 2) * 2;
+    const ca = Math.cos(m.rot || 0), sa = Math.sin(m.rot || 0), R = Math.ceil(Math.hypot(s.w, s.h) / 2 * Math.max(jx, jy)) + 2;
     const PX0 = Math.round(px), PY0 = Math.round(py), hw = s.w / 2, hh = s.h / 2;
     const tint = m.tint || 0, tk = m.tintK || 0;
     for (let y = -R; y <= R; y++) {
@@ -55687,7 +55720,7 @@ const Game = (() => {
       const ly = Y >> 1;
       for (let x = -R; x <= R; x++) {
         const X = PX0 + x; if (X < 0 || X >= W2) continue;
-        const u = Math.floor(x * ca + y * sa + hw), v = Math.floor(-x * sa + y * ca + hh);
+        const u = Math.floor((x * ca + y * sa) / jx + hw), v = Math.floor((-x * sa + y * ca) / jy + hh);
         if (u < 0 || v < 0 || u >= s.w || v >= s.h) continue;
         let c = s.d[v * s.w + (m.flip ? s.w - 1 - u : u)]; if (!c) continue;
         const li = ly * W + (X >> 1);

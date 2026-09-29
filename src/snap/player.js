@@ -67,6 +67,7 @@ const Player = (() => {
       if (!free && this.mode === 'land' && !this.task.idle && !this.task.keepV && this.air <= 0) this.vx = 0;
       this.physics(dt, t);
       this.animate(dt, t);
+      this.juice(dt, t);
     }
     control(dt, t) {
       const direct = this.keyDir || this.keyY || this.jumpBuf > 0 || this.mode === 'fall' || (this.mode === 'land' && (this.air > 0 || this.vair !== 0) && !this.target);

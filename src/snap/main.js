@@ -370,7 +370,7 @@ const Game = (() => {
       if (m.x + m.SW < cx - 20 || m.x - m.SW > cx + W + 20) continue;
       const h2 = m.spr2;
       if (!h2 || m.noHD) continue;
-      if (m.rot) { composeRot(m, h2, cx, cy, W, H, W2, d); continue; }
+      if (m.rot || m.jOn) { composeRot(m, h2, cx, cy, W, H, W2, d); continue; }
       const s = h2.s, pid = m.pid;
       const bury2 = m.bury ? Math.round(s.h * m.bury) : 0;
       const X0 = m.flip ? Math.round(m.x) * 2 + h2.OX - s.x0 - s.w + 1 - cx * 2 : Math.round(m.x) * 2 - h2.OX + s.x0 - cx * 2;
@@ -402,8 +402,9 @@ const Game = (() => {
   // the HD pass for a rotated creature: rotate its 2× sprite about the same centre as the 1× one
   function composeRot(m, h2, cx, cy, W, H, W2, d) {
     const s = h2.s, s1 = m.spr, pid = m.pid;
-    const px = (m.ox() - cx + s1.w / 2) * 2, py = (m.oy() - cy + s1.h / 2 + (m.rotY || 0)) * 2;
-    const ca = Math.cos(m.rot), sa = Math.sin(m.rot), R = Math.ceil(Math.hypot(s.w, s.h) / 2) + 2;
+    const jx = m.jsx || 1, jy = m.jsy || 1;
+    const px = (m.ox() - cx + s1.w / 2) * 2, py = (m.oy() - cy + s1.h / 2 + (m.rotY || 0) + (m.jy || 0) - (jy - 1) * s1.h / 2) * 2;
+    const ca = Math.cos(m.rot || 0), sa = Math.sin(m.rot || 0), R = Math.ceil(Math.hypot(s.w, s.h) / 2 * Math.max(jx, jy)) + 2;
     const PX0 = Math.round(px), PY0 = Math.round(py), hw = s.w / 2, hh = s.h / 2;
     const tint = m.tint || 0, tk = m.tintK || 0;
     for (let y = -R; y <= R; y++) {
@@ -411,7 +412,7 @@ const Game = (() => {
       const ly = Y >> 1;
       for (let x = -R; x <= R; x++) {
         const X = PX0 + x; if (X < 0 || X >= W2) continue;
-        const u = Math.floor(x * ca + y * sa + hw), v = Math.floor(-x * sa + y * ca + hh);
+        const u = Math.floor((x * ca + y * sa) / jx + hw), v = Math.floor((-x * sa + y * ca) / jy + hh);
         if (u < 0 || v < 0 || u >= s.w || v >= s.h) continue;
         let c = s.d[v * s.w + (m.flip ? s.w - 1 - u : u)]; if (!c) continue;
         const li = ly * W + (X >> 1);

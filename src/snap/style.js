@@ -114,12 +114,12 @@ const Style = (() => {
     const sceneH = portrait ? Math.round(H * 0.56) : H;
     if (ST.pt) {
       ST.pt.draw(ST.buf);
-      const sc = Math.max(1, Math.round(Math.max(W / ST.buf.w, sceneH / ST.buf.h) + 0.49));
+      const sc = Math.max(1, Math.ceil(Math.max(W / ST.buf.w, sceneH / ST.buf.h)));
       const mk = actor(), fx = mk ? mk.x : ST.buf.w / 2;
       const panelW = portrait ? 0 : Math.min(230, Math.round(W * 0.42));
       // keep Mudkip in the middle of the free space
       let ox = Math.round((W - panelW) / 2 - fx * sc), oy = Math.round(sceneH / 2 - ST.buf.h * 0.62 * sc);
-      ox = clamp(ox, W - panelW - ST.buf.w * sc, 0); oy = clamp(oy, sceneH - ST.buf.h * sc, 0);
+      ox = clamp(ox, W - ST.buf.w * sc, 0); oy = clamp(oy, sceneH - ST.buf.h * sc, 0);
       const src = ST.buf.d, bw = ST.buf.w;
       for (let y = 0; y < sceneH; y++) { const sy = Math.floor((y - oy) / sc); if (sy < 0 || sy >= ST.buf.h) continue; const row = y * W; for (let x = 0; x < W; x++) { const sx = Math.floor((x - ox) / sc); if (sx < 0 || sx >= bw) continue; fb.d[row + x] = src[sy * bw + sx] | 0xff000000; } }
       ST.view = { ox, oy, sc, h: sceneH };
@@ -129,9 +129,11 @@ const Style = (() => {
     // title ribbon
     UI.panel(fb, 8, 8, 104, 18, { r: 5, ol: INK, fill: 0xffc04a9a }); Font.draw(fb, 'WARDROBE', 60, 12, WHITE, { font: 'small', align: 'center' });
     // the panel
-    const pw = portrait ? W - 16 : Math.min(230, Math.round(W * 0.42)), px = portrait ? 8 : W - pw - 8, py = portrait ? sceneH + 4 : 34, ph = portrait ? H - sceneH - 12 : H - 42;
+    const pw = portrait ? W - 16 : Math.min(230, Math.round(W * 0.42)), px = portrait ? 8 : W - pw - 8, py = portrait ? sceneH + 4 : 34;
+    const rowsN = Math.ceil(CATS[ST.tab].items.length / Math.max(1, Math.floor((pw - 12) / 40)));
+    const ph = portrait ? H - sceneH - 12 : Math.min(H - 42, 32 + rowsN * 42 + 40);
     UI.rrect(fb, px, py + 3, pw, ph, 10, 0x800a0e1a);
-    UI.rrect(fb, px, py, pw, ph, 10, INK); UI.rrect(fb, px + 1, py + 1, pw - 2, ph - 2, 9, 0xfff6f0e4);
+    UI.rrect(fb, px, py, pw, ph, 10, INK); UI.rrect(fb, px + 1, py + 1, pw - 2, ph - 2, 9, 0xfff6f0e4); UI.rectA(fb, px + 4, py + 30, pw - 8, ph - 64, 0xfff6f0e4, 0.0);
     // category tabs (icons + names)
     const tw = Math.floor((pw - 12) / CATS.length);
     CATS.forEach((c, i) => {

@@ -78,7 +78,7 @@ const Critters = (() => {
     },
     pump() {
       for (const w of this.workers) {
-        while (w.ok && !w.dead && w.busy < 2 && this.queue.size) {
+        while (w.ok && !w.dead && w.busy < 4 && this.queue.size) {
           const [id, job] = this.queue.entries().next().value;
           this.queue.delete(id);
           if (cache.has(job.key) || this.pending.has(job.key)) continue;
@@ -163,6 +163,18 @@ const Critters = (() => {
       return o;
     }
     sprite(P, force = false) {
+      // HD: hold on to the pose being rendered until both resolutions arrive (otherwise a pose that changes
+      // every frame never gets a matching pair and the creature freezes)
+      let live = null;
+      if (HDS.on && !this.noHD) {
+        if (this.latch && this.latch.P === P.key) { live = { pose: this.pose, yaw: this.yaw }; this.pose = this.latch.pose; this.yaw = this.latch.yaw; }
+        else this.latch = { pose: this.pose, yaw: this.yaw, P: P.key };
+      }
+      const r = this.sprite0(P, force);
+      if (live) { this.pose = live.pose; this.yaw = live.yaw; }
+      return r;
+    }
+    sprite0(P, force = false) {
       const key = this.keyOf(P);
       let s = cacheGet(key);
       const useWorker = Pool.ready && !force && Pool.nameOf(this.sp);
@@ -190,7 +202,7 @@ const Critters = (() => {
       if (s) {
         if (HDS.on && !this.noHD) {
           const h2 = this.sprite2(P);
-          if (h2) { this.spr = s; this.spr2 = h2; }
+          if (h2) { this.spr = s; this.spr2 = h2; this.latch = null; }
           else if (!this.spr) this.spr = s; // anchors / hit tests only: not drawn until its HD sprite exists
         } else this.spr = s;
       }
