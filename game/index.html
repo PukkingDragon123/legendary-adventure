@@ -1242,6 +1242,23 @@ const Mudkip = (() => {
       add(eA(h, [HR[0] * k, HR[1] * k, HR[2] * k], G.HAT, (s) => { const q = dot3(s, n) - d; return q < 0 || q > 0.24 ? 0 : K(WHITE, q < 0.05 ? -1 : 0); }));
       for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; add(eA(chain(h, T(-1 + Math.cos(a) * 5.5, 17.5 + (i % 2) * 1.2, Math.sin(a) * 6)), [5.2, 5.0, 5.2], G.HAT2, (s) => K(WHITE, s[1] > 0.3 ? 1 : 0))); }
     },
+    // big rock-star headphones: a band over the fin, cups over the sides of the head
+    headphones(h, add) {
+      const n = V3.norm([0.05, 1, 0]);
+      add(eA(h, [HR[0] * 1.14, HR[1] * 1.16, HR[2] * 1.14], G.HAT, (s) => (Math.abs(s[0] - 0.05) < 0.14 && s[1] > 0.15 ? K(DARK, 1) : 0)));
+      for (const sz of [1, -1]) {
+        const q = headPt(V3.norm([0.05, 0.25, sz]), 1.2), ax = basis(q.n);
+        add(eAx(h, q.p, ax, [4.2, 4.6, 2.2], sz > 0 ? G.HAT2 : G.HAT3, (s) => (s[2] > 0.6 ? K(MAGENTA, 1) : K(DARK))));
+      }
+      void n;
+    },
+    // pirate hat: a black tricorn with a white skull badge
+    pirate(h, add) {
+      const tilt = R(M3.rz(0.12));
+      add(eA(chain(h, T(-1, 9.6, 0), tilt), [17.5, 4.2, 18.5], G.HAT2, (s) => (s[1] < 0.1 ? 0 : K(DARK, Math.hypot(s[0], s[2]) > 0.9 ? 1 : 0))));
+      add(eA(chain(h, T(-1, 12.2, 0), tilt), [11, 7.5, 12], G.HAT, (s) => (s[1] < -0.2 ? 0 : s[0] > 0.86 && Math.abs(s[2]) < 0.28 && s[1] > 0.05 ? K(WHITE, 1) : K(DARK))));
+      add(eA(chain(h, T(-1, 12, 0), tilt), [11.4, 1.3, 12.4], G.HAT3, () => K(GOLD, 1)));
+    },
     // plush lobster: red cap with tail segments down the back, eyes on stalks, antennae, two claws
     lobster(h, add) {
       const n = V3.norm([-0.16, 1, 0]), d = 0.24;
@@ -1338,15 +1355,15 @@ const Mudkip = (() => {
   /* ---- glasses (head frame): lenses float just off the eyes, bridge over the nose, arms back to the gills ---- */
   function glasses(kind, h, add) {
     const inner = [];
-    const fc = kind === 'round' ? DARK : PINK;
+    const fc = kind === 'round' ? DARK : kind === 'rock' ? RED : PINK;
     for (const sz of [1, -1]) {
       const { p, n } = headPt(sphv(0.5 * sz, -0.06), 1.5);
       const ax = basis(n);
       const toNose = ax[0][2] * sz > 0 ? V3.scale(ax[0], -1) : ax[0];
       const part = sz > 0 ? G.GLN : G.GLF;
-      if (kind === 'round') add(eAx(h, p, ax, [4.7, 4.7, 0.9], part, (s) => (Math.hypot(s[0], s[1]) > 0.8 ? K(DARK) : K(LENS, (s[0] + 0.35 * sz) ** 2 + (s[1] - 0.4) ** 2 < 0.06 ? 3 : -1))));
+      if (kind === 'round' || kind === 'rock') add(eAx(h, p, ax, [4.7, 4.7, 0.9], part, (s) => (Math.hypot(s[0], s[1]) > 0.8 ? K(fc) : K(kind === 'rock' ? SHADE : LENS, (s[0] + 0.35 * sz) ** 2 + (s[1] - 0.4) ** 2 < 0.06 ? 3 : -1))));
       else add(pA(h, p, ax, STARGL_G(), part, 1.3));
-      const rr = kind === 'round' ? 4.3 : 3.9;
+      const rr = kind === 'round' || kind === 'rock' ? 4.3 : 3.9;
       inner.push(V3.add(p, V3.scale(toNose, rr)));
       add(rodA(h, V3.add(p, V3.scale(toNose, -rr)), headPt(sphv(1.08 * sz, 0.02), 0.8).p, 0.55, G.GLB, () => K(fc)));
     }
@@ -1378,7 +1395,7 @@ const Mudkip = (() => {
     const sd = P.side === undefined ? 1 : Math.max(-1, Math.min(1, P.side));
     if (own(HATS, P.hat)) HATS[P.hat](head, add, sd, P);
     if (own(SHIRTS, P.shirt)) shirt(P.shirt, body, legs, add);
-    if (P.glasses === 'star' || P.glasses === 'round') glasses(P.glasses, head, add);
+    if (P.glasses === 'star' || P.glasses === 'round' || P.glasses === 'rock') glasses(P.glasses, head, add);
     // neck
     if (P.neck === 'bow') {
       for (const sz of [1, -1]) add(eAx(body, [15.9, -0.4, 3.3 * sz], basis([0.12, 0, sz]), [1.4, 2.7, 3.4], G.NECK, (s) => K(RED, Math.abs(s[2]) < 0.35 ? -1 : 0)));
@@ -1404,6 +1421,11 @@ const Mudkip = (() => {
           add(eA(chain(f, T(3.0, -4.6, 0)), [1.3, 0.7, 2.0], ids[id], () => K(WHITE, 1)));
         }
       }
+    }
+    if (P.neck === 'medal') {
+      // a champion's gold medal on a blue ribbon
+      for (const sz of [1, -1]) add(rodA(body, [10.5, 7, 9 * sz], [16.4, -1, 1.6 * sz], 0.7, G.NECK2, () => K(NAVY)));
+      add(eAx(body, [17.4, -3.2, 0], basis([1, 0, 0.1]), [3.2, 3.2, 0.9], G.NECK3, (s) => K(GOLD, Math.hypot(s[0], s[1]) < 0.45 ? 2 : 0)));
     }
     if (P.neck === 'lei') {
       // a Hawaiian flower lei round the neck
@@ -20162,6 +20184,23 @@ const Mudkip = (() => {
       add(eA(h, [HR[0] * k, HR[1] * k, HR[2] * k], G.HAT, (s) => { const q = dot3(s, n) - d; return q < 0 || q > 0.24 ? 0 : K(WHITE, q < 0.05 ? -1 : 0); }));
       for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; add(eA(chain(h, T(-1 + Math.cos(a) * 5.5, 17.5 + (i % 2) * 1.2, Math.sin(a) * 6)), [5.2, 5.0, 5.2], G.HAT2, (s) => K(WHITE, s[1] > 0.3 ? 1 : 0))); }
     },
+    // big rock-star headphones: a band over the fin, cups over the sides of the head
+    headphones(h, add) {
+      const n = V3.norm([0.05, 1, 0]);
+      add(eA(h, [HR[0] * 1.14, HR[1] * 1.16, HR[2] * 1.14], G.HAT, (s) => (Math.abs(s[0] - 0.05) < 0.14 && s[1] > 0.15 ? K(DARK, 1) : 0)));
+      for (const sz of [1, -1]) {
+        const q = headPt(V3.norm([0.05, 0.25, sz]), 1.2), ax = basis(q.n);
+        add(eAx(h, q.p, ax, [4.2, 4.6, 2.2], sz > 0 ? G.HAT2 : G.HAT3, (s) => (s[2] > 0.6 ? K(MAGENTA, 1) : K(DARK))));
+      }
+      void n;
+    },
+    // pirate hat: a black tricorn with a white skull badge
+    pirate(h, add) {
+      const tilt = R(M3.rz(0.12));
+      add(eA(chain(h, T(-1, 9.6, 0), tilt), [17.5, 4.2, 18.5], G.HAT2, (s) => (s[1] < 0.1 ? 0 : K(DARK, Math.hypot(s[0], s[2]) > 0.9 ? 1 : 0))));
+      add(eA(chain(h, T(-1, 12.2, 0), tilt), [11, 7.5, 12], G.HAT, (s) => (s[1] < -0.2 ? 0 : s[0] > 0.86 && Math.abs(s[2]) < 0.28 && s[1] > 0.05 ? K(WHITE, 1) : K(DARK))));
+      add(eA(chain(h, T(-1, 12, 0), tilt), [11.4, 1.3, 12.4], G.HAT3, () => K(GOLD, 1)));
+    },
     // plush lobster: red cap with tail segments down the back, eyes on stalks, antennae, two claws
     lobster(h, add) {
       const n = V3.norm([-0.16, 1, 0]), d = 0.24;
@@ -20258,15 +20297,15 @@ const Mudkip = (() => {
   /* ---- glasses (head frame): lenses float just off the eyes, bridge over the nose, arms back to the gills ---- */
   function glasses(kind, h, add) {
     const inner = [];
-    const fc = kind === 'round' ? DARK : PINK;
+    const fc = kind === 'round' ? DARK : kind === 'rock' ? RED : PINK;
     for (const sz of [1, -1]) {
       const { p, n } = headPt(sphv(0.5 * sz, -0.06), 1.5);
       const ax = basis(n);
       const toNose = ax[0][2] * sz > 0 ? V3.scale(ax[0], -1) : ax[0];
       const part = sz > 0 ? G.GLN : G.GLF;
-      if (kind === 'round') add(eAx(h, p, ax, [4.7, 4.7, 0.9], part, (s) => (Math.hypot(s[0], s[1]) > 0.8 ? K(DARK) : K(LENS, (s[0] + 0.35 * sz) ** 2 + (s[1] - 0.4) ** 2 < 0.06 ? 3 : -1))));
+      if (kind === 'round' || kind === 'rock') add(eAx(h, p, ax, [4.7, 4.7, 0.9], part, (s) => (Math.hypot(s[0], s[1]) > 0.8 ? K(fc) : K(kind === 'rock' ? SHADE : LENS, (s[0] + 0.35 * sz) ** 2 + (s[1] - 0.4) ** 2 < 0.06 ? 3 : -1))));
       else add(pA(h, p, ax, STARGL_G(), part, 1.3));
-      const rr = kind === 'round' ? 4.3 : 3.9;
+      const rr = kind === 'round' || kind === 'rock' ? 4.3 : 3.9;
       inner.push(V3.add(p, V3.scale(toNose, rr)));
       add(rodA(h, V3.add(p, V3.scale(toNose, -rr)), headPt(sphv(1.08 * sz, 0.02), 0.8).p, 0.55, G.GLB, () => K(fc)));
     }
@@ -20298,7 +20337,7 @@ const Mudkip = (() => {
     const sd = P.side === undefined ? 1 : Math.max(-1, Math.min(1, P.side));
     if (own(HATS, P.hat)) HATS[P.hat](head, add, sd, P);
     if (own(SHIRTS, P.shirt)) shirt(P.shirt, body, legs, add);
-    if (P.glasses === 'star' || P.glasses === 'round') glasses(P.glasses, head, add);
+    if (P.glasses === 'star' || P.glasses === 'round' || P.glasses === 'rock') glasses(P.glasses, head, add);
     // neck
     if (P.neck === 'bow') {
       for (const sz of [1, -1]) add(eAx(body, [15.9, -0.4, 3.3 * sz], basis([0.12, 0, sz]), [1.4, 2.7, 3.4], G.NECK, (s) => K(RED, Math.abs(s[2]) < 0.35 ? -1 : 0)));
@@ -20324,6 +20363,11 @@ const Mudkip = (() => {
           add(eA(chain(f, T(3.0, -4.6, 0)), [1.3, 0.7, 2.0], ids[id], () => K(WHITE, 1)));
         }
       }
+    }
+    if (P.neck === 'medal') {
+      // a champion's gold medal on a blue ribbon
+      for (const sz of [1, -1]) add(rodA(body, [10.5, 7, 9 * sz], [16.4, -1, 1.6 * sz], 0.7, G.NECK2, () => K(NAVY)));
+      add(eAx(body, [17.4, -3.2, 0], basis([1, 0, 0.1]), [3.2, 3.2, 0.9], G.NECK3, (s) => K(GOLD, Math.hypot(s[0], s[1]) < 0.45 ? 2 : 0)));
     }
     if (P.neck === 'lei') {
       // a Hawaiian flower lei round the neck
@@ -41268,12 +41312,70 @@ const DexData = (() => {
 
   const AREAS = {
     beach: { name: 'Coral Cove', sub: 'Route 109 Seashore', need: 0, blurb: 'A sunny beach with a long wooden dock, a coral reef and a deep, dark trench.' },
-    forest: { name: 'Weather Woods', sub: 'Route 119 Rainforest', need: 3, blurb: 'Tall grass, a rushing river and the Weather Institute in a rainforest that is rarely dry.' },
-    canopy: { name: 'Treetop Town', sub: 'Fortree Canopy', need: 7, blurb: 'Tree houses and rope bridges high above the forest floor, where bird Pokémon sing.' },
-    falls: { name: 'Starfall Cave', sub: 'Meteor Falls', need: 11, blurb: 'Waterfalls roar in a crystal cave where meteorites fell long ago.' },
+    forest: { name: 'Weather Woods', sub: 'Route 119 Rainforest', need: 99, blurb: 'Tall grass, a rushing river and the Weather Institute in a rainforest that is rarely dry.' },
+    canopy: { name: 'Treetop Town', sub: 'Fortree Canopy', need: 99, blurb: 'Tree houses and rope bridges high above the forest floor, where bird Pokémon sing.' },
+    falls: { name: 'Starfall Cave', sub: 'Meteor Falls', need: 99, blurb: 'Waterfalls roar in a crystal cave where meteorites fell long ago.' },
     stage: { name: 'Seaside Stage', sub: 'Lilycove Concert', need: 99, blurb: 'Meloetta\'s concert stage by the sea. The band is waiting for its guitarist!' },
   };
   return { S, ORDER, TYPES, MEDALS, AREAS, get: (k) => S[k] };
+})();
+
+/* ==== src/snap/cries.js ==== */
+/* ------------------------------------------------------------------
+   Cries — every species gets its own synthesized cry: pitch from its
+   size, syllables from its name, a formant "voice" and a pitch
+   contour, so Spheal squeaks, Walrein bellows and Mudkip says
+   "Mud-kip!". Plus soft footsteps on sand, grass and wood.
+------------------------------------------------------------------- */
+const Cries = (() => {
+  let last = 0;
+  const ctx = () => (Sound.on && Sound.ctx ? Sound.ctx() : null);
+  function voice(ac, dest, t0, dur, f0, f1, form, vib) {
+    const o = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain(), bp = ac.createBiquadFilter(), bp2 = ac.createBiquadFilter(), mix = ac.createGain();
+    o.type = 'sawtooth'; o2.type = 'square';
+    o.frequency.setValueAtTime(f0, t0); o.frequency.linearRampToValueAtTime(f1, t0 + dur * 0.35); o.frequency.exponentialRampToValueAtTime(Math.max(40, f0 * 0.8), t0 + dur);
+    o2.frequency.setValueAtTime(f0 * 1.005, t0); o2.frequency.linearRampToValueAtTime(f1 * 1.005, t0 + dur * 0.35); o2.frequency.exponentialRampToValueAtTime(Math.max(40, f0 * 0.8), t0 + dur);
+    if (vib) { const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = vib; lg.gain.value = f0 * 0.04; l.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency); l.start(t0); l.stop(t0 + dur + 0.05); }
+    bp.type = 'bandpass'; bp.frequency.value = form; bp.Q.value = 3; bp2.type = 'bandpass'; bp2.frequency.value = form * 2.3; bp2.Q.value = 4;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(1, t0 + 0.02); g.gain.setValueAtTime(1, t0 + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(bp); o2.connect(bp); o.connect(bp2); bp.connect(mix); bp2.connect(mix); mix.gain.value = 0.9; mix.connect(g).connect(dest);
+    o.start(t0); o2.start(t0); o.stop(t0 + dur + 0.05); o2.stop(t0 + dur + 0.05);
+  }
+  function out(ac, pan, vol) { const g = ac.createGain(); g.gain.value = vol; if (ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = pan; g.connect(p).connect(Sound.sfxBus()); } else g.connect(Sound.sfxBus()); return g; }
+  function play(kind, x = null, vol = 0.5, force = false) {
+    const ac = ctx(); if (!ac) return;
+    const now = ac.currentTime; if (!force && now - last < 0.35) return; last = now;
+    let pan = 0, v = vol;
+    if (x !== null && typeof Game !== 'undefined') { const d = (x - (Game.cam.x + Game.VW / 2)) / (Game.VW * 0.5); pan = Math.max(-0.9, Math.min(0.9, d * 0.7)); v = vol / (1 + Math.max(0, Math.abs(d) - 1) * 2); }
+    if (v < 0.03) return;
+    const d = DexData.S[kind] || {}, name = (d.name || kind || 'mon').toLowerCase();
+    let h = 7; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    const size = d.h || 0.8, base = Math.max(90, Math.min(900, 520 / Math.pow(size, 0.55))) * (0.85 + (h % 100) / 330);
+    const syl = Math.max(1, Math.min(3, (name.match(/[aeiouy]+/g) || ['a']).length));
+    const dest = out(ac, pan, v * 0.18), t0 = now + 0.01;
+    let t = t0;
+    for (let i = 0; i < syl; i++) {
+      const up = ((h >> (i * 3)) & 7) / 7, dur = (0.1 + ((h >> (i * 2 + 5)) & 3) * 0.04) * (size > 2 ? 1.8 : 1);
+      const f0 = base * (1 + (i === syl - 1 ? 0.15 : -0.05) + up * 0.25), f1 = f0 * (1.15 + up * 0.4);
+      voice(ac, dest, t, dur, f0, f1, 700 + (h % 900) + (size < 0.6 ? 600 : 0), size > 3 ? 5 : (h & 1) ? 7 : 0);
+      t += dur * 0.85;
+    }
+  }
+  // Mudkip: "Mud-kip!"
+  function mudkip(x = null, vol = 0.6) {
+    const ac = ctx(); if (!ac) return; const now = ac.currentTime + 0.01; last = now;
+    const dest = out(ac, 0, vol * 0.2);
+    voice(ac, dest, now, 0.13, 520, 470, 900, 0); voice(ac, dest, now + 0.14, 0.2, 700, 930, 1300, 6);
+  }
+  function step(surface, x) {
+    const ac = ctx(); if (!ac) return;
+    const t = ac.currentTime, s = ac.createBufferSource(); s.buffer = Sound.noise();
+    const f = ac.createBiquadFilter(), g = ac.createGain(); f.type = 'bandpass'; f.frequency.value = surface === 'wood' ? 900 : surface === 'grass' ? 2600 : 1600; f.Q.value = 1.2;
+    const v = surface === 'wood' ? 0.05 : 0.03; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + (surface === 'wood' ? 0.05 : 0.08));
+    s.connect(f).connect(g).connect(Sound.sfxBus()); s.start(t); s.stop(t + 0.1);
+    if (surface === 'wood') { const o = ac.createOscillator(), og = ac.createGain(); o.frequency.value = 180; og.gain.setValueAtTime(0.04, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.06); o.connect(og).connect(Sound.sfxBus()); o.start(t); o.stop(t + 0.08); }
+  }
+  return { play, mudkip, step };
 })();
 
 /* ==== src/snap/ui.js ==== */
@@ -41617,7 +41719,7 @@ const Mons = (() => {
     onSplash() { this.hear('splash', this.x, 0.6); }
     onScan() {}
     headPt() { return this.at('top'); }
-    emote(icon, life = 1.5) { return FX.emote(icon, () => this.headPt(), { life }); }
+    emote(icon, life = 1.5) { if (this !== Game.mudkip && typeof Cries !== 'undefined' && Math.random() < 0.55) Cries.play(this.dex, this.x, 0.6); return FX.emote(icon, () => this.headPt(), { life }); }
     // what the camera sees (0 = back / profile, 1 = looking straight at the lens)
     facing() { return clamp(Math.sin(this.yaw) * 1.1, 0, 1); }
     remove() { this.alive = false; const i = all.indexOf(this); if (i >= 0) all.splice(i, 1); }
@@ -42284,6 +42386,7 @@ const Player = (() => {
         const step = Math.floor(this.phase / Math.PI);
         if (step !== this.lastFall) {
           this.lastFall = step; this.sq.kick(0.12 + fast * 0.1);
+          if (typeof Cries !== 'undefined') Cries.step(this.plat ? 'wood' : Game.areaId === 'beach' ? 'sand' : 'grass', this.x);
           if (Weather.W.rain > 0.3) { // splashing through rain puddles
             for (let k = 0; k < 3; k++) FX.add({ type: 'drop', x: this.x - Math.cos(this.yaw) * 6 + rnd(-3, 3), y: this.y - 1, vx: rnd(-30, 30), vy: -rnd(30, 70), g: 420, life: 0.5, c: 0xffffffff, c2: AQUA(), size: 1, floor: this.y, layer: 2 });
             if (Math.random() < 0.3) Game.sfx('plop', this.x, 0.25);
@@ -42332,6 +42435,7 @@ const Player = (() => {
       if (this.splatT > 0) { this.splatT -= dt; const k = Math.min(1, this.splatT / 0.3); P.squash = Math.max(P.squash, 0.3 * k); P.bodyDip = 3 * k; P.legSplay = 1 * k; P.eyes = 'blink'; P.mouth = 1; }
       if (this.dizzy > 0) { this.dizzy -= dt; P.eyes = 'blink'; P.headRoll = Math.sin(t * 9) * 0.18; P.mouth = 0.3; }
       if (this.happyT > 0) { this.happyT -= dt; P.eyes = 'happy'; P.mouth = 1; }
+      if (this.snapT > 0) { this.snapT -= dt; const k = this.snapT / 0.4; P.squash = 0.12 * k; P.headPitch = -0.1 * k; P.eyes = k > 0.6 ? 'blink' : 'happy'; P.mouth = 0.7; this.sq.kick(0); }
       // curious: watch whatever the Pokémon nearby are up to
       this.watchScan -= dt;
       if (this.watchScan <= 0) { this.watchScan = 0.5; this.watchMon = this.watching || this.findInteresting(); }
@@ -42396,12 +42500,23 @@ const Player = (() => {
       if (Game.area && Game.area.onSong) Game.area.onSong(this.x);
       if (typeof Talk !== 'undefined') Talk.event('song', this.x);
     }
-    *throwBerry(tx, ty) {
+    // pick something up by hand: lean down, grab it with the mouth, a happy little hop
+    *pickUp(it, done) {
+      this.target = null;
+      yield* this.faceTo(it.x > this.x ? 1 : -1, false);
+      let e = 0;
+      while (e < 0.32) { const dt = yield; e += dt; const k = Math.sin((e / 0.32) * Math.PI); this.o.bodyDip = 2 * k; this.o.headPitch = 0.5 * k; this.o.mouth = k > 0.5 ? 0.2 : 0.9; this.o.legF = 0.3 * k; }
+      done();
+      this.vair = 150; this.air = 0.5; this.happyT = 0.6; this.sq.kick(-0.3);
+    }
+    // the camera raised, a squash, a flash from the lens: click!
+    snapPose() { this.snapT = 0.4; const [lx, ly] = this.spr && this.spr.anchors && this.spr.anchors.lens ? this.at('lens') : this.at('mouth'); FX.add({ type: 'ring', x: lx, y: ly, r0: 1, r1: 10, life: 0.25, c: 0xffffffff, layer: 4 }); FX.sparkles(lx, ly, 4, 8); }
+    *throwBerry(tx, ty, kind = 'oran') {
       this.target = null;
       yield* this.faceTo(tx > this.x ? 1 : -1, false);
       const [mx, my] = this.at('mouth');
       Game.sfx('whoosh', this.x, 0.5);
-      Items.throwBerry(mx, my - 4, tx, ty);
+      Items.throwBerry(mx, my - 4, tx, ty, kind);
       this.o.mouth = 1; this.happyT = 0.4;
       yield* wait(0.35);
     }
@@ -42617,11 +42732,13 @@ const Items = (() => {
   const FRUIT = ['.g.', 'yyy', 'yoy', '.y.'];
   const FCOL = { g: U.hex('#3a8a3a'), y: U.hex('#ffd84a'), o: U.hex('#e0a020') };
   function add(it) { list.push(Object.assign({ vx: 0, vy: 0, t: 0, state: 'fly', claim: null, kind: 'berry', r: 2 }, it)); return it; }
-  function throwBerry(x0, y0, tx, ty, kind = 'berry') {
+  function throwBerry(x0, y0, tx, ty, kind = 'oran') {
     const T = 0.6;
     const vx = (tx - x0) / T, vy = (ty - y0 - 0.5 * 500 * T * T) / T;
-    return add({ kind, x: x0, y: y0, vx, vy, spin: 0 });
+    const b = kind === 'berry' ? 'oran' : kind;
+    return add({ kind: b === 'pecha' ? 'pecha' : 'berry', berry: b, x: x0, y: y0, vx, vy, spin: 0 });
   }
+  const BCOL = { oran: '#3a7ce8', pecha: '#ff6a9a', razz: '#d82a48', nanab: '#f0d040', sitrus: '#ffe030' };
   function drop(x, y, kind = 'fruit') { return add({ kind, x, y, vx: rnd(-30, 30), vy: -rnd(40, 90) }); }
   function update(dt, t) {
     for (let i = list.length - 1; i >= 0; i--) {
@@ -42648,6 +42765,26 @@ const Items = (() => {
     const cands = Mons.all.filter((m) => m.alive && m !== Game.mudkip && m.onFood && Math.abs(m.x - it.x) < (m.smell ?? 320)).sort((a, b) => Math.abs(a.x - it.x) - Math.abs(b.x - it.x));
     for (const m of cands) if (m.onFood(it)) { it.claim = m; break; }
     if (Game.area && Game.area.def.onFood) Game.area.def.onFood(Game.area, it);
+    if (!it.claim && it.state !== 'float') lure(it);
+  }
+  // a berry on the ground is a lure: somebody nearby comes over for a snack (the kind of berry decides who and how)
+  function lure(it) {
+    const b = it.berry || 'oran', R = b === 'razz' ? 520 : 280;
+    if (b === 'razz') { Game.lureT = Math.max(Game.lureT || 0, 20); HUD.toast('The Razz Berry smells amazing... rare Pokémon may come!', { life: 2.4 }); }
+    const cands = Mons.all.filter((m) => m.alive && m !== Game.mudkip && !m.layer && m.mode === 'land' && m.walkTo && !m.busy(2) && !m.sleeping && Math.abs(m.x - it.x) < R).sort((a, c) => Math.abs(a.x - it.x) - Math.abs(c.x - it.x));
+    const m = cands[0]; if (!m) return;
+    it.claim = m;
+    m.doTask((function* () {
+      m.emote(b === 'pecha' ? 'heart' : 'bulb', 1);
+      yield* m.walkTo(it.x + (m.x < it.x ? -10 : 10), (m.speed || 45) * (b === 'pecha' ? 1.6 : 1.2));
+      if (it.eaten) return;
+      let e = 0;
+      while (e < 1.2) { const dt = yield; e += dt; m.o.mouth = Math.sin(e * 16) > 0 ? 1 : 0.2; m.o.eyes = 'happy'; m.setAct(m.act.id, 0.8); }
+      eat(it); Game.sfx('munch', it.x, 0.8); m.emote('heart', 1.4);
+      // nanab: sits still, facing the camera (easy photo); sitrus: a happy hop dance
+      if (b === 'nanab') { e = 0; while (e < 4) { const dt = yield; e += dt; m.turn(Math.PI / 2, dt, 4); m.setAct(m.act.id, 0.9); m.o.eyes = e % 2 < 0.15 ? 'blink' : 'happy'; } }
+      else if (b === 'sitrus') { for (let i = 0; i < 3; i++) yield* m.hop(200); }
+    })(), 3);
   }
   function eat(it) { it.eaten = true; FX.poof(it.x, it.y, 0xffffffff, COL.p, 2, 2); }
   function stamp(fb, m, cols, x, y) {
@@ -42658,7 +42795,7 @@ const Items = (() => {
       const x = Math.round(it.x) - cx - 2, y = Math.round(it.y) - cy - 3;
       if (x < -8 || y < -8 || x > fb.w || y > fb.h) continue;
       if (it.kind === 'fruit') stamp(fb, FRUIT, FCOL, x, y);
-      else stamp(fb, BERRY[it.kind === 'pecha' ? 1 : 0], COL, x, y);
+      else { COL.b = U.hex(BCOL[it.berry] || BCOL.oran); stamp(fb, BERRY[0], COL, x, y); }
     }
   }
   function drawBack() {}
@@ -43111,7 +43248,7 @@ const Pad = (() => {
     if (P.b && P.b.t > 0.18) { const k = Math.min(1, (P.b.t - 0.18) / 0.3); for (let a = 0; a < 32 * k; a++) { const an = -Math.PI / 2 + a / 32 * Math.PI * 2; UI.put(fb, Math.round(L.bx + Math.cos(an) * (L.bR + 3)), Math.round(L.by + Math.sin(an) * (L.bR + 3)), 0xffffffff); } }
     Font.draw(fb, 'B', L.bx + L.bR - 3, L.by - L.bR - 2, 0xffffffff, { font: 'small', outline: INK });
     // keyboard hint (fades after the first jump)
-    if (!P.touch && P.hint > 0 && Game.t > 3) { P.hint = Math.max(0, P.hint - 1 / 900); const a = Math.min(1, P.hint * 3); if (a > 0.05) Font.draw(fb, 'Arrows move  ·  Space jump (again: flip, Down: belly flop)  ·  X move  ·  Q move wheel  ·  C camera  ·  Shift run', W / 2, H - 10, U.mix(0x00ffffff, 0xffffffff, a) | 0xff000000, { font: 'small', align: 'center', outline: INK }); }
+    if (!P.touch && P.hint > 0 && Game.t > 3) { P.hint = Math.max(0, P.hint - 1 / 900); const a = Math.min(1, P.hint * 3); if (a > 0.05) Font.draw(fb, 'Arrows move  ·  Space jump (again: flip, Down: belly flop)  ·  E pick up  ·  X move  ·  Q wheel  ·  F throw berry  ·  G guitar jam  ·  C camera  ·  Shift run', W / 2, H - 10, U.mix(0x00ffffff, 0xffffffff, a) | 0xff000000, { font: 'small', align: 'center', outline: INK }); }
   }
   // two stacked up-chevrons (jump!)
   function jumpIcon(fb, cx, cy, r) {
@@ -43144,6 +43281,21 @@ const Talk = (() => {
   // progress kinds: flops (belly flops next to the giver), song (sing next to it), spots (find glittering
   // patches: dig or belly flop on them), pearl (touch a lost item), photo ({ sp, beh }), fetch (items)
   const QUESTS = [
+    { id: 'q.mail1', area: 'beach', giver: 'mailman', title: 'Special Delivery', instant: true,
+      intro: ['Pelipper! Special delivery for the new photographer!', 'Professor Birch sent you this: a map of all Hoenn!', '(You got the MAP! Press M or tap the map button.)'],
+      done: ['Pelipper!'], reward: 'pts:100', onAccept: () => { Save.discover('mail.map'); Game.sfx('reward'); } },
+    { id: 'q.mail2', area: 'beach', giver: 'mailman', title: 'Airmail to Weather Woods', after: 'q.mail1',
+      intro: ['Want to see Weather Woods? I can fly you there!', 'But my wings are tired from all this mail...', 'Bring me 2 Pecha Berries for energy! (Pick them from berry bushes with E.)'],
+      fetch: { item: 'pecha', n: 2 }, wait: ['Pecha Berries, please! {left} more. They grow on pink berry bushes.'],
+      done: ['PELI-PELI! Energy!', 'Hop in my beak! Next stop: Weather Woods!'], reward: 'pts:300', unlock: 'forest' },
+    { id: 'q.tropius', area: 'forest', giver: 'tropius', title: 'Fruit for a Flight',
+      intro: ['Tro-pi! Tro-piiius!', '(Tropius flaps its huge leaf wings. It could carry you up to Treetop Town!)', '(It looks hungry. Bring it 3 Nanab Berries.)'],
+      fetch: { item: 'nanab', n: 3 }, wait: ['(Tropius waits patiently. {left} more Nanab Berries.)'],
+      done: ['TROPIIIUS!', '(It munches the berries, lowers its neck... climb aboard!)'], reward: 'pts:400', unlock: 'canopy' },
+    { id: 'q.altaria', area: 'canopy', giver: 'altaria', title: 'Cloud Taxi',
+      intro: ['{note} Alta~ria {note}', '(Altaria hums. Its fluffy wings could fly you to Starfall Cave!)', '(It would love 2 Razz Berries.)'],
+      fetch: { item: 'razz', n: 2 }, wait: ['(Altaria sings softly. {left} more Razz Berries.)'],
+      done: ['{note} Alta~ria! {note}', '(Sink into the fluffy wings... hold on tight!)'], reward: 'pts:500', unlock: 'falls' },
     { id: 'q.spheal', area: 'beach', giver: 'spheal', title: 'Hungry Spheal',
       intro: ['Spheal! Spheal spheal!', '(It pats its round tummy and stares at the berry bushes.)', '(It would love 3 berries. Shake bushes with Tackle, dig, or sniff around!)'],
       fetch: { item: 'berry', n: 3 }, wait: ['Spheal...? (Still hungry. It needs {left} more berries.)'],
@@ -43186,19 +43338,22 @@ const Talk = (() => {
   const qState = (id) => st()[id] || null;
   function giverQuest(m) {
     if (!m || !Game.areaId) return null;
-    for (const q of QUESTS) if (q.area === Game.areaId && q.giver === m.kind && (!qState(q.id) || qState(q.id).s !== 'done')) { const gv = giverOf(q); if (gv === m) return q; }
+    for (const q of QUESTS) if (q.area === Game.areaId && q.giver === m.kind && (!qState(q.id) || qState(q.id).s !== 'done') && (!q.after || (qState(q.after) && qState(q.after).s === 'done'))) { const gv = giverOf(q); if (gv === m) return q; }
     return null;
   }
   // one giver per quest: the first of that species in the area
   function giverOf(q) { if (q.area !== Game.areaId) return null; return Mons.all.find((m) => m.kind === q.giver && m.alive) || null; }
   function ready(q) {
     const s = qState(q.id); if (!s || s.s !== 'active') return false;
+    if (q.instant) return true;
     if (q.fetch) return Save.itemN(q.fetch.item) >= q.fetch.n;
     if (q.photo) return !!s.ok;
     return (s.n || 0) >= (q.n || 1);
   }
   function accept(q) {
     st()[q.id] = { s: 'active', n: 0 }; Save.save();
+    if (q.onAccept) q.onAccept();
+    if (q.instant) { finish(q, giverOf(q)); return; }
     HUD.toast('New quest: ' + q.title, { life: 2.6, col: 0xff3ad0ff });
     Game.sfx('select');
     if (q.progress === 'spots' || q.progress === 'pearl') { if (typeof Harvest !== 'undefined') Harvest.questSpots(q, giverOf(q)); }
@@ -43218,6 +43373,7 @@ const Talk = (() => {
     if (q.reward.startsWith('tm:')) Moves.unlock(q.reward.slice(3), 'A gift from ' + (DexData.S[q.giver] ? DexData.S[q.giver].name : 'a friend') + '!');
     else { r = Rewards.grant(q.reward); Quests.Q.pops.push({ t: 0, life: 4.2, text: 'Quest complete: ' + q.title, reward: r }); Quests.Q.unseenN++; SFX.reward(); if (typeof Style !== 'undefined') Style.markNew(q.reward); }
     Save.addPoints(300);
+    if (q.unlock) { Save.unlock(q.unlock); Save.discover('mail.map'); const dest = q.unlock; setTimeout(() => { if (Game.mode === 'explore') { WorldMap.open(); setTimeout(() => WorldMap.travelTo(dest), 900); } }, 700); }
     if (g) { g.emote('heart', 1.6); FX.confetti(g.x, g.y - 20, 30); }
     Save.discover('quest.' + q.id.slice(2));
   }
@@ -43225,6 +43381,7 @@ const Talk = (() => {
     const s = qState(q.id), g = giverOf(q);
     const nm = DexData.S[q.giver] ? DexData.S[q.giver].name : q.giver;
     const fill = (l) => l.replace('{have}', s ? s.n || 0 : 0).replace('{left}', q.fetch ? Math.max(0, q.fetch.n - Save.itemN(q.fetch.item)) : Math.max(0, (q.n || 1) - (s ? s.n || 0 : 0)));
+    if (!s && q.instant) return { lines: q.intro, done: () => accept(q) };
     if (!s) return { lines: q.intro.slice(0, -1).concat([{ text: q.intro[q.intro.length - 1], choices: ['Leave it to me!', 'Maybe later'] }]), done: (c) => { if (c === 0) accept(q); else bubble(() => g.headPt(), '...', { who: g }); } };
     if (ready(q)) return { lines: q.done, done: () => finish(q, g) };
     return { lines: q.wait.map(fill), done: () => {} };
@@ -43259,6 +43416,7 @@ const Talk = (() => {
     solrock: ['...', '(It spins slowly, warm as the sun.)'], lunatone: ['...', '(It glows softly, like the moon.)'],
     jirachi: ['Wish~', 'Zzz... (It is sleeping. For a thousand years?)'],
     trapinch: ['Chomp!', '(It opens its huge jaws. Please step back.)'],
+    mailman: ['Pelipper! Mail for you! ...oh wait, no.', 'Rain or shine, the mail gets through!', '(It adjusts its little postman cap.)'],
     tropius: ['Tro-pi!', '(Bananas dangle from its neck. They smell great.)'],
   };
   const MUDKIP_REPLY = ['Mud!', 'Kip!', 'Mudkip!', 'Mud? Kip!'];
@@ -43306,6 +43464,7 @@ const Talk = (() => {
   /* ---------- speech bubbles ---------- */
   function bubble(at, text, o = {}) {
     if (o.who) T.bubbles = T.bubbles.filter((b) => b.who !== o.who);
+    if (o.who && typeof Cries !== 'undefined') { if (o.who === Game.mudkip) Cries.mudkip(); else Cries.play(o.who.dex, o.who.x, 0.7, true); }
     T.bubbles.push({ at, text, t: 0, life: o.life ?? 2, who: o.who || null });
     if (T.bubbles.length > 6) T.bubbles.shift();
   }
@@ -43364,6 +43523,7 @@ const Talk = (() => {
 
   /* ---------- dialogue box ---------- */
   function open(lines, o = {}) {
+    if (o.who && typeof Cries !== 'undefined') Cries.play(o.who.dex, o.who.x, 0.8, true);
     T.dlg = { lines: lines.map((l) => (typeof l === 'string' ? { text: l } : l)), i: 0, ch: 0, t: 0, who: o.who || null, name: o.name || '', done: o.done || null, title: o.title || '', choice: 0, rects: [] };
     Game.sfx('blip');
     if (Game.mudkip) { Game.mudkip.stop(); Game.mudkip.keyDir = 0; }
@@ -43695,12 +43855,13 @@ const HUD = (() => {
   // throw a berry at the nearest Pokémon in front (or just ahead)
   function throwBerry() {
     const mk = Game.mudkip; if (!mk || Game.mode !== 'explore') return;
-    if (!Save.useItem('berry')) { toast('No berries left — shake a berry bush or dig!'); Game.sfx('error'); return; }
+    const kind = (typeof Bag !== 'undefined' && Bag.lure) || 'oran', B = Harvest.BERRY[kind] || Harvest.BERRY.oran;
+    if (!Save.useItem(B.inv)) { toast('No ' + B.name + 's left — pick some from a berry bush (E)!'); Game.sfx('error'); return; }
     const d = Math.cos(mk.yaw) >= 0 ? 1 : -1;
     let best = null, bd = 1e9;
     for (const m of Mons.all) { if (m === mk || !m.alive || !m.visible) continue; const dx = (m.x - mk.x) * d; if (dx < 8 || dx > 160) continue; const q = dx + Math.abs(m.y - mk.y); if (q < bd) { bd = q; best = m; } }
     const tx = best ? best.x - d * 10 : mk.x + d * 60, ty = best ? best.y - 4 : World.standY(mk.x + d * 60);
-    mk.wakeUp(); mk.doTask(mk.throwBerry(tx, ty), 2);
+    mk.wakeUp(); mk.doTask(mk.throwBerry(tx, ty, kind), 2);
   }
   function drawBanner(fb, S, t) {
     const b = H.ban; if (!b) return;
@@ -43756,13 +43917,15 @@ const HUD = (() => {
     const S = UI.skin();
     if (Game.mode === 'title') { drawTitle(fb, t); return; }
     if (Game.mode === 'dex') { Dex.draw(fb, t); drawToasts(fb, S, t, true); return; }
-    if (Game.mode === 'map') { WorldMap.draw(fb, t); drawToasts(fb, S, t, true); return; }
+    if (Game.mode === 'map') { WorldMap.draw(fb, t); if (typeof Mailman !== 'undefined') Mailman.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'bag') { Bag.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'style') { Style.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'memory') { Memories.draw(fb, t); return; }
+    if (Game.mode === 'rhythm') { Rhythm.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'camera') { Photo.drawUI(fb, t); Music.drawUI(fb, t, 'camera'); Talk.drawBubbles(fb, t); drawToasts(fb, S, t, false, Music.rect ? 60 : 34); Photo.drawCard && Photo.drawCard(fb, t); return; }
     drawScan(fb, S, t);
     Talk.drawBubbles(fb, t);
+    if (typeof Harvest !== 'undefined' && !Talk.busy()) Harvest.drawPrompt(fb, t);
     drawTop(fb, S, t);
     if (typeof Pad !== 'undefined') Pad.draw(fb, S, t);
     if (!Talk.busy()) drawCameraButton(fb, S, t);
@@ -43927,7 +44090,7 @@ const Photo = (() => {
   function shoot() {
     if (!P.on || P.cool > 0) return;
     P.cool = 0.45; P.flash = 1; P.shots++;
-    Game.sfx('shutter');
+    Game.sfx('shutter'); if (Game.mudkip && Game.mudkip.snapPose) Game.mudkip.snapPose();
     for (const m of Mons.all) if (m !== Game.mudkip) m.hear('shutter', m.x, 0.5);
     const res = evaluate();
     register(res);
@@ -44056,7 +44219,7 @@ const Photo = (() => {
   function finishHold(H) {
     const res = H.best;
     P.cool = 0.6; P.flash = 1; P.shots++;
-    Game.sfx('shutter');
+    Game.sfx('shutter'); if (Game.mudkip && Game.mudkip.snapPose) Game.mudkip.snapPose();
     for (const m of Mons.all) if (m !== Game.mudkip) m.hear('shutter', m.x, 0.5);
     if (res.buf && !res.img) res.img = bufURL(res.buf);
     res.held = true;
@@ -44248,8 +44411,8 @@ const Photo = (() => {
     // quick berry throw while aiming
     UI.panel(fb, 52, H - 22, 30, 18, { r: 3, ol: S.ink, fill: S.btn });
     HUD.iconAt(fb, 'berry', 56, H - 19, 1);
-    Font.draw(fb, String(Save.itemN('berry')), 76, H - 17, 0xffffffff, { font: 'small', align: 'right' });
-    HUD.btn('cberry', 50, H - 24, 34, 22, () => { if (Save.useItem('berry')) { const mk = Game.mudkip, [mx, my] = mk.at('mouth'); Items.throwBerry(mx, my - 4, P.aim.x, World.standY(P.aim.x)); Game.sfx('whoosh'); } else { Game.sfx('error'); HUD.toast('No berries left.'); } });
+    Font.draw(fb, String(Save.itemN((Harvest.BERRY[Bag.lure || 'oran'] || Harvest.BERRY.oran).inv)), 76, H - 17, 0xffffffff, { font: 'small', align: 'right' });
+    HUD.btn('cberry', 50, H - 24, 34, 22, () => { if (Save.useItem((Harvest.BERRY[Bag.lure || 'oran'] || Harvest.BERRY.oran).inv)) { const mk = Game.mudkip, [mx, my] = mk.at('mouth'); Items.throwBerry(mx, my - 4, P.aim.x, World.standY(P.aim.x), Bag.lure || 'oran'); Game.sfx('whoosh'); } else { Game.sfx('error'); HUD.toast('No berries left.'); } });
     // recent shot polaroid
     drawRecent(fb, t, x0 + 4, y1 - 4);
     // awareness hint: the focused Pokémon noticed you
@@ -44674,6 +44837,10 @@ const Rewards = (() => {
     'shoes.boots': { slot: 'shoes', name: 'Rain Boots', desc: 'Yellow boots for dancing in puddles.' },
     'shoes.sneakers': { slot: 'shoes', name: 'Red Sneakers', desc: 'Very fast looking. Mudkip is not faster.' },
     'fun.stache': { slot: 'fun', name: 'Fancy Moustache', desc: 'Distinguished. Extremely distinguished.' },
+    'hat.headphones': { slot: 'hat', name: 'Rock Headphones', desc: 'Earned by rocking the Guitar Jam.' },
+    'hat.pirate': { slot: 'hat', name: 'Pirate Hat', desc: 'Arr! For the deepest dives in Coral Cove.' },
+    'glasses.rock': { slot: 'glasses', name: 'Rock-Star Shades', desc: 'An S rank on the Guitar Jam. Legend.' },
+    'neck.medal': { slot: 'neck', name: 'Gold Medal', desc: 'For a true champion photographer.' },
     'hat.bow': { slot: 'hat', name: 'Big Red Bow', desc: 'Adorable. Possibly too adorable.' },
     'hat.chef': { slot: 'hat', name: 'Chef Hat', desc: 'Makes berry stew. In theory.' },
     'neck.lei': { slot: 'neck', name: 'Flower Lei', desc: 'Aloha from Coral Cove!' },
@@ -46178,6 +46345,8 @@ const WorldMap = (() => {
     for (let k = 1; k < pts.length; k++) len.push(len[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
     M.travel = { id, t: 0, pts, len, total: len[len.length - 1] || 1, start: Object.assign({}, CAM), done: false };
     M.shot = null; SFX.unlock();
+    // a flyer carries Mudkip there
+    if (typeof Mailman !== 'undefined' && id !== from) { FLY = 3.2; Mailman.F.dur = FLY + DIVE; Mailman.start(id); } else FLY = 1.6;
   }
   function pathAt(T, u) {
     const want = u * T.total; let k = 1;
@@ -46185,7 +46354,7 @@ const WorldMap = (() => {
     const a = T.pts[k - 1], b = T.pts[Math.min(k, T.pts.length - 1)], seg = (T.len[k] - T.len[k - 1]) || 1, f = clamp((want - T.len[k - 1]) / seg, 0, 1);
     return [lerp(a[0], b[0], f), lerp(a[1], b[1], f), Math.atan2(b[0] - a[0], -(b[1] - a[1]))];
   }
-  const FLY = 1.6, DIVE = 0.75, WIPE = 0.5;
+  let FLY = 1.6; const DIVE = 0.75, WIPE = 0.5;
   function updateTravel(dt) {
     const T = M.travel; T.t += dt;
     if (T.t < FLY) {
@@ -46201,6 +46370,7 @@ const WorldMap = (() => {
     }
     if (T.t > FLY + DIVE - 0.2 && !T.done && T.t > FLY + DIVE - 0.2 + WIPE) {
       T.done = true;
+      if (typeof Mailman !== 'undefined') Mailman.stop();
       Game.enterArea(T.id);
       M.reveal = { t: 0 }; M.on = false; M.travel = null; Game.mode = 'explore';
     }
@@ -46208,6 +46378,7 @@ const WorldMap = (() => {
 
   /* ================= open / close / update ================= */
   function open() {
+    if (!Save.found('mail.map') && !/unlock=all/.test(location.search)) { HUD.toast('You have no map yet! Pelipper the postman by the mailbox has a delivery for you.', { life: 3.2 }); Game.sfx('error'); return; }
     if (Game.mode === 'camera') Photo.close();
     if (!M.built) build();
     lockFog();
@@ -46222,7 +46393,7 @@ const WorldMap = (() => {
   function update(dt) {
     M.t += dt; M.anim = Math.min(1, M.anim + dt * 2.5);
     if (M.closing) { M.closing += dt; if (M.closing > 0.4) { M.on = false; Game.mode = 'explore'; M.closing = 0; } }
-    if (M.travel) updateTravel(dt);
+    if (M.travel) { updateTravel(dt); if (typeof Mailman !== 'undefined') Mailman.update(dt); }
     else if (M.shot) applyShot(dt);
     else if (!M.drag) {
       M.idleT += dt;
@@ -46849,7 +47020,7 @@ const Harvest = (() => {
     shroomR: ['#6a0e1a', '#a81e2a', '#e0383e', '#ff6a5a'], shroomB: ['#4a2a16', '#6e4424', '#946236', '#ba8850'],
     stalk: ['#a89c88', '#d4ccb8', '#f4f0e4'],
     shroomG: { c: ['#1a6a5a', '#2ab89a', '#6affd8', '#d0fff4'], emit: true },
-    berryB: ['#14285a', '#1e46a0', '#3a78e0', '#8ac0ff'], berryP: ['#6a1440', '#b02a6a', '#f05a9a', '#ffb0d0'], leafB: ['#1a4a20', '#2e7a30', '#5aac48'],
+    berryB: ['#14285a', '#1e46a0', '#3a78e0', '#8ac0ff'], berryP: ['#6a1440', '#b02a6a', '#f05a9a', '#ffb0d0'], berryR: ['#4a0a1a', '#8a1430', '#d82a48', '#ff7a8a'], berryN: ['#6a4a0a', '#b08a1a', '#f0d040', '#fff4a0'], berryS: ['#6a5a0a', '#c0a010', '#ffe030', '#fffac0'], stem: ['#1a3a14', '#2e5a20', '#4a8a30', '#7ab850'], leafB: ['#1a4a20', '#2e7a30', '#5aac48'],
     gemB: { c: ['#10306a', '#2a6ad8', '#7ac0ff', '#e0f4ff'], emit: true }, gemP: { c: ['#4a106a', '#9a3ad8', '#d49aff', '#f8e8ff'], emit: true },
     gemG: { c: ['#0a4a2a', '#1aa05a', '#6af0a0', '#e0fff0'], emit: true }, gemY: { c: ['#6a4a08', '#c89a18', '#ffe060', '#fffbe0'], emit: true },
     shell: ['#8a4a42', '#c8807a', '#f0b8ae', '#fff0ea'], pearl: { c: ['#a8a0b8', '#e0dcf0', '#ffffff'], emit: true },
@@ -46871,9 +47042,9 @@ const Harvest = (() => {
 
   /* ---------- per-area setup ---------- */
   const STYLE = {
-    beach: { land: ['dune', 'g1'], flowers: ['flY', 'flW', 'flP'], items: ['shell', 'shell', 'berry', 'starp'], under: true, motes: 'pollen', rocks: 'rock' },
-    forest: { land: ['g1', 'g2'], flowers: ['flP', 'flY', 'flB', 'flW'], items: ['berry', 'berry', 'shroom', 'shroom', 'gem'], motes: 'leaves', rocks: 'rockW', shrooms: true },
-    canopy: { land: ['g1', 'g2'], flowers: ['flY', 'flP'], items: ['berry', 'shroom', 'berry'], motes: 'leaves', rocks: 'rockW', shrooms: true, sparse: 0.6 },
+    beach: { land: ['dune', 'g1'], flowers: ['flY', 'flW', 'flP'], items: ['shell', 'shell', 'starp'], under: true, motes: 'pollen', rocks: 'rock' },
+    forest: { land: ['g1', 'g2'], flowers: ['flP', 'flY', 'flB', 'flW'], items: ['shroom', 'shroom', 'gem'], motes: 'leaves', rocks: 'rockW', shrooms: true },
+    canopy: { land: ['g1', 'g2'], flowers: ['flY', 'flP'], items: ['shroom'], motes: 'leaves', rocks: 'rockW', shrooms: true, sparse: 0.6 },
     falls: { land: ['g1'], flowers: ['flB'], items: ['gem', 'gem', 'starp', 'shroomG'], motes: 'dust', rocks: 'rock', crystals: true, sparse: 0.5 },
   };
   const TMS = { beach: [{ id: 'bubble', x: 2520 }, { id: 'ice', x: 4720 }], forest: [{ id: 'dig', x: 2150 }], canopy: [{ id: 'growl', x: 3215 }], falls: [{ id: 'smash', x: 3470 }] };
@@ -46882,6 +47053,16 @@ const Harvest = (() => {
     shroom: { name: 'Tiny Mushroom', inv: 'mushroom' }, shroomG: { name: 'Glowing Mushroom', inv: 'mushroom' }, gem: { name: 'Shiny Gem', inv: 'gem' }, starp: { name: 'Star Piece', inv: 'stardust' },
   };
   H.ITEM = ITEM;
+  // berries grow on bushes; pick them by hand (E) before a hungry Pokémon does
+  const BERRY = {
+    oran: { inv: 'berry', name: 'Oran Berry', mat: 'berryB', lure: 'Most Pokémon like it.' },
+    pecha: { inv: 'pecha', name: 'Pecha Berry', mat: 'berryP', lure: 'Sweet! Cute Pokémon come running.' },
+    razz: { inv: 'razz', name: 'Razz Berry', mat: 'berryR', lure: 'Its smell draws in rare Pokémon.' },
+    nanab: { inv: 'nanab', name: 'Nanab Berry', mat: 'berryN', lure: 'Calms Pokémon: they sit still for photos.' },
+    sitrus: { inv: 'sitrus', name: 'Sitrus Berry', mat: 'berryS', lure: 'Makes Pokémon happy and playful.' },
+  };
+  H.BERRY = BERRY;
+  const PLANTS = { beach: ['oran', 'pecha', 'oran'], forest: ['oran', 'razz', 'nanab', 'sitrus'], canopy: ['nanab', 'pecha', 'sitrus'], falls: ['razz', 'oran'] };
   function surfaceKind(x) {
     const lvl = World.waterAt(x);
     if (lvl === null) return 'land';
@@ -46927,6 +47108,12 @@ const Harvest = (() => {
       if (k === 'sea') kind = r() < 0.3 ? 'pearl' : r() < 0.7 ? 'shell' : 'starp';
       H.items.push({ kind, x, y: World.groundAt(x) - 1, under: k === 'sea', t: 0, taken: 0, ph: r() * 6 });
     }
+    // berry bushes
+    const pk = PLANTS[id] || ['oran'];
+    for (let x = 160; x < W - 120; x += 220 + r() * 260) {
+      if (surfaceKind(x) !== 'land' || World.platAt(x)) continue;
+      H.items.push({ kind: 'plant', berry: pk[(r() * pk.length) | 0], x, y: World.groundAt(x) - 1, ripe: 1 + ((r() * 3) | 0), grow: 0, t: 0, taken: 0, ph: r() * 6 });
+    }
     // TM discs not yet learned
     for (const tm of TMS[id] || []) if (!Moves.has(tm.id)) H.items.push({ kind: 'tm', tm: tm.id, x: tm.x, y: World.groundAt(tm.x) - 9, under: surfaceKind(tm.x) === 'sea', t: 0, taken: 0, ph: 0 });
     // glittering dig spots
@@ -46963,12 +47150,42 @@ const Harvest = (() => {
     FX.sparkles(it.x, it.y - 4, 7, 14);
     if (it.kind === 'tm') { Moves.unlock(it.tm, 'Found a TM disc!'); it.gone = true; FX.confetti(it.x, it.y - 10, 30); return; }
     if (it.kind === 'qpearl') { it.gone = true; Game.sfx('twinkle', it.x); Talk.event('pearl', it.quest); HUD.toast('Found the lost pearl! Take it back to Luvdisc.', { life: 2.6 }); return; }
+    if (it.kind === 'plant') {
+      const b = BERRY[it.berry], n = it.ripe;
+      Save.addItem(b.inv, n); it.ripe = 0; it.grow = 0; it.taken = 0;
+      Game.sfx('pop', it.x, 0.8); popIcon(it.x, it.y - 12, it.berry);
+      HUD.toast('+' + n + ' ' + b.name + (n > 1 ? 's' : ''), { life: 1.6, col: 0xff6ae0a0 });
+      if (mk) mk.happyT = Math.max(mk.happyT, 0.5);
+      return;
+    }
+    if (it.kind === 'berry') { const b = BERRY[it.berry || 'oran']; Save.addItem(b.inv, 1); popIcon(it.x, it.y - 8, it.berry || 'oran'); Game.sfx('pop', it.x, 0.7); HUD.toast('+1 ' + b.name, { life: 1.4, col: 0xff6ae0a0 }); it.gone = !!it.extra; it.respawn = 90; return; }
     const d = ITEM[it.kind];
     Save.addItem(d.inv, 1);
     Game.sfx(it.kind === 'berry' ? 'pop' : 'twinkle', it.x, 0.7);
     HUD.toast('+1 ' + d.name, { life: 1.4, col: 0xff6ae0a0 });
     it.respawn = 80 + Math.random() * 80;
     if (mk) mk.happyT = Math.max(mk.happyT, 0.3);
+  }
+  // the picked berry pops up over Mudkip's head
+  function popIcon(x, y, berry) {
+    const mat = (BERRY[berry] || BERRY.oran).mat;
+    FX.add({ type: 'fn', x, y, vy: -30, life: 0.9, layer: 4, draw: (fb, p, k, cx, cy) => { palette(); const X = Math.round(p.x - cx), Y = Math.round(p.y - cy); for (let yy = -4; yy <= 4; yy++) for (let xx = -4; xx <= 4; xx++) { const d = xx * xx + yy * yy; if (d > 17) continue; put(fb, X + xx, Y + yy, d > 12 ? 0xff1b2240 : C(mat, xx + yy < -3 ? 1 : xx + yy < 1 ? 0.66 : 0.33)); } put(fb, X, Y - 5, C('leafB', 0.6)); put(fb, X + 1, Y - 6, C('leafB', 1)); } });
+  }
+  // the nearest thing Mudkip could pick up (E)
+  function nearest() {
+    const mk = Game.mudkip; if (!mk) return null;
+    let best = null, bd = 18;
+    for (const it of H.items) {
+      if (it.taken || it.gone) continue;
+      if (it.kind === 'plant' && it.ripe <= 0) continue;
+      const d = Math.abs(mk.x - it.x); if (d < bd && Math.abs((mk.y - 8) - (it.y - 6)) < 22) { bd = d; best = it; }
+    }
+    return best;
+  }
+  function pick() {
+    const mk = Game.mudkip, it = H.near; if (!mk || !it || mk.busy(2)) return false;
+    mk.wakeUp(); mk.doTask(mk.pickUp(it, () => { if (!it.taken && !it.gone && (it.kind !== 'plant' || it.ripe > 0)) collect(it); }), 2);
+    return true;
   }
   function reveal(sp, how) {
     sp.found = true;
@@ -46998,7 +47215,18 @@ const Harvest = (() => {
       it.t += dt;
       if (it.hop > 0) it.hop = Math.max(0, it.hop - dt * 2.5);
       if (it.taken) { if (it.gone) continue; if (it.t > it.respawn) { it.taken = 0; it.t = 0; } continue; }
-      if (mk && mk.visible && Math.abs(mk.x - it.x) < 11 && Math.abs((mk.y - 8) - (it.y - 4)) < 16) collect(it);
+      if (it.kind === 'plant' && it.ripe < 3) { it.grow += dt; if (it.grow > 40) { it.grow = 0; it.ripe++; } }
+    }
+    H.near = Game.mode === 'explore' ? nearest() : null;
+    // hungry Pokémon raid ripe bushes when Mudkip is not looking
+    H.snackT = (H.snackT ?? 12) - dt;
+    if (H.snackT <= 0 && mk) {
+      H.snackT = 14 + Math.random() * 14;
+      const plants = H.items.filter((p) => p.kind === 'plant' && p.ripe > 0 && Math.abs(p.x - mk.x) > 50);
+      for (const p of plants) {
+        const m = Mons.all.find((q) => q !== mk && q.alive && q.mode === 'land' && !q.layer && !q.busy(2) && !q.sleeping && q.walkTo && Math.abs(q.x - p.x) < 220);
+        if (m) { m.doTask(raid(m, p), 2); break; }
+      }
     }
     // grass parts when Mudkip moves through it
     if (mk && mk.moving && mk.mode === 'land' && mk.air <= 0) {
@@ -47030,9 +47258,18 @@ const Harvest = (() => {
     updateMotes(dt, t);
     updateFlocks(dt);
   }
+  function* raid(m, p) {
+    m.emote('bulb', 0.9);
+    yield* m.walkTo(p.x + (m.x < p.x ? -10 : 10), (m.speed || 45) * 1.2);
+    let e = 0;
+    while (e < 1.6 && p.ripe > 0) { const dt = yield; e += dt; m.o.mouth = Math.sin(e * 16) > 0 ? 1 : 0.2; m.o.eyes = 'happy'; m.setAct(m.act.id, 0.7); if (e > 0.5 && e - dt <= 0.5) { p.ripe--; Game.sfx('munch', p.x, 0.7); FX.poof(p.x, p.y - 6, 0xffffffff, C((BERRY[p.berry] || BERRY.oran).mat, 0.6), 3, 2); } if (e > 1.1 && e - dt <= 1.1 && p.ripe > 0) { p.ripe--; Game.sfx('munch', p.x, 0.7); } }
+    m.emote('heart', 1.2);
+    if (Talk && Game.mudkip && Math.abs(Game.mudkip.x - m.x) < 300) Talk.bubble(() => m.headPt(), pick2(['Nom nom!', 'Yum!', '*munch*']), { life: 1.4, who: m });
+  }
+  const pick2 = (a) => a[(Math.random() * a.length) | 0];
   function popBerry(tf) {
     const x = tf.x, y = World.groundAt(x) - 6;
-    H.items.push({ kind: 'berry', x: x + (Math.random() - 0.5) * 10, y: y + 5, t: 0, taken: 0, ph: 0, hop: 1, extra: true });
+    H.items.push({ kind: 'berry', berry: pick2((PLANTS[H.area] || ['oran'])), x: x + (Math.random() - 0.5) * 10, y: y + 5, t: 0, taken: 0, ph: 0, hop: 1, extra: true });
     FX.poof(x, y + 4, 0xffe0f0d0, 0xffa0c090, 4, 3);
     HUD.toast('A berry fell out of the grass!', { life: 1.6 });
   }
@@ -47135,8 +47372,17 @@ const Harvest = (() => {
   function drawItem(fb, it, X, Y, t, occ, hr) {
     const o = it.under ? 1 : 2;
     switch (it.kind) {
+      case 'plant': {
+        // a leafy berry bush with its ripe berries
+        const bm = (BERRY[it.berry] || BERRY.oran).mat, sw = Math.sin(t * 1.5 + it.ph) * 0.6;
+        for (let k = 0; k < 9; k++) { const a = -Math.PI / 2 + (k - 4) * 0.33, L = 6 + (k % 3) * 2; for (let j = 0; j < L; j++) { const q = j / L; putO(fb, Math.round(X + Math.cos(a) * j * 0.9 + sw * q), Math.round(Y + Math.sin(a) * j), C('stem', 0.25 + q * 0.7), occ, o); } }
+        for (let k = 0; k < 7; k++) { const lx = X + Math.round(Math.cos(k * 0.9) * 5 + sw), ly = Y - 4 - ((k * 3) % 6); putO(fb, lx, ly, C('leafB', 0.6), occ, o); putO(fb, lx + 1, ly, C('leafB', 1), occ, o); putO(fb, lx, ly + 1, C('leafB', 0.2), occ, o); }
+        const spots = [[-4, -6], [3, -8], [0, -11]];
+        for (let n = 0; n < it.ripe; n++) { const [bx, by] = spots[n]; for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) putO(fb, X + bx + xx + Math.round(sw), Y + by + yy, C(bm, xx + yy < 0 ? 0.9 : 0.4), occ, o); put(fb, X + bx - 1 + Math.round(sw), Y + by - 1, 0xffffffff); }
+        break;
+      }
       case 'berry': {
-        const b = 'berryB';
+        const b = (BERRY[it.berry || 'oran'] || BERRY.oran).mat;
         for (let y = -3; y <= 0; y++) for (let x = -2; x <= 2; x++) { if (x * x + (y + 1.5) * (y + 1.5) > 5.5) continue; putO(fb, X + x, Y + y, C(b, x + y < -2 ? 1 : x + y < 0 ? 0.66 : 0.33), occ, o); }
         putO(fb, X - 1, Y - 3, C(b, 1), occ, o); putO(fb, X, Y - 4, C('leafB', 0.5), occ, o); putO(fb, X + 1, Y - 5, C('leafB', 1), occ, o);
         break;
@@ -47316,7 +47562,19 @@ const Harvest = (() => {
       blend(fb, X, Y, s.col, 0.75); blend(fb, X - s.dir, Y, s.col, 0.6); blend(fb, X - 2 * s.dir, Y + (Math.sin(s.t * 12 + f.ph) > 0 ? 1 : -1), s.col, 0.45); put(fb, X + s.dir, Y, 0xffffffff);
     }
   }
-  return Object.assign(H, { reset, draw, drawUnder, drawFore, drawFar, update, dig, pound, questSpots, TMS });
+    // "E" prompt over the thing Mudkip can pick up (tap it on touch screens)
+  function drawPrompt(fb, t) {
+    const it = H.near; if (!it || Game.mode !== 'explore') return;
+    const [x, y] = Talk.toUI(it.x, it.y - (it.kind === 'plant' ? 16 : 10));
+    const X = Math.round(x), Y = Math.round(y) - 6 + Math.round(Math.sin(t * 5) * 1.5);
+    const name = it.kind === 'plant' ? (BERRY[it.berry] || BERRY.oran).name : it.kind === 'berry' ? (BERRY[it.berry || 'oran'] || BERRY.oran).name : it.kind === 'tm' ? 'TM disc' : it.kind === 'qpearl' ? 'Lost pearl' : (ITEM[it.kind] ? ITEM[it.kind].name : '');
+    const touch = typeof Pad !== 'undefined' && Pad.touch;
+    UI.disc(fb, X, Y + 1, 7, 0xff0a0e1a); UI.disc(fb, X, Y, 7, 0xff1b2240); UI.disc(fb, X, Y, 6, 0xffffffff);
+    Font.draw(fb, touch ? '!' : 'E', X, Y - 4, 0xff1b2240, { font: 'small', align: 'center' });
+    Font.draw(fb, (touch ? 'Tap: ' : '') + 'pick up ' + name, X, Y + 9, 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 });
+    HUD.btn('pickup', X - 40, Y - 10, 80, 30, () => pick());
+  }
+  return Object.assign(H, { drawPrompt, pick, nearest, popIcon, reset, draw, drawUnder, drawFore, drawFar, update, dig, pound, questSpots, TMS });
 })();
 
 /* ==== src/snap/bag.js ==== */
@@ -47331,9 +47589,14 @@ const Harvest = (() => {
 const Bag = (() => {
   const { clamp } = U;
   const INK = 0xff1b2240, WHITE = 0xffffffff;
-  const B = { tab: 0, sel: 0, t: 0, scroll: 0, seen: {} };
+  const B = { tab: 0, sel: 0, t: 0, scroll: 0, seen: {}, lure: 'oran' };
   const ITEMS = [
-    { id: 'berry', name: 'Oran Berry', desc: 'A juicy blue berry. Pokémon love them. Throw one to make friends.', use: 'Throw' },
+    { id: 'berry', lure: 'oran', name: 'Oran Berry', desc: 'Lure: most Pokémon like it. Pick berries from bushes with E.', use: 'Lure' },
+    { id: 'pecha', lure: 'pecha', name: 'Pecha Berry', desc: 'Lure: sweet! Cute Pokémon come running.', use: 'Lure' },
+    { id: 'razz', lure: 'razz', name: 'Razz Berry', desc: 'Lure: its smell draws in rare Pokémon from far away.', use: 'Lure' },
+    { id: 'nanab', lure: 'nanab', name: 'Nanab Berry', desc: 'Lure: calms a Pokémon so it sits still for photos.', use: 'Lure' },
+    { id: 'sitrus', lure: 'sitrus', name: 'Sitrus Berry', desc: 'Lure: makes a Pokémon happy and bouncy.', use: 'Lure' },
+    { id: 'jam', name: 'Guitar Jam', desc: 'Rock out on the seaside stage! (G)', use: 'Play', always: true },
     { id: 'shell', name: 'Pretty Shell', desc: 'A pink seashell from the beach.', trade: 40 },
     { id: 'pearl', name: 'Pearl', desc: 'A glowing pearl from the seabed.', trade: 120 },
     { id: 'mushroom', name: 'Tiny Mushroom', desc: 'Smells earthy. Shroomish would approve.', trade: 60 },
@@ -47350,11 +47613,12 @@ const Bag = (() => {
   }
   function close() { if (Game.mode !== 'bag') return; Game.mode = 'explore'; Game.sfx('dexClose', null, 0.6); }
   const fresh = () => { const it = Save.data.items || {}; return Object.keys(it).some((k) => it[k] > 0 && !B.seen[k]); };
-  const listFor = (tab) => (tab === 0 ? ITEMS.filter((i) => Save.itemN(i.id) > 0 || i.id === 'berry') : tab === 1 ? Moves.LIST : Memories.list());
+  const listFor = (tab) => (tab === 0 ? ITEMS.filter((i) => Save.itemN(i.id) > 0 || i.id === 'berry' || i.always) : tab === 1 ? Moves.LIST : Memories.list());
   function act(tab, i) {
     const L = listFor(tab), it = L[i]; if (!it) return;
     if (tab === 0) {
-      if (it.use === 'Throw') { if (Save.itemN('berry') <= 0) { Game.sfx('error'); HUD.toast('No berries! Shake bushes with Tackle, dig, or check tall grass.'); return; } close(); HUD.throwBerry(); return; }
+      if (it.use === 'Play') { close(); setTimeout(() => Rhythm.open(0), 50); return; }
+      if (it.use === 'Lure') { B.lure = it.lure; if (Save.itemN(it.id) <= 0) { Game.sfx('error'); HUD.toast('No ' + it.name + 's! Pick them from berry bushes with E.'); return; } close(); HUD.throwBerry(); return; }
       if (it.trade && Save.itemN(it.id) > 0) { Save.useItem(it.id); Save.addPoints(it.trade); Game.sfx('twinkle'); HUD.toast('Traded a ' + it.name + ' to Professor Birch: +' + it.trade, { life: 1.6 }); }
     } else if (tab === 1) {
       if (!Moves.has(it.id)) { Game.sfx('error'); HUD.toast(it.how || 'Not learned yet.', { life: 3 }); return; }
@@ -47376,7 +47640,10 @@ const Bag = (() => {
   }
   function wheel(dy) { const L = listFor(B.tab); B.sel = clamp(B.sel + Math.sign(dy), 0, Math.max(0, L.length - 1)); }
   // item icons (pixel maps)
+  const BM = ['...g..', '..gg..', '.bbbb.', 'bblbbb', 'blbbbb', 'bbbbbb', '.bbbb.'];
   const IC = {
+    pecha: { m: BM, c: { g: 0xff3aa84a, b: U.hex('#ff6a9a'), l: 0xffffffff } }, razz: { m: BM, c: { g: 0xff3aa84a, b: U.hex('#d82a48'), l: U.hex('#ff9aa8') } },
+    nanab: { m: BM, c: { g: 0xff3aa84a, b: U.hex('#f0d040'), l: 0xffffffff } }, sitrus: { m: BM, c: { g: 0xff3aa84a, b: U.hex('#ffe030'), l: 0xffffffff } },
     berry: { m: ['...g..', '..gg..', '.bbbb.', 'bblbbb', 'blbbbb', 'bbbbbb', '.bbbb.'], c: { g: 0xff3aa84a, b: 0xffe07a3a, l: 0xffffc8a0 } },
     shell: { m: ['...a...', '..aba..', '.abcba.', 'abcdcba', 'bcdddcb', '.bbbbb.'], c: { a: 0xffeaf0ff, b: 0xffc0c8f8, c: 0xff9aa0e8, d: 0xff7a80c8 } },
     pearl: { m: ['.aaa.', 'awaab', 'aaabb', 'aabbb', '.bbb.'], c: { a: 0xfff8f0ff, w: 0xffffffff, b: 0xffd8c8e0 } },
@@ -47424,7 +47691,7 @@ const Bag = (() => {
       if (B.tab === 0) {
         const ic = IC[it.id]; if (ic) UI.pix(fb, ic.m, lx + 10, y + 2, ic.c, 2);
         Font.draw(fb, it.name, lx + 30, y + 5, INK, { font: 'small' });
-        Font.draw(fb, '×' + Save.itemN(it.id), lx + lw - 70, y + 5, INK, { font: 'small', align: 'right' });
+        if (!it.always) Font.draw(fb, '×' + Save.itemN(it.id), lx + lw - 70, y + 5, INK, { font: 'small', align: 'right' });
         B.seen[it.id] = 1;
       } else if (B.tab === 1) {
         const own = Moves.has(it.id);
@@ -48189,19 +48456,19 @@ const Style = (() => {
   const INK = 0xff1b2240, WHITE = 0xffffffff;
   const ST = { t: 0, tab: 0, sel: 0, pt: null, buf: null, fresh: {}, hover: -1, spin: 0 };
   const CATS = [
-    { slot: 'hat', name: 'Hats', items: ['hat.party', 'hat.crown', 'hat.propeller', 'hat.bow', 'hat.chef', 'hat.straw', 'hat.bucket', 'hat.beanie', 'hat.sailor', 'hat.flower', 'hat.star', 'hat.lobster'] },
+    { slot: 'hat', name: 'Hats', items: ['hat.party', 'hat.crown', 'hat.propeller', 'hat.bow', 'hat.chef', 'hat.headphones', 'hat.pirate', 'hat.straw', 'hat.bucket', 'hat.beanie', 'hat.sailor', 'hat.flower', 'hat.star', 'hat.lobster'] },
     { slot: 'shirt', name: 'Shirts', items: ['shirt.heart', 'shirt.stripe', 'shirt.hoodie', 'shirt.pop'] },
-    { slot: 'glasses', name: 'Shades', items: ['glasses.round', 'glasses.star'] },
-    { slot: 'neck', name: 'Neck', items: ['neck.lei', 'neck.bow', 'neck.scarf', 'neck.camera'] },
+    { slot: 'glasses', name: 'Shades', items: ['glasses.round', 'glasses.star', 'glasses.rock'] },
+    { slot: 'neck', name: 'Neck', items: ['neck.lei', 'neck.medal', 'neck.bow', 'neck.scarf', 'neck.camera'] },
     { slot: 'shoes', name: 'Shoes', items: ['shoes.sneakers', 'shoes.boots'] },
     { slot: 'fun', name: 'Fun', items: ['fun.stache', 'fun.floaties', 'fun.ring'] },
   ];
   // how to get what you do not have yet
-  const HOW = {
+  const HOW = { 'hat.headphones': 'Get an A rank in the Guitar Jam (G).', 'glasses.rock': 'Get an S rank in the Guitar Jam.',
     'hat.party': 'Help a hungry Spheal at the cove.', 'hat.crown': 'Photograph Bagon smashing the boulder.', 'hat.propeller': 'Nap next to Slakoth in the forest.',
     'shoes.boots': 'Throw Ludicolo a dance party.', 'shoes.sneakers': 'A memory from the edge of space.', 'fun.ring': 'A memory from the deep blue sea.',
   };
-  const PRICE = { 'hat.bow': 400, 'hat.chef': 700, 'neck.lei': 500, 'fun.floaties': 800, 'shoes.sneakers': 1200, 'fun.ring': 900, 'shirt.stripe': 700, 'neck.bow': 500, 'neck.scarf': 600 };
+  const PRICE = { 'hat.pirate': 1500, 'neck.medal': 2500, 'hat.bow': 400, 'hat.chef': 700, 'neck.lei': 500, 'fun.floaties': 800, 'shoes.sneakers': 1200, 'fun.ring': 900, 'shirt.stripe': 700, 'neck.bow': 500, 'neck.scarf': 600 };
   function open() {
     if (Game.mode !== 'explore') return;
     Game.mode = 'style'; Game.frozenFrame = false; ST.t = 0;
@@ -48270,7 +48537,7 @@ const Style = (() => {
     'hat.beanie': ['#86a1e4', '#ffffff'], 'hat.sailor': ['#ffffff', '#3150ae'], 'hat.flower': ['#f890b8', '#ffffff'], 'hat.star': ['#f0c038', '#f890b8'], 'hat.lobster': ['#e84a44', '#ffffff'],
     'shirt.heart': ['#f890b8', '#e84a44'], 'shirt.stripe': ['#ffffff', '#3150ae'], 'shirt.hoodie': ['#fb8f3c', '#ffffff'], 'shirt.pop': ['#c43cbc', '#f0c038'],
     'glasses.round': ['#262e40', '#58a0d8'], 'glasses.star': ['#f890b8', '#7c285c'], 'neck.bow': ['#e84a44', '#8e1c2c'], 'neck.scarf': ['#e84a44', '#ff7a62'], 'neck.camera': ['#e84a44', '#ffffff'],
-    'shoes.sneakers': ['#e84a44', '#ffffff'], 'hat.bow': ['#e84a44', '#ff7a62'], 'hat.chef': ['#ffffff', '#c2cde0'], 'neck.lei': ['#f890b8', '#f4d272'], 'fun.floaties': ['#fb8f3c', '#f4d272'], 'shoes.boots': ['#f4d272', '#262e40'], 'fun.stache': ['#3a2a20', '#6a4a36'], 'fun.ring': ['#e84a44', '#ffffff'],
+    'shoes.sneakers': ['#e84a44', '#ffffff'], 'hat.bow': ['#e84a44', '#ff7a62'], 'hat.headphones': ['#262e40', '#c43cbc'], 'hat.pirate': ['#262e40', '#ffffff'], 'glasses.rock': ['#e84a44', '#7c285c'], 'neck.medal': ['#f0c038', '#3150ae'], 'hat.chef': ['#ffffff', '#c2cde0'], 'neck.lei': ['#f890b8', '#f4d272'], 'fun.floaties': ['#fb8f3c', '#f4d272'], 'shoes.boots': ['#f4d272', '#262e40'], 'fun.stache': ['#3a2a20', '#6a4a36'], 'fun.ring': ['#e84a44', '#ffffff'],
   };
   function swatch(fb, id, x, y, s, locked) {
     const cols = (SW[id] || ['#8a8ea0']).map(U.hex);
@@ -49042,7 +49309,7 @@ const AI = (() => {
     · dusk → the Luvdisc heart school (3★); sing to it → they leap (4★)
     · wear a hat on the dock → a Wingull steals it (4★)
     · play a song at the end of the dock at dusk → Wailord breaches (4★) → a huge swell → Mantine surfs (4★)
-    · the sunken chest holds the Blue Orb → carry it into the trench at night → Kyogre rises in a storm (4★)
+    · the sunken chest holds the Blue Orb → carry it down to the deepest abyss at the far end of the cove at night → Kyogre rises in a storm (4★)
     · a crystal under a beach rock → Dialga; the Lustrous Orb in a moored boat → Palkia
 ------------------------------------------------------------------- */
 const BeachAI = (() => {
@@ -49702,7 +49969,7 @@ const BeachAI = (() => {
     facing() { return 0.3; }
   }
   class KyogreM extends Swimmer {
-    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 2980, y: 920, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 2800, x1: 3120, y0: 700, y1: 940 } }); this.swimTop = 20; }
+    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 7380, y: 1060, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 7100, x1: 7520, y0: 900, y1: 1110 } }); this.swimTop = 20; }
     senses() {}
     animate(dt, t) { const P = { fin: Math.sin(t * 1.2) * 0.5, tail: Math.sin(t * 1.4 + 1) * 0.5, mouth: 0.1, eyes: 'open', glow: 0.6 + 0.4 * Math.sin(t * 2), headPitch: -0.1, roll: 0 }; Object.assign(P, this.o); this.pose = P; }
     brain() { return this.life(); }
@@ -49797,7 +50064,7 @@ const BeachAI = (() => {
       Game.sfx('chest', 2330, 1); SFX.reward();
       Save.addItem('berry', 3); Save.addItem('blueorb', 1);
       HUD.toast('Found the Blue Orb and 3 berries!', { life: 3.5, icon: 'spark' });
-      setTimeout(() => HUD.toast('The Blue Orb glows faintly... like the deep trench at night.', { life: 4 }), 1800);
+      setTimeout(() => HUD.toast('The Blue Orb glows faintly... like the deepest abyss at the far end of the cove, at night.', { life: 4 }), 1800);
     } else { FX.bubbles(2330, gy(2330) - 10, 4, SEA); Game.sfx('bubble', 2330, 0.6); }
   }
   function boatTap(A, b) { Secrets.boat(A, b); }
@@ -49870,7 +50137,7 @@ const BeachAI = (() => {
     update(A, dt, t, G) {
       const m = G.mudkip;
       // Kyogre: the Blue Orb in the trench at night
-      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 2760 && m.x < 3160 && m.y > 850 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(2980, 820, { dur: 1.6, hold: 4, zoom: 1.1 }); }
+      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 6900 && m.y > 900 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(7380, 980, { dur: 1.6, hold: 4, zoom: 1.1 }); }
     },
     song(x) {
       const m = Game.mudkip;
@@ -53461,11 +53728,11 @@ Areas.beach = (() => {
   const DOCK = { x0: 870, x1: 1880, y: 496 };
   const def = {
     id: 'beach', name: 'Coral Cove', sub: 'Route 109 Seashore', music: 'crossing', seed: 11,
-    W: 5000, H: 1260, sea: SEA, refY: SEA, h0: 96, cy0: 290, ph: 0.06, skyH: 360, sunH: 150, band: 12, waves: 1.6,
-    camY: [-40, 1260],
+    W: 7600, H: 1300, sea: SEA, refY: SEA, h0: 96, cy0: 290, ph: 0.06, skyH: 360, sunH: 150, band: 12, waves: 1.6,
+    camY: [-40, 1300],
     start: 300,
-    ground: [[0, 452], [90, 452], [170, 462], [240, 478], [320, 488], [460, 492], [640, 494], [800, 497], [900, 502], [1000, 509], [1100, 520], [1200, 535], [1300, 555], [1400, 580], [1500, 608], [1600, 638], [1700, 666], [1800, 690], [1900, 708], [2000, 714], [2150, 724], [2300, 740], [2450, 764], [2600, 800], [2750, 848], [2880, 900], [2980, 935], [3060, 940], [3140, 905], [3210, 820], [3270, 700], [3310, 590], [3345, 510], [3375, 482], [3420, 478], [3520, 482], [3600, 480], [3660, 470], [3720, 456], [3800, 444], [3920, 440], [4040, 441], [4080, 450], [4110, 464], [4150, 470], [4190, 464], [4220, 450], [4260, 441], [4360, 440], [4390, 452], [4420, 476], [4480, 482], [4540, 478], [4570, 456], [4600, 442], [4760, 436], [4900, 430], [5000, 430]],
-    water: [{ x0: 0, x1: 3420, level: SEA, kind: 'sea' }, { x0: 4385, x1: 4580, level: 456, kind: 'pool' }],
+    ground: [[0, 452], [90, 452], [170, 462], [240, 478], [320, 488], [460, 492], [640, 494], [800, 497], [900, 502], [1000, 509], [1100, 520], [1200, 535], [1300, 555], [1400, 580], [1500, 608], [1600, 638], [1700, 666], [1800, 690], [1900, 708], [2000, 714], [2150, 724], [2300, 740], [2450, 764], [2600, 800], [2750, 848], [2880, 900], [2980, 935], [3060, 940], [3140, 905], [3210, 820], [3270, 700], [3310, 590], [3345, 510], [3375, 482], [3420, 478], [3520, 482], [3600, 480], [3660, 470], [3720, 456], [3800, 444], [3920, 440], [4040, 441], [4080, 450], [4110, 464], [4150, 470], [4190, 464], [4220, 450], [4260, 441], [4360, 440], [4390, 452], [4420, 476], [4480, 482], [4540, 478], [4570, 456], [4600, 442], [4760, 436], [4900, 430], [5000, 432], [5080, 448], [5160, 476], [5240, 506], [5320, 532], [5460, 566], [5640, 604], [5860, 650], [6100, 706], [6360, 772], [6620, 846], [6860, 926], [7080, 1006], [7260, 1080], [7400, 1140], [7520, 1180], [7600, 1190]],
+    water: [{ x0: 0, x1: 3420, level: SEA, kind: 'sea' }, { x0: 5200, x1: 7600, level: SEA, kind: 'sea' }, { x0: 4385, x1: 4580, level: 456, kind: 'pool' }],
     plats: [{ x0: DOCK.x0, x1: DOCK.x1, y: DOCK.y, kind: 'dock', ladders: [1400, 1872] }],
     mats: {
       ink: ['#161828', '#221e36'],
@@ -55387,6 +55654,322 @@ Areas.falls = (() => {
   return def;
 })();
 
+/* ==== src/snap/mailman.js ==== */
+/* ------------------------------------------------------------------
+   Mailman — Pelipper the postman stands by his mailbox at the start
+   of Coral Cove. Talk to him for the map of Hoenn, and help the
+   flyers of each area (Pelipper, Tropius, Altaria) to be carried to
+   the next one. Flights play a big animated ride over the world map.
+------------------------------------------------------------------- */
+const Mailman = (() => {
+  const { clamp, rnd, pick, lerp } = U;
+  const INK = 0xff1b2240;
+  const CARRIER = { forest: 'pelipper', beach: 'pelipper', canopy: 'tropius', falls: 'altaria', stage: 'altaria' };
+  const CSP = { pelipper: { sp: 'Pelipper', scale: 0.46, flap: (k) => ({ flap: k, spread: 1, feet: 0, pouch: 0.6, bill: 0.2, eyes: 'happy' }) }, tropius: { sp: 'Tropius', scale: 0.34, flap: (k) => ({ flap: k, eyes: 'happy', mouth: 0.3 }) }, altaria: { sp: 'Altaria', scale: 0.85, flap: (k) => ({ flap: k, eyes: 'happy' }) } };
+
+  /* ---------- the postman ---------- */
+  let Mail = null;
+  function makeClass() {
+    if (Mail || typeof Pelipper === 'undefined') return Mail;
+    Mail = class extends Mons.Mon {
+      constructor(x) {
+        super(Pelipper, { kind: 'mailman', dex: 'pelipper', x, y: World.groundAt(x) - 22, yaw: Math.PI / 2 + 0.35, z: 2.4, scale: 0.34, qPose: 0.06, qFields: { bill: 0.1, pouch: 0.1, flap: 0.2 }, persona: 'calm' });
+        this.mode = 'perch'; this.noShadow = false; this.baseY = this.y; this.senseR = 0;
+      }
+      senses() {}
+      physics() { this.y = this.baseY; }
+      animate(dt, t) {
+        const P = { flap: 0, spread: 0, feet: 1, pouch: 0.25 + Math.sin(t * 1.3) * 0.1, bill: 0.12, pitch: 0, eyes: this.blink(t, dt) ? 'blink' : 'open' };
+        const mk = Game.mudkip;
+        if (mk && Math.abs(mk.x - this.x) < 90) this.turn(this.face(mk.x > this.x ? 1 : -1, false), dt, 3);
+        Object.assign(P, this.o); this.pose = P;
+      }
+      brain() { const me = this; return (function* () { for (;;) { yield* wait(rnd(3, 7)); let e = 0; while (e < 0.8) { const dt = yield; e += dt; me.o.bill = Math.sin(e * 20) > 0 ? 0.7 : 0.1; } if (Math.random() < 0.4) { e = 0; while (e < 1) { const dt = yield; e += dt; me.o.flap = Math.sin(e * 12) * 0.5; me.o.spread = 0.6; } } } })(); }
+      onPoke() { this.emote('note', 1); Game.sfx('squawk', this.x, 0.8); }
+      // mailbox + postman's cap
+      drawExtra(fb, cx, cy) {
+        const X = Math.round(this.x - cx), G = Math.round(World.groundAt(this.x) - cy);
+        const red = U.hex('#d8323c'), redD = U.hex('#8e1a26'), wood = U.hex('#6a4a2a');
+        for (let y = G - 22; y < G; y++) { UI.put(fb, X - 1, y, wood); UI.put(fb, X, y, wood); UI.put(fb, X + 1, y, U.hex('#8a6a3a')); }
+        for (let y = G - 34; y < G - 20; y++) for (let x = -9; x <= 9; x++) { const edge = x === -9 || x === 9 || y === G - 34 || y === G - 21; UI.put(fb, X + x, y, edge ? INK : y < G - 31 ? U.hex('#ff6a6a') : x > 5 ? redD : red); }
+        for (let x = -5; x <= 5; x++) UI.put(fb, X + x, G - 27, INK);
+        UI.put(fb, X + 10, G - 33, U.hex('#ffd23a')); UI.put(fb, X + 10, G - 32, U.hex('#ffd23a')); UI.put(fb, X + 11, G - 33, U.hex('#ffd23a'));
+      }
+    };
+    return Mail;
+  }
+  function* wait(s) { while (s > 0) s -= yield; }
+  function spawn(A, G) {
+    const C = makeClass(); if (!C) return;
+    const x = (A.start || 300) + 150;
+    const m = new C(x); m.baseY = World.groundAt(x) - 34; m.y = m.baseY;
+    G.addMon(m);
+  }
+  if (typeof Areas !== 'undefined' && Areas.beach) { const s0 = Areas.beach.spawn; Areas.beach.spawn = (A, G) => { s0(A, G); spawn(A, G); }; }
+
+  /* ---------- flights over the world map ---------- */
+  const F = { on: false, t: 0, who: null, cast: {}, dur: 3 };
+  function cast(who) {
+    if (F.cast[who]) return F.cast[who];
+    const c = CSP[who], S = (0, eval)(c.sp), P = Times.compile('noon'), list = [];
+    for (let i = 0; i < 4; i++) { const cr = new Critters.Critter(S, { kind: 'fly-' + who + i, scale: c.scale, yaw: 0.75, pitch: 0.1, qPose: 0.01 }); cr.noHD = true; cr.pose = c.flap([-0.9, -0.2, 0.7, -0.2][i]); list.push({ cr, P }); }
+    const mk = new Critters.Critter(Mudkip, { kind: 'fly-mk', scale: 0.5, yaw: 0.9, pitch: 0.1, qPose: 0.01 }); mk.noHD = true; mk.pose = Object.assign({ eyes: 'happy', mouth: 1, legF: -0.6, legB: 0.7, tailLift: 0.3 }, Save.look(), { neck: null });
+    list.push({ cr: mk, P: Times.compile('noon') });
+    return (F.cast[who] = list);
+  }
+  function pump(who) { for (const e of cast(who)) if (!e.cr.spr) e.cr.sprite(e.P); }
+  function start(dest) { F.who = CARRIER[dest] || 'pelipper'; F.on = true; F.t = 0; pump(F.who); Game.sfx('whoosh', null, 0.8); if (F.who === 'pelipper') Game.sfx('squawk', null, 0.8); }
+  function stop() { F.on = false; }
+  function update(dt) { if (!F.on) return; F.t += dt; pump(F.who); if (Math.floor(F.t * 3) !== Math.floor((F.t - dt) * 3)) Game.sfx('whoosh', null, 0.25); }
+  function draw(fb, t) {
+    if (!F.on) return;
+    const L = cast(F.who), W = fb.w, H = fb.h, k = F.t;
+    const inK = Math.min(1, k / 0.5), outK = Math.max(0, (k - (F.dur - 0.6)) / 0.6);
+    // wind streaks and clouds rushing past
+    for (let i = 0; i < 40; i++) { const y = (U.hash(i, 3, 1) * H) | 0, sp = 200 + U.hash(i, 3, 2) * 400, x = W - ((k * sp + U.hash(i, 3, 3) * W * 2) % (W * 1.6)); for (let j = 0; j < 14; j++) UI.blend(fb, x + j, y, 0xffffffff, 0.35 * (1 - j / 14) * inK); }
+    for (let i = 0; i < 5; i++) { const cy = H * (0.15 + i * 0.18), cxp = W - ((k * (120 + i * 40) + i * 170) % (W + 200)) + 100; for (let yy = -8; yy <= 8; yy++) for (let xx = -30; xx <= 30; xx++) if ((xx / 30) ** 2 + (yy / 8) ** 2 < 1) UI.blend(fb, cxp + xx, cy + yy, 0xffffffff, 0.35 * inK); }
+    const f = L[Math.floor(k * 8) % 4].cr.spr || L[0].cr.spr, mk = L[4].cr.spr;
+    const x = lerp(-W * 0.3, W * 0.5, U.ease.outCubic(inK)) + outK * W * 0.9, y = H * 0.45 + Math.sin(k * 3) * 10 - outK * H * 0.3;
+    const blit = (s, cx, cy, flip) => { if (!s) return; const x0 = Math.round(cx - s.w / 2), y0 = Math.round(cy - s.h / 2); for (let yy = 0; yy < s.h; yy++) for (let xx = 0; xx < s.w; xx++) { const c = s.d[yy * s.w + (flip ? s.w - 1 - xx : xx)]; if (c) UI.put(fb, x0 + xx, y0 + yy, c); } };
+    // Mudkip rides on the back (Pelipper carries it in its beak pouch)
+    if (F.who === 'pelipper') { blit(f, x, y); if (mk) blit(mk, x + (f ? f.w * 0.18 : 20), y + (f ? f.h * 0.12 : 10) + Math.sin(k * 6) * 2); }
+    else { if (mk) blit(mk, x - 6, y - (f ? f.h * 0.28 : 30) + Math.sin(k * 6) * 2); blit(f, x, y); if (mk && F.who === 'altaria') blit(mk, x - 6, y - (f ? f.h * 0.28 : 30) + Math.sin(k * 6) * 2); }
+    const nm = { pelipper: 'Pelipper', tropius: 'Tropius', altaria: 'Altaria' }[F.who];
+    Font.draw(fb, nm + ' is flying you there!', W / 2, H - 26, 0xffffffff, { font: 'title', align: 'center', outline: INK });
+  }
+  return { spawn, start, stop, update, draw, F, CARRIER };
+})();
+
+/* ==== src/snap/rhythm.js ==== */
+/* ------------------------------------------------------------------
+   Rhythm — Guitar Jam (G). Mudkip rocks out on a seaside stage: gems
+   race down a four-lane highway; hit them on the line with D F J K
+   (or the arrow keys / tap the lanes). Streaks raise the multiplier,
+   gold star notes charge Star Power (Space) for a flaming x2. Every
+   hit plays the melody over a synthesized band; the crowd of Pokémon
+   bounces, spotlights sweep, fireworks go off. Grades S..D, rewards.
+------------------------------------------------------------------- */
+const Rhythm = (() => {
+  const { clamp, rnd, lerp, hex } = U;
+  const INK = 0xff1b2240, WHITE = 0xffffffff;
+  const LANE_C = [hex('#4aff7a'), hex('#ff4a5a'), hex('#ffe04a'), hex('#4aa8ff')];
+  const KEYS = [['d', 'ArrowLeft'], ['f', 'ArrowDown'], ['j', 'ArrowUp'], ['k', 'ArrowRight']];
+  const SONGS = [
+    { name: 'Coral Cove Rock', bpm: 124, root: 57, scale: [0, 3, 5, 7, 10, 12], seed: 3, bars: 26 },
+    { name: 'Treetop Groove', bpm: 108, root: 60, scale: [0, 2, 4, 7, 9, 12], seed: 11, bars: 22 },
+    { name: 'Starfall Shred', bpm: 140, root: 55, scale: [0, 3, 5, 6, 7, 10, 12], seed: 29, bars: 30 },
+  ];
+  const R = { on: false };
+  const TRAVEL = 1.6; // seconds a note takes to reach the line
+  let cast = null;
+  function makeCast() {
+    if (cast) return cast;
+    const P = Times.compile('noon'); cast = [];
+    for (const st of [-1, 1, 0]) { const c = new Critters.Critter(Mudkip, { kind: 'jam-mk' + st, scale: 0.9, yaw: 1.05, pitch: 0.12, qPose: 0.01 }); c.noHD = true; c.pose = Object.assign({}, Save.look(), { neck: null, hold: 'guitar', strum: st, eyes: st ? 'happy' : 'open', mouth: st ? 1 : 0.6, headRoll: st * 0.1 }); cast.push({ c, P }); }
+    return cast;
+  }
+  function chart(song) {
+    const rng = U.rng(song.seed), beat = 60 / song.bpm, notes = [];
+    let t = 2.4, lane = 1;
+    for (let bar = 0; bar < song.bars; bar++) {
+      const dense = bar < 2 ? 0.35 : bar > song.bars - 4 ? 0.9 : 0.55 + 0.3 * Math.sin(bar * 0.7);
+      for (let s = 0; s < 8; s++) {
+        const tt = t + s * beat / 2;
+        if (s % 2 === 1 && rng() > dense * 0.7) continue;
+        if (s % 2 === 0 && rng() > dense + 0.2) continue;
+        lane = clamp(lane + Math.round((rng() - 0.5) * 2.6), 0, 3);
+        const deg = clamp(lane + Math.floor(rng() * 3), 0, song.scale.length - 1);
+        const star = bar % 6 === 3 && rng() < 0.5;
+        notes.push({ t: tt, lane, pitch: song.root + 12 + song.scale[deg], star, hit: 0 });
+        if (bar > 4 && s === 0 && rng() < 0.25) { const l2 = (lane + 2) % 4; notes.push({ t: tt, lane: l2, pitch: song.root + 12 + song.scale[Math.max(0, deg - 2)], star, hit: 0 }); }
+      }
+      t += beat * 4;
+    }
+    return { notes, end: t + 2, beat };
+  }
+  function open(i = 0) {
+    if (Game.mode !== 'explore') return;
+    const song = SONGS[i % SONGS.length];
+    Object.assign(R, { on: true, song, idx: i, t: -0.6, ...chart(song), score: 0, combo: 0, maxCombo: 0, mult: 1, hits: 0, perfect: 0, miss: 0, star: 0, starOn: 0, pops: [], parts: [], lanesDown: [0, 0, 0, 0], flash: [0, 0, 0, 0], done: null, nextBeat: 0, fire: [], crowd: makeCrowd(), shake: 0 });
+    Game.mode = 'rhythm'; Game.frozenFrame = false;
+    if (typeof Pad !== 'undefined') Pad.reset();
+    makeCast();
+    if (Music.stop) Music.stop();
+    Game.sfx('chime', null, 0.7);
+  }
+  function makeCrowd() { const c = []; const kinds = ['spheal', 'wingull', 'zigzag', 'plusle', 'swablu', 'corphish']; for (let i = 0; i < 26; i++) c.push({ x: i / 25, kind: kinds[i % kinds.length], ph: Math.random() * 6, h: 0.8 + Math.random() * 0.5 }); return c; }
+  function close() { R.on = false; Game.mode = 'explore'; Game.sfx('back'); }
+
+  /* ---------- sound: a little band ---------- */
+  const ac = () => (Sound.on && Sound.ctx ? Sound.ctx() : null);
+  function voice(type, f, t0, dur, vol, f1) {
+    const c = ac(); if (!c) return;
+    const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, t0); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(Sound.sfxBus()); o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  function hiss(t0, dur, vol, freq) {
+    const c = ac(); if (!c) return;
+    const s = c.createBufferSource(); s.buffer = Sound.noise(); const f = c.createBiquadFilter(), g = c.createGain(); f.type = 'highpass'; f.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); s.connect(f).connect(g).connect(Sound.sfxBus()); s.start(t0); s.stop(t0 + dur + 0.05);
+  }
+  const N = (n) => 440 * Math.pow(2, (n - 69) / 12);
+  function band(beatI) {
+    const c = ac(); if (!c) return;
+    const t0 = c.currentTime + 0.02, song = R.song, b = R.beat;
+    const bar = Math.floor(beatI / 4), inBar = beatI % 4;
+    voice('sine', 110, t0, 0.16, 0.5, 45); // kick
+    if (inBar === 1 || inBar === 3) hiss(t0, 0.14, 0.25, 1500); // snare
+    hiss(t0 + b / 2, 0.04, 0.08, 7000); hiss(t0, 0.04, 0.1, 7000); // hats
+    const prog = [0, 5, 3, 7][bar % 4];
+    voice('sawtooth', N(song.root - 12 + prog), t0, b * 0.9, 0.07);
+    if (inBar === 0) for (const iv of [0, 7, 12]) voice('square', N(song.root + prog + iv), t0, b * 3.6, 0.02);
+  }
+  function pluck(pitch, good) {
+    const c = ac(); if (!c) return; const t0 = c.currentTime;
+    voice('square', N(pitch), t0, 0.22, good ? 0.08 : 0.05); voice('triangle', N(pitch + 12), t0, 0.3, 0.06); if (R.starOn > 0) voice('sawtooth', N(pitch + 7), t0, 0.25, 0.04);
+  }
+
+  /* ---------- input ---------- */
+  function hitLane(l) {
+    if (!R.on || R.done) return;
+    R.lanesDown[l] = 0.12; R.flash[l] = Math.max(R.flash[l], 0.08);
+    let best = null, bd = 0.14;
+    for (const n of R.notes) { if (n.hit || n.lane !== l) continue; const d = Math.abs(n.t - R.t); if (d < bd) { bd = d; best = n; } if (n.t > R.t + 0.2) break; }
+    if (!best) { R.combo = 0; R.mult = 1; pop(l, 'oops', 0xffa0a4b8); const c = ac(); if (c) voice('sawtooth', 90, c.currentTime, 0.12, 0.05); return; }
+    const q = bd < 0.045 ? 'PERFECT!' : bd < 0.09 ? 'GREAT' : 'GOOD';
+    best.hit = q === 'PERFECT!' ? 3 : q === 'GREAT' ? 2 : 1;
+    R.hits++; if (best.hit === 3) R.perfect++;
+    R.combo++; R.maxCombo = Math.max(R.maxCombo, R.combo); R.mult = Math.min(4, 1 + Math.floor(R.combo / 10));
+    R.score += [0, 50, 80, 100][best.hit] * R.mult * (R.starOn > 0 ? 2 : 1);
+    if (best.star) R.star = Math.min(1, R.star + 0.25);
+    R.flash[l] = 0.25;
+    pluck(best.pitch, best.hit >= 2);
+    pop(l, q, best.hit === 3 ? 0xff5affff : best.hit === 2 ? 0xff5aff9a : 0xffffffff);
+    burst(l, best.star ? 26 : 12, best.star ? 0xff3ad8ff : LANE_C[l]);
+    if (R.combo % 25 === 0) { R.fire.push({ t: 0, x: Math.random() }); Game.sfx('sparkle', null, 0.6); }
+  }
+  function key(k, e) {
+    if (R.done) { if (k === ' ' || k === 'Enter' || k === 'Escape') { if (k !== 'Escape' && R.done.t > 1) { open((R.idx + 1)); return; } close(); } return; }
+    if (k === 'Escape') { finish(); return; }
+    if (k === ' ') { if (R.star >= 0.5 && R.starOn <= 0) { R.starOn = 8 * R.star; R.star = 0; Game.sfx('evolve', null, 0.3); R.shake = 4; } return; }
+    if (e && e.repeat) return;
+    for (let l = 0; l < 4; l++) if (KEYS[l].includes(k)) hitLane(l);
+  }
+  function down(ux, uy, fb) {
+    if (R.done) { if (R.done.t > 1) close(); return true; }
+    const L = R.L; if (!L) return true;
+    if (uy < L.hy - 60) { if (R.star >= 0.5 && R.starOn <= 0) key(' '); return true; }
+    const l = clamp(Math.floor((ux - (L.cx - L.bw * 2)) / L.bw), 0, 3); hitLane(l);
+    return true;
+  }
+  function pop(l, text, col) { R.pops.push({ l, text, col, t: 0 }); }
+  function burst(l, n, col) { for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, sp = 60 + Math.random() * 140; R.parts.push({ l, x: 0, y: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, life: 0.5 + Math.random() * 0.4, col }); } }
+  function finish() {
+    const tot = R.notes.length || 1, acc = R.hits / tot;
+    const grade = acc > 0.95 && R.perfect / tot > 0.6 ? 'S' : acc > 0.85 ? 'A' : acc > 0.7 ? 'B' : acc > 0.5 ? 'C' : 'D';
+    R.done = { t: 0, acc, grade };
+    const pts = Math.round(R.score / 20);
+    Save.addPoints(pts);
+    const best = (Save.data.jam || (Save.data.jam = {}));
+    if (!best[R.song.name] || best[R.song.name] < R.score) best[R.song.name] = R.score;
+    if ((grade === 'S' || grade === 'A') && !Save.has('hat.headphones')) { const r = Rewards.grant('hat.headphones'); if (r) { Quests.Q.pops.push({ t: 0, life: 4.2, text: 'Guitar Jam: ' + grade + ' rank!', reward: r }); Quests.Q.unseenN++; } }
+    if (grade === 'S' && !Save.has('glasses.rock')) Rewards.grant('glasses.rock');
+    Save.save();
+    Game.sfx(grade === 'S' || grade === 'A' ? 'reward' : 'chime', null, 0.8);
+  }
+  function update(dt) {
+    if (!R.on) return;
+    if (R.done) { R.done.t += dt; return; }
+    const prevT = R.t; R.t += dt;
+    const bi = Math.floor(R.t / R.beat);
+    if (R.t >= 0 && bi >= R.nextBeat) { R.nextBeat = bi + 1; band(bi); }
+    for (const n of R.notes) { if (!n.hit && n.t < R.t - 0.15) { n.hit = -1; R.miss++; R.combo = 0; R.mult = 1; pop(n.lane, 'MISS', 0xff5a5aff); } if (n.t > R.t) break; }
+    for (let l = 0; l < 4; l++) { R.lanesDown[l] = Math.max(0, R.lanesDown[l] - dt); R.flash[l] = Math.max(0, R.flash[l] - dt); }
+    for (const p of R.pops) p.t += dt; R.pops = R.pops.filter((p) => p.t < 0.6);
+    for (const p of R.parts) { p.t += dt; p.vy += 260 * dt; p.x += p.vx * dt; p.y += p.vy * dt; } R.parts = R.parts.filter((p) => p.t < p.life);
+    for (const f of R.fire) f.t += dt; R.fire = R.fire.filter((f) => f.t < 1.6);
+    R.starOn = Math.max(0, R.starOn - dt); R.shake = Math.max(0, R.shake - dt * 8);
+    if (cast) for (const e of cast) if (!e.c.spr) e.c.sprite(e.P);
+    if (R.t > R.end) finish();
+    void prevT;
+  }
+
+  /* ---------- drawing ---------- */
+  function draw(fb, t) {
+    if (!R.on) return;
+    const W = fb.w, H = fb.h, d = fb.d;
+    const beatK = R.t > 0 ? 1 - ((R.t / R.beat) % 1) : 0;
+    // backdrop: night sky, sea, stage lights
+    for (let y = 0; y < H; y++) { const k = y / H; const c = U.mix(hex('#0a0620'), hex('#3a1450'), k * 0.8 + beatK * 0.06); d.fill(c, y * W, y * W + W); }
+    for (let i = 0; i < 60; i++) UI.blend(fb, (U.hash(i, 5, 1) * W) | 0, (U.hash(i, 5, 2) * H * 0.4) | 0, WHITE, 0.4 + 0.4 * Math.sin(t * 2 + i));
+    // spotlights
+    const cols = [hex('#ff4ad8'), hex('#4ad8ff'), hex('#ffe04a'), hex('#7aff9a')];
+    for (let s = 0; s < 4; s++) {
+      const bx = W * (0.15 + s * 0.23), ang = Math.sin(t * (0.7 + s * 0.2) + s) * 0.5;
+      for (let y = 0; y < H * 0.8; y += 1) { const x = bx + Math.sin(ang) * y, w = 3 + y * 0.12; for (let xx = -w; xx <= w; xx += 1) UI.blend(fb, (x + xx) | 0, y, cols[s], 0.05 * (1 - y / (H * 0.8)) * (1 + beatK)); }
+    }
+    // fireworks
+    for (const f of R.fire) { const fx = W * (0.15 + f.x * 0.7), fy = H * 0.2, r = f.t * 90; for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; UI.blend(fb, (fx + Math.cos(a) * r) | 0, (fy + Math.sin(a) * r + f.t * f.t * 20) | 0, cols[i % 4], 1 - f.t / 1.6); } }
+    // highway in perspective
+    const cx = W / 2, hy = Math.round(H * 0.8), topY = Math.round(H * 0.12), bw = Math.min(56, Math.round(W * 0.09)), topW = bw * 0.28;
+    R.L = { cx, hy, bw };
+    for (let y = topY; y < H; y++) {
+      const k = (y - topY) / (hy - topY), half = lerp(topW * 2, bw * 2, k);
+      for (let x = Math.round(cx - half); x < cx + half; x++) {
+        const lane = Math.floor(((x - (cx - half)) / (half * 2)) * 4), edge = Math.abs(((x - (cx - half)) / (half * 2)) * 4 - Math.round(((x - (cx - half)) / (half * 2)) * 4)) < 0.03;
+        const stripe = Math.floor((k * 12 - R.t * 3) % 2 + 2) % 2 === 0;
+        let c = edge ? 0xff8a7aa0 : U.mix(hex('#141024'), hex('#221a3a'), stripe ? 0.5 : 0);
+        if (R.starOn > 0) c = U.mix(c, hex('#ff8a2a'), 0.2 + 0.15 * Math.sin(y * 0.3 + t * 20));
+        if (R.flash[lane] > 0) c = U.mix(c, LANE_C[lane], R.flash[lane] * 1.5 * k);
+        UI.put(fb, x, y, c);
+      }
+    }
+    // notes
+    const toScreen = (lane, dt) => { const k = clamp(1 - dt / TRAVEL, -0.2, 1.15), y = lerp(topY, hy, k * k * 0.6 + k * 0.4), half = lerp(topW * 2, bw * 2, (y - topY) / (hy - topY)); return [cx - half + (lane + 0.5) * (half / 2), y, (half / 2) / bw]; };
+    for (const n of R.notes) {
+      const dtn = n.t - R.t; if (dtn > TRAVEL) break; if (n.hit > 0 || dtn < -0.3) continue;
+      const [x, y, s] = toScreen(n.lane, dtn), r = Math.max(2, Math.round(bw * 0.34 * s));
+      const col = n.star ? hex('#ffe060') : LANE_C[n.lane];
+      UI.disc(fb, Math.round(x), Math.round(y) + 2, r, 0xff05030a); UI.orb(fb, Math.round(x), Math.round(y), r, col, { ol: n.hit < 0 ? 0xff404040 : WHITE });
+      if (n.star) Font.icon(fb, 'star', Math.round(x) - 3, Math.round(y) - 3, 1);
+    }
+    // strike buttons
+    for (let l = 0; l < 4; l++) {
+      const x = Math.round(cx - bw * 2 + (l + 0.5) * bw), r = Math.round(bw * 0.38), dn = R.lanesDown[l] > 0;
+      UI.disc(fb, x, hy + 2, r + 2, 0xff05030a); UI.ring(fb, x, hy, r + 1, WHITE, 2); UI.disc(fb, x, hy, r - 2, dn ? LANE_C[l] : U.mix(LANE_C[l], 0xff000000, 0.6));
+      Font.draw(fb, KEYS[l][0].toUpperCase(), x, hy + r + 5, WHITE, { font: 'small', align: 'center', outline: INK });
+      if (R.flash[l] > 0.1) for (let j = 0; j < 16; j++) UI.blend(fb, x - 1 + (j % 3), hy - 10 - j * 3, LANE_C[l], R.flash[l] * 2);
+    }
+    for (const p of R.parts) { const x = Math.round(cx - bw * 2 + (p.l + 0.5) * bw + p.x), y = Math.round(hy + p.y); UI.put(fb, x, y, p.col); UI.put(fb, x + 1, y, p.col); }
+    for (const p of R.pops) { const x = Math.round(cx - bw * 2 + (p.l + 0.5) * bw), y = Math.round(hy - 30 - p.t * 40); Font.draw(fb, p.text, x, y, p.col, { font: 'small', align: 'center', outline: INK }); }
+    // Mudkip shredding on the left, the crowd bouncing below
+    const strum = R.lanesDown.some((v) => v > 0) ? (Math.floor(t * 12) % 2 ? 0 : 1) : 2;
+    const ms = cast && cast[strum] ? cast[strum].c.spr : null;
+    if (ms) { const bob = Math.round(-beatK * 6), mx = Math.round(W * 0.16 - ms.w / 2), my = Math.round(H * 0.72 - ms.h + bob); for (let y = 0; y < ms.h; y++) for (let x = 0; x < ms.w; x++) { const c = ms.d[y * ms.w + x]; if (c) UI.put(fb, mx + x, my + y, R.starOn > 0 ? U.mix(c, hex('#ffb04a'), 0.25) : c); } }
+    for (const c of R.crowd) { const x = Math.round(c.x * W), bump = Math.round(Math.abs(Math.sin(R.t * Math.PI / R.beat + c.ph)) * 6 * (R.combo > 5 ? 1.4 : 0.6)), y = H - 4 - bump, r = Math.round(9 * c.h); UI.disc(fb, x, y, r, 0xff0a0616); UI.disc(fb, x - r + 2, y - r + 1, 3, 0xff0a0616); UI.disc(fb, x + r - 2, y - r + 1, 3, 0xff0a0616); if (Math.sin(t * 3 + c.ph) > 0.6) { UI.put(fb, x - 3, y - 2, WHITE); UI.put(fb, x + 3, y - 2, WHITE); } }
+    // HUD: song, score, combo, multiplier, star power
+    Font.draw(fb, R.song.name, 10, 8, WHITE, { font: 'title', outline: INK });
+    Font.draw(fb, String(R.score).padStart(7, '0'), W - 10, 8, hex('#ffe060'), { font: 'title', align: 'right', outline: INK });
+    if (R.combo > 2) Font.draw(fb, R.combo + ' COMBO', W - 10, 26, WHITE, { font: 'body', align: 'right', outline: INK });
+    UI.disc(fb, W - 26, 56, 13, INK); UI.ring(fb, W - 26, 56, 12, R.mult >= 4 ? hex('#ff4ad8') : R.mult >= 3 ? hex('#4aff7a') : R.mult >= 2 ? hex('#ffe04a') : WHITE, 3); Font.draw(fb, 'x' + R.mult * (R.starOn > 0 ? 2 : 1), W - 26, 51, WHITE, { font: 'small', align: 'center' });
+    UI.rrect(fb, 10, 28, 90, 8, 3, INK); UI.rrect(fb, 11, 29, Math.round(88 * R.star), 6, 2, R.starOn > 0 ? hex('#ff8a2a') : hex('#4ad8ff'));
+    Font.draw(fb, R.star >= 0.5 ? 'STAR POWER READY! (Space)' : R.starOn > 0 ? 'STAR POWER x2!' : 'star power', 10, 40, R.star >= 0.5 ? hex('#ffe060') : 0xffa0a4c8, { font: 'small', outline: INK });
+    if (R.t < 0.8) Font.draw(fb, 'D F J K  or  arrows  ·  tap the lanes', W / 2, H * 0.45, WHITE, { font: 'title', align: 'center', outline: INK });
+    if (R.shake > 0) { const src = d.slice(), s = Math.round(R.shake); for (let i = 0; i < d.length; i++) d[i] = src[Math.min(d.length - 1, i + s)]; }
+    if (R.done) {
+      const k = Math.min(1, R.done.t / 0.4), w = Math.min(W - 40, 300), h = 150, x = Math.round((W - w) / 2), y = Math.round(H / 2 - h / 2 + (1 - k) * 60);
+      UI.rrect(fb, x, y + 4, w, h, 10, 0xff05030a); UI.rrect(fb, x, y, w, h, 10, WHITE); UI.rrect(fb, x + 2, y + 2, w - 4, h - 4, 8, hex('#221a3a'));
+      Font.draw(fb, 'SONG COMPLETE', x + w / 2, y + 10, WHITE, { font: 'title', align: 'center' });
+      const gc = { S: hex('#ffd23a'), A: hex('#5aff9a'), B: hex('#5ad0ff'), C: hex('#ff9ab8'), D: hex('#c0c4d0') }[R.done.grade];
+      Font.draw(fb, R.done.grade, x + w - 46, y + 44, gc, { font: 'title', align: 'center', sc: 3 });
+      [['Score', String(R.score)], ['Accuracy', Math.round(R.done.acc * 100) + '%'], ['Max combo', String(R.maxCombo)], ['Perfect', String(R.perfect)]].forEach(([a, b], i) => { Font.draw(fb, a, x + 16, y + 36 + i * 16, 0xffc8c0e8, { font: 'body' }); Font.draw(fb, b, x + 150, y + 36 + i * 16, WHITE, { font: 'body', align: 'right' }); });
+      if (R.done.t > 1) Font.draw(fb, 'Space: next song   Esc: back', x + w / 2, y + h - 16, 0xffa0a4c8, { font: 'small', align: 'center' });
+    }
+  }
+  return Object.assign(R, { open, close, update, draw, key, down, wheel() {}, SONGS });
+})();
+
 /* ==== src/snap/main.js ==== */
 /* ------------------------------------------------------------------
    Game — Mudkip Snap's shell: world canvas at an integer zoom, a pixel
@@ -55617,8 +56200,8 @@ const Game = (() => {
     if (!drag) { c.lookX *= Math.exp(-dt * 1.2); c.lookY *= Math.exp(-dt * 1.2); }
     clampCam();
   }
-  const SCREEN = () => ({ bag: typeof Bag !== 'undefined' ? Bag : null, style: typeof Style !== 'undefined' ? Style : null, memory: typeof Memories !== 'undefined' ? Memories : null })[G.mode] || null;
-  G.frozenMode = () => G.mode === 'dex' || G.mode === 'map' || G.mode === 'bag' || G.mode === 'style' || G.mode === 'memory';
+  const SCREEN = () => ({ rhythm: typeof Rhythm !== 'undefined' ? Rhythm : null, bag: typeof Bag !== 'undefined' ? Bag : null, style: typeof Style !== 'undefined' ? Style : null, memory: typeof Memories !== 'undefined' ? Memories : null })[G.mode] || null;
+  G.frozenMode = () => G.mode === 'dex' || G.mode === 'map' || G.mode === 'bag' || G.mode === 'style' || G.mode === 'memory' || G.mode === 'rhythm';
   function update(dt) {
     G.rt += dt;
     if (typeof Talk !== 'undefined') Talk.update(dt);
@@ -55943,6 +56526,7 @@ const Game = (() => {
     if (freePtrs().length === 1 && HUD.down(ux, uy, e.pointerId)) { P0.ui = true; return; }
     if (G.mode === 'dex') { Dex.down(ux, uy); P0.ui = true; return; }
     if (G.mode === 'map') { P0.ui = true; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y), m0: WorldMap.dist }; } return; }
+    if (SCREEN() && SCREEN().down && (G.mode === 'rhythm' || G.mode === 'memory')) { SCREEN().down(ux, uy); P0.sink = true; return; }
     if (G.mode === 'title' || SCREEN()) { P0.ui = true; return; }
     const fp = freePtrs();
     if (fp.length === 1) drag = { x0: x, y0: y, lx: G.cam.lookX, ly: G.cam.lookY, moved: false, t0: performance.now(), pid: e.pointerId };
@@ -56030,11 +56614,13 @@ const Game = (() => {
     if (k === ' ') { if (first && mk) mk.jumpPress(); e.preventDefault(); }
     else if ((k === 'ArrowUp' || k === 'w') && first && mk && mk.mode !== 'swim') { mk.jumpPress(); e.preventDefault(); }
     else if (k === 'Enter' || k === 'c') Photo.open();
-    else if ((k === 'x' || k === 'e' || k === 'j') && first) Moves.press();
+    else if (k === 'e' && first) { if (!Harvest.pick()) Moves.press(); }
+    else if ((k === 'x' || k === 'j') && first) Moves.press();
     else if (k === 'q' && first) Moves.toggleWheel();
     else if (k === 'f' && first) HUD.throwBerry && HUD.throwBerry();
     else if (k === 'b' || k === 'i') Bag.open();
     else if (k === 'v') Style.open();
+    else if (k === 'g') Rhythm.open(0);
     else if (k === 'p' || k === 'Tab') { Dex.open(); e.preventDefault(); }
     else if (k === 'm') WorldMap.open();
     else if (k === 't') G.tryTime();
@@ -56047,7 +56633,7 @@ const Game = (() => {
   window.addEventListener('keyup', (e) => {
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     keysDown.delete(k);
-    if ((k === 'x' || k === 'e' || k === 'j') && G.mode === 'explore') Moves.release();
+    if ((k === 'x' || k === 'j' || (k === 'e' && Moves.pressing)) && G.mode === 'explore') Moves.release();
     if ((k === ' ' || k === 'Enter') && G.mode === 'camera' && Photo.shutterUp) Photo.shutterUp();
     keysMove();
   });

@@ -8,7 +8,7 @@
     · dusk → the Luvdisc heart school (3★); sing to it → they leap (4★)
     · wear a hat on the dock → a Wingull steals it (4★)
     · play a song at the end of the dock at dusk → Wailord breaches (4★) → a huge swell → Mantine surfs (4★)
-    · the sunken chest holds the Blue Orb → carry it into the trench at night → Kyogre rises in a storm (4★)
+    · the sunken chest holds the Blue Orb → carry it down to the deepest abyss at the far end of the cove at night → Kyogre rises in a storm (4★)
     · a crystal under a beach rock → Dialga; the Lustrous Orb in a moored boat → Palkia
 ------------------------------------------------------------------- */
 const BeachAI = (() => {
@@ -668,7 +668,7 @@ const BeachAI = (() => {
     facing() { return 0.3; }
   }
   class KyogreM extends Swimmer {
-    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 2980, y: 920, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 2800, x1: 3120, y0: 700, y1: 940 } }); this.swimTop = 20; }
+    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 7380, y: 1060, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 7100, x1: 7520, y0: 900, y1: 1110 } }); this.swimTop = 20; }
     senses() {}
     animate(dt, t) { const P = { fin: Math.sin(t * 1.2) * 0.5, tail: Math.sin(t * 1.4 + 1) * 0.5, mouth: 0.1, eyes: 'open', glow: 0.6 + 0.4 * Math.sin(t * 2), headPitch: -0.1, roll: 0 }; Object.assign(P, this.o); this.pose = P; }
     brain() { return this.life(); }
@@ -763,7 +763,7 @@ const BeachAI = (() => {
       Game.sfx('chest', 2330, 1); SFX.reward();
       Save.addItem('berry', 3); Save.addItem('blueorb', 1);
       HUD.toast('Found the Blue Orb and 3 berries!', { life: 3.5, icon: 'spark' });
-      setTimeout(() => HUD.toast('The Blue Orb glows faintly... like the deep trench at night.', { life: 4 }), 1800);
+      setTimeout(() => HUD.toast('The Blue Orb glows faintly... like the deepest abyss at the far end of the cove, at night.', { life: 4 }), 1800);
     } else { FX.bubbles(2330, gy(2330) - 10, 4, SEA); Game.sfx('bubble', 2330, 0.6); }
   }
   function boatTap(A, b) { Secrets.boat(A, b); }
@@ -836,7 +836,7 @@ const BeachAI = (() => {
     update(A, dt, t, G) {
       const m = G.mudkip;
       // Kyogre: the Blue Orb in the trench at night
-      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 2760 && m.x < 3160 && m.y > 850 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(2980, 820, { dur: 1.6, hold: 4, zoom: 1.1 }); }
+      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 6900 && m.y > 900 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(7380, 980, { dur: 1.6, hold: 4, zoom: 1.1 }); }
     },
     song(x) {
       const m = Game.mudkip;

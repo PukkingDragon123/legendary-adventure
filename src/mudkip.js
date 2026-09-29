@@ -532,6 +532,23 @@ const Mudkip = (() => {
       add(eA(h, [HR[0] * k, HR[1] * k, HR[2] * k], G.HAT, (s) => { const q = dot3(s, n) - d; return q < 0 || q > 0.24 ? 0 : K(WHITE, q < 0.05 ? -1 : 0); }));
       for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; add(eA(chain(h, T(-1 + Math.cos(a) * 5.5, 17.5 + (i % 2) * 1.2, Math.sin(a) * 6)), [5.2, 5.0, 5.2], G.HAT2, (s) => K(WHITE, s[1] > 0.3 ? 1 : 0))); }
     },
+    // big rock-star headphones: a band over the fin, cups over the sides of the head
+    headphones(h, add) {
+      const n = V3.norm([0.05, 1, 0]);
+      add(eA(h, [HR[0] * 1.14, HR[1] * 1.16, HR[2] * 1.14], G.HAT, (s) => (Math.abs(s[0] - 0.05) < 0.14 && s[1] > 0.15 ? K(DARK, 1) : 0)));
+      for (const sz of [1, -1]) {
+        const q = headPt(V3.norm([0.05, 0.25, sz]), 1.2), ax = basis(q.n);
+        add(eAx(h, q.p, ax, [4.2, 4.6, 2.2], sz > 0 ? G.HAT2 : G.HAT3, (s) => (s[2] > 0.6 ? K(MAGENTA, 1) : K(DARK))));
+      }
+      void n;
+    },
+    // pirate hat: a black tricorn with a white skull badge
+    pirate(h, add) {
+      const tilt = R(M3.rz(0.12));
+      add(eA(chain(h, T(-1, 9.6, 0), tilt), [17.5, 4.2, 18.5], G.HAT2, (s) => (s[1] < 0.1 ? 0 : K(DARK, Math.hypot(s[0], s[2]) > 0.9 ? 1 : 0))));
+      add(eA(chain(h, T(-1, 12.2, 0), tilt), [11, 7.5, 12], G.HAT, (s) => (s[1] < -0.2 ? 0 : s[0] > 0.86 && Math.abs(s[2]) < 0.28 && s[1] > 0.05 ? K(WHITE, 1) : K(DARK))));
+      add(eA(chain(h, T(-1, 12, 0), tilt), [11.4, 1.3, 12.4], G.HAT3, () => K(GOLD, 1)));
+    },
     // plush lobster: red cap with tail segments down the back, eyes on stalks, antennae, two claws
     lobster(h, add) {
       const n = V3.norm([-0.16, 1, 0]), d = 0.24;
@@ -628,15 +645,15 @@ const Mudkip = (() => {
   /* ---- glasses (head frame): lenses float just off the eyes, bridge over the nose, arms back to the gills ---- */
   function glasses(kind, h, add) {
     const inner = [];
-    const fc = kind === 'round' ? DARK : PINK;
+    const fc = kind === 'round' ? DARK : kind === 'rock' ? RED : PINK;
     for (const sz of [1, -1]) {
       const { p, n } = headPt(sphv(0.5 * sz, -0.06), 1.5);
       const ax = basis(n);
       const toNose = ax[0][2] * sz > 0 ? V3.scale(ax[0], -1) : ax[0];
       const part = sz > 0 ? G.GLN : G.GLF;
-      if (kind === 'round') add(eAx(h, p, ax, [4.7, 4.7, 0.9], part, (s) => (Math.hypot(s[0], s[1]) > 0.8 ? K(DARK) : K(LENS, (s[0] + 0.35 * sz) ** 2 + (s[1] - 0.4) ** 2 < 0.06 ? 3 : -1))));
+      if (kind === 'round' || kind === 'rock') add(eAx(h, p, ax, [4.7, 4.7, 0.9], part, (s) => (Math.hypot(s[0], s[1]) > 0.8 ? K(fc) : K(kind === 'rock' ? SHADE : LENS, (s[0] + 0.35 * sz) ** 2 + (s[1] - 0.4) ** 2 < 0.06 ? 3 : -1))));
       else add(pA(h, p, ax, STARGL_G(), part, 1.3));
-      const rr = kind === 'round' ? 4.3 : 3.9;
+      const rr = kind === 'round' || kind === 'rock' ? 4.3 : 3.9;
       inner.push(V3.add(p, V3.scale(toNose, rr)));
       add(rodA(h, V3.add(p, V3.scale(toNose, -rr)), headPt(sphv(1.08 * sz, 0.02), 0.8).p, 0.55, G.GLB, () => K(fc)));
     }
@@ -668,7 +685,7 @@ const Mudkip = (() => {
     const sd = P.side === undefined ? 1 : Math.max(-1, Math.min(1, P.side));
     if (own(HATS, P.hat)) HATS[P.hat](head, add, sd, P);
     if (own(SHIRTS, P.shirt)) shirt(P.shirt, body, legs, add);
-    if (P.glasses === 'star' || P.glasses === 'round') glasses(P.glasses, head, add);
+    if (P.glasses === 'star' || P.glasses === 'round' || P.glasses === 'rock') glasses(P.glasses, head, add);
     // neck
     if (P.neck === 'bow') {
       for (const sz of [1, -1]) add(eAx(body, [15.9, -0.4, 3.3 * sz], basis([0.12, 0, sz]), [1.4, 2.7, 3.4], G.NECK, (s) => K(RED, Math.abs(s[2]) < 0.35 ? -1 : 0)));
@@ -694,6 +711,11 @@ const Mudkip = (() => {
           add(eA(chain(f, T(3.0, -4.6, 0)), [1.3, 0.7, 2.0], ids[id], () => K(WHITE, 1)));
         }
       }
+    }
+    if (P.neck === 'medal') {
+      // a champion's gold medal on a blue ribbon
+      for (const sz of [1, -1]) add(rodA(body, [10.5, 7, 9 * sz], [16.4, -1, 1.6 * sz], 0.7, G.NECK2, () => K(NAVY)));
+      add(eAx(body, [17.4, -3.2, 0], basis([1, 0, 0.1]), [3.2, 3.2, 0.9], G.NECK3, (s) => K(GOLD, Math.hypot(s[0], s[1]) < 0.45 ? 2 : 0)));
     }
     if (P.neck === 'lei') {
       // a Hawaiian flower lei round the neck

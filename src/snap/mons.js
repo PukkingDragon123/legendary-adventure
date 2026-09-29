@@ -196,7 +196,7 @@ const Mons = (() => {
     onSplash() { this.hear('splash', this.x, 0.6); }
     onScan() {}
     headPt() { return this.at('top'); }
-    emote(icon, life = 1.5) { return FX.emote(icon, () => this.headPt(), { life }); }
+    emote(icon, life = 1.5) { if (this !== Game.mudkip && typeof Cries !== 'undefined' && Math.random() < 0.55) Cries.play(this.dex, this.x, 0.6); return FX.emote(icon, () => this.headPt(), { life }); }
     // what the camera sees (0 = back / profile, 1 = looking straight at the lens)
     facing() { return clamp(Math.sin(this.yaw) * 1.1, 0, 1); }
     remove() { this.alive = false; const i = all.indexOf(this); if (i >= 0) all.splice(i, 1); }

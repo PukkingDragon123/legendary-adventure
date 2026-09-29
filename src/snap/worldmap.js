@@ -322,6 +322,8 @@ const WorldMap = (() => {
     for (let k = 1; k < pts.length; k++) len.push(len[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
     M.travel = { id, t: 0, pts, len, total: len[len.length - 1] || 1, start: Object.assign({}, CAM), done: false };
     M.shot = null; SFX.unlock();
+    // a flyer carries Mudkip there
+    if (typeof Mailman !== 'undefined' && id !== from) { FLY = 3.2; Mailman.F.dur = FLY + DIVE; Mailman.start(id); } else FLY = 1.6;
   }
   function pathAt(T, u) {
     const want = u * T.total; let k = 1;
@@ -329,7 +331,7 @@ const WorldMap = (() => {
     const a = T.pts[k - 1], b = T.pts[Math.min(k, T.pts.length - 1)], seg = (T.len[k] - T.len[k - 1]) || 1, f = clamp((want - T.len[k - 1]) / seg, 0, 1);
     return [lerp(a[0], b[0], f), lerp(a[1], b[1], f), Math.atan2(b[0] - a[0], -(b[1] - a[1]))];
   }
-  const FLY = 1.6, DIVE = 0.75, WIPE = 0.5;
+  let FLY = 1.6; const DIVE = 0.75, WIPE = 0.5;
   function updateTravel(dt) {
     const T = M.travel; T.t += dt;
     if (T.t < FLY) {
@@ -345,6 +347,7 @@ const WorldMap = (() => {
     }
     if (T.t > FLY + DIVE - 0.2 && !T.done && T.t > FLY + DIVE - 0.2 + WIPE) {
       T.done = true;
+      if (typeof Mailman !== 'undefined') Mailman.stop();
       Game.enterArea(T.id);
       M.reveal = { t: 0 }; M.on = false; M.travel = null; Game.mode = 'explore';
     }
@@ -352,6 +355,7 @@ const WorldMap = (() => {
 
   /* ================= open / close / update ================= */
   function open() {
+    if (!Save.found('mail.map') && !/unlock=all/.test(location.search)) { HUD.toast('You have no map yet! Pelipper the postman by the mailbox has a delivery for you.', { life: 3.2 }); Game.sfx('error'); return; }
     if (Game.mode === 'camera') Photo.close();
     if (!M.built) build();
     lockFog();
@@ -366,7 +370,7 @@ const WorldMap = (() => {
   function update(dt) {
     M.t += dt; M.anim = Math.min(1, M.anim + dt * 2.5);
     if (M.closing) { M.closing += dt; if (M.closing > 0.4) { M.on = false; Game.mode = 'explore'; M.closing = 0; } }
-    if (M.travel) updateTravel(dt);
+    if (M.travel) { updateTravel(dt); if (typeof Mailman !== 'undefined') Mailman.update(dt); }
     else if (M.shot) applyShot(dt);
     else if (!M.drag) {
       M.idleT += dt;

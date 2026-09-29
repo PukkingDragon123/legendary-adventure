@@ -592,6 +592,7 @@ const Player = (() => {
         const step = Math.floor(this.phase / Math.PI);
         if (step !== this.lastFall) {
           this.lastFall = step; this.sq.kick(0.12 + fast * 0.1);
+          if (typeof Cries !== 'undefined') Cries.step(this.plat ? 'wood' : Game.areaId === 'beach' ? 'sand' : 'grass', this.x);
           if (Weather.W.rain > 0.3) { // splashing through rain puddles
             for (let k = 0; k < 3; k++) FX.add({ type: 'drop', x: this.x - Math.cos(this.yaw) * 6 + rnd(-3, 3), y: this.y - 1, vx: rnd(-30, 30), vy: -rnd(30, 70), g: 420, life: 0.5, c: 0xffffffff, c2: AQUA(), size: 1, floor: this.y, layer: 2 });
             if (Math.random() < 0.3) Game.sfx('plop', this.x, 0.25);
@@ -640,6 +641,7 @@ const Player = (() => {
       if (this.splatT > 0) { this.splatT -= dt; const k = Math.min(1, this.splatT / 0.3); P.squash = Math.max(P.squash, 0.3 * k); P.bodyDip = 3 * k; P.legSplay = 1 * k; P.eyes = 'blink'; P.mouth = 1; }
       if (this.dizzy > 0) { this.dizzy -= dt; P.eyes = 'blink'; P.headRoll = Math.sin(t * 9) * 0.18; P.mouth = 0.3; }
       if (this.happyT > 0) { this.happyT -= dt; P.eyes = 'happy'; P.mouth = 1; }
+      if (this.snapT > 0) { this.snapT -= dt; const k = this.snapT / 0.4; P.squash = 0.12 * k; P.headPitch = -0.1 * k; P.eyes = k > 0.6 ? 'blink' : 'happy'; P.mouth = 0.7; this.sq.kick(0); }
       // curious: watch whatever the Pokémon nearby are up to
       this.watchScan -= dt;
       if (this.watchScan <= 0) { this.watchScan = 0.5; this.watchMon = this.watching || this.findInteresting(); }
@@ -704,12 +706,23 @@ const Player = (() => {
       if (Game.area && Game.area.onSong) Game.area.onSong(this.x);
       if (typeof Talk !== 'undefined') Talk.event('song', this.x);
     }
-    *throwBerry(tx, ty) {
+    // pick something up by hand: lean down, grab it with the mouth, a happy little hop
+    *pickUp(it, done) {
+      this.target = null;
+      yield* this.faceTo(it.x > this.x ? 1 : -1, false);
+      let e = 0;
+      while (e < 0.32) { const dt = yield; e += dt; const k = Math.sin((e / 0.32) * Math.PI); this.o.bodyDip = 2 * k; this.o.headPitch = 0.5 * k; this.o.mouth = k > 0.5 ? 0.2 : 0.9; this.o.legF = 0.3 * k; }
+      done();
+      this.vair = 150; this.air = 0.5; this.happyT = 0.6; this.sq.kick(-0.3);
+    }
+    // the camera raised, a squash, a flash from the lens: click!
+    snapPose() { this.snapT = 0.4; const [lx, ly] = this.spr && this.spr.anchors && this.spr.anchors.lens ? this.at('lens') : this.at('mouth'); FX.add({ type: 'ring', x: lx, y: ly, r0: 1, r1: 10, life: 0.25, c: 0xffffffff, layer: 4 }); FX.sparkles(lx, ly, 4, 8); }
+    *throwBerry(tx, ty, kind = 'oran') {
       this.target = null;
       yield* this.faceTo(tx > this.x ? 1 : -1, false);
       const [mx, my] = this.at('mouth');
       Game.sfx('whoosh', this.x, 0.5);
-      Items.throwBerry(mx, my - 4, tx, ty);
+      Items.throwBerry(mx, my - 4, tx, ty, kind);
       this.o.mouth = 1; this.happyT = 0.4;
       yield* wait(0.35);
     }

@@ -31,7 +31,7 @@ const Harvest = (() => {
     shroomR: ['#6a0e1a', '#a81e2a', '#e0383e', '#ff6a5a'], shroomB: ['#4a2a16', '#6e4424', '#946236', '#ba8850'],
     stalk: ['#a89c88', '#d4ccb8', '#f4f0e4'],
     shroomG: { c: ['#1a6a5a', '#2ab89a', '#6affd8', '#d0fff4'], emit: true },
-    berryB: ['#14285a', '#1e46a0', '#3a78e0', '#8ac0ff'], berryP: ['#6a1440', '#b02a6a', '#f05a9a', '#ffb0d0'], leafB: ['#1a4a20', '#2e7a30', '#5aac48'],
+    berryB: ['#14285a', '#1e46a0', '#3a78e0', '#8ac0ff'], berryP: ['#6a1440', '#b02a6a', '#f05a9a', '#ffb0d0'], berryR: ['#4a0a1a', '#8a1430', '#d82a48', '#ff7a8a'], berryN: ['#6a4a0a', '#b08a1a', '#f0d040', '#fff4a0'], berryS: ['#6a5a0a', '#c0a010', '#ffe030', '#fffac0'], stem: ['#1a3a14', '#2e5a20', '#4a8a30', '#7ab850'], leafB: ['#1a4a20', '#2e7a30', '#5aac48'],
     gemB: { c: ['#10306a', '#2a6ad8', '#7ac0ff', '#e0f4ff'], emit: true }, gemP: { c: ['#4a106a', '#9a3ad8', '#d49aff', '#f8e8ff'], emit: true },
     gemG: { c: ['#0a4a2a', '#1aa05a', '#6af0a0', '#e0fff0'], emit: true }, gemY: { c: ['#6a4a08', '#c89a18', '#ffe060', '#fffbe0'], emit: true },
     shell: ['#8a4a42', '#c8807a', '#f0b8ae', '#fff0ea'], pearl: { c: ['#a8a0b8', '#e0dcf0', '#ffffff'], emit: true },
@@ -53,9 +53,9 @@ const Harvest = (() => {
 
   /* ---------- per-area setup ---------- */
   const STYLE = {
-    beach: { land: ['dune', 'g1'], flowers: ['flY', 'flW', 'flP'], items: ['shell', 'shell', 'berry', 'starp'], under: true, motes: 'pollen', rocks: 'rock' },
-    forest: { land: ['g1', 'g2'], flowers: ['flP', 'flY', 'flB', 'flW'], items: ['berry', 'berry', 'shroom', 'shroom', 'gem'], motes: 'leaves', rocks: 'rockW', shrooms: true },
-    canopy: { land: ['g1', 'g2'], flowers: ['flY', 'flP'], items: ['berry', 'shroom', 'berry'], motes: 'leaves', rocks: 'rockW', shrooms: true, sparse: 0.6 },
+    beach: { land: ['dune', 'g1'], flowers: ['flY', 'flW', 'flP'], items: ['shell', 'shell', 'starp'], under: true, motes: 'pollen', rocks: 'rock' },
+    forest: { land: ['g1', 'g2'], flowers: ['flP', 'flY', 'flB', 'flW'], items: ['shroom', 'shroom', 'gem'], motes: 'leaves', rocks: 'rockW', shrooms: true },
+    canopy: { land: ['g1', 'g2'], flowers: ['flY', 'flP'], items: ['shroom'], motes: 'leaves', rocks: 'rockW', shrooms: true, sparse: 0.6 },
     falls: { land: ['g1'], flowers: ['flB'], items: ['gem', 'gem', 'starp', 'shroomG'], motes: 'dust', rocks: 'rock', crystals: true, sparse: 0.5 },
   };
   const TMS = { beach: [{ id: 'bubble', x: 2520 }, { id: 'ice', x: 4720 }], forest: [{ id: 'dig', x: 2150 }], canopy: [{ id: 'growl', x: 3215 }], falls: [{ id: 'smash', x: 3470 }] };
@@ -64,6 +64,16 @@ const Harvest = (() => {
     shroom: { name: 'Tiny Mushroom', inv: 'mushroom' }, shroomG: { name: 'Glowing Mushroom', inv: 'mushroom' }, gem: { name: 'Shiny Gem', inv: 'gem' }, starp: { name: 'Star Piece', inv: 'stardust' },
   };
   H.ITEM = ITEM;
+  // berries grow on bushes; pick them by hand (E) before a hungry Pokémon does
+  const BERRY = {
+    oran: { inv: 'berry', name: 'Oran Berry', mat: 'berryB', lure: 'Most Pokémon like it.' },
+    pecha: { inv: 'pecha', name: 'Pecha Berry', mat: 'berryP', lure: 'Sweet! Cute Pokémon come running.' },
+    razz: { inv: 'razz', name: 'Razz Berry', mat: 'berryR', lure: 'Its smell draws in rare Pokémon.' },
+    nanab: { inv: 'nanab', name: 'Nanab Berry', mat: 'berryN', lure: 'Calms Pokémon: they sit still for photos.' },
+    sitrus: { inv: 'sitrus', name: 'Sitrus Berry', mat: 'berryS', lure: 'Makes Pokémon happy and playful.' },
+  };
+  H.BERRY = BERRY;
+  const PLANTS = { beach: ['oran', 'pecha', 'oran'], forest: ['oran', 'razz', 'nanab', 'sitrus'], canopy: ['nanab', 'pecha', 'sitrus'], falls: ['razz', 'oran'] };
   function surfaceKind(x) {
     const lvl = World.waterAt(x);
     if (lvl === null) return 'land';
@@ -109,6 +119,12 @@ const Harvest = (() => {
       if (k === 'sea') kind = r() < 0.3 ? 'pearl' : r() < 0.7 ? 'shell' : 'starp';
       H.items.push({ kind, x, y: World.groundAt(x) - 1, under: k === 'sea', t: 0, taken: 0, ph: r() * 6 });
     }
+    // berry bushes
+    const pk = PLANTS[id] || ['oran'];
+    for (let x = 160; x < W - 120; x += 220 + r() * 260) {
+      if (surfaceKind(x) !== 'land' || World.platAt(x)) continue;
+      H.items.push({ kind: 'plant', berry: pk[(r() * pk.length) | 0], x, y: World.groundAt(x) - 1, ripe: 1 + ((r() * 3) | 0), grow: 0, t: 0, taken: 0, ph: r() * 6 });
+    }
     // TM discs not yet learned
     for (const tm of TMS[id] || []) if (!Moves.has(tm.id)) H.items.push({ kind: 'tm', tm: tm.id, x: tm.x, y: World.groundAt(tm.x) - 9, under: surfaceKind(tm.x) === 'sea', t: 0, taken: 0, ph: 0 });
     // glittering dig spots
@@ -145,12 +161,42 @@ const Harvest = (() => {
     FX.sparkles(it.x, it.y - 4, 7, 14);
     if (it.kind === 'tm') { Moves.unlock(it.tm, 'Found a TM disc!'); it.gone = true; FX.confetti(it.x, it.y - 10, 30); return; }
     if (it.kind === 'qpearl') { it.gone = true; Game.sfx('twinkle', it.x); Talk.event('pearl', it.quest); HUD.toast('Found the lost pearl! Take it back to Luvdisc.', { life: 2.6 }); return; }
+    if (it.kind === 'plant') {
+      const b = BERRY[it.berry], n = it.ripe;
+      Save.addItem(b.inv, n); it.ripe = 0; it.grow = 0; it.taken = 0;
+      Game.sfx('pop', it.x, 0.8); popIcon(it.x, it.y - 12, it.berry);
+      HUD.toast('+' + n + ' ' + b.name + (n > 1 ? 's' : ''), { life: 1.6, col: 0xff6ae0a0 });
+      if (mk) mk.happyT = Math.max(mk.happyT, 0.5);
+      return;
+    }
+    if (it.kind === 'berry') { const b = BERRY[it.berry || 'oran']; Save.addItem(b.inv, 1); popIcon(it.x, it.y - 8, it.berry || 'oran'); Game.sfx('pop', it.x, 0.7); HUD.toast('+1 ' + b.name, { life: 1.4, col: 0xff6ae0a0 }); it.gone = !!it.extra; it.respawn = 90; return; }
     const d = ITEM[it.kind];
     Save.addItem(d.inv, 1);
     Game.sfx(it.kind === 'berry' ? 'pop' : 'twinkle', it.x, 0.7);
     HUD.toast('+1 ' + d.name, { life: 1.4, col: 0xff6ae0a0 });
     it.respawn = 80 + Math.random() * 80;
     if (mk) mk.happyT = Math.max(mk.happyT, 0.3);
+  }
+  // the picked berry pops up over Mudkip's head
+  function popIcon(x, y, berry) {
+    const mat = (BERRY[berry] || BERRY.oran).mat;
+    FX.add({ type: 'fn', x, y, vy: -30, life: 0.9, layer: 4, draw: (fb, p, k, cx, cy) => { palette(); const X = Math.round(p.x - cx), Y = Math.round(p.y - cy); for (let yy = -4; yy <= 4; yy++) for (let xx = -4; xx <= 4; xx++) { const d = xx * xx + yy * yy; if (d > 17) continue; put(fb, X + xx, Y + yy, d > 12 ? 0xff1b2240 : C(mat, xx + yy < -3 ? 1 : xx + yy < 1 ? 0.66 : 0.33)); } put(fb, X, Y - 5, C('leafB', 0.6)); put(fb, X + 1, Y - 6, C('leafB', 1)); } });
+  }
+  // the nearest thing Mudkip could pick up (E)
+  function nearest() {
+    const mk = Game.mudkip; if (!mk) return null;
+    let best = null, bd = 18;
+    for (const it of H.items) {
+      if (it.taken || it.gone) continue;
+      if (it.kind === 'plant' && it.ripe <= 0) continue;
+      const d = Math.abs(mk.x - it.x); if (d < bd && Math.abs((mk.y - 8) - (it.y - 6)) < 22) { bd = d; best = it; }
+    }
+    return best;
+  }
+  function pick() {
+    const mk = Game.mudkip, it = H.near; if (!mk || !it || mk.busy(2)) return false;
+    mk.wakeUp(); mk.doTask(mk.pickUp(it, () => { if (!it.taken && !it.gone && (it.kind !== 'plant' || it.ripe > 0)) collect(it); }), 2);
+    return true;
   }
   function reveal(sp, how) {
     sp.found = true;
@@ -180,7 +226,18 @@ const Harvest = (() => {
       it.t += dt;
       if (it.hop > 0) it.hop = Math.max(0, it.hop - dt * 2.5);
       if (it.taken) { if (it.gone) continue; if (it.t > it.respawn) { it.taken = 0; it.t = 0; } continue; }
-      if (mk && mk.visible && Math.abs(mk.x - it.x) < 11 && Math.abs((mk.y - 8) - (it.y - 4)) < 16) collect(it);
+      if (it.kind === 'plant' && it.ripe < 3) { it.grow += dt; if (it.grow > 40) { it.grow = 0; it.ripe++; } }
+    }
+    H.near = Game.mode === 'explore' ? nearest() : null;
+    // hungry Pokémon raid ripe bushes when Mudkip is not looking
+    H.snackT = (H.snackT ?? 12) - dt;
+    if (H.snackT <= 0 && mk) {
+      H.snackT = 14 + Math.random() * 14;
+      const plants = H.items.filter((p) => p.kind === 'plant' && p.ripe > 0 && Math.abs(p.x - mk.x) > 50);
+      for (const p of plants) {
+        const m = Mons.all.find((q) => q !== mk && q.alive && q.mode === 'land' && !q.layer && !q.busy(2) && !q.sleeping && q.walkTo && Math.abs(q.x - p.x) < 220);
+        if (m) { m.doTask(raid(m, p), 2); break; }
+      }
     }
     // grass parts when Mudkip moves through it
     if (mk && mk.moving && mk.mode === 'land' && mk.air <= 0) {
@@ -212,9 +269,18 @@ const Harvest = (() => {
     updateMotes(dt, t);
     updateFlocks(dt);
   }
+  function* raid(m, p) {
+    m.emote('bulb', 0.9);
+    yield* m.walkTo(p.x + (m.x < p.x ? -10 : 10), (m.speed || 45) * 1.2);
+    let e = 0;
+    while (e < 1.6 && p.ripe > 0) { const dt = yield; e += dt; m.o.mouth = Math.sin(e * 16) > 0 ? 1 : 0.2; m.o.eyes = 'happy'; m.setAct(m.act.id, 0.7); if (e > 0.5 && e - dt <= 0.5) { p.ripe--; Game.sfx('munch', p.x, 0.7); FX.poof(p.x, p.y - 6, 0xffffffff, C((BERRY[p.berry] || BERRY.oran).mat, 0.6), 3, 2); } if (e > 1.1 && e - dt <= 1.1 && p.ripe > 0) { p.ripe--; Game.sfx('munch', p.x, 0.7); } }
+    m.emote('heart', 1.2);
+    if (Talk && Game.mudkip && Math.abs(Game.mudkip.x - m.x) < 300) Talk.bubble(() => m.headPt(), pick2(['Nom nom!', 'Yum!', '*munch*']), { life: 1.4, who: m });
+  }
+  const pick2 = (a) => a[(Math.random() * a.length) | 0];
   function popBerry(tf) {
     const x = tf.x, y = World.groundAt(x) - 6;
-    H.items.push({ kind: 'berry', x: x + (Math.random() - 0.5) * 10, y: y + 5, t: 0, taken: 0, ph: 0, hop: 1, extra: true });
+    H.items.push({ kind: 'berry', berry: pick2((PLANTS[H.area] || ['oran'])), x: x + (Math.random() - 0.5) * 10, y: y + 5, t: 0, taken: 0, ph: 0, hop: 1, extra: true });
     FX.poof(x, y + 4, 0xffe0f0d0, 0xffa0c090, 4, 3);
     HUD.toast('A berry fell out of the grass!', { life: 1.6 });
   }
@@ -317,8 +383,17 @@ const Harvest = (() => {
   function drawItem(fb, it, X, Y, t, occ, hr) {
     const o = it.under ? 1 : 2;
     switch (it.kind) {
+      case 'plant': {
+        // a leafy berry bush with its ripe berries
+        const bm = (BERRY[it.berry] || BERRY.oran).mat, sw = Math.sin(t * 1.5 + it.ph) * 0.6;
+        for (let k = 0; k < 9; k++) { const a = -Math.PI / 2 + (k - 4) * 0.33, L = 6 + (k % 3) * 2; for (let j = 0; j < L; j++) { const q = j / L; putO(fb, Math.round(X + Math.cos(a) * j * 0.9 + sw * q), Math.round(Y + Math.sin(a) * j), C('stem', 0.25 + q * 0.7), occ, o); } }
+        for (let k = 0; k < 7; k++) { const lx = X + Math.round(Math.cos(k * 0.9) * 5 + sw), ly = Y - 4 - ((k * 3) % 6); putO(fb, lx, ly, C('leafB', 0.6), occ, o); putO(fb, lx + 1, ly, C('leafB', 1), occ, o); putO(fb, lx, ly + 1, C('leafB', 0.2), occ, o); }
+        const spots = [[-4, -6], [3, -8], [0, -11]];
+        for (let n = 0; n < it.ripe; n++) { const [bx, by] = spots[n]; for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) putO(fb, X + bx + xx + Math.round(sw), Y + by + yy, C(bm, xx + yy < 0 ? 0.9 : 0.4), occ, o); put(fb, X + bx - 1 + Math.round(sw), Y + by - 1, 0xffffffff); }
+        break;
+      }
       case 'berry': {
-        const b = 'berryB';
+        const b = (BERRY[it.berry || 'oran'] || BERRY.oran).mat;
         for (let y = -3; y <= 0; y++) for (let x = -2; x <= 2; x++) { if (x * x + (y + 1.5) * (y + 1.5) > 5.5) continue; putO(fb, X + x, Y + y, C(b, x + y < -2 ? 1 : x + y < 0 ? 0.66 : 0.33), occ, o); }
         putO(fb, X - 1, Y - 3, C(b, 1), occ, o); putO(fb, X, Y - 4, C('leafB', 0.5), occ, o); putO(fb, X + 1, Y - 5, C('leafB', 1), occ, o);
         break;
@@ -498,5 +573,17 @@ const Harvest = (() => {
       blend(fb, X, Y, s.col, 0.75); blend(fb, X - s.dir, Y, s.col, 0.6); blend(fb, X - 2 * s.dir, Y + (Math.sin(s.t * 12 + f.ph) > 0 ? 1 : -1), s.col, 0.45); put(fb, X + s.dir, Y, 0xffffffff);
     }
   }
-  return Object.assign(H, { reset, draw, drawUnder, drawFore, drawFar, update, dig, pound, questSpots, TMS });
+    // "E" prompt over the thing Mudkip can pick up (tap it on touch screens)
+  function drawPrompt(fb, t) {
+    const it = H.near; if (!it || Game.mode !== 'explore') return;
+    const [x, y] = Talk.toUI(it.x, it.y - (it.kind === 'plant' ? 16 : 10));
+    const X = Math.round(x), Y = Math.round(y) - 6 + Math.round(Math.sin(t * 5) * 1.5);
+    const name = it.kind === 'plant' ? (BERRY[it.berry] || BERRY.oran).name : it.kind === 'berry' ? (BERRY[it.berry || 'oran'] || BERRY.oran).name : it.kind === 'tm' ? 'TM disc' : it.kind === 'qpearl' ? 'Lost pearl' : (ITEM[it.kind] ? ITEM[it.kind].name : '');
+    const touch = typeof Pad !== 'undefined' && Pad.touch;
+    UI.disc(fb, X, Y + 1, 7, 0xff0a0e1a); UI.disc(fb, X, Y, 7, 0xff1b2240); UI.disc(fb, X, Y, 6, 0xffffffff);
+    Font.draw(fb, touch ? '!' : 'E', X, Y - 4, 0xff1b2240, { font: 'small', align: 'center' });
+    Font.draw(fb, (touch ? 'Tap: ' : '') + 'pick up ' + name, X, Y + 9, 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 });
+    HUD.btn('pickup', X - 40, Y - 10, 80, 30, () => pick());
+  }
+  return Object.assign(H, { drawPrompt, pick, nearest, popIcon, reset, draw, drawUnder, drawFore, drawFar, update, dig, pound, questSpots, TMS });
 })();

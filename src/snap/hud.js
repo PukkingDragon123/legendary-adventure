@@ -227,12 +227,13 @@ const HUD = (() => {
   // throw a berry at the nearest Pokémon in front (or just ahead)
   function throwBerry() {
     const mk = Game.mudkip; if (!mk || Game.mode !== 'explore') return;
-    if (!Save.useItem('berry')) { toast('No berries left — shake a berry bush or dig!'); Game.sfx('error'); return; }
+    const kind = (typeof Bag !== 'undefined' && Bag.lure) || 'oran', B = Harvest.BERRY[kind] || Harvest.BERRY.oran;
+    if (!Save.useItem(B.inv)) { toast('No ' + B.name + 's left — pick some from a berry bush (E)!'); Game.sfx('error'); return; }
     const d = Math.cos(mk.yaw) >= 0 ? 1 : -1;
     let best = null, bd = 1e9;
     for (const m of Mons.all) { if (m === mk || !m.alive || !m.visible) continue; const dx = (m.x - mk.x) * d; if (dx < 8 || dx > 160) continue; const q = dx + Math.abs(m.y - mk.y); if (q < bd) { bd = q; best = m; } }
     const tx = best ? best.x - d * 10 : mk.x + d * 60, ty = best ? best.y - 4 : World.standY(mk.x + d * 60);
-    mk.wakeUp(); mk.doTask(mk.throwBerry(tx, ty), 2);
+    mk.wakeUp(); mk.doTask(mk.throwBerry(tx, ty, kind), 2);
   }
   function drawBanner(fb, S, t) {
     const b = H.ban; if (!b) return;
@@ -288,13 +289,15 @@ const HUD = (() => {
     const S = UI.skin();
     if (Game.mode === 'title') { drawTitle(fb, t); return; }
     if (Game.mode === 'dex') { Dex.draw(fb, t); drawToasts(fb, S, t, true); return; }
-    if (Game.mode === 'map') { WorldMap.draw(fb, t); drawToasts(fb, S, t, true); return; }
+    if (Game.mode === 'map') { WorldMap.draw(fb, t); if (typeof Mailman !== 'undefined') Mailman.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'bag') { Bag.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'style') { Style.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'memory') { Memories.draw(fb, t); return; }
+    if (Game.mode === 'rhythm') { Rhythm.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'camera') { Photo.drawUI(fb, t); Music.drawUI(fb, t, 'camera'); Talk.drawBubbles(fb, t); drawToasts(fb, S, t, false, Music.rect ? 60 : 34); Photo.drawCard && Photo.drawCard(fb, t); return; }
     drawScan(fb, S, t);
     Talk.drawBubbles(fb, t);
+    if (typeof Harvest !== 'undefined' && !Talk.busy()) Harvest.drawPrompt(fb, t);
     drawTop(fb, S, t);
     if (typeof Pad !== 'undefined') Pad.draw(fb, S, t);
     if (!Talk.busy()) drawCameraButton(fb, S, t);

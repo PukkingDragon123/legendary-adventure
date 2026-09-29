@@ -78,7 +78,7 @@ const Pad = (() => {
     if (P.b && P.b.t > 0.18) { const k = Math.min(1, (P.b.t - 0.18) / 0.3); for (let a = 0; a < 32 * k; a++) { const an = -Math.PI / 2 + a / 32 * Math.PI * 2; UI.put(fb, Math.round(L.bx + Math.cos(an) * (L.bR + 3)), Math.round(L.by + Math.sin(an) * (L.bR + 3)), 0xffffffff); } }
     Font.draw(fb, 'B', L.bx + L.bR - 3, L.by - L.bR - 2, 0xffffffff, { font: 'small', outline: INK });
     // keyboard hint (fades after the first jump)
-    if (!P.touch && P.hint > 0 && Game.t > 3) { P.hint = Math.max(0, P.hint - 1 / 900); const a = Math.min(1, P.hint * 3); if (a > 0.05) Font.draw(fb, 'Arrows move  ·  Space jump (again: flip, Down: belly flop)  ·  X move  ·  Q move wheel  ·  C camera  ·  Shift run', W / 2, H - 10, U.mix(0x00ffffff, 0xffffffff, a) | 0xff000000, { font: 'small', align: 'center', outline: INK }); }
+    if (!P.touch && P.hint > 0 && Game.t > 3) { P.hint = Math.max(0, P.hint - 1 / 900); const a = Math.min(1, P.hint * 3); if (a > 0.05) Font.draw(fb, 'Arrows move  ·  Space jump (again: flip, Down: belly flop)  ·  E pick up  ·  X move  ·  Q wheel  ·  F throw berry  ·  G guitar jam  ·  C camera  ·  Shift run', W / 2, H - 10, U.mix(0x00ffffff, 0xffffffff, a) | 0xff000000, { font: 'small', align: 'center', outline: INK }); }
   }
   // two stacked up-chevrons (jump!)
   function jumpIcon(fb, cx, cy, r) {

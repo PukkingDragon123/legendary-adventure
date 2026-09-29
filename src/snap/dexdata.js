@@ -485,9 +485,9 @@ const DexData = (() => {
 
   const AREAS = {
     beach: { name: 'Coral Cove', sub: 'Route 109 Seashore', need: 0, blurb: 'A sunny beach with a long wooden dock, a coral reef and a deep, dark trench.' },
-    forest: { name: 'Weather Woods', sub: 'Route 119 Rainforest', need: 3, blurb: 'Tall grass, a rushing river and the Weather Institute in a rainforest that is rarely dry.' },
-    canopy: { name: 'Treetop Town', sub: 'Fortree Canopy', need: 7, blurb: 'Tree houses and rope bridges high above the forest floor, where bird Pokémon sing.' },
-    falls: { name: 'Starfall Cave', sub: 'Meteor Falls', need: 11, blurb: 'Waterfalls roar in a crystal cave where meteorites fell long ago.' },
+    forest: { name: 'Weather Woods', sub: 'Route 119 Rainforest', need: 99, blurb: 'Tall grass, a rushing river and the Weather Institute in a rainforest that is rarely dry.' },
+    canopy: { name: 'Treetop Town', sub: 'Fortree Canopy', need: 99, blurb: 'Tree houses and rope bridges high above the forest floor, where bird Pokémon sing.' },
+    falls: { name: 'Starfall Cave', sub: 'Meteor Falls', need: 99, blurb: 'Waterfalls roar in a crystal cave where meteorites fell long ago.' },
     stage: { name: 'Seaside Stage', sub: 'Lilycove Concert', need: 99, blurb: 'Meloetta\'s concert stage by the sea. The band is waiting for its guitarist!' },
   };
   return { S, ORDER, TYPES, MEDALS, AREAS, get: (k) => S[k] };

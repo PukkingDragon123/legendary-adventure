@@ -9,9 +9,14 @@
 const Bag = (() => {
   const { clamp } = U;
   const INK = 0xff1b2240, WHITE = 0xffffffff;
-  const B = { tab: 0, sel: 0, t: 0, scroll: 0, seen: {} };
+  const B = { tab: 0, sel: 0, t: 0, scroll: 0, seen: {}, lure: 'oran' };
   const ITEMS = [
-    { id: 'berry', name: 'Oran Berry', desc: 'A juicy blue berry. Pokémon love them. Throw one to make friends.', use: 'Throw' },
+    { id: 'berry', lure: 'oran', name: 'Oran Berry', desc: 'Lure: most Pokémon like it. Pick berries from bushes with E.', use: 'Lure' },
+    { id: 'pecha', lure: 'pecha', name: 'Pecha Berry', desc: 'Lure: sweet! Cute Pokémon come running.', use: 'Lure' },
+    { id: 'razz', lure: 'razz', name: 'Razz Berry', desc: 'Lure: its smell draws in rare Pokémon from far away.', use: 'Lure' },
+    { id: 'nanab', lure: 'nanab', name: 'Nanab Berry', desc: 'Lure: calms a Pokémon so it sits still for photos.', use: 'Lure' },
+    { id: 'sitrus', lure: 'sitrus', name: 'Sitrus Berry', desc: 'Lure: makes a Pokémon happy and bouncy.', use: 'Lure' },
+    { id: 'jam', name: 'Guitar Jam', desc: 'Rock out on the seaside stage! (G)', use: 'Play', always: true },
     { id: 'shell', name: 'Pretty Shell', desc: 'A pink seashell from the beach.', trade: 40 },
     { id: 'pearl', name: 'Pearl', desc: 'A glowing pearl from the seabed.', trade: 120 },
     { id: 'mushroom', name: 'Tiny Mushroom', desc: 'Smells earthy. Shroomish would approve.', trade: 60 },
@@ -28,11 +33,12 @@ const Bag = (() => {
   }
   function close() { if (Game.mode !== 'bag') return; Game.mode = 'explore'; Game.sfx('dexClose', null, 0.6); }
   const fresh = () => { const it = Save.data.items || {}; return Object.keys(it).some((k) => it[k] > 0 && !B.seen[k]); };
-  const listFor = (tab) => (tab === 0 ? ITEMS.filter((i) => Save.itemN(i.id) > 0 || i.id === 'berry') : tab === 1 ? Moves.LIST : Memories.list());
+  const listFor = (tab) => (tab === 0 ? ITEMS.filter((i) => Save.itemN(i.id) > 0 || i.id === 'berry' || i.always) : tab === 1 ? Moves.LIST : Memories.list());
   function act(tab, i) {
     const L = listFor(tab), it = L[i]; if (!it) return;
     if (tab === 0) {
-      if (it.use === 'Throw') { if (Save.itemN('berry') <= 0) { Game.sfx('error'); HUD.toast('No berries! Shake bushes with Tackle, dig, or check tall grass.'); return; } close(); HUD.throwBerry(); return; }
+      if (it.use === 'Play') { close(); setTimeout(() => Rhythm.open(0), 50); return; }
+      if (it.use === 'Lure') { B.lure = it.lure; if (Save.itemN(it.id) <= 0) { Game.sfx('error'); HUD.toast('No ' + it.name + 's! Pick them from berry bushes with E.'); return; } close(); HUD.throwBerry(); return; }
       if (it.trade && Save.itemN(it.id) > 0) { Save.useItem(it.id); Save.addPoints(it.trade); Game.sfx('twinkle'); HUD.toast('Traded a ' + it.name + ' to Professor Birch: +' + it.trade, { life: 1.6 }); }
     } else if (tab === 1) {
       if (!Moves.has(it.id)) { Game.sfx('error'); HUD.toast(it.how || 'Not learned yet.', { life: 3 }); return; }
@@ -54,7 +60,10 @@ const Bag = (() => {
   }
   function wheel(dy) { const L = listFor(B.tab); B.sel = clamp(B.sel + Math.sign(dy), 0, Math.max(0, L.length - 1)); }
   // item icons (pixel maps)
+  const BM = ['...g..', '..gg..', '.bbbb.', 'bblbbb', 'blbbbb', 'bbbbbb', '.bbbb.'];
   const IC = {
+    pecha: { m: BM, c: { g: 0xff3aa84a, b: U.hex('#ff6a9a'), l: 0xffffffff } }, razz: { m: BM, c: { g: 0xff3aa84a, b: U.hex('#d82a48'), l: U.hex('#ff9aa8') } },
+    nanab: { m: BM, c: { g: 0xff3aa84a, b: U.hex('#f0d040'), l: 0xffffffff } }, sitrus: { m: BM, c: { g: 0xff3aa84a, b: U.hex('#ffe030'), l: 0xffffffff } },
     berry: { m: ['...g..', '..gg..', '.bbbb.', 'bblbbb', 'blbbbb', 'bbbbbb', '.bbbb.'], c: { g: 0xff3aa84a, b: 0xffe07a3a, l: 0xffffc8a0 } },
     shell: { m: ['...a...', '..aba..', '.abcba.', 'abcdcba', 'bcdddcb', '.bbbbb.'], c: { a: 0xffeaf0ff, b: 0xffc0c8f8, c: 0xff9aa0e8, d: 0xff7a80c8 } },
     pearl: { m: ['.aaa.', 'awaab', 'aaabb', 'aabbb', '.bbb.'], c: { a: 0xfff8f0ff, w: 0xffffffff, b: 0xffd8c8e0 } },
@@ -102,7 +111,7 @@ const Bag = (() => {
       if (B.tab === 0) {
         const ic = IC[it.id]; if (ic) UI.pix(fb, ic.m, lx + 10, y + 2, ic.c, 2);
         Font.draw(fb, it.name, lx + 30, y + 5, INK, { font: 'small' });
-        Font.draw(fb, '×' + Save.itemN(it.id), lx + lw - 70, y + 5, INK, { font: 'small', align: 'right' });
+        if (!it.always) Font.draw(fb, '×' + Save.itemN(it.id), lx + lw - 70, y + 5, INK, { font: 'small', align: 'right' });
         B.seen[it.id] = 1;
       } else if (B.tab === 1) {
         const own = Moves.has(it.id);

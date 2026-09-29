@@ -227,8 +227,8 @@ const Game = (() => {
     if (!drag) { c.lookX *= Math.exp(-dt * 1.2); c.lookY *= Math.exp(-dt * 1.2); }
     clampCam();
   }
-  const SCREEN = () => ({ bag: typeof Bag !== 'undefined' ? Bag : null, style: typeof Style !== 'undefined' ? Style : null, memory: typeof Memories !== 'undefined' ? Memories : null })[G.mode] || null;
-  G.frozenMode = () => G.mode === 'dex' || G.mode === 'map' || G.mode === 'bag' || G.mode === 'style' || G.mode === 'memory';
+  const SCREEN = () => ({ rhythm: typeof Rhythm !== 'undefined' ? Rhythm : null, bag: typeof Bag !== 'undefined' ? Bag : null, style: typeof Style !== 'undefined' ? Style : null, memory: typeof Memories !== 'undefined' ? Memories : null })[G.mode] || null;
+  G.frozenMode = () => G.mode === 'dex' || G.mode === 'map' || G.mode === 'bag' || G.mode === 'style' || G.mode === 'memory' || G.mode === 'rhythm';
   function update(dt) {
     G.rt += dt;
     if (typeof Talk !== 'undefined') Talk.update(dt);
@@ -553,6 +553,7 @@ const Game = (() => {
     if (freePtrs().length === 1 && HUD.down(ux, uy, e.pointerId)) { P0.ui = true; return; }
     if (G.mode === 'dex') { Dex.down(ux, uy); P0.ui = true; return; }
     if (G.mode === 'map') { P0.ui = true; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y), m0: WorldMap.dist }; } return; }
+    if (SCREEN() && SCREEN().down && (G.mode === 'rhythm' || G.mode === 'memory')) { SCREEN().down(ux, uy); P0.sink = true; return; }
     if (G.mode === 'title' || SCREEN()) { P0.ui = true; return; }
     const fp = freePtrs();
     if (fp.length === 1) drag = { x0: x, y0: y, lx: G.cam.lookX, ly: G.cam.lookY, moved: false, t0: performance.now(), pid: e.pointerId };
@@ -640,11 +641,13 @@ const Game = (() => {
     if (k === ' ') { if (first && mk) mk.jumpPress(); e.preventDefault(); }
     else if ((k === 'ArrowUp' || k === 'w') && first && mk && mk.mode !== 'swim') { mk.jumpPress(); e.preventDefault(); }
     else if (k === 'Enter' || k === 'c') Photo.open();
-    else if ((k === 'x' || k === 'e' || k === 'j') && first) Moves.press();
+    else if (k === 'e' && first) { if (!Harvest.pick()) Moves.press(); }
+    else if ((k === 'x' || k === 'j') && first) Moves.press();
     else if (k === 'q' && first) Moves.toggleWheel();
     else if (k === 'f' && first) HUD.throwBerry && HUD.throwBerry();
     else if (k === 'b' || k === 'i') Bag.open();
     else if (k === 'v') Style.open();
+    else if (k === 'g') Rhythm.open(0);
     else if (k === 'p' || k === 'Tab') { Dex.open(); e.preventDefault(); }
     else if (k === 'm') WorldMap.open();
     else if (k === 't') G.tryTime();
@@ -657,7 +660,7 @@ const Game = (() => {
   window.addEventListener('keyup', (e) => {
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     keysDown.delete(k);
-    if ((k === 'x' || k === 'e' || k === 'j') && G.mode === 'explore') Moves.release();
+    if ((k === 'x' || k === 'j' || (k === 'e' && Moves.pressing)) && G.mode === 'explore') Moves.release();
     if ((k === ' ' || k === 'Enter') && G.mode === 'camera' && Photo.shutterUp) Photo.shutterUp();
     keysMove();
   });

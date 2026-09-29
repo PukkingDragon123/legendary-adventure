@@ -145,7 +145,7 @@ const Photo = (() => {
   function shoot() {
     if (!P.on || P.cool > 0) return;
     P.cool = 0.45; P.flash = 1; P.shots++;
-    Game.sfx('shutter');
+    Game.sfx('shutter'); if (Game.mudkip && Game.mudkip.snapPose) Game.mudkip.snapPose();
     for (const m of Mons.all) if (m !== Game.mudkip) m.hear('shutter', m.x, 0.5);
     const res = evaluate();
     register(res);
@@ -274,7 +274,7 @@ const Photo = (() => {
   function finishHold(H) {
     const res = H.best;
     P.cool = 0.6; P.flash = 1; P.shots++;
-    Game.sfx('shutter');
+    Game.sfx('shutter'); if (Game.mudkip && Game.mudkip.snapPose) Game.mudkip.snapPose();
     for (const m of Mons.all) if (m !== Game.mudkip) m.hear('shutter', m.x, 0.5);
     if (res.buf && !res.img) res.img = bufURL(res.buf);
     res.held = true;
@@ -466,8 +466,8 @@ const Photo = (() => {
     // quick berry throw while aiming
     UI.panel(fb, 52, H - 22, 30, 18, { r: 3, ol: S.ink, fill: S.btn });
     HUD.iconAt(fb, 'berry', 56, H - 19, 1);
-    Font.draw(fb, String(Save.itemN('berry')), 76, H - 17, 0xffffffff, { font: 'small', align: 'right' });
-    HUD.btn('cberry', 50, H - 24, 34, 22, () => { if (Save.useItem('berry')) { const mk = Game.mudkip, [mx, my] = mk.at('mouth'); Items.throwBerry(mx, my - 4, P.aim.x, World.standY(P.aim.x)); Game.sfx('whoosh'); } else { Game.sfx('error'); HUD.toast('No berries left.'); } });
+    Font.draw(fb, String(Save.itemN((Harvest.BERRY[Bag.lure || 'oran'] || Harvest.BERRY.oran).inv)), 76, H - 17, 0xffffffff, { font: 'small', align: 'right' });
+    HUD.btn('cberry', 50, H - 24, 34, 22, () => { if (Save.useItem((Harvest.BERRY[Bag.lure || 'oran'] || Harvest.BERRY.oran).inv)) { const mk = Game.mudkip, [mx, my] = mk.at('mouth'); Items.throwBerry(mx, my - 4, P.aim.x, World.standY(P.aim.x), Bag.lure || 'oran'); Game.sfx('whoosh'); } else { Game.sfx('error'); HUD.toast('No berries left.'); } });
     // recent shot polaroid
     drawRecent(fb, t, x0 + 4, y1 - 4);
     // awareness hint: the focused Pokémon noticed you

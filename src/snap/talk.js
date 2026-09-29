@@ -16,6 +16,21 @@ const Talk = (() => {
   // progress kinds: flops (belly flops next to the giver), song (sing next to it), spots (find glittering
   // patches: dig or belly flop on them), pearl (touch a lost item), photo ({ sp, beh }), fetch (items)
   const QUESTS = [
+    { id: 'q.mail1', area: 'beach', giver: 'mailman', title: 'Special Delivery', instant: true,
+      intro: ['Pelipper! Special delivery for the new photographer!', 'Professor Birch sent you this: a map of all Hoenn!', '(You got the MAP! Press M or tap the map button.)'],
+      done: ['Pelipper!'], reward: 'pts:100', onAccept: () => { Save.discover('mail.map'); Game.sfx('reward'); } },
+    { id: 'q.mail2', area: 'beach', giver: 'mailman', title: 'Airmail to Weather Woods', after: 'q.mail1',
+      intro: ['Want to see Weather Woods? I can fly you there!', 'But my wings are tired from all this mail...', 'Bring me 2 Pecha Berries for energy! (Pick them from berry bushes with E.)'],
+      fetch: { item: 'pecha', n: 2 }, wait: ['Pecha Berries, please! {left} more. They grow on pink berry bushes.'],
+      done: ['PELI-PELI! Energy!', 'Hop in my beak! Next stop: Weather Woods!'], reward: 'pts:300', unlock: 'forest' },
+    { id: 'q.tropius', area: 'forest', giver: 'tropius', title: 'Fruit for a Flight',
+      intro: ['Tro-pi! Tro-piiius!', '(Tropius flaps its huge leaf wings. It could carry you up to Treetop Town!)', '(It looks hungry. Bring it 3 Nanab Berries.)'],
+      fetch: { item: 'nanab', n: 3 }, wait: ['(Tropius waits patiently. {left} more Nanab Berries.)'],
+      done: ['TROPIIIUS!', '(It munches the berries, lowers its neck... climb aboard!)'], reward: 'pts:400', unlock: 'canopy' },
+    { id: 'q.altaria', area: 'canopy', giver: 'altaria', title: 'Cloud Taxi',
+      intro: ['{note} Alta~ria {note}', '(Altaria hums. Its fluffy wings could fly you to Starfall Cave!)', '(It would love 2 Razz Berries.)'],
+      fetch: { item: 'razz', n: 2 }, wait: ['(Altaria sings softly. {left} more Razz Berries.)'],
+      done: ['{note} Alta~ria! {note}', '(Sink into the fluffy wings... hold on tight!)'], reward: 'pts:500', unlock: 'falls' },
     { id: 'q.spheal', area: 'beach', giver: 'spheal', title: 'Hungry Spheal',
       intro: ['Spheal! Spheal spheal!', '(It pats its round tummy and stares at the berry bushes.)', '(It would love 3 berries. Shake bushes with Tackle, dig, or sniff around!)'],
       fetch: { item: 'berry', n: 3 }, wait: ['Spheal...? (Still hungry. It needs {left} more berries.)'],
@@ -58,19 +73,22 @@ const Talk = (() => {
   const qState = (id) => st()[id] || null;
   function giverQuest(m) {
     if (!m || !Game.areaId) return null;
-    for (const q of QUESTS) if (q.area === Game.areaId && q.giver === m.kind && (!qState(q.id) || qState(q.id).s !== 'done')) { const gv = giverOf(q); if (gv === m) return q; }
+    for (const q of QUESTS) if (q.area === Game.areaId && q.giver === m.kind && (!qState(q.id) || qState(q.id).s !== 'done') && (!q.after || (qState(q.after) && qState(q.after).s === 'done'))) { const gv = giverOf(q); if (gv === m) return q; }
     return null;
   }
   // one giver per quest: the first of that species in the area
   function giverOf(q) { if (q.area !== Game.areaId) return null; return Mons.all.find((m) => m.kind === q.giver && m.alive) || null; }
   function ready(q) {
     const s = qState(q.id); if (!s || s.s !== 'active') return false;
+    if (q.instant) return true;
     if (q.fetch) return Save.itemN(q.fetch.item) >= q.fetch.n;
     if (q.photo) return !!s.ok;
     return (s.n || 0) >= (q.n || 1);
   }
   function accept(q) {
     st()[q.id] = { s: 'active', n: 0 }; Save.save();
+    if (q.onAccept) q.onAccept();
+    if (q.instant) { finish(q, giverOf(q)); return; }
     HUD.toast('New quest: ' + q.title, { life: 2.6, col: 0xff3ad0ff });
     Game.sfx('select');
     if (q.progress === 'spots' || q.progress === 'pearl') { if (typeof Harvest !== 'undefined') Harvest.questSpots(q, giverOf(q)); }
@@ -90,6 +108,7 @@ const Talk = (() => {
     if (q.reward.startsWith('tm:')) Moves.unlock(q.reward.slice(3), 'A gift from ' + (DexData.S[q.giver] ? DexData.S[q.giver].name : 'a friend') + '!');
     else { r = Rewards.grant(q.reward); Quests.Q.pops.push({ t: 0, life: 4.2, text: 'Quest complete: ' + q.title, reward: r }); Quests.Q.unseenN++; SFX.reward(); if (typeof Style !== 'undefined') Style.markNew(q.reward); }
     Save.addPoints(300);
+    if (q.unlock) { Save.unlock(q.unlock); Save.discover('mail.map'); const dest = q.unlock; setTimeout(() => { if (Game.mode === 'explore') { WorldMap.open(); setTimeout(() => WorldMap.travelTo(dest), 900); } }, 700); }
     if (g) { g.emote('heart', 1.6); FX.confetti(g.x, g.y - 20, 30); }
     Save.discover('quest.' + q.id.slice(2));
   }
@@ -97,6 +116,7 @@ const Talk = (() => {
     const s = qState(q.id), g = giverOf(q);
     const nm = DexData.S[q.giver] ? DexData.S[q.giver].name : q.giver;
     const fill = (l) => l.replace('{have}', s ? s.n || 0 : 0).replace('{left}', q.fetch ? Math.max(0, q.fetch.n - Save.itemN(q.fetch.item)) : Math.max(0, (q.n || 1) - (s ? s.n || 0 : 0)));
+    if (!s && q.instant) return { lines: q.intro, done: () => accept(q) };
     if (!s) return { lines: q.intro.slice(0, -1).concat([{ text: q.intro[q.intro.length - 1], choices: ['Leave it to me!', 'Maybe later'] }]), done: (c) => { if (c === 0) accept(q); else bubble(() => g.headPt(), '...', { who: g }); } };
     if (ready(q)) return { lines: q.done, done: () => finish(q, g) };
     return { lines: q.wait.map(fill), done: () => {} };
@@ -131,6 +151,7 @@ const Talk = (() => {
     solrock: ['...', '(It spins slowly, warm as the sun.)'], lunatone: ['...', '(It glows softly, like the moon.)'],
     jirachi: ['Wish~', 'Zzz... (It is sleeping. For a thousand years?)'],
     trapinch: ['Chomp!', '(It opens its huge jaws. Please step back.)'],
+    mailman: ['Pelipper! Mail for you! ...oh wait, no.', 'Rain or shine, the mail gets through!', '(It adjusts its little postman cap.)'],
     tropius: ['Tro-pi!', '(Bananas dangle from its neck. They smell great.)'],
   };
   const MUDKIP_REPLY = ['Mud!', 'Kip!', 'Mudkip!', 'Mud? Kip!'];
@@ -178,6 +199,7 @@ const Talk = (() => {
   /* ---------- speech bubbles ---------- */
   function bubble(at, text, o = {}) {
     if (o.who) T.bubbles = T.bubbles.filter((b) => b.who !== o.who);
+    if (o.who && typeof Cries !== 'undefined') { if (o.who === Game.mudkip) Cries.mudkip(); else Cries.play(o.who.dex, o.who.x, 0.7, true); }
     T.bubbles.push({ at, text, t: 0, life: o.life ?? 2, who: o.who || null });
     if (T.bubbles.length > 6) T.bubbles.shift();
   }
@@ -236,6 +258,7 @@ const Talk = (() => {
 
   /* ---------- dialogue box ---------- */
   function open(lines, o = {}) {
+    if (o.who && typeof Cries !== 'undefined') Cries.play(o.who.dex, o.who.x, 0.8, true);
     T.dlg = { lines: lines.map((l) => (typeof l === 'string' ? { text: l } : l)), i: 0, ch: 0, t: 0, who: o.who || null, name: o.name || '', done: o.done || null, title: o.title || '', choice: 0, rects: [] };
     Game.sfx('blip');
     if (Game.mudkip) { Game.mudkip.stop(); Game.mudkip.keyDir = 0; }
