@@ -666,6 +666,12 @@ const Dex = (() => {
     ['palkia.met', 'The Pokémon that rules space', 'Dialga is not the only one...'],
     ['falls.meteorite', 'The meteorite heart', 'Deep in the cave, a rock hums with space.'],
     ['falls.shower', 'A meteor shower', 'Starfall Cave lives up to its name at night.'],
+    ['falls.chimes', 'The singing crystals', 'Listen to the drips — they know the tune.'],
+    ['falls.flight', 'Bagon\'s first flight', 'A leaping Bagon needs a lift from below.'],
+    ['falls.wish', 'Jirachi\'s wish', 'Sing by the crystal nest while stars are falling.'],
+    ['falls.deoxys', 'The visitor from space', 'Wake the meteorite, then crack Minior of many colours.'],
+    ['toy.geyser', 'Geyser launch', 'Swim over the vent in the glowing pool.'],
+    ['toy.slide', 'Waterfall slide', 'The stream off the high ledge looks slippery.'],
   ];
   function pageDisc(fb, S, L, R, slide, t) {
     const got = SECRETS.filter((s) => Save.found(s[0])).length;

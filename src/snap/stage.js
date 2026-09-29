@@ -508,9 +508,9 @@ const Stage = (() => {
     for (const g of A.glows) {
       const k = (g.always ? 1 : night) * (g.k ?? 1) * (g.flicker ? 0.85 + 0.15 * Math.sin(t * 13 + g.x) * Math.sin(t * 7.3) : 1);
       if (k <= 0.02) continue;
-      const X = g.x - cx, Y = g.y - cy, R0 = g.r;
-      if (X + R0 < 0 || X - R0 > W || Y + R0 < 0 || Y - R0 > H) continue;
-      for (let y = Math.max(0, Y - R0); y < Math.min(H, Y + R0); y++) for (let x = Math.max(0, X - R0); x < Math.min(W, X + R0); x++) {
+      const X = g.x - cx, Y = g.y - cy, R0 = g.r, RY = Math.ceil(R0 / (g.flat || 1));
+      if (X + R0 < 0 || X - R0 > W || Y + RY < 0 || Y - RY > H) continue;
+      for (let y = Math.max(0, Math.floor(Y - RY)); y < Math.min(H, Y + RY); y++) for (let x = Math.max(0, Math.floor(X - R0)); x < Math.min(W, X + R0); x++) {
         const dd = Math.hypot(x - X, (y - Y) * (g.flat || 1)) / R0;
         if (dd >= 1) continue;
         const a = (1 - dd) * (1 - dd) * k * (g.a ?? 0.5);
