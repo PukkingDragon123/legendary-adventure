@@ -227,8 +227,8 @@ const Game = (() => {
     if (!drag) { c.lookX *= Math.exp(-dt * 1.2); c.lookY *= Math.exp(-dt * 1.2); }
     clampCam();
   }
-  const SCREEN = () => ({ rhythm: typeof Rhythm !== 'undefined' ? Rhythm : null, bag: typeof Bag !== 'undefined' ? Bag : null, style: typeof Style !== 'undefined' ? Style : null, memory: typeof Memories !== 'undefined' ? Memories : null })[G.mode] || null;
-  G.frozenMode = () => G.mode === 'dex' || G.mode === 'map' || G.mode === 'bag' || G.mode === 'style' || G.mode === 'memory' || G.mode === 'rhythm';
+  const SCREEN = () => ({ rhythm: typeof Rhythm !== 'undefined' ? Rhythm : null, bag: typeof Bag !== 'undefined' ? Bag : null, style: typeof Style !== 'undefined' ? Style : null, memory: typeof Memories !== 'undefined' ? Memories : null, games: typeof Arcade !== 'undefined' ? Arcade : null })[G.mode] || null;
+  G.frozenMode = () => G.mode === 'dex' || G.mode === 'map' || G.mode === 'bag' || G.mode === 'style' || G.mode === 'memory' || G.mode === 'rhythm' || G.mode === 'games';
   function update(dt) {
     G.rt += dt;
     if (typeof Talk !== 'undefined') Talk.update(dt);
@@ -556,7 +556,7 @@ const Game = (() => {
     if (freePtrs().length === 1 && HUD.down(ux, uy, e.pointerId)) { P0.ui = true; return; }
     if (G.mode === 'dex') { Dex.down(ux, uy); P0.ui = true; return; }
     if (G.mode === 'map') { P0.ui = true; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y), m0: WorldMap.dist }; } return; }
-    if (SCREEN() && SCREEN().down && (G.mode === 'rhythm' || G.mode === 'memory')) { SCREEN().down(ux, uy); P0.sink = true; return; }
+    if (SCREEN() && SCREEN().down && (G.mode === 'rhythm' || G.mode === 'memory' || G.mode === 'games')) { SCREEN().down(ux, uy); P0.sink = true; P0.games = G.mode === 'games'; return; }
     if (G.mode === 'title' || SCREEN()) { P0.ui = true; return; }
     const fp = freePtrs();
     if (fp.length === 1) drag = { x0: x, y0: y, lx: G.cam.lookX, ly: G.cam.lookY, moved: false, t0: performance.now(), pid: e.pointerId };
@@ -593,6 +593,7 @@ const Game = (() => {
     const [x, y] = devXY(e);
     ptrs.delete(e.pointerId);
     if (p.pad) { Pad.up(e.pointerId); return; }
+    if (p.games && typeof Arcade !== 'undefined') Arcade.up();
     if (p.sink) return;
     if (p.ui) { if (G.mode === 'dex') { if (e.type === 'pointercancel') Dex.cancel && Dex.cancel(); else Dex.up(x / US, y / US); } else HUD.up(x / US, y / US, e.pointerId); return; }
     if (pinch) { if (freePtrs().length < 2) { pinch = null; drag = null; } return; }
@@ -651,6 +652,7 @@ const Game = (() => {
     else if (k === 'b' || k === 'i') Bag.open();
     else if (k === 'v') Style.open();
     else if (k === 'g') Rhythm.open(0);
+    else if (k === 'h' && typeof Arcade !== 'undefined') Arcade.open();
     else if (k === 'p' || k === 'Tab') { Dex.open(); e.preventDefault(); }
     else if (k === 'm') WorldMap.open();
     else if (k === 't') G.tryTime();
@@ -662,6 +664,7 @@ const Game = (() => {
     keysMove();
   });
   window.addEventListener('keyup', (e) => {
+    if (G.mode === 'games' && typeof Arcade !== 'undefined') { Arcade.key(e.key.length === 1 ? e.key.toLowerCase() : e.key, e); return; }
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     keysDown.delete(k);
     if ((k === 'x' || k === 'j' || (k === 'e' && Moves.pressing)) && G.mode === 'explore') Moves.release();

@@ -191,7 +191,7 @@ const HUD = (() => {
     if (on) { for (const r of [3, 6]) for (let a = -0.9; a <= 0.9; a += 0.12) UI.put(fb, Math.round(cx + 2 + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), WHITE); }
     else { const r = U.hex('#ff5a6a'); for (let i = -2; i <= 2; i++) { UI.put(fb, cx + 4 + i, cy + i, r); UI.put(fb, cx + 4 + i, cy - i, r); } }
   }
-  const TOPI = { dex: (fb, x, y, S, t) => icoDex(fb, x, y, S), map: (fb, x, y) => icoMap(fb, x, y), bag: (fb, x, y) => icoBag(fb, x, y), style: (fb, x, y, S, t) => icoHat(fb, x, y, t), snd: (fb, x, y) => icoSound(fb, x, y, Sound.on) };
+  const TOPI = { dex: (fb, x, y, S, t) => icoDex(fb, x, y, S), map: (fb, x, y) => icoMap(fb, x, y), bag: (fb, x, y) => icoBag(fb, x, y), style: (fb, x, y, S, t) => icoHat(fb, x, y, t), snd: (fb, x, y) => icoSound(fb, x, y, Sound.on), games: (fb, x, y, S, t) => { UI.disc(fb, x, y + 1, 7, INK); UI.disc(fb, x, y, 6, U.hex('#ff5a4a')); UI.rect(fb, x - 6, y, 13, 1, INK); UI.disc(fb, x, y, 2, 0xffffffff); UI.put(fb, x - 3, y - 3, 0xffffc0c0); } };
   function drawTop(fb, S, t) {
     // right: Pokédex, map, bag, wardrobe, sound — icon buttons, no words
     const bw = 24, y = 6;
@@ -200,6 +200,7 @@ const HUD = (() => {
       { id: 'map', fn: () => (Game.mode === 'map' ? WorldMap.close() : WorldMap.open()) },
       { id: 'bag', fn: () => Bag.open(), badge: typeof Bag !== 'undefined' && Bag.fresh && Bag.fresh() },
       { id: 'style', fn: () => Style.open(), badge: typeof Style !== 'undefined' && Style.fresh && Style.fresh() },
+      { id: 'games', fn: () => typeof Arcade !== 'undefined' && Arcade.open() },
       { id: 'snd', fn: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); } },
     ];
     items.forEach((it, i) => {
@@ -211,7 +212,7 @@ const HUD = (() => {
       TOPI[it.id](fb, x + bw / 2, y + p + bw / 2, S, t);
       btn(it.id, x - 1, y - 1, bw + 2, bw + 4, it.fn);
       if (it.badge) { UI.disc(fb, x + bw - 2, y + 2, 3, 0xffff3a4a); UI.put(fb, x + bw - 2, y + 2, 0xffffffff); }
-      if (hov) Font.draw(fb, { dex: 'Pokédex (P)', map: 'Map (M)', bag: 'Bag (B)', style: 'Wardrobe (V)', snd: 'Sound' }[it.id], x + bw / 2, y + bw + 5, 0xffffffff, { font: 'small', align: 'center', outline: INK });
+      if (hov) Font.draw(fb, { dex: 'Pokédex (P)', map: 'Map (M)', bag: 'Bag (B)', style: 'Wardrobe (V)', snd: 'Sound', games: 'Playground (H)' }[it.id], x + bw / 2, y + bw + 5, 0xffffffff, { font: 'small', align: 'center', outline: INK });
     });
     // left: clock (tap = let time pass) + points
     const hr = Game.hour();
@@ -303,6 +304,7 @@ const HUD = (() => {
     if (Game.mode === 'style') { Style.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'memory') { Memories.draw(fb, t); return; }
     if (Game.mode === 'rhythm') { Rhythm.draw(fb, t); drawToasts(fb, S, t, true); return; }
+    if (Game.mode === 'games') { Arcade.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'camera') { Photo.drawUI(fb, t); Music.drawUI(fb, t, 'camera'); Talk.drawBubbles(fb, t); drawToasts(fb, S, t, false, Music.rect ? 60 : 34); Photo.drawCard && Photo.drawCard(fb, t); return; }
     drawScan(fb, S, t);
     Talk.drawBubbles(fb, t);
