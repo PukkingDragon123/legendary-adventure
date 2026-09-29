@@ -45,7 +45,8 @@ const Harvest = (() => {
   const TAB = new Pal.Table(MATS);
   function palette() {
     const w = typeof Weather !== 'undefined' ? Weather.W : { rain: 0, fog: 0 };
-    const key = Game.hour() + '|' + (w.rain || 0).toFixed(1) + '|' + (w.fog || 0).toFixed(1);
+    TAB.noSeason = !!(Game.area && Game.area.def.noSeason);
+    const key = Game.hour() + '|' + (w.rain || 0).toFixed(1) + '|' + (w.fog || 0).toFixed(1) + '|' + Pal.season + TAB.noSeason;
     if (H.palKey !== key) { H.pal = TAB.compile(Game.hour(), 0, { rain: +(w.rain || 0).toFixed(1), fog: +(w.fog || 0).toFixed(1) }); H.palKey = key; }
     return H.pal;
   }

@@ -81,6 +81,11 @@ const Sound = (() => {
   /* ---------- effects ---------- */
   const FXS = {
     pop(t, d, v) { tone('sine', 620, 1050, t, 0.06, 0.12 * v, d); },
+    steam(t, d, v) { hiss(t, 0.7, 0.16 * v, 'highpass', 2600, 0.6, d, 5200, noise); hiss(t, 0.35, 0.08 * v, 'bandpass', 1200, 0.8, d); },
+    lava(t, d, v) { tone('sine', 110, 60, t, 0.22, 0.26 * v, d); tone('sine', 190, 90, t + 0.12, 0.16, 0.14 * v, d); hiss(t, 0.2, 0.06 * v, 'lowpass', 500, 0.8, d, null, noise); },
+    crunch(t, d, v) { for (let i = 0; i < 3; i++) hiss(t + i * 0.03, 0.05, 0.1 * v, 'bandpass', 2200 + Math.random() * 1400, 2.5, d); },
+    icering(t, d, v) { [3136, 3951, 4699].forEach((f, i) => tone('sine', f, f * 0.98, t + i * 0.05, 0.5, 0.035 * v, d)); tone('triangle', 1568, 1500, t, 0.4, 0.04 * v, d); },
+    zap(t, d, v) { tone('sawtooth', 900, 300, t, 0.12, 0.05 * v, d); tone('square', 1400, 600, t + 0.03, 0.08, 0.03 * v, d); hiss(t, 0.1, 0.06 * v, 'highpass', 3000, 1, d); },
     boing(t, d, v) { tone('sine', 330, 170, t, 0.18, 0.2 * v, d); tone('triangle', 660, 420, t, 0.08, 0.05 * v, d); },
     bonk(t, d, v) { tone('sine', 520, 380, t, 0.12, 0.28 * v, d); hiss(t, 0.05, 0.12 * v, 'bandpass', 1400, 2, d); tone('square', 1200, 900, t + 0.01, 0.04, 0.03 * v, d); },
     thud(t, d, v) { tone('sine', 150, 80, t, 0.14, 0.3 * v, d); hiss(t, 0.06, 0.08 * v, 'lowpass', 600, 0.7, d); },

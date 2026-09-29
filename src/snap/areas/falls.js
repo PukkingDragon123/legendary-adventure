@@ -11,7 +11,7 @@ Areas.falls = (() => {
   const GEO = FallsAI.GEO;
   const CEIL = 330, SHAFT_HW = 56, SKY0 = 40;
   const def = {
-    id: 'falls', name: 'Starfall Cave', sub: 'Meteor Falls', music: 'space', seed: 57,
+    id: 'falls', name: 'Starfall Cave', sub: 'Meteor Falls', music: 'space', seed: 57, noSeason: true,
     W: GEO.W, H: 900, sea: null, refY: 560, h0: 118, cy0: 330, ph: 0.05, skyH: 300, sunH: 140, band: 10, waves: 0.4,
     camY: [SKY0 + 20, 820], frameY: 0.74, start: 200,
     ground: GEO.ground,

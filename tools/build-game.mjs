@@ -17,8 +17,8 @@ const SPECIES = readdirSync(join(root, 'src/species')).filter((f) => f.endsWith(
 });
 const speciesFiles = SPECIES.map((s) => `src/species/${s}.js`);
 const opt = (list) => list.filter(has);
-const AREAS = ['beach', 'forest', 'canopy', 'falls', 'stage'];
-const AI = ['base', 'beach', 'fossil', 'sea', 'forest', 'grove', 'canopy', 'falls', 'stage'];
+const AREAS = ['beach', 'forest', 'canopy', 'falls', 'stage', 'volcano', 'shoal'];
+const AI = ['base', 'eco', 'beach', 'fossil', 'sea', 'forest', 'grove', 'canopy', 'falls', 'stage', 'volcano', 'shoal', 'legends'];
 const files = [
   'src/px.js', 'src/scenery.js', 'src/actors.js', 'src/creature.js', 'src/mudkip.js', 'src/ball.js',
   ...speciesFiles,
@@ -28,13 +28,13 @@ const files = [
   'src/snap/sfx.js', 'src/snap/save.js', 'src/snap/dexdata.js', 'src/snap/cries.js', 'src/snap/ui.js', 'src/snap/mons.js', 'src/snap/player.js',
   'src/snap/items.js', 'src/snap/weather.js', 'src/snap/moves.js', 'src/snap/pad.js', 'src/snap/talk.js', 'src/snap/hud.js', 'src/snap/photo.js', 'src/snap/toys.js',
   ...opt(['src/snap/rewards.js', 'src/snap/quests.js', 'src/snap/music.js', 'src/snap/dex.js', 'src/snap/worldmap.js']),
-  'src/snap/social.js', 'src/snap/harvest.js', 'src/snap/bag.js', 'src/beach.js', 'src/paintings.js', 'src/snap/style.js', 'src/snap/memories.js',
+  'src/snap/social.js', 'src/snap/harvest.js', 'src/snap/bag.js', 'src/beach.js', 'src/paintings.js', 'src/snap/style.js', 'src/snap/memories.js', 'src/snap/seasons.js',
   ...opt(['src/snap/stubs.js']),
   'src/snap/areas/index.js',
   ...opt(AI.map((a) => `src/snap/ai/${a}.js`)),
   ...opt(AREAS.map((a) => `src/snap/areas/${a}.js`)),
   ...opt(['src/snap/gallery.js']),
-  'src/snap/mailman.js', 'src/snap/rhythm.js',
+  'src/snap/mailman.js', 'src/snap/rhythm.js', 'src/snap/wild.js',
   'src/snap/main.js',
 ];
 const names = ['Mudkip', ...SPECIES.map(cap)];

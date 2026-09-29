@@ -248,6 +248,7 @@ const Game = (() => {
     Wind.update(dt); Ripples.step(dt);
     Stage.update(dt, t);
     Weather.update(dt, t);
+    if (typeof Seasons !== 'undefined') Seasons.update(dt, t);
     Items.update(dt, t);
     Player.Bubbles.update(dt);
     if (typeof Harvest !== 'undefined') Harvest.update(dt, t);
@@ -319,6 +320,7 @@ const Game = (() => {
     mark('water');
     FX.draw(fb, cx, cy, 1, t); FX.draw(fb, cx, cy, 2, t);
     Weather.draw(fb, cx, cy, t);
+    if (typeof Seasons !== 'undefined') Seasons.draw(fb, cx, cy, t);
     FX.draw(fb, cx, cy, 3, t);
     Stage.drawGlows(fb, cx, cy, t);
     if (typeof Harvest !== 'undefined') Harvest.drawFore(fb, cx, cy, t);
@@ -651,6 +653,7 @@ const Game = (() => {
     else if (k === 'p' || k === 'Tab') { Dex.open(); e.preventDefault(); }
     else if (k === 'm') WorldMap.open();
     else if (k === 't') G.tryTime();
+    else if (k === 'n' && typeof Seasons !== 'undefined') Seasons.next();
     else if (k === '+' || k === '=') setZoom(G.zoom + 1);
     else if (k === '-' || k === '_') setZoom(G.zoom - 1);
     else if (MOVE_KEYS.includes(k) && first) { const m = Moves.LIST[+k - 1]; if (m) { Moves.select(Moves.LIST.indexOf(m)); if (Moves.has(m.id)) HUD.toast(m.name + ' ready', { life: 1, col: m.col }); } }
@@ -718,6 +721,7 @@ const Game = (() => {
     const wk = document.getElementById('wk-src');
     if (wk && !qs.has('noworker')) Critters.Pool.init(wk.textContent);
     Save.load();
+    if (typeof Seasons !== 'undefined') Seasons.init();
     if (qs.get('unlock') === 'all') for (const id of Object.keys(Areas)) Save.unlock(id);
     layout();
     window.addEventListener('resize', layout);

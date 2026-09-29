@@ -56,18 +56,65 @@ const Pal = (() => {
     return r;
   }
 
+  /* ---- seasons: every palette shifts through the year ----
+     ramps are classed by name (foliage, ground cover, snowy surfaces, exempt) and
+     recoloured before the hour grade: fresh spring greens, deep summer, autumn
+     reds and golds, and winter snow on the grass, treetops and rooftops. */
+  const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
+  let season = 'summer', seasonV = 0;
+  const EXEMPT = /kelp|algae|sea|coral|^co[A-Z]|anem|sponge|crys|gem|glow|shroom|pad|lotus|berry|^fl[A-Z]|flower|fruit|^ink|water|lamp|lant|^win|metal|cloth|egg|orb|gold|star|shell|pearl|lava|magma|ember|ice|snow|frost|fall$|foam|bed|Bed|U$/;
+  const TRUNK = /trunk|bark|wood|log|plank|twig|nest/i, EVER = /palm|pine|needle|cedar|fir$/i;
+  const VEG = /leaf|palm|fern|bush|canopy|foli|vine|jungle|hill|hedge|tree|ivy|reed|stem|needle|pine/i, GROUND = /grass|moss|turf|lawn|meadow|^g\d$|dune|litter|tuft/i, SNOWY = /sand|soil|rock|thatch|roof|^far|^mid|floor|wall|wood|bark|cliff|ash|stone|dirt|path/i;
+  const hueSat = (c) => { const r = R(c) / 255, g = G(c) / 255, b = B(c) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; if (d < 1e-4) return [0, 0]; let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360; return [h, d / (1 - Math.abs(mx + mn - 1) || 1)]; };
+  function classify(name, cols) {
+    if (EXEMPT.test(name)) return 9;
+    if (GROUND.test(name)) return 2;
+    if (TRUNK.test(name)) return 4;
+    if (EVER.test(name)) return 5;
+    if (VEG.test(name)) return 1;
+    if (SNOWY.test(name)) return 3;
+    // unnamed greens are foliage too
+    let hs = 0, ss = 0; for (const c of cols) { const [h, s2] = hueSat(hex(c)); hs += h; ss += s2; }
+    hs /= cols.length; ss /= cols.length;
+    return hs > 70 && hs < 165 && ss > 0.22 ? 1 : 0;
+  }
+  const AUT = ['#e2741c', '#c83e1e', '#eaae28', '#b8561a', '#dc8c22', '#a8401c'].map(hex);
+  const SNOW = hex('#f6f9ff'), SNOWD = hex('#9aaecc'), COLD = hex('#b8cce8'), SPRING = hex('#a8e464'), STRAW = hex('#bc9a48'), WARM = hex('#ffc890'), OLIVE = hex('#b0a040');
+  const lum = (c) => R(c) * 0.299 + G(c) * 0.587 + B(c) * 0.114;
+  const toLum = (c, l) => { const k = l / Math.max(1, lum(c)); return pack(R(c) * k, G(c) * k, B(c) * k); };
+  function seasonC(c, rp, cls, rh, s) {
+    const green = cls === 1 || cls === 2 || cls === 5;
+    if (cls === 9 || s === 'summer') return green ? sat(c, 1.06) : c;
+    if (s === 'spring') return green ? sat(mix(c, SPRING, (cls === 5 ? 0.06 : 0.12) + rp * 0.1), 1.08) : c;
+    if (s === 'autumn') {
+      if (cls === 1) return mix(c, toLum(AUT[Math.floor(rh * AUT.length) % AUT.length], lum(c) * 1.1), 0.84);
+      if (cls === 2) return mix(c, toLum(STRAW, lum(c) * 1.04), 0.62);
+      if (cls === 5) return mix(c, toLum(OLIVE, lum(c)), 0.28);
+      return mix(c, WARM, 0.05);
+    }
+    // winter
+    if (cls === 2) return mix(c, mix(SNOWD, SNOW, rp), 0.9);
+    if (cls === 1 || cls === 5) { let r = mix(sat(c, cls === 5 ? 0.7 : 0.45), COLD, cls === 5 ? 0.1 : 0.18); if (rp > 0.45) r = mix(r, SNOW, ((rp - 0.45) / 0.55) * (cls === 5 ? 0.7 : 0.85)); return r; }
+    if (cls === 3) { let r = mix(c, COLD, 0.1); if (rp > 0.6) r = mix(r, SNOW, ((rp - 0.6) / 0.4) * 0.6); return r; }
+    if (cls === 4) { let r = mix(c, COLD, 0.12); if (rp > 0.75) r = mix(r, SNOW, ((rp - 0.75) / 0.25) * 0.35); return r; }
+    return mix(sat(c, 0.85), COLD, 0.08);
+  }
+  function setSeason(s) { if (!SEASONS.includes(s) || s === season) return false; season = s; seasonV++; return true; }
+
   /* ---- an area's material table: names → index ramps ---- */
   class Table {
     constructor(defs) {
-      this.defs = defs; this.base = new Uint32Array(256); this.rp = new Float32Array(256); this.em = new Uint8Array(256);
+      this.defs = defs; this.base = new Uint32Array(256); this.rp = new Float32Array(256); this.em = new Uint8Array(256); this.cls = new Uint8Array(256); this.rh = new Float32Array(256);
       this.cyc = []; // palette-cycling groups
       let i = 1;
       for (const name in defs) {
         const d = Array.isArray(defs[name]) ? { c: defs[name] } : defs[name];
-        const ids = [];
+        const ids = [], cls = d.emit || d.noSeason ? 9 : d.season ?? classify(name, d.c);
+        let rh = 0; for (let q = 0; q < name.length; q++) rh = (rh * 31 + name.charCodeAt(q)) % 997;
         d.c.forEach((col, k) => {
           if (i > 255) throw new Error('palette full');
           this.base[i] = hex(col); this.rp[i] = d.c.length > 1 ? k / (d.c.length - 1) : 0.5; this.em[i] = d.emit ? 1 : 0;
+          this.cls[i] = cls; this.rh[i] = rh / 997;
           ids.push(i++);
         });
         this[name] = ids;
@@ -78,13 +125,14 @@ const Pal = (() => {
     }
     // compile for an hour/weather/haze → Uint32Array(256)
     compile(hour, haze = 0, w = null, hazeOverride = null) {
-      const key = hour + '|' + haze.toFixed(3) + '|' + (w ? w.rain.toFixed(2) + ',' + w.fog.toFixed(2) : '') + '|' + (hazeOverride || '');
+      const sn = this.noSeason ? 'summer' : season;
+      const key = hour + '|' + haze.toFixed(3) + '|' + (w ? w.rain.toFixed(2) + ',' + w.fog.toFixed(2) : '') + '|' + (hazeOverride || '') + '|' + sn;
       let out = this.cache.get(key);
       if (out) return out;
       const L = LOOK[hour];
       const hz = hazeOverride !== null ? hazeOverride : L.hazeC;
       out = new Uint32Array(256);
-      for (let i = 1; i < this.n; i++) out[i] = grade(this.base[i], this.rp[i], L, w, this.em[i], haze, hz);
+      for (let i = 1; i < this.n; i++) out[i] = grade(this.em[i] ? this.base[i] : seasonC(this.base[i], this.rp[i], this.cls[i], this.rh[i], sn), this.rp[i], L, w, this.em[i], haze, hz);
       if (this.cache.size > 80) this.cache.delete(this.cache.keys().next().value);
       this.cache.set(key, out);
       return out;
@@ -122,5 +170,6 @@ const Pal = (() => {
     }
     return rows;
   }
-  return { HOURS, LOOK, Table, grade, blend, cycle, skyRows, sat };
+  const SKYT = { spring: ['#ffc8e0', 0.06], autumn: ['#ffb070', 0.08], winter: ['#dce6f4', 0.24] };
+  return { HOURS, LOOK, Table, grade, blend, cycle, skyRows, sat, SEASONS, setSeason, seasonC, get season() { return season; }, get seasonV() { return seasonV; }, skyTint: () => { const t = SKYT[season]; return t ? [hex(t[0]), t[1]] : null; } };
 })();

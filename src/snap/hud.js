@@ -223,6 +223,15 @@ const HUD = (() => {
     btn('clock', x - 1, y - 1, 26, 28, () => Game.tryTime());
     UI.panel(fb, x + 28, y + 4, 64, 16, { r: 4, ol: S.ink, fill: U.mix(S.btn, 0xff000000, 0.2), hi: null, sh: null });
     Font.draw(fb, '{coin}' + Save.data.points, x + 32, y + 9, 0xffffffff, { font: 'small' });
+    // season chip (tap = next season)
+    if (typeof Seasons !== 'undefined') {
+      const sx = x + 96, ps = pressed('season') ? 1 : 0, sn = Seasons.cur;
+      UI.rrect(fb, sx, y + 2, 24, 24, 6, 0xff0a0e1a);
+      UI.panel(fb, sx, y + ps, 24, 24, { r: 6, ol: S.ink, fill: U.mix(S.btn, U.hex({ spring: '#ff9ec4', summer: '#4ab860', autumn: '#e2741c', winter: '#9ad8ff' }[sn]), 0.25) });
+      Seasons.icon(fb, sx + 12, y + 12 + ps, sn, t);
+      btn('season', sx - 1, y - 1, 26, 28, () => Seasons.next());
+      if (H.hoverId === 'season') Font.draw(fb, Seasons.NAME[sn] + ' (N)', sx + 12, y + 29, 0xffffffff, { font: 'small', align: 'center', outline: INK });
+    }
   }
   // throw a berry at the nearest Pokémon in front (or just ahead)
   function throwBerry() {

@@ -21,7 +21,7 @@ const Stage = (() => {
     constructor(def) {
       Object.assign(this, def);
       this.def = def;
-      this.M = new Pal.Table(def.mats);
+      this.M = new Pal.Table(def.mats); this.M.noSeason = !!def.noSeason;
       this.layers = []; this.props = []; this.details = []; this.fore = []; this.glows = []; this.hot = []; this.scatter = [];
       this.t = 0;
       this.band = def.band ?? 12; // depth of the walkable ground strip (drawn as a top surface)
@@ -134,8 +134,8 @@ const Stage = (() => {
     const A = S.A, L = S.look, W = fb.w, H = fb.h, d = fb.d;
     const hz = horizonS(cy);
     const skyH = A.skyH || 320;
-    const key = S.hour + '|' + S.w.rain.toFixed(2) + '|' + skyH;
-    if (S.skyKey !== key) { S.skyRows = Pal.skyRows(S.hour, skyH, { sky: A.sky && A.sky[S.hour], rain: S.w.rain, tint: A.skyTint }); S.skyKey = key; }
+    const key = S.hour + '|' + S.w.rain.toFixed(2) + '|' + skyH + '|' + (A.noSeason ? '' : Pal.season);
+    if (S.skyKey !== key) { S.skyRows = Pal.skyRows(S.hour, skyH, { sky: A.sky && A.sky[S.hour], rain: S.w.rain, tint: A.skyTint || (A.noSeason ? null : Pal.skyTint()) }); S.skyKey = key; }
     const rows = S.skyRows;
     const yEnd = Math.min(H, A.skyTo ? A.skyTo(hz, cy) : H);
     for (let y = 0; y < yEnd; y++) {
