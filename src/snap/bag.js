@@ -22,6 +22,9 @@ const Bag = (() => {
     { id: 'mushroom', name: 'Tiny Mushroom', desc: 'Smells earthy. Shroomish would approve.', trade: 60 },
     { id: 'gem', name: 'Shiny Gem', desc: 'A crystal that hums softly in the dark.', trade: 150 },
     { id: 'stardust', name: 'Star Piece', desc: 'A red-orange shard of a fallen star.', trade: 200 },
+    { id: 'blueorb', name: 'Blue Orb', desc: 'It glows like the deep sea. Something sleeps at the bottom of Coral Cove...' },
+    { id: 'redorb', name: 'Red Orb', desc: 'Warm as magma. It rose out of Mt. Chimney\'s crater.' },
+    { id: 'icegem', name: 'Never-Melt Ice', desc: 'A shard of ice that never melts, from Shoal Cave.', trade: 180 },
   ];
   const TABS = ['Items', 'TMs', 'Memories'];
   function open() {
@@ -70,6 +73,9 @@ const Bag = (() => {
     mushroom: { m: ['.rrrr.', 'rwrrwr', 'rrrrrr', '..ss..', '..ss..', '.ssss.'], c: { r: 0xff3a3ae0, w: 0xffffffff, s: 0xffd0e0f0 } },
     gem: { m: ['..a..', '.aab.', 'abbcc', '.bcc.', '..c..'], c: { a: 0xffffe0b0, b: 0xfff0a060, c: 0xffc06a30 } },
     stardust: { m: ['...a...', '..aba..', 'abbwbba', '.abbba.', '.ab.ba.', 'a.....a'], c: { a: 0xff2a8ae0, b: 0xff60c8ff, w: 0xffffffff } },
+    blueorb: { m: ['.aaa.', 'awbba', 'abbbc', 'abbcc', '.ccc.'], c: { a: U.hex('#3a8aff'), w: 0xffffffff, b: U.hex('#1a5ad8'), c: U.hex('#0a2a8a') } },
+    redorb: { m: ['.aaa.', 'awbba', 'abbbc', 'abbcc', '.ccc.'], c: { a: U.hex('#ff5a4a'), w: 0xffffffff, b: U.hex('#d82a2a'), c: U.hex('#7a0a14') } },
+    icegem: { m: ['..a..', '.awa.', 'abbba', '.bcb.', '..c..'], c: { a: U.hex('#dff8ff'), w: 0xffffffff, b: U.hex('#8ad8f8'), c: U.hex('#3a9ad8') } },
   };
   function draw(fb, t) {
     const S = UI.skin(), W = fb.w, H = fb.h;

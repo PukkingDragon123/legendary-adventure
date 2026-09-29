@@ -68,7 +68,8 @@ const Talk = (() => {
       progress: 'nap', n: 1, wait: ['...zzz... (Stand still next to it and relax.)'],
       done: ['...yawn...', '(Slakoth gives you its favourite thing: a very slow propeller cap.)'], reward: 'hat.propeller' },
   ];
-  const QD = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
+  // looked up live, so quests added later (new areas) work too
+  const QD = new Proxy({}, { get: (_, id) => QUESTS.find((q) => q.id === id) });
   const st = () => Save.data.tq || (Save.data.tq = {});
   const qState = (id) => st()[id] || null;
   function giverQuest(m) {
@@ -108,6 +109,7 @@ const Talk = (() => {
     if (q.reward.startsWith('tm:')) Moves.unlock(q.reward.slice(3), 'A gift from ' + (DexData.S[q.giver] ? DexData.S[q.giver].name : 'a friend') + '!');
     else { r = Rewards.grant(q.reward); Quests.Q.pops.push({ t: 0, life: 4.2, text: 'Quest complete: ' + q.title, reward: r }); Quests.Q.unseenN++; SFX.reward(); if (typeof Style !== 'undefined') Style.markNew(q.reward); }
     Save.addPoints(300);
+    if (q.onDone) try { q.onDone(); } catch (e) { console.error(e); }
     if (q.unlock) { Save.unlock(q.unlock); Save.discover('mail.map'); const dest = q.unlock; setTimeout(() => { if (Game.mode === 'explore') { WorldMap.open(); setTimeout(() => WorldMap.travelTo(dest), 900); } }, 700); }
     if (g) { g.emote('heart', 1.6); FX.confetti(g.x, g.y - 20, 30); }
     Save.discover('quest.' + q.id.slice(2));
@@ -357,5 +359,5 @@ const Talk = (() => {
   }
   function reset() { T.bubbles.length = 0; T.dlg = null; }
   U.on && U.on('area', reset);
-  return Object.assign(T, { QUESTS, bubble, drawBubbles, open, down, key, busy, update, drawDialog, tryTalk, event, progress, giverOf, ready, qState, chatter, toUI });
+  return Object.assign(T, { QUESTS, CHAT, bubble, drawBubbles, open, down, key, busy, update, drawDialog, tryTalk, event, progress, giverOf, ready, qState, chatter, toUI });
 })();

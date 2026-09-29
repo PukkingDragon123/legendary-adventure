@@ -210,6 +210,52 @@ const Sound = (() => {
     dusk: { bpm: 84, chords: [[57, 60, 64], [52, 55, 59], [53, 57, 60], [55, 59, 62]], mel: [76, 0, 0, 74, 72, 0, 71, 0, 72, 0, 0, 69, 67, 0, 0, 0] },
     night: { bpm: 66, chords: [[48, 52, 55], [45, 48, 52], [53, 57, 60], [55, 59, 62]], mel: [76, 0, 74, 0, 72, 0, 74, 0, 76, 0, 76, 0, 76, 0, 0, 0] },
   };
+  /* ---- original themes for places and moments (chiptune band: lead, bass, arpeggio, pad, drums) ----
+     mel: MIDI notes per eighth (0 = rest); drums: k kick, s snare, h hat, t tom, per eighth of the bar */
+  const THEMES = {
+    ashen: { bpm: 92, bar: 8, chords: [[57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 55, 59]], lead: 'koto', bass: 'drone', drums: 't...t.h.t..ht.h.', pad: 0.012,
+      mel: [69, 0, 72, 74, 76, 0, 74, 72, 69, 0, 67, 0, 69, 0, 0, 0, 76, 0, 79, 76, 74, 0, 72, 0, 74, 72, 69, 0, 67, 0, 69, 0] },
+    shoal: { bpm: 72, bar: 8, chords: [[50, 53, 57], [46, 50, 53], [48, 52, 55], [45, 49, 52]], lead: 'bell', bass: 'soft', drums: '', pad: 0.016, arp: true, echo: true,
+      mel: [74, 0, 0, 77, 76, 0, 74, 0, 72, 0, 0, 69, 70, 0, 0, 0, 74, 0, 0, 81, 79, 0, 77, 0, 76, 0, 74, 0, 73, 0, 0, 0] },
+    legend: { bpm: 126, bar: 8, chords: [[45, 48, 52], [41, 45, 48], [43, 47, 50], [40, 44, 47]], lead: 'square', bass: 'drive', drums: 'k.h.s.hkk.h.s.hh', pad: 0.01,
+      mel: [69, 0, 69, 72, 76, 0, 74, 72, 71, 0, 71, 74, 79, 0, 77, 76, 77, 0, 76, 74, 72, 0, 71, 69, 68, 0, 71, 0, 76, 0, 0, 0] },
+    festival: { bpm: 138, bar: 8, chords: [[48, 52, 55], [53, 57, 60], [55, 59, 62], [48, 52, 55]], lead: 'square', bass: 'bounce', drums: 'k.hsk.hsk.hsk.hs', arp: true,
+      mel: [72, 76, 79, 76, 77, 0, 74, 0, 76, 79, 84, 79, 81, 0, 79, 0, 77, 76, 74, 72, 74, 0, 71, 0, 72, 0, 67, 0, 72, 0, 0, 0] },
+    meadow: { bpm: 108, bar: 6, chords: [[55, 59, 62], [48, 52, 55], [50, 54, 57], [55, 59, 62]], lead: 'flute', bass: 'waltz', drums: 'k.h.h.', pad: 0.014,
+      mel: [74, 0, 79, 0, 78, 76, 74, 0, 72, 0, 71, 0, 72, 0, 76, 0, 74, 72, 71, 0, 0, 0, 0, 0] },
+  };
+  let songId = null;
+  function setSong(id) { songId = id && THEMES[id] ? id : null; step = 0; }
+  function inst(kind, f, t, v, dest, dur) {
+    if (kind === 'square') { tone('square', f, f, t, dur * 0.6, v * 0.5, dest); tone('square', f * 1.005, f * 1.005, t, dur * 0.5, v * 0.25, dest); return; }
+    if (kind === 'bell') { tone('sine', f, f, t, dur * 2.2, v, dest); tone('sine', f * 2.76, f * 2.76, t, dur * 0.9, v * 0.25, dest); tone('sine', f * 5.4, f * 5.4, t, dur * 0.4, v * 0.1, dest); return; }
+    if (kind === 'flute') { tone('triangle', f, f * 1.003, t, dur * 1.1, v * 0.9, dest); tone('sine', f * 2, f * 2, t, dur * 0.8, v * 0.2, dest); hiss(t, 0.05, v * 0.15, 'bandpass', f * 2, 3, dest); return; }
+    pluck(f, t, v, dest, dur); // koto / pluck
+  }
+  function drum(ch, t, v, dest) {
+    if (ch === 'k') tone('sine', 120, 42, t, 0.16, 0.5 * v, dest);
+    else if (ch === 's') { hiss(t, 0.12, 0.22 * v, 'bandpass', 1800, 0.8, dest); tone('triangle', 220, 160, t, 0.06, 0.1 * v, dest); }
+    else if (ch === 'h') hiss(t, 0.04, 0.08 * v, 'highpass', 7000, 1, dest);
+    else if (ch === 't') tone('sine', 150, 70, t, 0.3, 0.45 * v, dest);
+  }
+  function themeStep(S, i, t, mv) {
+    const bar = Math.floor(step / S.bar) % S.chords.length, ch = S.chords[bar], sp = 60 / S.bpm / 2;
+    // bass
+    if (S.bass === 'drone') { if (i === 0) pluck(N(ch[0] - 24), t, 0.06 * mv, musicBus, 2.4); }
+    else if (S.bass === 'drive') { if (i % 2 === 0) inst('square', N(ch[0] - 24), t, 0.05 * mv, musicBus, sp * 1.4); }
+    else if (S.bass === 'bounce') { if (i % 2 === 0) pluck(N((i % 4 === 0 ? ch[0] : ch[2]) - 24), t, 0.06 * mv, musicBus, sp * 1.6); }
+    else if (S.bass === 'waltz') { if (i === 0) pluck(N(ch[0] - 12), t, 0.06 * mv, musicBus, 1.2); else if (i === 2 || i === 4) pluck(N(ch[1]), t, 0.025 * mv, musicBus, 0.5); }
+    else if (i === 0) pluck(N(ch[0] - 12), t, 0.05 * mv, musicBus, 1.8);
+    // pad on the downbeat
+    if (S.pad && i === 0) for (const n of ch) tone('triangle', N(n), N(n), t, sp * S.bar * 0.95, S.pad * mv, musicBus);
+    // sparkling arpeggio
+    if (S.arp) inst(S.lead === 'bell' ? 'bell' : 'pluck', N(ch[i % 3] + 12), t, 0.014 * mv, musicBus, sp * 1.2);
+    // melody (+ echo)
+    const m = S.mel[step % S.mel.length];
+    if (m) { inst(S.lead, N(m), t, 0.032 * mv, musicBus, sp * 1.8); if (S.echo) inst(S.lead, N(m), t + sp * 3, 0.012 * mv, musicBus, sp * 1.8); }
+    // drums
+    if (S.drums) { const d = S.drums[(step % S.drums.length)]; if (d && d !== '.') drum(d, t, mv * 0.8, musicBus); }
+  }
   let step = 0, nextT = 0;
   function pluck(f, t, v, dest, dur = 0.9) {
     const o = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter();
@@ -224,10 +270,12 @@ const Sound = (() => {
     nextT = ac.currentTime + 0.3;
     seqTimer = setInterval(() => {
       if (!ac) return;
-      const S = SONGS[hour] || SONGS.noon;
+      const TH = songId ? THEMES[songId] : null;
+      const S = TH || SONGS[hour] || SONGS.noon;
       const spb = 60 / S.bpm / 2; // eighth notes
       while (nextT < ac.currentTime + 0.2) {
-        if (on) {
+        if (on && TH) { themeStep(TH, step % TH.bar, nextT, under > 0.5 ? 0.5 : 1); }
+        else if (on) {
           const bar = Math.floor(step / 8) % S.chords.length, i = step % 8;
           const ch = S.chords[bar];
           const mv = under > 0.5 ? 0.5 : 1;
@@ -258,5 +306,5 @@ const Sound = (() => {
   }
   let synthOn = true;
   function synthMusic(v) { synthOn = v; if (musicBus && ac) musicBus.gain.setTargetAtTime(v ? 0.55 : 0.0001, ac.currentTime, 0.4); }
-  return { init, set, play, setHour, setUnder, synthMusic, get on() { return on; }, get ready() { return !!ac; }, ctx: () => ac, sfxBus: () => sfxBus, master: () => master, noise: () => white };
+  return { init, set, play, setHour, setUnder, synthMusic, setSong, THEMES, get on() { return on; }, get ready() { return !!ac; }, ctx: () => ac, sfxBus: () => sfxBus, master: () => master, noise: () => white };
 })();

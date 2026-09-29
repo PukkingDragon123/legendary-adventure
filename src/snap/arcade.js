@@ -64,6 +64,7 @@ const Arcade = (() => {
     if (!A.live) return;
     cleanup();
     A.live = false; A.phase = 'off'; A.g = null; Game.camFocus = null;
+    if (A.song && typeof Music !== 'undefined' && Game.area) { A.song = false; Music.areaTrack(Game.area.def.music); }
     release(A.partner); release(A.partner2); A.partner = A.partner2 = null;
     Game.sfx('back');
   }
@@ -77,6 +78,7 @@ const Arcade = (() => {
   function start(id) {
     const M = mk(), p = A.partner; if (!M || !p || !p.alive) { leave(); return; }
     A.phase = 'play';
+    if (typeof Music !== 'undefined' && Music.play && !A.song) { A.song = true; Music.play('festival'); }
     const G = A.g = { id, t: 0, over: 0, msg: '', win: false };
     Game.sfx('chime', null, 0.6);
     if (id === 'battle') {

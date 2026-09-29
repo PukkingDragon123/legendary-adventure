@@ -43452,6 +43452,52 @@ const Sound = (() => {
     dusk: { bpm: 84, chords: [[57, 60, 64], [52, 55, 59], [53, 57, 60], [55, 59, 62]], mel: [76, 0, 0, 74, 72, 0, 71, 0, 72, 0, 0, 69, 67, 0, 0, 0] },
     night: { bpm: 66, chords: [[48, 52, 55], [45, 48, 52], [53, 57, 60], [55, 59, 62]], mel: [76, 0, 74, 0, 72, 0, 74, 0, 76, 0, 76, 0, 76, 0, 0, 0] },
   };
+  /* ---- original themes for places and moments (chiptune band: lead, bass, arpeggio, pad, drums) ----
+     mel: MIDI notes per eighth (0 = rest); drums: k kick, s snare, h hat, t tom, per eighth of the bar */
+  const THEMES = {
+    ashen: { bpm: 92, bar: 8, chords: [[57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 55, 59]], lead: 'koto', bass: 'drone', drums: 't...t.h.t..ht.h.', pad: 0.012,
+      mel: [69, 0, 72, 74, 76, 0, 74, 72, 69, 0, 67, 0, 69, 0, 0, 0, 76, 0, 79, 76, 74, 0, 72, 0, 74, 72, 69, 0, 67, 0, 69, 0] },
+    shoal: { bpm: 72, bar: 8, chords: [[50, 53, 57], [46, 50, 53], [48, 52, 55], [45, 49, 52]], lead: 'bell', bass: 'soft', drums: '', pad: 0.016, arp: true, echo: true,
+      mel: [74, 0, 0, 77, 76, 0, 74, 0, 72, 0, 0, 69, 70, 0, 0, 0, 74, 0, 0, 81, 79, 0, 77, 0, 76, 0, 74, 0, 73, 0, 0, 0] },
+    legend: { bpm: 126, bar: 8, chords: [[45, 48, 52], [41, 45, 48], [43, 47, 50], [40, 44, 47]], lead: 'square', bass: 'drive', drums: 'k.h.s.hkk.h.s.hh', pad: 0.01,
+      mel: [69, 0, 69, 72, 76, 0, 74, 72, 71, 0, 71, 74, 79, 0, 77, 76, 77, 0, 76, 74, 72, 0, 71, 69, 68, 0, 71, 0, 76, 0, 0, 0] },
+    festival: { bpm: 138, bar: 8, chords: [[48, 52, 55], [53, 57, 60], [55, 59, 62], [48, 52, 55]], lead: 'square', bass: 'bounce', drums: 'k.hsk.hsk.hsk.hs', arp: true,
+      mel: [72, 76, 79, 76, 77, 0, 74, 0, 76, 79, 84, 79, 81, 0, 79, 0, 77, 76, 74, 72, 74, 0, 71, 0, 72, 0, 67, 0, 72, 0, 0, 0] },
+    meadow: { bpm: 108, bar: 6, chords: [[55, 59, 62], [48, 52, 55], [50, 54, 57], [55, 59, 62]], lead: 'flute', bass: 'waltz', drums: 'k.h.h.', pad: 0.014,
+      mel: [74, 0, 79, 0, 78, 76, 74, 0, 72, 0, 71, 0, 72, 0, 76, 0, 74, 72, 71, 0, 0, 0, 0, 0] },
+  };
+  let songId = null;
+  function setSong(id) { songId = id && THEMES[id] ? id : null; step = 0; }
+  function inst(kind, f, t, v, dest, dur) {
+    if (kind === 'square') { tone('square', f, f, t, dur * 0.6, v * 0.5, dest); tone('square', f * 1.005, f * 1.005, t, dur * 0.5, v * 0.25, dest); return; }
+    if (kind === 'bell') { tone('sine', f, f, t, dur * 2.2, v, dest); tone('sine', f * 2.76, f * 2.76, t, dur * 0.9, v * 0.25, dest); tone('sine', f * 5.4, f * 5.4, t, dur * 0.4, v * 0.1, dest); return; }
+    if (kind === 'flute') { tone('triangle', f, f * 1.003, t, dur * 1.1, v * 0.9, dest); tone('sine', f * 2, f * 2, t, dur * 0.8, v * 0.2, dest); hiss(t, 0.05, v * 0.15, 'bandpass', f * 2, 3, dest); return; }
+    pluck(f, t, v, dest, dur); // koto / pluck
+  }
+  function drum(ch, t, v, dest) {
+    if (ch === 'k') tone('sine', 120, 42, t, 0.16, 0.5 * v, dest);
+    else if (ch === 's') { hiss(t, 0.12, 0.22 * v, 'bandpass', 1800, 0.8, dest); tone('triangle', 220, 160, t, 0.06, 0.1 * v, dest); }
+    else if (ch === 'h') hiss(t, 0.04, 0.08 * v, 'highpass', 7000, 1, dest);
+    else if (ch === 't') tone('sine', 150, 70, t, 0.3, 0.45 * v, dest);
+  }
+  function themeStep(S, i, t, mv) {
+    const bar = Math.floor(step / S.bar) % S.chords.length, ch = S.chords[bar], sp = 60 / S.bpm / 2;
+    // bass
+    if (S.bass === 'drone') { if (i === 0) pluck(N(ch[0] - 24), t, 0.06 * mv, musicBus, 2.4); }
+    else if (S.bass === 'drive') { if (i % 2 === 0) inst('square', N(ch[0] - 24), t, 0.05 * mv, musicBus, sp * 1.4); }
+    else if (S.bass === 'bounce') { if (i % 2 === 0) pluck(N((i % 4 === 0 ? ch[0] : ch[2]) - 24), t, 0.06 * mv, musicBus, sp * 1.6); }
+    else if (S.bass === 'waltz') { if (i === 0) pluck(N(ch[0] - 12), t, 0.06 * mv, musicBus, 1.2); else if (i === 2 || i === 4) pluck(N(ch[1]), t, 0.025 * mv, musicBus, 0.5); }
+    else if (i === 0) pluck(N(ch[0] - 12), t, 0.05 * mv, musicBus, 1.8);
+    // pad on the downbeat
+    if (S.pad && i === 0) for (const n of ch) tone('triangle', N(n), N(n), t, sp * S.bar * 0.95, S.pad * mv, musicBus);
+    // sparkling arpeggio
+    if (S.arp) inst(S.lead === 'bell' ? 'bell' : 'pluck', N(ch[i % 3] + 12), t, 0.014 * mv, musicBus, sp * 1.2);
+    // melody (+ echo)
+    const m = S.mel[step % S.mel.length];
+    if (m) { inst(S.lead, N(m), t, 0.032 * mv, musicBus, sp * 1.8); if (S.echo) inst(S.lead, N(m), t + sp * 3, 0.012 * mv, musicBus, sp * 1.8); }
+    // drums
+    if (S.drums) { const d = S.drums[(step % S.drums.length)]; if (d && d !== '.') drum(d, t, mv * 0.8, musicBus); }
+  }
   let step = 0, nextT = 0;
   function pluck(f, t, v, dest, dur = 0.9) {
     const o = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter();
@@ -43466,10 +43512,12 @@ const Sound = (() => {
     nextT = ac.currentTime + 0.3;
     seqTimer = setInterval(() => {
       if (!ac) return;
-      const S = SONGS[hour] || SONGS.noon;
+      const TH = songId ? THEMES[songId] : null;
+      const S = TH || SONGS[hour] || SONGS.noon;
       const spb = 60 / S.bpm / 2; // eighth notes
       while (nextT < ac.currentTime + 0.2) {
-        if (on) {
+        if (on && TH) { themeStep(TH, step % TH.bar, nextT, under > 0.5 ? 0.5 : 1); }
+        else if (on) {
           const bar = Math.floor(step / 8) % S.chords.length, i = step % 8;
           const ch = S.chords[bar];
           const mv = under > 0.5 ? 0.5 : 1;
@@ -43500,7 +43548,7 @@ const Sound = (() => {
   }
   let synthOn = true;
   function synthMusic(v) { synthOn = v; if (musicBus && ac) musicBus.gain.setTargetAtTime(v ? 0.55 : 0.0001, ac.currentTime, 0.4); }
-  return { init, set, play, setHour, setUnder, synthMusic, get on() { return on; }, get ready() { return !!ac; }, ctx: () => ac, sfxBus: () => sfxBus, master: () => master, noise: () => white };
+  return { init, set, play, setHour, setUnder, synthMusic, setSong, THEMES, get on() { return on; }, get ready() { return !!ac; }, ctx: () => ac, sfxBus: () => sfxBus, master: () => master, noise: () => white };
 })();
 
 /* ==== src/snap/terrain.js ==== */
@@ -46283,6 +46331,7 @@ const Player = (() => {
       Save.data.stats.pounds = (Save.data.stats.pounds || 0) + 1;
       if (typeof Talk !== 'undefined') Talk.event('flop', x);
       if (typeof Harvest !== 'undefined') Harvest.pound(x, y);
+      if (Game.area && Game.area.def.onPound) Game.area.def.onPound(x, y);
     }
     // running into a Pokémon: bonk!
     bumpCheck() {
@@ -47565,7 +47614,8 @@ const Talk = (() => {
       progress: 'nap', n: 1, wait: ['...zzz... (Stand still next to it and relax.)'],
       done: ['...yawn...', '(Slakoth gives you its favourite thing: a very slow propeller cap.)'], reward: 'hat.propeller' },
   ];
-  const QD = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
+  // looked up live, so quests added later (new areas) work too
+  const QD = new Proxy({}, { get: (_, id) => QUESTS.find((q) => q.id === id) });
   const st = () => Save.data.tq || (Save.data.tq = {});
   const qState = (id) => st()[id] || null;
   function giverQuest(m) {
@@ -47605,6 +47655,7 @@ const Talk = (() => {
     if (q.reward.startsWith('tm:')) Moves.unlock(q.reward.slice(3), 'A gift from ' + (DexData.S[q.giver] ? DexData.S[q.giver].name : 'a friend') + '!');
     else { r = Rewards.grant(q.reward); Quests.Q.pops.push({ t: 0, life: 4.2, text: 'Quest complete: ' + q.title, reward: r }); Quests.Q.unseenN++; SFX.reward(); if (typeof Style !== 'undefined') Style.markNew(q.reward); }
     Save.addPoints(300);
+    if (q.onDone) try { q.onDone(); } catch (e) { console.error(e); }
     if (q.unlock) { Save.unlock(q.unlock); Save.discover('mail.map'); const dest = q.unlock; setTimeout(() => { if (Game.mode === 'explore') { WorldMap.open(); setTimeout(() => WorldMap.travelTo(dest), 900); } }, 700); }
     if (g) { g.emote('heart', 1.6); FX.confetti(g.x, g.y - 20, 30); }
     Save.discover('quest.' + q.id.slice(2));
@@ -47854,7 +47905,7 @@ const Talk = (() => {
   }
   function reset() { T.bubbles.length = 0; T.dlg = null; }
   U.on && U.on('area', reset);
-  return Object.assign(T, { QUESTS, bubble, drawBubbles, open, down, key, busy, update, drawDialog, tryTalk, event, progress, giverOf, ready, qState, chatter, toUI });
+  return Object.assign(T, { QUESTS, CHAT, bubble, drawBubbles, open, down, key, busy, update, drawDialog, tryTalk, event, progress, giverOf, ready, qState, chatter, toUI });
 })();
 
 /* ==== src/snap/hud.js ==== */
@@ -49261,8 +49312,14 @@ const Music = (() => {
     crossing: { file: 'music/crossing-the-sea.mp3', title: 'Crossing the Sea', from: 'Pokémon Ruby & Sapphire', bpm: 124, tint: '#5ad0ff' },
     lake: { file: 'music/lake-theme.mp3', title: 'Lake Theme', from: 'Pokémon Diamond & Pearl', bpm: 96, tint: '#7affc0' },
     space: { file: 'music/flight-to-space.mp3', title: 'Flight to Space', from: 'Pokémon Omega Ruby & Alpha Sapphire', bpm: 140, tint: '#c8a0ff' },
+    // original themes played by the built-in synth band
+    ashen: { synth: 'ashen', title: 'Ashen Road', from: 'Mudkip Snap · Fiery Path', bpm: 92, tint: '#ff8a4a' },
+    shoal: { synth: 'shoal', title: 'Crystal Shoal', from: 'Mudkip Snap · Shoal Cave', bpm: 72, tint: '#9ae0ff' },
+    meadow: { synth: 'meadow', title: 'Seasons Waltz', from: 'Mudkip Snap', bpm: 108, tint: '#a8f070' },
+    festival: { synth: 'festival', title: 'Playground Parade', from: 'Mudkip Snap · Minigames', bpm: 138, tint: '#ffd23a' },
+    legend: { synth: 'legend', title: 'Awakening', from: 'Mudkip Snap · Legends', bpm: 126, tint: '#ff4a6a' },
   };
-  const ORDER = ['crossing', 'lake', 'space'];
+  const ORDER = ['crossing', 'lake', 'space', 'meadow', 'ashen', 'shoal', 'festival', 'legend'];
   const M = {
     cur: null, want: null, el: null, vol: 0, target: 0.62, playing: false, failed: {}, unlocked: false,
     ang: 0, spin: 0, energy: 0, beat: 0, lastBeat: 0, notes: [], sparks: [], melo: null, hoverRec: false,
@@ -49302,6 +49359,15 @@ const Music = (() => {
   function start(id) {
     const T = TRACKS[id]; if (!T) return;
     const a = el();
+    if (T.synth) {
+      try { a.pause(); } catch (e) { /* ignore */ }
+      if (M.loaded !== id) { M.loaded = id; M.showT = 5; M.marq = 0; }
+      M.cur = id; M.playing = Sound.on && M.unlocked;
+      if (Sound.setSong) Sound.setSong(T.synth);
+      Sound.synthMusic(true);
+      return;
+    }
+    if (Sound.setSong) Sound.setSong(null);
     // beat visuals use the song's tempo rather than an analyser: routing <audio> through WebAudio can silence it in sandboxed or file:// pages
     if (M.loaded !== id) { M.loaded = id; a.src = T.file; M.showT = 5; M.marq = 0; }
     M.cur = id;
@@ -49331,7 +49397,7 @@ const Music = (() => {
       // gentle fade near the end of a song, then it starts over
       if (a.duration && isFinite(a.duration) && a.duration - a.currentTime < 3 && M.playing) a.volume = M.vol * clamp((a.duration - a.currentTime) / 3, 0, 1);
       else try { a.volume = M.vol; } catch (e) { /* iOS ignores volume */ }
-      M.playing = M.playing && !a.paused;
+      if (!(TRACKS[M.cur] && TRACKS[M.cur].synth)) M.playing = M.playing && !a.paused;
     }
     const T = TRACKS[M.cur];
     // beat energy
@@ -50337,7 +50403,7 @@ const WorldMap = (() => {
     falls: { x: 93, y: 88, yaw: -0.5, label: 'Starfall Cave' },
     stage: { x: 208, y: 190, yaw: 1.25, label: 'Seaside Stage' },
   };
-  const ROUTES = [['beach', 'forest'], ['forest', 'canopy'], ['canopy', 'falls'], ['forest', 'stage'], ['beach', 'stage']];
+  const ROUTES = [['beach', 'forest'], ['forest', 'canopy'], ['canopy', 'falls'], ['forest', 'stage'], ['beach', 'stage'], ['canopy', 'volcano'], ['beach', 'shoal']];
   const RIVERS = [
     [[136, 121], [150, 127], [164, 133], [178, 141], [194, 149], [210, 155], [228, 158], [246, 160], [256, 161]],
     [[97, 95], [91, 106], [82, 118], [71, 131], [58, 143], [42, 151], [22, 156], [4, 158]],
@@ -50465,6 +50531,7 @@ const WorldMap = (() => {
         }
         if (segD(x, y, 136, 200, 160, 196) < 5 && h > 0.12) c = mix(cliff, rock2, n * 0.4);
         if (dv < 30 && h > 0.5) c = mix(c, ash, 0.62);
+        if (Math.hypot(x - 41, y - 220) < 16 && h > 0.02) c = mix(c, snow, 0.8 - (n > 0.7 ? 0.2 : 0));
         if (dv < 6 && h > 0.85) c = lava;
         // soft texture
         if (c !== lava) c = mix(c, f > 0.5 ? 0xffffffff : 0xff102018, Math.abs(f - 0.5) * 0.28);
@@ -50508,6 +50575,7 @@ const WorldMap = (() => {
     institute: { rows: ['......a......', '.....BBB.....', '....BBBBB....', '.WWWWWWWWWWW.', '.WwWwWWWwWwW.', '.WWWWWWWWWWW.', '.WwWwWdWwWwW.', '.WWWWWdWWWWW.', 'GGGGGGGGGGGGG'], pal: { a: '#c8c8d0', B: '#3a7ad8', W: '#f4f6fa', w: '#8ac8f0', d: '#5a6070', G: '#6a9a5a' }, lit: 'w' },
     stage: { rows: ['....PPPPPPP....', '..PPYYYYYYYPP..', '.PYYkkkkkkkYYP.', 'PYkkkkkkkkkkkYP', 'PYkkppppppkkkYP', 'PYkpkkkkkkpkkYP', 'PYkkkkkkkkkkkYP', 'WWWWWWWWWWWWWWW', 'wwwwwwwwwwwwwww', '..s.........s..'], pal: { P: '#e04a8a', Y: '#ffd84a', k: '#3a2448', p: '#6ac8ff', W: '#f4e8d0', w: '#a88060', s: '#5a4a3a' }, lit: 'Yp' },
     cave: { rows: ['..rrrrr..', '.rrkkkrr.', 'rrkkckkrr', 'rkkkkkkkr', 'rkkkkkkkr', 'rrkkkkkrr'], pal: { r: '#7a6a5c', k: '#141018', c: '#9ae8ff' }, lit: 'c' },
+    icecave: { rows: ['..wwwww..', '.wwiiiww.', 'wwikkkiww', 'wikkckkiw', 'wikkkkkiw', 'wwkkkkkww'], pal: { w: '#f4f8ff', i: '#9ad8f8', k: '#10203a', c: '#6ad0ff' }, lit: 'c' },
     boat: { rows: ['...W...', '...WW..', '...WWW.', '...WWWW', 'bbbbbbb', '.bbbbb.'], pal: { W: '#f8f8f8', b: '#9a5a3a' } },
     wailord: { rows: ['......BBBBB......', '...BBBBBBBBBBB...', '.BBBBBBBBBBBBBBB.', 'wwwwwwwwwwwwwwwww'], pal: { B: '#3a6ab8', w: '#e8f4ff' } },
     rock: { rows: ['.rrr.', 'rrrrr', 'wwwww'], pal: { r: '#6a6a74', w: '#e8f4ff' } },
@@ -50571,6 +50639,10 @@ const WorldMap = (() => {
     add('tent', 101, 97, { sc: 0.9 });
     // Seaside Stage
     add('stage', 209, 191, { sc: 1.05 });
+    // Lavaridge huts on the volcano's flank, and the icy mouth of Shoal Cave on its islet
+    for (const [x, y, k] of [[116, 124, 'houseR'], [121, 127, 'houseG'], [111, 121, 'houseB']]) if (land(x, y) !== null) add(k, x, y, { sc: 0.8 });
+    add('icecave', 40, 214, { sc: 1.1 });
+    for (const [x, y] of [[34, 222], [47, 225], [37, 211], [50, 216]]) if (land(x, y) !== null) add('snowpine', x, y, { sc: 0.9 });
     // forests and meadows elsewhere
     for (let k = 0; k < 900 && BB.length < 420; k++) {
       const x = 20 + r() * 216, y = 30 + r() * 200, h = land(x, y);
@@ -51317,6 +51389,7 @@ const Harvest = (() => {
     coT: ['#0e3a3a', '#1a6a64', '#34a08e', '#7ad8c0'], anem: ['#5a1650', '#94337e', '#c862aa', '#eea0da'], sponge: ['#6a5010', '#a8801e', '#dcb03a', '#f8dc70'],
     crys: { c: ['#1e3a8a', '#3a7ae0', '#7ac0ff', '#d0ecff'], emit: true }, crysP: { c: ['#4a1e8a', '#8a4ae0', '#c49aff', '#f0dcff'], emit: true },
     ink: ['#10121c'],
+    ashT: ['#3e3a38', '#58524e', '#766e68', '#968e86', '#bab2a8'], snowT: ['#8a9ab8', '#aebcd6', '#d0dcee', '#eef4fc', '#ffffff'],
   };
   const TAB = new Pal.Table(MATS);
   function palette() {
@@ -51334,6 +51407,8 @@ const Harvest = (() => {
     forest: { land: ['g1', 'g2'], flowers: ['flP', 'flY', 'flB', 'flW'], items: ['shroom', 'shroom', 'gem'], motes: 'leaves', rocks: 'rockW', shrooms: true },
     canopy: { land: ['g1', 'g2'], flowers: ['flY', 'flP'], items: ['shroom'], motes: 'leaves', rocks: 'rockW', shrooms: true, sparse: 0.6 },
     falls: { land: ['g1'], flowers: ['flB'], items: ['gem', 'gem', 'starp', 'shroomG'], motes: 'dust', rocks: 'rock', crystals: true, sparse: 0.5 },
+    volcano: { land: ['ashT', 'dune'], flowers: ['flY', 'flP'], items: ['gem', 'starp', 'shroom'], motes: 'dust', rocks: 'rock', sparse: 0.7 },
+    shoal: { land: ['snowT'], flowers: ['flB', 'flW'], items: ['shell', 'gem', 'pearl'], motes: 'dust', rocks: 'rockW', crystals: true, sparse: 0.6 },
   };
   const TMS = { beach: [{ id: 'bubble', x: 2520 }, { id: 'ice', x: 4720 }], forest: [{ id: 'dig', x: 2150 }], canopy: [{ id: 'growl', x: 3215 }], falls: [{ id: 'smash', x: 3470 }] };
   const ITEM = {
@@ -51350,8 +51425,9 @@ const Harvest = (() => {
     sitrus: { inv: 'sitrus', name: 'Sitrus Berry', mat: 'berryS', lure: 'Makes Pokémon happy and playful.' },
   };
   H.BERRY = BERRY;
-  const PLANTS = { beach: ['oran', 'pecha', 'oran'], forest: ['oran', 'razz', 'nanab', 'sitrus'], canopy: ['nanab', 'pecha', 'sitrus'], falls: ['razz', 'oran'] };
+  const PLANTS = { beach: ['oran', 'pecha', 'oran'], forest: ['oran', 'razz', 'nanab', 'sitrus'], canopy: ['nanab', 'pecha', 'sitrus'], falls: ['razz', 'oran'], volcano: ['razz', 'sitrus', 'oran'], shoal: ['pecha', 'oran'] };
   function surfaceKind(x) {
+    if (Game.area && Game.area.def.hazardAt && Game.area.def.hazardAt(x)) return 'lava';
     const lvl = World.waterAt(x);
     if (lvl === null) return 'land';
     return World.groundAt(x) - lvl > 30 ? 'sea' : 'shallow';
@@ -51365,6 +51441,7 @@ const Harvest = (() => {
     // foreground tufts, flowers, pebbles and rocks along the front edge of the lane
     for (let x = 20; x < W - 20; x += 5 + r() * 9 / sparse) {
       const k = surfaceKind(x), g = World.groundAt(x);
+      if (k === 'lava') continue;
       if (k === 'shallow') { if (r() < 0.35) H.tufts.push({ x, kind: 'reed', n: 3 + (r() * 3 | 0), h: 10 + r() * 10, ph: r() * 6, push: 0, zd: band * 0.4 }); continue; }
       if (k === 'sea') {
         // seabed life in front of the reef
@@ -51390,7 +51467,7 @@ const Harvest = (() => {
     // harvestables
     for (let x = 120; x < W - 100; x += 90 + r() * 140) {
       const k = surfaceKind(x);
-      if (k === 'shallow') continue;
+      if (k === 'shallow' || k === 'lava') continue;
       if (World.platAt(x) && k === 'sea') continue;
       let kind = st.items[(r() * st.items.length) | 0];
       if (k === 'sea') kind = r() < 0.3 ? 'pearl' : r() < 0.7 ? 'shell' : 'starp';
@@ -51890,6 +51967,9 @@ const Bag = (() => {
     { id: 'mushroom', name: 'Tiny Mushroom', desc: 'Smells earthy. Shroomish would approve.', trade: 60 },
     { id: 'gem', name: 'Shiny Gem', desc: 'A crystal that hums softly in the dark.', trade: 150 },
     { id: 'stardust', name: 'Star Piece', desc: 'A red-orange shard of a fallen star.', trade: 200 },
+    { id: 'blueorb', name: 'Blue Orb', desc: 'It glows like the deep sea. Something sleeps at the bottom of Coral Cove...' },
+    { id: 'redorb', name: 'Red Orb', desc: 'Warm as magma. It rose out of Mt. Chimney\'s crater.' },
+    { id: 'icegem', name: 'Never-Melt Ice', desc: 'A shard of ice that never melts, from Shoal Cave.', trade: 180 },
   ];
   const TABS = ['Items', 'TMs', 'Memories'];
   function open() {
@@ -51938,6 +52018,9 @@ const Bag = (() => {
     mushroom: { m: ['.rrrr.', 'rwrrwr', 'rrrrrr', '..ss..', '..ss..', '.ssss.'], c: { r: 0xff3a3ae0, w: 0xffffffff, s: 0xffd0e0f0 } },
     gem: { m: ['..a..', '.aab.', 'abbcc', '.bcc.', '..c..'], c: { a: 0xffffe0b0, b: 0xfff0a060, c: 0xffc06a30 } },
     stardust: { m: ['...a...', '..aba..', 'abbwbba', '.abbba.', '.ab.ba.', 'a.....a'], c: { a: 0xff2a8ae0, b: 0xff60c8ff, w: 0xffffffff } },
+    blueorb: { m: ['.aaa.', 'awbba', 'abbbc', 'abbcc', '.ccc.'], c: { a: U.hex('#3a8aff'), w: 0xffffffff, b: U.hex('#1a5ad8'), c: U.hex('#0a2a8a') } },
+    redorb: { m: ['.aaa.', 'awbba', 'abbbc', 'abbcc', '.ccc.'], c: { a: U.hex('#ff5a4a'), w: 0xffffffff, b: U.hex('#d82a2a'), c: U.hex('#7a0a14') } },
+    icegem: { m: ['..a..', '.awa.', 'abbba', '.bcb.', '..c..'], c: { a: U.hex('#dff8ff'), w: 0xffffffff, b: U.hex('#8ad8f8'), c: U.hex('#3a9ad8') } },
   };
   function draw(fb, t) {
     const S = UI.skin(), W = fb.w, H = fb.h;
@@ -53772,7 +53855,7 @@ const Eco = (() => {
       const mode = loco === 'swim' ? 'swim' : loco === 'fly' ? 'fly' : loco === 'hover' ? 'float' : 'land';
       const S = spc(c.sp);
       const y0 = o.y ?? (mode === 'land' ? gy(x) : mode === 'swim' ? (o.box ? (o.box.y0 + o.box.y1) / 2 : World.SEA + 60) : gy(x) - (c.hover ?? 60));
-      super(S, Object.assign({ kind: c.kind || id, dex: id, x, y: y0, yaw: chance(0.5) ? 0.9 : Math.PI - 0.9, z: c.z ?? 2, scale: (c.scale ?? 0.5) * (o.size ?? 1), qPose: c.qPose ?? 0.06, qFields: c.qf, persona: o.persona || c.persona || 'calm', mode, shadowK: c.shadowK }, o.mon || {}));
+      super(S, Object.assign({ kind: c.kind || c.dex || id, dex: c.dex || id, x, y: y0, yaw: chance(0.5) ? 0.9 : Math.PI - 0.9, z: c.z ?? 2, scale: (c.scale ?? 0.5) * (o.size ?? 1), qPose: c.qPose ?? 0.06, qFields: c.qf, persona: o.persona || c.persona || 'calm', mode, shadowK: c.shadowK }, o.mon || {}));
       this.eco = true; this.cfg = c; this.loco = loco;
       this.speed = (c.speed ?? 45) * (o.speedK ?? 1); this.senseR = c.senseR ?? 140; this.alert = c.alert ?? 1;
       this.minX = o.minX ?? (x - (o.range ?? 260)); this.maxX = o.maxX ?? (x + (o.range ?? 260)); this.home = x; this.range = o.range ?? 260;
@@ -53845,7 +53928,7 @@ const Eco = (() => {
       yield* this.walkTo(clamp(this.x + rnd(-this.range * 0.7, this.range * 0.7), this.minX, this.maxX), this.speed, { act: 'walk', stop: this.dryStop() });
     }
     // land walkers never wander into deep water (amphibians choose to)
-    dryStop() { if (this.loco === 'amphi' || this.cfg.wade) return null; return () => World.isWet(this.x + Math.cos(this.yaw) * 8, 12); }
+    dryStop() { const hz = (x) => Game.area && Game.area.def.hazardAt && !this.cfg.lavaOk && Game.area.def.hazardAt(x); if (this.loco === 'amphi' || this.cfg.wade) return () => hz(this.x + Math.cos(this.yaw) * 8); return () => World.isWet(this.x + Math.cos(this.yaw) * 8, 12) || hz(this.x + Math.cos(this.yaw) * 8); }
     *goNear(x, gap, speed, act) {
       const side = this.x < x ? -1 : 1, tx = clamp(x + side * gap, this.minX - 60, this.maxX + 60);
       if (this.loco === 'swim') { yield* this.swimTo(tx, this.y + rnd(-20, 20), speed, 4, act); return; }
@@ -58511,6 +58594,284 @@ const FallsAI = (() => {
   return { GEO, P_LEDGE, P_NEST, spawn, update, ring, boulder, geyser, slideTap, mirror, scope, song, water, onScan, post, photoBonus, cores, get S() { return S; }, classes: { BagonM, RockM, MiniorM, JirachiM, DeoxysM } };
 })();
 
+/* ==== src/snap/ai/volcano.js ==== */
+/* ------------------------------------------------------------------
+   VolcanoAI — who lives on Mt. Chimney:
+    · a herd of Numel grazing the ash fields (their humps puff embers)
+    · Spinda wobbling about — every one has its own spot pattern
+    · Torkoal soaking in the hot spring and puffing smoke rings on the rocks
+    · Slugma oozing through the lava puddles of Jagged Pass
+    · Wynaut bouncing after a proud Wobbuffet by the bathhouse
+    · shy Latias hiding near the bathhouse roof (she has a favour to ask)
+    · and Groudon, asleep in the magma crater
+------------------------------------------------------------------- */
+const VolcanoAI = (() => {
+  const { rnd } = U;
+  const S = {};
+  function spawn(A, G, geo) {
+    Object.assign(S, geo);
+    const E = typeof Eco !== 'undefined' ? Eco : null; if (!E) return;
+    E.herd(G, 'numel', 260, 1150, 4, { range: 460 });
+    E.add(G, 'numel', 2090, { range: 60 });
+    [460, 820, 1260].forEach((x, i) => { const m = E.add(G, 'spinda', x, { range: 220 }); if (m) m.spots = 3 + i * 7; });
+    E.add(G, 'torkoal', 1890, { minX: geo.SPRING.x0 + 30, maxX: geo.SPRING.x1 - 30, range: 120 });
+    E.add(G, 'torkoal', 3010, { range: 140 });
+    E.add(G, 'slugma', 3190, { minX: geo.PUDDLE.x0 + 8, maxX: geo.PUDDLE.x1 - 8, range: 40 });
+    E.add(G, 'slugma', 3220, { minX: geo.PUDDLE.x0 + 8, maxX: geo.PUDDLE.x1 - 8, range: 40 });
+    E.add(G, 'slugma', 3820, { range: 60 });
+    E.family(G, 'wobbuffet', 'wynaut', 2470, 2, { range: 160 });
+    E.add(G, 'latias', 2600, { loco: 'hover', hover: 46, range: 140 });
+    if (typeof Legends !== 'undefined') Legends.spawnGroudon(G, geo.LAVA);
+  }
+  function update(A, dt, t, G) {}
+  function song(x) {}
+  return { spawn, update, song, S };
+})();
+
+/* ==== src/snap/ai/shoal.js ==== */
+/* ------------------------------------------------------------------
+   ShoalAI — who lives in Shoal Cave:
+    · Spheal and a Sealeo lounging on the snowy shore (they love the cold)
+    · Snorunt playing on the ice slide
+    · Staryu and Starmie glittering in the tide pool at night
+    · Latias and Latios racing over the frozen sea at dusk — now and then
+      they fly together, wingtip to wingtip (the Eon duo!)
+    · Regice, frozen deep in the chamber
+------------------------------------------------------------------- */
+const ShoalAI = (() => {
+  const { rnd, clamp, lerp } = U;
+  const S = { duoT: 20, duo: [] };
+  function spawn(A, G, geo) {
+    Object.assign(S, geo, { duoT: rnd(12, 22), duo: [] });
+    const E = typeof Eco !== 'undefined' ? Eco : null; if (!E) return;
+    E.herd(G, 'sphealS', 330, 640, 3, { range: 260 });
+    E.add(G, 'sealeoS', 560, { range: 180 });
+    [2140, 2420, 2700].forEach((x) => E.add(G, 'snorunt', x, { range: 220 }));
+    const box = { x0: geo.POOL.x0 + 20, x1: geo.POOL.x1 - 20, y0: geo.POOL.level + 10, y1: geo.POOL.level + 56 };
+    const h = Game.hour();
+    if (h === 'night' || h === 'dusk') { E.add(G, 'starmie', 1300, { box, minX: box.x0, maxX: box.x1 }); E.add(G, 'staryuS', 1380, { box, minX: box.x0, maxX: box.x1 }); }
+    const a = E.add(G, 'latias', 360, { y: 420, minX: 120, maxX: geo.MOUTH - 60, range: 400 });
+    const b = E.add(G, 'latios', 560, { y: 400, minX: 120, maxX: geo.MOUTH - 60, range: 400 });
+    S.duo = [a, b].filter(Boolean);
+    if (typeof Legends !== 'undefined') Legends.spawnRegice(G, geo.REGI);
+  }
+  // the Eon duo: every so often the two fly a loop together over the shore
+  function* duoFlight(m, other, lead) {
+    let e = 0; const T = 7, cx = 420, cy = 430;
+    m.mode = 'fly'; m.perched = false;
+    while (e < T) {
+      const dt = yield; e += dt;
+      const a = e / T * Math.PI * 2 * (lead ? 1 : 1) + (lead ? 0 : -0.35);
+      const tx = cx + Math.cos(a) * 260, ty = cy + Math.sin(a * 2) * 40 + (lead ? 0 : 14);
+      const px = m.x, py = m.y;
+      m.x = lerp(m.x, tx, Math.min(1, dt * 3)); m.y = lerp(m.y, ty, Math.min(1, dt * 3)); m.moving = 90;
+      m.vx = (m.x - px) / Math.max(dt, 0.016); m.vy = (m.y - py) / Math.max(dt, 0.016);
+      if (Math.abs(m.vx) > 5) m.turn(m.face(Math.sign(m.vx), true), dt, 5);
+      const close = other && other.alive && Math.hypot(other.x - m.x, other.y - m.y) < 70;
+      m.setAct(close ? 'pair' : 'fly', close ? 0.9 : 0.5);
+      if (Math.random() < dt * 20) FX.add({ type: 'spark', x: m.x - Math.sign(m.vx || 1) * 16, y: m.y, size: 1, life: 0.5, c: 0xffffffff, c2: lead ? U.hex('#ffb0c8') : U.hex('#a8c8ff'), layer: 3 });
+    }
+  }
+  function update(A, dt, t, G, AS) {
+    const h = Game.hour();
+    if (S.duo.length === 2 && (h === 'dusk' || h === 'night' || h === 'dawn' || Math.random() < 0.5)) {
+      S.duoT -= dt;
+      if (S.duoT <= 0) {
+        S.duoT = rnd(26, 40);
+        const [a, b] = S.duo;
+        if (a.alive && b.alive && !a.busy(5) && !b.busy(5)) { a.doTask(duoFlight(a, b, true), 5); b.doTask(duoFlight(b, a, false), 5); Game.sfx('whoosh', 420, 0.6); }
+      }
+    }
+  }
+  function song(x) {}
+  return { spawn, update, song, S };
+})();
+
+/* ==== src/snap/ai/legends.js ==== */
+/* ------------------------------------------------------------------
+   Legends — the great Pokémon of Hoenn's myths.
+    · Groudon sleeps in Mt. Chimney's lava lake. Solve the Magma Stones
+      and it rises: a roar, glowing lava lines, harsh sunlight (Drought).
+      Awake, it wades through the magma and roars at the sky.
+    · Regice stands frozen in Shoal Cave's chamber. Stand still in the
+      circle, then sing: its seven dots light up and it lumbers forward,
+      breathing Ice Beams into the air.
+    · Rayquaza: once Kyogre or Groudon has woken, the sky dragon comes to
+      calm them — a long green shape rippling across the sky high above
+      Treetop Town and the volcano.
+------------------------------------------------------------------- */
+const Legends = (() => {
+  const { clamp, lerp, rnd, pick, hex } = U;
+  const { wait } = Mons;
+  const gy = (x) => World.groundAt(x);
+  const sp = (n) => { try { return (0, eval)(n); } catch (e) { return null; } };
+  const L = { groudon: null, regice: null, ray: null, drought: 0, rayT: 0 };
+  function* hold(m, T, act, peak = 0.4) { let e = 0; while (e < T) { const dt = yield; e += dt; m.setAct(act, typeof peak === 'function' ? peak(e) : peak); } }
+
+  /* ================= GROUDON ================= */
+  class GroudonM extends Mons.Mon {
+    constructor(x, lava, awake) {
+      super(sp('Groudon'), { kind: 'groudon', dex: 'groudon', x, y: gy(x), yaw: Math.PI / 2 - 0.25, z: 3, scale: 0.62, qPose: 0.05, qFields: { roar: 0.1, glow: 0.1, sleep: 0.1, mouth: 0.2 }, persona: 'calm', mode: 'land' });
+      this.lava = lava; this.awake = awake; this.senseR = 0; this.noShadow = true; this.speed = 14; this.rise = awake ? 1 : 0; this.glowK = awake ? 0.5 : 0; this.wph = 0;
+      this.minX = lava.x0 + 120; this.maxX = lava.x1 - 120;
+    }
+    senses() {}
+    physics(dt, t) { super.physics(dt, t); this.y = gy(this.x) - lerp(14, 40, this.rise); }
+    animate(dt, t) {
+      if (this.moving) this.wph += dt * 2.2;
+      const P = { walk: this.moving ? this.wph : 0, roar: 0, glow: this.glowK + Math.sin(t * 2) * 0.1 * this.rise, sleep: this.awake ? 0 : 1, mouth: 0, eyes: this.awake ? (this.blink(t, dt) ? 'blink' : 'open') : 'closed' };
+      Object.assign(P, this.o); this.pose = P;
+    }
+    brain() { return this.awake ? this.life() : this.dream(); }
+    *dream() { for (;;) { const dt = yield; this.setAct('sleep', 0.5 + 0.3 * Math.sin(Game.t * 0.8)); if (Math.random() < dt * 0.25) { const [hx, hy] = this.headPt(); FX.add({ type: 'dust', x: hx + rnd(-10, 10), y: hy, vx: rnd(-4, 4), vy: -rnd(10, 20), r: 4, life: 2, c: 0xff4a4a4a, c2: 0xff2a2a2a, layer: 2 }); } } }
+    *wakeUp() {
+      this.awake = true;
+      Game.sfx('rumble', this.x, 1); Game.shake(4);
+      let e = 0;
+      while (e < 2.4) { const dt = yield; e += dt; this.rise = clamp(e / 2, 0, 1); this.glowK = clamp(e / 2, 0, 1); this.o.eyes = e > 1.2 ? 'open' : 'closed'; this.setAct('rise', 0.8 + 0.2 * Math.sin(e * 4)); if (Math.random() < dt * 30) lavaSplash(this.x + rnd(-40, 40), this.lava.y); }
+      yield* this.roarAt(true);
+    }
+    *roarAt(drought) {
+      yield* this.faceCam(0.6);
+      Game.sfx('roar', this.x, 1); Game.shake(5); if (typeof Cries !== 'undefined') Cries.play('groudon', this.x, 1, true);
+      if (drought) { L.drought = 8; HUD.toast('The sunlight turned harsh! (Drought)', { life: 2.6 }); }
+      let e = 0;
+      while (e < 2.2) { const dt = yield; e += dt; const k = Math.sin(clamp(e / 2.2, 0, 1) * Math.PI); this.o.roar = k; this.o.mouth = k; this.o.glow = 0.6 + k * 0.4; this.setAct(drought ? 'drought' : 'roar', 0.5 + k * 0.5); if (Math.random() < dt * 20) { const [hx, hy] = this.at('mouth'); FX.add({ type: 'spark', x: hx + rnd(-6, 6), y: hy + rnd(-4, 4), size: 2, life: 0.5, c: 0xffffffff, c2: hex('#ff8a28'), layer: 4 }); } }
+    }
+    *life() {
+      yield* wait(rnd(1, 3));
+      for (;;) {
+        const r = Math.random();
+        if (r < 0.45) { yield* this.walkTo(clamp(this.x + rnd(-160, 160), this.minX, this.maxX), this.speed, { turn: 3 }); Game.shake(1); lavaSplash(this.x, this.lava.y); }
+        else if (r < 0.7) yield* this.roarAt(Math.random() < 0.3);
+        else yield* hold(this, rnd(3, 6), 'glow', (e) => 0.5 + 0.3 * Math.sin(e * 2));
+      }
+    }
+    onPoke() { if (this.awake) { this.emote('anger', 1); this.doTask(this.roarAt(false), 4); } else { this.emote('swirl', 1); } }
+    onWater() { this.emote('anger', 1.2); FX.poof(this.x, this.y - 40, 0xffe8e8e8, 0xffb0b0b0, 14, 8); Game.sfx('steam', this.x, 1); }
+  }
+  function lavaSplash(x, y) { for (let k = 0; k < 6; k++) FX.add({ type: 'drop', x: x + rnd(-6, 6), y: y - 1, vx: rnd(-60, 60), vy: -rnd(60, 160), g: 400, life: 0.8, c: hex('#ffc040'), c2: hex('#ff5a10'), size: 2, floor: y, layer: 3 }); }
+  function spawnGroudon(G, lava) {
+    if (!sp('Groudon')) return null;
+    const awake = Save.found('groudon.woke');
+    L.groudon = G.addMon(new GroudonM((lava.x0 + lava.x1) / 2 - 20, lava, awake));
+    return L.groudon;
+  }
+  function wakeGroudon() {
+    const g = L.groudon; if (!g || !g.alive || g.awake) return;
+    Save.discover('groudon.woke'); if (Save.addPoints) Save.addPoints(600);
+    if (Game.cine) Game.cine.pan(g.x, g.y - 50, { dur: 1.4, hold: 4.2, zoom: 1.05 });
+    if (typeof Music !== 'undefined' && Music.play) Music.play('legend');
+    g.doTask(g.wakeUp(), 8);
+    setTimeout(() => maybeRayquaza(true), 14000);
+  }
+
+  /* ================= REGICE ================= */
+  class RegiceM extends Mons.Mon {
+    constructor(x, awake) {
+      super(sp('Regice'), { kind: 'regice', dex: 'regice', x, y: gy(x), yaw: Math.PI / 2 - 0.2, z: 2.6, scale: 0.5, qPose: 0.05, qFields: { glow: 0.1, awake: 0.1, arms: 0.1 }, persona: 'calm', mode: 'land' });
+      this.awake = awake; this.aw = awake ? 1 : 0; this.senseR = 0; this.speed = 16; this.wph = 0; this.minX = x - 380; this.maxX = x + 100;
+    }
+    senses() {}
+    animate(dt, t) {
+      if (this.moving) this.wph += dt * 3;
+      const g = this.awake ? 0.6 + 0.4 * Math.sin(t * 3) : 0;
+      const P = { walk: this.moving ? this.wph : 0, glow: g * this.aw, awake: this.aw, arms: 0, eyes: 'open', mouth: 0 };
+      Object.assign(P, this.o); this.pose = P;
+    }
+    brain() { return this.awake ? this.life() : this.frozen(); }
+    *frozen() { for (;;) { yield; this.setAct('dormant', 0.4); } }
+    *wakeUp() {
+      this.awake = true;
+      let e = 0;
+      while (e < 2.6) { const dt = yield; e += dt; this.aw = clamp(e / 2.2, 0, 1); this.setAct('awake', 0.6 + 0.4 * this.aw); if (Math.random() < dt * 30) FX.add({ type: 'spark', x: this.x + rnd(-20, 20), y: this.y - rnd(0, 50), size: 1, life: 0.6, c: 0xffffffff, c2: hex('#9ae0ff'), layer: 4 }); }
+      if (typeof Cries !== 'undefined') Cries.play('regice', this.x, 1, true);
+      Game.sfx('freeze', this.x, 1);
+      yield* this.iceBeam();
+    }
+    *iceBeam() {
+      yield* this.faceTo(Game.mudkip && Game.mudkip.x < this.x ? -1 : 1, false);
+      let e = 0; Game.sfx('freeze', this.x, 0.9);
+      const dir = Math.cos(this.yaw) >= 0 ? 1 : -1;
+      while (e < 1.8) {
+        const dt = yield; e += dt; const k = Math.sin(clamp(e / 1.8, 0, 1) * Math.PI);
+        this.o.arms = k; this.setAct('icebeam', 0.5 + 0.5 * k);
+        const [bx, by] = this.at('body');
+        for (let j = 0; j < 3; j++) { const d = rnd(10, 160) * k; FX.add({ type: 'spark', x: bx + dir * d, y: by - 30 - d * 0.35 + rnd(-3, 3), size: 1 + (Math.random() < 0.3 ? 1 : 0), life: 0.3, c: 0xffffffff, c2: hex('#8ad8ff'), layer: 4 }); }
+      }
+      if (Game.mode === 'camera' && Photo.inView && Photo.inView(this) && Photo.hitLens) Photo.hitLens('frost');
+    }
+    *life() {
+      yield* wait(rnd(1, 2));
+      for (;;) {
+        const r = Math.random();
+        if (r < 0.4) yield* this.walkTo(clamp(this.x + rnd(-120, 120), this.minX, this.maxX), this.speed, { turn: 4 });
+        else if (r < 0.65) yield* this.iceBeam();
+        else yield* hold(this, rnd(2, 4), 'glow', (e) => 0.4 + 0.4 * Math.sin(e * 3));
+      }
+    }
+    onPoke() { if (this.awake) this.doTask(this.iceBeam(), 4); else HUD.toast('It is frozen solid... but you feel it watching.', { life: 2 }); }
+  }
+  function spawnRegice(G, x) { if (!sp('Regice')) return null; L.regice = G.addMon(new RegiceM(x, Save.found('regice.woke'))); return L.regice; }
+  function wakeRegice() { const r = L.regice; if (!r || !r.alive || r.awake) return; if (typeof Music !== 'undefined' && Music.play) Music.play('legend'); r.doTask(r.wakeUp(), 8); }
+
+  /* ================= RAYQUAZA ================= */
+  class RayquazaM extends Mons.Mon {
+    constructor(dir) {
+      const c = Game.cam;
+      super(sp('Rayquaza'), { kind: 'rayquaza', dex: 'rayquaza', x: dir > 0 ? c.x - 260 : c.x + Game.VW + 260, y: c.y + Game.VH * 0.28, yaw: dir > 0 ? 0.25 : Math.PI - 0.25, z: 4, scale: 0.55, qPose: 0.05, qFields: { wave: 0.35, roar: 0.1, glow: 0.1 }, persona: 'calm', mode: 'fly' });
+      this.dir = dir; this.always = true; this.noShadow = true; this.senseR = 0; this.roared = false; this.wave = 0;
+    }
+    senses() {}
+    physics() {}
+    animate(dt, t) { this.wave += dt * 4.5; const P = { wave: this.wave, length: 1, roar: 0, glow: 0.4 + 0.3 * Math.sin(t * 3), mouth: 0, eyes: 'open' }; Object.assign(P, this.o); this.pose = P; }
+    brain() { return this.fly(); }
+    *fly() {
+      const sp0 = (Game.VW + 520) / 13;
+      for (let g = 0; g < 4000; g++) {
+        const dt = yield;
+        const c = Game.cam;
+        this.x += this.dir * sp0 * dt; this.moving = sp0;
+        this.y = lerp(this.y, c.y + Game.VH * 0.26 + Math.sin(Game.t * 0.7) * 12, Math.min(1, dt * 1.5));
+        this.setAct('soar', 0.7);
+        const mid = Math.abs(this.x - (c.x + Game.VW / 2)) < 40;
+        if (mid && !this.roared) { this.roared = true; yield* this.roar(); }
+        if ((this.dir > 0 && this.x > c.x + Game.VW + 320) || (this.dir < 0 && this.x < c.x - 320)) break;
+      }
+      this.remove(); if (L.ray === this) L.ray = null;
+    }
+    *roar() {
+      Game.sfx('roar', this.x, 1); Game.shake(3); if (typeof Cries !== 'undefined') Cries.play('rayquaza', this.x, 1, true);
+      let e = 0;
+      while (e < 1.8) { const dt = yield; e += dt; const k = Math.sin(clamp(e / 1.8, 0, 1) * Math.PI); this.x += this.dir * 20 * dt; this.o.roar = k; this.o.mouth = k; this.o.glow = 0.7 + 0.3 * k; this.setAct('roar', 0.6 + 0.4 * k); }
+      Save.discover('rayquaza.seen');
+    }
+  }
+  // Rayquaza appears once Kyogre or Groudon has woken, over the open-sky areas
+  function maybeRayquaza(force) {
+    const A = Game.area; if (!A || A.def.noSky || A.def.cave || !sp('Rayquaza')) return;
+    if (!(Save.found('kyogre.woke') || Save.found('groudon.woke'))) return;
+    if (!['canopy', 'volcano', 'forest', 'beach'].includes(Game.areaId)) return;
+    if (L.ray && L.ray.alive) return;
+    if (!force && Math.random() > (Game.areaId === 'canopy' ? 0.7 : 0.35)) return;
+    L.ray = Game.addMon(new RayquazaM(Math.random() < 0.5 ? 1 : -1));
+    HUD.toast('A roar echoes across the sky...', { life: 2.4 });
+  }
+  function update(dt) {
+    if (L.drought > 0) L.drought -= dt;
+    L.rayT -= dt;
+    if (L.rayT <= 0) { L.rayT = rnd(55, 95); maybeRayquaza(false); }
+  }
+  // harsh sunlight: a warm, blinding wash over the whole frame
+  function post(fb) {
+    if (L.drought <= 0) return;
+    const k = Math.min(1, L.drought / 2) * 0.35, d = fb.d, c = hex('#ffd890');
+    for (let i = 0; i < d.length; i++) d[i] = U.screen(d[i], c, k);
+  }
+  U.on && U.on('area', () => { L.groudon = L.regice = L.ray = null; L.drought = 0; L.rayT = rnd(20, 40); });
+  return Object.assign(L, { spawnGroudon, wakeGroudon, spawnRegice, wakeRegice, maybeRayquaza, update, post, classes: { GroudonM, RegiceM, RayquazaM } });
+})();
+
 /* ==== src/snap/areas/beach.js ==== */
 /* ------------------------------------------------------------------
    Coral Cove — Route 109 seashore, reimagined. Grassy dunes and a
@@ -60454,6 +60815,732 @@ Areas.falls = (() => {
   return def;
 })();
 
+/* ==== src/snap/areas/volcano.js ==== */
+/* ------------------------------------------------------------------
+   Fiery Path — Mt. Chimney, Route 113 and Lavaridge reimagined.
+    · Ashen Slopes: volcanic ash drifts down like grey snow over ash-
+      dusted grass and sooty trees; the cable car creeps up the smoking
+      mountain behind. Numel graze, Spinda stagger about.
+    · Lavaridge Hot Springs: a little spa town — a wooden bathhouse with
+      lit lanterns, a steaming hot spring you can swim in, and steam
+      vents that shoot Mudkip sky-high.
+    · Jagged Pass: black basalt ledges with glowing cracks and little
+      lava puddles where Slugma ooze.
+    · Magma Crater: the ground drops into a bowl of molten lava. Something
+      enormous sleeps in it... Four magma stones ring the crater: watch
+      the lava pulse at them, then repeat the order (belly flop or tap).
+------------------------------------------------------------------- */
+Areas.volcano = (() => {
+  const { clamp, lerp, rng, hash, bayer4, vnoise, mix, hex } = U;
+  const SPRING = { x0: 1720, x1: 2060, level: 562 };
+  const LAVA = { x0: 3930, x1: 4690, y: 626 }, PUDDLE = { x0: 3158, x1: 3242, y: 497 };
+  const LAVAS = [LAVA, PUDDLE];
+  const VENTS = [1540, 2190, 2470];
+  const STONES = [3790, 3860, 4730, 4660];
+  const BATH = 2330;
+  const def = {
+    id: 'volcano', name: 'Fiery Path', sub: 'Mt. Chimney · Lavaridge', music: 'ashen', seed: 77, noSeason: true,
+    W: 4800, H: 1000, sea: null, refY: 560, h0: 116, cy0: 330, ph: 0.05, skyH: 300, sunH: 150, band: 12, waves: 0.5,
+    camY: [-60, 860], frameY: 0.74, start: 220,
+    intro: { x: 900, y: 300, dur: 3.4 },
+    ground: [[0, 560], [200, 556], [500, 548], [800, 540], [1100, 534], [1350, 536], [1450, 546], [1600, 548], [1700, 552], [1728, 572], [1760, 600], [1840, 614], [1940, 614], [2020, 598], [2052, 572], [2080, 552], [2300, 548], [2600, 546], [2750, 548], [2850, 530], [2950, 508], [3050, 514], [3120, 486], [3150, 492], [3170, 506], [3230, 506], [3250, 474], [3350, 490], [3450, 462], [3560, 470], [3680, 474], [3760, 486], [3840, 500], [3900, 560], [3950, 632], [4050, 666], [4300, 680], [4550, 668], [4660, 634], [4710, 566], [4760, 512], [4800, 506]],
+    water: [{ x0: SPRING.x0, x1: SPRING.x1, level: SPRING.level, kind: 'spring' }],
+    plats: [{ x0: 2968, x1: 3036, y: 474, kind: 'ledge' }, { x0: 3392, x1: 3450, y: 428, kind: 'ledge' }],
+    sky: {
+      dawn: [[0, '#40406e'], [0.35, '#7a6a98'], [0.65, '#d49a96'], [0.85, '#f4b890'], [1, '#ffd0a0']],
+      noon: [[0, '#4a78b0'], [0.4, '#7a9ec4'], [0.72, '#b8bec8'], [0.9, '#dccdb8'], [1, '#ecd8b8']],
+      afternoon: [[0, '#4a6ea8'], [0.45, '#8a98b8'], [0.75, '#d0b89c'], [0.92, '#f0c890'], [1, '#ffd49a']],
+      dusk: [[0, '#241a40'], [0.3, '#4a2a5a'], [0.55, '#9a3a4a'], [0.75, '#e8603a'], [0.9, '#ffa048'], [1, '#ffc870']],
+      night: [[0, '#06040e'], [0.4, '#120a20'], [0.7, '#2a1024'], [0.9, '#5a1a1a'], [1, '#7a2a18']],
+    },
+    mats: {
+      ink: ['#120c0c', '#1e1614'],
+      ash: ['#4a4644', '#66605c', '#847c76', '#a49a92', '#c4bab0', '#e0d8ce'],
+      ashG: ['#2e3a2a', '#465440', '#62705a', '#828e76', '#a8b09a'],
+      soil: ['#1e1612', '#2c201a', '#3c2c22', '#50392a', '#664836'],
+      rock: ['#14121a', '#221e26', '#322c34', '#443c44', '#5a5058', '#766a70'],
+      rockR: ['#2a1410', '#442018', '#5e2e20', '#7a3e2a', '#9a5438'],
+      stone: ['#5a4a3a', '#7a6650', '#9a8468', '#baa484', '#d8c4a4'],
+      bark: ['#1e1612', '#2e221a', '#443226', '#5c4634'],
+      leafA: ['#3a3836', '#55524e', '#747068', '#9a948a', '#c4bcb0'],
+      wood: ['#3a2414', '#553820', '#74502e', '#946a40', '#b48552', '#d4a46c'],
+      roof: ['#4a1a1a', '#6e2424', '#963230', '#bc4a3e', '#dc6a50'],
+      wall: ['#8a7a66', '#aa9a82', '#cabaa0', '#e6d8bc', '#f8f0dc'],
+      cloth: ['#1a2a5a', '#2a4a8a', '#4a74c0'],
+      win: { c: ['#ffb050', '#ffe0a0'], emit: true },
+      lava: { c: ['#8a1a08', '#c83a0c', '#f06a14', '#ffa028', '#ffd050', '#ffc038'], emit: true, cycle: true },
+      ember: { c: ['#a82a0a', '#ff6a1a', '#ffc040'], emit: true },
+      crack: { c: ['#6a1406', '#d24a10', '#ff8a28'], emit: true },
+      steam: ['#b8b4b0', '#d8d4d0', '#f4f0ec'],
+      far: ['#3a3444', '#4e4656', '#645a6a', '#7c7282', '#968a9a'],
+      mid: ['#2a2226', '#3a3034', '#4c4044', '#605256', '#78686a'],
+      smoke: ['#5a524e', '#7a726c', '#9a928a', '#bab2aa'],
+      flower: ['#c8406a', '#ff7aa0', '#ffd0e0'],
+      herb: ['#2a5a2a', '#3a7a34', '#5aa048', '#8ac868'],
+    },
+  };
+  def.cycleRate = 5;
+  def.waterCols = (hour) => {
+    const night = hour === 'night';
+    return { top: night ? hex('#2a5a5a') : hex('#7ad0c0'), mid: night ? hex('#163a3c') : hex('#3a9a90'), deep: night ? hex('#0a2224') : hex('#1e5a58'), foam: hex('#f4fff8'), hi: night ? hex('#9ae0d0') : hex('#e0fff4'), ray: null, maxD: 90 };
+  };
+  const S = { ash: [], smoke: [], vents: VENTS.map((x, i) => ({ x, t: 1.5 + i * 1.3, on: 0 })), seq: [], input: [], showT: 0, showI: -1, solved: false, flash: 0, lit: [0, 0, 0, 0], burnCool: 0 };
+  const lavaAt = (x) => LAVAS.find((L) => x > L.x0 && x < L.x1 && World.groundAt(x) > L.y + 1) || null;
+  def.hazardAt = (x) => !!lavaAt(x);
+  const n1 = (x, y) => Terrain.n1(Math.floor(x) & 0xffff, Math.floor(y) & 0xffff), n2 = (x, y) => Terrain.n2(Math.floor(x) & 0xffff, Math.floor(y) & 0xffff);
+  const pickR = (ramp, t, x, y) => Terrain.pickR(ramp, t, x, y);
+
+  /* ---------------- painters ---------------- */
+  function bathhouse(M) {
+    const w = 150, h = 96, s = new ISpr(w + 20, h + 40), base = h + 36;
+    // stone foundation, timber walls with lit windows, a deep red tiled roof with upturned eaves
+    for (let y = base - 10; y < base; y++) for (let x = 6; x < w + 14; x++) s.set(x, y, pickR(M.stone, 0.6 - (y - base + 10) * 0.05 + (hash(x >> 2, y >> 1, 3) - 0.5) * 0.3, x, y));
+    for (let y = base - 58; y < base - 10; y++) for (let x = 14; x < w + 6; x++) { const post = (x - 14) % 34 < 4; s.set(x, y, post ? pickR(M.wood, 0.3, x, y) : pickR(M.wall, 0.75 - (x - 14) / w * 0.3, x, y)); }
+    for (let k = 0; k < 4; k++) { const wx = 24 + k * 34; for (let y = base - 48; y < base - 30; y++) for (let x = wx; x < wx + 18; x++) s.set(x, y, x === wx || x === wx + 17 || y === base - 48 || y === base - 31 || (x - wx) === 9 ? M.wood[1] : M.win[y < base - 40 ? 1 : 0]); }
+    // noren curtain over the door
+    for (let y = base - 30; y < base - 10; y++) for (let x = 66; x < 96; x++) s.set(x, y, y < base - 22 ? M.cloth[((x - 66) >> 2) % 2 ? 1 : 2] : (x % 4 === 0 ? M.cloth[0] : M.ink[1]));
+    for (let y = 0; y < 30; y++) { const hw = (w / 2 + 12) * (0.45 + y / 30 * 0.55); for (let x = -hw; x <= hw; x++) s.set(w / 2 + 10 + x, base - 58 - 30 + y, pickR(M.roof, 0.85 - y / 34 - (Math.abs(x) / hw) * 0.2 + ((Math.round(x) + y * 3) % 6 === 0 ? -0.2 : 0), x, y)); }
+    for (let x = 0; x < 10; x++) { s.set(x, base - 58 - 2 - (10 - x) * 0.6, M.roof[3]); s.set(w + 19 - x, base - 58 - 2 - (10 - x) * 0.6, M.roof[3]); }
+    // the ♨ sign
+    for (let y = base - 76; y < base - 64; y++) for (let x = w / 2; x < w / 2 + 20; x++) s.set(x, y, x === w / 2 || x === w / 2 + 19 || y === base - 76 || y === base - 65 ? M.wood[0] : M.wall[4]);
+    for (let k = 0; k < 3; k++) for (let j = 0; j < 5; j++) s.set(w / 2 + 5 + k * 5 + Math.round(Math.sin(j * 1.4 + k) * 1), base - 74 + j, M.roof[2]);
+    Paint.outline(s, M.ink[0]);
+    s.ax = (w + 20) >> 1; s.ay = base - 1;
+    return s;
+  }
+  function hut(M, w, h, seed) {
+    const s = new ISpr(w + 12, h + 24), base = h + 22, r = rng(seed);
+    for (let y = base - h; y < base; y++) for (let x = 6; x < w + 6; x++) s.set(x, y, pickR(M.wall, 0.8 - (x - 6) / w * 0.35 + (y > base - 4 ? -0.3 : 0), x, y));
+    const wx = 10 + Math.floor(r() * (w - 26)); for (let y = base - h + 8; y < base - h + 20; y++) for (let x = wx; x < wx + 12; x++) s.set(x, y, x === wx || x === wx + 11 || y === base - h + 8 ? M.wood[1] : M.win[1]);
+    for (let y = 0; y < 18; y++) { const hw = w / 2 + 6 - y * 0.0; for (let x = -hw * (0.4 + y / 30); x <= hw * (0.4 + y / 30); x++) s.set(w / 2 + 6 + x, base - h - 18 + y, pickR(M.roof, 0.85 - y / 22, x, y)); }
+    Paint.outline(s, M.ink[0]);
+    s.ax = (w + 12) >> 1; s.ay = base - 1;
+    return s;
+  }
+  function ashTree(M, H, seed) { return Paint.tree(M, H, seed, { trunkRamp: M.bark, leafRamp: M.leafA, crownW: H * 0.8, crownH: H * 0.5, trunkW: Math.max(3, H * 0.06) }); }
+  function stoneSpr(M, i, lit) {
+    const w = 22, h = 26, s = new ISpr(w + 2, h + 2);
+    for (let y = 0; y < h; y++) { const hw = w / 2 - (y < 5 ? (5 - y) * 1.2 : 0); for (let x = -hw; x <= hw; x++) s.set(w / 2 + 1 + x, y + 1, pickR(M.rock, 0.65 - (x + hw) / (2 * hw) * 0.4 - y / h * 0.2, x, y)); }
+    // carved rune: a flame, a drop, a leaf, a sun — each lights in its colour
+    const C = lit ? M.lava[4] : M.rock[5], cx = w / 2 + 1, cy = 12;
+    const R = [[[0, -5], [-2, -2], [2, -2], [-3, 1], [3, 1], [0, 3], [-1, 0], [1, 0]], [[0, -5], [-1, -3], [1, -3], [-2, -1], [2, -1], [-2, 1], [2, 1], [0, 3], [-1, 2], [1, 2]], [[-3, 3], [-2, 2], [-1, 1], [0, 0], [1, -1], [2, -2], [3, -3], [0, -2], [2, 0], [-1, -1], [1, 1]], [[0, 0], [0, -4], [0, 4], [-4, 0], [4, 0], [-3, -3], [3, 3], [-3, 3], [3, -3], [-1, 0], [1, 0], [0, -1], [0, 1]]][i];
+    for (const [dx, dy] of R) s.set(cx + dx, cy + dy, C);
+    Paint.outline(s, M.ink[0]);
+    s.ax = (w >> 1) + 1; s.ay = h;
+    return s;
+  }
+  function shelf(M, w, h, seed) {
+    const s = new ISpr(w + 6, h + 2);
+    for (let x = 0; x < w; x++) { const bot = h - 4 - Math.sin(x / w * Math.PI) * 6 + (n1(x * 3 + seed, 1) - 0.5) * 8; for (let y = 0; y < bot; y++) s.set(x + 3, y, y < 2 ? M.ash[3] : pickR(M.rock, 0.7 - y / Math.max(10, bot) * 0.5 + (n2(x * 2 + seed, y * 2) - 0.5) * 0.3, x, y)); if (hash(x, 3, seed) > 0.85) s.set(x + 3, 3 + (x % 5), M.crack[1]); }
+    Paint.outline(s, M.ink[0]);
+    s.ax = 3; s.ay = 0;
+    return s;
+  }
+
+  /* ---------------- build ---------------- */
+  def.build = (A) => {
+    const M = A.M, r = rng(A.seed);
+    const gy = (x) => World.groundAt(x);
+    const inSpring = (x) => x > SPRING.x0 + 14 && x < SPRING.x1 - 14;
+    const zone = (x) => (x < 1450 ? 'ash' : x < 2780 ? 'town' : x < 3720 ? 'pass' : 'crater');
+    // ---- terrain ----
+    Terrain.paint(A, {
+      bb: 7, bf: 5,
+      strip(x, y, u, e) {
+        const z = zone(x), n = e.n2(x, y * 3), n1v = e.n1(x, y);
+        if (inSpring(x)) return e.pickR(M.stone, 0.4 + (n - 0.5) * 0.4, x, y);
+        let t = 0.62 - u * 0.36 + (n - 0.5) * 0.35;
+        if (u < 0.15) t += 0.2;
+        if (z === 'ash') { if (n1v > 0.6) return e.pickR(M.ashG, t, x, y); if (e.hash(x, y, 7) > 0.96) return M.rock[3]; return e.pickR(M.ash, t + 0.1, x, y); }
+        if (z === 'town') { const tile = ((x >> 3) + (y >> 1)) % 2; if (Math.abs(x - BATH) < 120 || (x > 1560 && x < 1700)) return e.pickR(M.stone, t + (tile ? 0.08 : -0.05), x, y); if (n1v > 0.62) return e.pickR(M.herb, t, x, y); return e.pickR(M.ash, t, x, y); }
+        if (e.hash(x, y, 9) > 0.985) return M.crack[1];
+        return e.pickR(z === 'crater' ? M.rockR : M.rock, t + 0.1, x, y);
+      },
+      face(x, y, dep, e) {
+        const n1v = e.n1(x, y), n2v = e.n2(x, y);
+        if (dep <= 1) return M.soil[0];
+        const z = zone(x);
+        const band = (dep + n1v * 12) / 16, bi = Math.floor(band);
+        let t = 0.62 - Math.min(0.5, dep / 220) - (bi % 3 === 1 ? 0.12 : 0) + (n2v - 0.5) * 0.25;
+        if (band - bi < 0.1) t -= 0.12;
+        if ((z === 'pass' || z === 'crater') && dep > 6) {
+          // glowing magma veins through the black rock
+          const v = Math.abs(Math.sin(x * 0.043 + Math.sin(y * 0.05) * 2.2 + n1v * 3) + Math.sin(y * 0.031 - x * 0.012));
+          if (v < 0.05) return M.crack[2]; if (v < 0.11) return M.crack[1];
+          return e.pickR(z === 'crater' ? M.rockR : M.rock, t, x, y);
+        }
+        if (z === 'ash' && dep < 5) return e.pickR(M.ash, 0.5, x, y);
+        return e.pickR(M.soil, t, x, y);
+      },
+    });
+    for (let k = 0; k < 70; k++) { const x = r() * A.W; Terrain.stamp(A, Paint.rock(M, 6 + r() * 9, 4 + r() * 5, k, { ramp: M.rock, flat: false, cracks: 0 }), x, gy(x) + 16 + r() * 90); }
+    const put = (s, x, zd, o) => A.put(s, x, zd, o);
+    // ---- Ashen Slopes ----
+    for (let x = 40; x < 1440; x += 60 + r() * 120) { const k = r(); if (k < 0.16) put(ashTree(M, 70 + r() * 50, Math.floor(x)), x, -5, { sink: 4, foot: 16 }); else if (k < 0.7) put(Paint.tuft(M, 12 + r() * 12, 12 + r() * 14, Math.floor(x), { ramp: M.ashG }), x, r() < 0.5 ? 3 : -3, { windFrames: true }); else put(Paint.rock(M, 16 + r() * 22, 10 + r() * 12, Math.floor(x), { ramp: M.rock }), x, r() < 0.5 ? 2 : -3, { sink: 3 }); }
+    for (let x = 300; x < 1200; x += 9 + r() * 10) if (r() < 0.5) put(Paint.tuft(M, 14, 18 + r() * 12, Math.floor(x * 3), { ramp: M.ashG, density: 1.1 }), x, r() < 0.5 ? 2 : -2, { windFrames: true });
+    // the glass workshop
+    A.glassHut = put(hut(M, 70, 44, 5), 980, -4, { sink: 2 });
+    A.glows.push({ x: 980, y: gy(980) - 30, r: 30, c: hex('#ffb050'), a: 0.4, flicker: true });
+    // ---- Lavaridge ----
+    A.bath = put(bathhouse(M), BATH, -5, { sink: 2 });
+    for (const [x, w] of [[1500, 64], [2640, 72]]) { put(hut(M, w, 46, x), x, -5, { sink: 2 }); A.glows.push({ x, y: gy(x) - 32, r: 26, c: hex('#ffc060'), a: 0.4, flicker: true }); }
+    A.glows.push({ x: BATH, y: gy(BATH) - 40, r: 60, c: hex('#ffb050'), a: 0.45, flicker: true });
+    for (let x = SPRING.x0 - 30; x < SPRING.x1 + 40; x += 22 + r() * 30) if (!inSpring(x)) put(Paint.rock(M, 12 + r() * 10, 8 + r() * 6, Math.floor(x), { ramp: M.stone }), x, r() < 0.5 ? 3 : -2, { sink: 3 });
+    for (const x of [1640, 2120, 2560]) put(Paint.bush(M, 22, 14, Math.floor(x), { ramp: M.herb, dots: M.flower, nd: 6 }), x, -3, { sink: 2 });
+    A.glows.push({ x: (SPRING.x0 + SPRING.x1) / 2, y: SPRING.level - 4, r: 150, flat: 4, c: hex('#9af0e0'), a: 0.18, always: true });
+    // steam vents
+    for (const x of VENTS) { const s = Paint.rock(M, 18, 8, Math.floor(x), { ramp: M.stone }); put(s, x, 1, { sink: 2 }); }
+    // ---- Jagged Pass ----
+    for (const p of def.plats) A.props.push({ frames: [shelf(M, p.x1 - p.x0, gy((p.x0 + p.x1) / 2) - p.y + 6, p.x0)], x: p.x0, y: p.y, zd: -3 });
+    for (let x = 2800; x < 3720; x += 50 + r() * 90) { if (x > PUDDLE.x0 - 10 && x < PUDDLE.x1 + 10) continue; put(Paint.rock(M, 20 + r() * 30, 14 + r() * 22, Math.floor(x), { ramp: r() < 0.5 ? M.rock : M.rockR, cracks: 2 }), x, r() < 0.5 ? -3 : 2, { sink: 4 }); }
+    A.glows.push({ x: (PUDDLE.x0 + PUDDLE.x1) / 2, y: PUDDLE.y, r: 60, flat: 2.2, c: hex('#ff7020'), a: 0.5, always: true, flicker: true });
+    // ---- the crater ----
+    S.stoneSpr = [0, 1, 2, 3].map((i) => [stoneSpr(M, i, false), stoneSpr(M, i, true)]);
+    A.stones = STONES.map((x, i) => put(S.stoneSpr[i][0], x, -2, { sink: 2 }));
+    A.glows.push({ x: (LAVA.x0 + LAVA.x1) / 2, y: LAVA.y, r: 420, flat: 2.6, c: hex('#ff5a10'), a: 0.55, always: true, flicker: true });
+    for (let x = 3740; x < A.W - 20; x += 90 + r() * 120) if (!(x > LAVA.x0 - 30 && x < LAVA.x1 + 30)) put(Paint.rock(M, 18 + r() * 20, 12 + r() * 14, Math.floor(x), { ramp: M.rockR }), x, -3, { sink: 3 });
+    // micro detail
+    const det = (key, ramp, x, zd) => { const s = Paint.miniSpr(key, ramp); A.details.push({ s, x, y: gy(x) + zd, zd }); };
+    for (let x = 10; x < A.W; x += 5 + r() * 12) { if (inSpring(x) || lavaAt(x)) continue; const k = r(), zd = (r() - 0.5) * 10, z = zone(x); if (k < 0.25) det('pebble2', z === 'ash' ? M.ash : M.rock, x, zd); else if (k < 0.35 && z !== 'crater') det('twig', M.bark, x, zd); else if (k < 0.42 && z === 'town') det('flower', M.flower, x, zd); else if (k < 0.5 && z !== 'ash') det('pebble', M.rockR, x, zd); }
+
+    /* ---- backdrop ---- */
+    // Mt. Chimney: a great ashen cone with its crater, and the cable-car wire
+    {
+      const w = 900, h = 130, s = new ISpr(w, h);
+      S.peakU = 470;
+      Paint.ridge(s, M, { ramp: M.far, base: h, amp: 104, seed: 7, freq: 0.004, peaks: [[S.peakU, 320, 1], [120, 200, 0.4], [800, 220, 0.45]], pow: 1.2 });
+      // the crater notch and a glowing lip
+      for (let x = S.peakU - 22; x < S.peakU + 22; x++) { const d = 1 - Math.abs(x - S.peakU) / 22, top = h - 104 * 0.98 + d * 9; for (let y = 0; y < top; y++) if (s.get(x, y)) s.set(x, y, 0); s.set(x, Math.round(top), M.ember[1]); }
+      // ash streaks down the slopes
+      for (let k = 0; k < 40; k++) { let x = S.peakU + (r() - 0.5) * 240, y = h - 96 + r() * 30; for (let j = 0; j < 24; j++) { if (s.get(x, y)) s.set(x, y, M.far[4]); x += (x < S.peakU ? -1 : 1) * 0.7; y += 1.3; } }
+      const L = A.layer(s, 0.04, { haze: 0.5, base: h - 1, x: -80 }); L.skirt = M.far[2]; S.farL = L;
+    }
+    // jagged volcanic hills with ashy tree lines
+    {
+      const w = 1500, h = 80, s = new ISpr(w, h);
+      Paint.ridge(s, M, { ramp: M.mid, base: h, amp: 46, seed: 19, freq: 0.012, pow: 1.1 });
+      const tl = new ISpr(w, h); Paint.treeline(tl, { ramp: M.leafA, base: h - 14, size: 7, seed: 21, jag: 4 });
+      for (let i = 0; i < tl.d.length; i++) if (tl.d[i] && (i % w) < 700) s.d[i] = tl.d[i];
+      const L = A.layer(s, 0.18, { haze: 0.4, base: h - 1, x: 0 }); L.skirt = M.mid[1];
+    }
+    // Lavaridge rooftops and steam in the middle distance
+    {
+      const w = 2200, h = 110, s = new ISpr(w, h);
+      Paint.ridge(s, M, { ramp: M.mid, base: h, amp: 50, seed: 33, freq: 0.01 });
+      for (let k = 0; k < 9; k++) { const x = 600 + k * 70 + r() * 20, hs = hut(M, 30 + r() * 20, 18 + r() * 10, 90 + k); s.paste(hs, Math.round(x - hs.ax), h - hs.h - 4); }
+      for (let x = 0; x < w; x += 40 + r() * 70) { const tr = ashTree(M, 40 + r() * 30, Math.floor(x * 7)); s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 3); }
+      const L = A.layer(s, 0.34, { haze: 0.28, base: h - 1, x: 20 }); L.skirt = M.mid[2];
+    }
+    // near basalt wall with lava falls far to the right
+    {
+      const w = 3200, h = 120, s = new ISpr(w, h);
+      Paint.ridge(s, M, { ramp: M.rock, base: h, amp: 64, seed: 45, freq: 0.009, peaks: [[2500, 400, 1]] });
+      for (let x = 0; x < 1100; x += 110 + r() * 150) { const tr = ashTree(M, 50 + r() * 30, Math.floor(x * 11)); s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 2); }
+      for (const fx of [2280, 2560, 2700]) for (let y = 40; y < h; y++) { const top = s.get(fx, y); if (!top) continue; for (let q = -2; q <= 2; q++) s.set(fx + q + Math.round(Math.sin(y * 0.1) * 1.2), y, M.lava[(y + q) % 6 < 3 ? 3 : 4]); }
+      const L = A.layer(s, 0.52, { haze: 0.18, base: h - 1, x: 0 }); L.skirt = M.rock[1];
+    }
+    // ---- 2.5D floor: ash fields, the warm stones of Lavaridge, black basalt and a lava lake reaching back ----
+    {
+      A.depthP0 = 0.55; A.depthHaze = 0.2;
+      A.floor = { p0: 0.55, D: 120,
+        row(wz, p, t) { return { tq: Math.floor(t * 3), t }; },
+        tex(wx, wz, p, t, R) {
+          const n = Stage.noiseAt(wx * 0.4, wz * 1.2), n2v = Stage.noiseAt(wx * 1.7 + 50, wz * 3.1);
+          if (wx < 1450) { if (n > 0.66) return M.ashG[n > 0.74 ? 3 : 2]; if (n2v > 0.9) return M.rock[3]; return M.ash[n < 0.3 ? 2 : n > 0.55 ? 4 : 3]; }
+          if (wx < 2780) { const k = (1 - p) / 0.45, sp = Math.abs(wx - 1890) < 170 * (1 - k * 0.8) && k < 0.9; if (sp) return n2v > 0.8 ? M.steam[2] : M.stone[1]; if (n > 0.64) return M.herb[2]; return M.stone[n2v > 0.5 ? 3 : 2]; }
+          // basalt with glowing cracks; the lava lake stretches into the distance
+          const lk = Math.abs(wx - 4310) < 360 * (1 - (1 - p) * 0.7);
+          if (wx > 3860 && lk) { const f = Math.sin(wx * 0.05 + wz * 0.3 + R.t * 1.5) + Math.sin(wx * 0.013 - wz * 0.2 - R.t * 0.8); return f > 1.2 ? M.lava[5] : f > 0.3 ? M.lava[3] : f > -0.6 ? M.lava[2] : M.lava[1]; }
+          const v = Math.abs(Math.sin(wx * 0.07 + n * 6) + Math.sin(wz * 0.4 - wx * 0.01));
+          if (v < 0.06) return M.crack[2];
+          return (wx > 3720 ? M.rockR : M.rock)[n < 0.35 ? 2 : n > 0.6 ? 4 : 3];
+        } };
+      const r2 = rng(3131);
+      const place = (make, n, p0, p1, xr) => { for (let i = 0, g = 0; i < n && g < n * 25; g++) { const p = p0 + r2() * (p1 - p0), wx = xr[0] + r2() * (xr[1] - xr[0]); if (wx > 3860 && Math.abs(wx - 4310) < 400) continue; if (make(p, wx, i)) i++; } };
+      place((p, wx, i) => A.scatterAt(ashTree(M, Math.round((60 + r2() * 40) * p), 4000 + i), wx, p), 7, 0.57, 0.9, [0, 1500]);
+      place((p, wx, i) => A.scatterAt(Paint.tuft(M, Math.round((10 + r2() * 10) * p), Math.round((10 + r2() * 12) * p), 4100 + i, { ramp: M.ashG }), wx, p, { windFrames: true }), 60, 0.58, 0.98, [0, 1500]);
+      place((p, wx, i) => A.scatterAt(Paint.rock(M, Math.round((14 + r2() * 26) * p), Math.round((9 + r2() * 18) * p), 4200 + i, { ramp: wx > 3700 ? M.rockR : M.rock, cracks: 1 }), wx, p), 50, 0.56, 0.98, [0, A.W]);
+      place((p, wx, i) => A.scatterAt(hut(M, Math.round(60 * p), Math.round(38 * p), 4300 + i), wx, p), 5, 0.6, 0.75, [1500, 2700]);
+      place((p, wx, i) => A.scatterAt(Paint.bush(M, Math.round(20 * p), Math.round(12 * p), 4400 + i, { ramp: M.herb, dots: M.flower, nd: 3 }), wx, p), 16, 0.6, 0.95, [1500, 2750]);
+    }
+    // ---- foreground ----
+    for (let x = -60; x < A.W; x += 150 + r() * 170) {
+      if (x > LAVA.x0 && x < LAVA.x1) continue;
+      let s = x < 2780 ? Paint.clump(x < 1450 ? M.ashG : M.herb, 50 + r() * 40, 60 + r() * 30, Math.floor(x * 11), 'grass', { n: 11 }) : Paint.rock(M, 60 + r() * 40, 40 + r() * 30, Math.floor(x), { ramp: M.rock, cracks: 3 });
+      s = Paint.edge(s, M.ink[0]);
+      A.foreItem(s, x, gy(x) + 62 + r() * 24, { p: 1.35, sway: x < 2780 ? 2 : 0, flip: r() < 0.5 });
+    }
+    A.foreDark = 0.25; A.foreTint = 0xff0a0a1a;
+    // ---- hotspots ----
+    A.addHot({ x0: 950, x1: 1010, y0: gy(980) - 50, y1: gy(980), x: 980, reach: 50, tap() { const n = Save.data.stats.soot || 0; HUD.toast(n >= 30 ? 'The glassblower made you a little glass flute from your ash! (It whistles.)' : 'The glass workshop. "Collect volcanic ash by walking through the ashy grass and I will make you something!" (' + n + '/30)', { life: 3.2 }); if (n >= 30 && Save.discover('volcano.flute')) { Save.addPoints(500); Game.sfx('reward'); } } });
+    A.addHot({ x0: BATH - 70, x1: BATH + 70, y0: gy(BATH) - 90, y1: gy(BATH), x: BATH, reach: 60, tap() { HUD.toast('Lavaridge Bathhouse: "Soak in the spring out back — it\'s good for tired fins!"', { life: 3 }); } });
+    STONES.forEach((x, i) => A.addHot({ x0: x - 12, x1: x + 12, y0: gy(x) - 28, y1: gy(x), x, reach: 34, tap() { stoneHit(i); } }));
+  };
+
+  /* ---------------- the Magma Stones puzzle ---------------- */
+  function newSeq() { S.seq = [0, 1, 2, 3].sort(() => Math.random() - 0.5); S.input = []; }
+  function showSeq() { if (S.solved) return; if (!S.seq.length) newSeq(); S.showT = 0; S.showI = 0; Game.sfx('lava', 4300, 0.9); }
+  function stoneHit(i) {
+    if (S.solved) { HUD.toast('The magma stones are warm and quiet now.', { life: 2 }); return; }
+    if (S.showI >= 0) return;
+    if (!S.seq.length) { showSeq(); HUD.toast('The lava lake bubbles... watch which stones it lights!', { life: 2.6 }); return; }
+    S.lit[i] = 0.8; Game.sfx('knock', STONES[i], 0.9);
+    FX.sparkles(STONES[i], World.groundAt(STONES[i]) - 16, 8, 14, 0xffffffff, hex('#ffa028'));
+    S.input.push(i);
+    const k = S.input.length - 1;
+    if (S.input[k] !== S.seq[k]) { Game.sfx('error'); Game.shake(2); HUD.toast('The lava hisses angrily. Watch again...', { life: 2 }); S.input = []; setTimeout(showSeq, 900); return; }
+    if (S.input.length === 4) solved();
+  }
+  function solved() {
+    S.solved = true; S.flash = 1; Save.discover('volcano.stones'); Save.addPoints(800);
+    Game.shake(6); Game.sfx('rumble', 4300, 1); setTimeout(() => Game.sfx('reward'), 800);
+    if (Game.cine) Game.cine.pan(4310, LAVA.y - 70, { hold: 2.8, zoom: 1.1 });
+    if (!Save.itemN('redorb')) { Save.addItem('redorb', 1); HUD.toast('The Red Orb rose out of the lava! Something deep in the magma stirs...', { life: 4 }); }
+    if (typeof Legends !== 'undefined' && Legends.wakeGroudon) setTimeout(() => Legends.wakeGroudon(), 1400);
+  }
+  def.onPound = (x) => { const i = STONES.findIndex((sx) => Math.abs(sx - x) < 16); if (i >= 0) stoneHit(i); };
+
+  /* ---------------- drawing ---------------- */
+  def.drawBack = (A, fb, cx, cy, t) => {
+    Stage.drawSky(fb, cx, cy, t);
+    Stage.drawLayer(fb, A.layers[0], cx, cy, t);
+    // the smoke plume pouring from Mt. Chimney (lit red from below at night)
+    const L = S.farL, sx = Math.round(L.x - cx * L.p + S.peakU), sy = Stage.layerY(L, cy) + 18;
+    const W = fb.w, H = fb.h, d = fb.d, night = Stage.S.hour === 'night' || Stage.S.hour === 'dusk';
+    const cS = hex(night ? '#5a3a3a' : '#9a928a'), cL = hex(night ? '#c05a2a' : '#d8d0c6');
+    for (let k = 0; k < 26; k++) {
+      const age = ((t * 0.06 + k / 26) % 1), px = sx + Math.sin(k * 1.7 + t * 0.2) * 8 + age * 90 + age * age * 60, py = sy - age * 150, rr = 6 + age * 26;
+      for (let y = Math.max(0, Math.floor(py - rr)); y < Math.min(H, py + rr); y++) for (let x = Math.max(0, Math.floor(px - rr)); x < Math.min(W, px + rr); x++) {
+        const q = Math.hypot(x - px, (y - py) * 1.2) / rr; if (q > 1) continue;
+        const a = (1 - q) * (1 - age) * 0.55;
+        if (a > bayer4(x, y) * 0.5) d[y * W + x] = mix(d[y * W + x], y > py ? cS : cL, Math.min(0.85, a * 1.4));
+      }
+    }
+    // cable car creeping along its wire
+    const wx0 = Math.round(L.x - cx * L.p + 60), wx1 = sx - 30, wy0 = Stage.layerY(L, cy) + 150, wy1 = sy + 26;
+    UI.line(fb, wx0, wy0, wx1, wy1, hex('#2a2430'));
+    const ck = (t * 0.02) % 1, gx = Math.round(lerp(wx0, wx1, ck)), gyy = Math.round(lerp(wy0, wy1, ck));
+    for (let y = gyy + 2; y < gyy + 7; y++) for (let x = gx - 3; x <= gx + 3; x++) UI.put(fb, x, y, y === gyy + 3 ? hex('#ffe0a0') : hex('#c84a3a'));
+    UI.put(fb, gx, gyy + 1, hex('#2a2430'));
+    for (let i = 1; i < A.layers.length; i++) Stage.drawLayer(fb, A.layers[i], cx, cy, t);
+    Stage.drawDepthFrom(fb, cx, cy, t, 0.5);
+  };
+  // lava drawn over the lane (so whatever stands in it is half-submerged)
+  function drawLava(fb, cx, cy, t, L) {
+    const W = fb.w, H = fb.h, d = fb.d, pal = Stage.framePal(0, t), M = Game.area.M;
+    const x0 = Math.max(0, Math.floor(L.x0 - cx)), x1 = Math.min(W, Math.ceil(L.x1 - cx));
+    for (let x = x0; x < x1; x++) {
+      const wx = x + cx, g = World.groundAt(wx);
+      if (g <= L.y + 1) continue;
+      const surf = L.y + Math.sin(wx * 0.08 + t * 1.6) * 1.2;
+      const y0 = Math.max(0, Math.round(surf - cy)), y1 = Math.min(H, Math.round(g - cy) + 6);
+      for (let y = y0; y < y1; y++) {
+        const dep = y + cy - surf, i = y * W + x;
+        const f = Math.sin(wx * 0.06 + (y + cy) * 0.11 - t * 1.2) + Math.sin(wx * 0.021 - t * 0.5 + (y + cy) * 0.05) * 0.8;
+        let c;
+        if (dep < 1.5) c = pal[M.lava[5]];
+        else if (f > 1.1) c = pal[M.lava[4]]; else if (f > 0.1) c = pal[M.lava[3]]; else if (f > -0.9) c = pal[M.lava[2]]; else c = pal[M.lava[1]];
+        // a dark cooling crust drifting on top
+        if (dep < 10 && Stage.noiseAt(wx * 0.5 + t * 3, dep * 2 + t) > 0.72) c = mix(c, 0xff0a0a20, 0.7);
+        d[i] = dep > 3 ? mix(c, d[i], Math.min(0.25, dep / 80)) : c;
+      }
+    }
+    // bubbles popping
+    if (Math.random() < 0.25) { const bx = rnd2(L.x0 + 20, L.x1 - 20); if (World.groundAt(bx) > L.y + 6) { FX.add({ type: 'ring', x: bx, y: L.y, r0: 1, r1: 6, flat: 0.4, life: 0.5, c: hex('#ffe070'), layer: 2 }); for (let k = 0; k < 4; k++) FX.add({ type: 'drop', x: bx, y: L.y - 1, vx: rnd2(-30, 30), vy: -rnd2(40, 90), g: 380, life: 0.6, c: hex('#ffc040'), c2: hex('#ff5a10'), size: 1, floor: L.y, layer: 2 }); if (Math.random() < 0.2) Game.sfx('lava', bx, 0.3); } }
+  }
+  const rnd2 = (a, b) => a + Math.random() * (b - a);
+  def.drawFront = (A, fb, cx, cy, t) => { for (const L of LAVAS) drawLava(fb, cx, cy, t, L); };
+  def.post = (A, fb, cx, cy, t) => {
+    const W = fb.w, H = fb.h, d = fb.d;
+    // falling ash on the slopes, rising embers near the magma
+    for (const p of S.ash) {
+      const x = Math.round(p.x - cx), y = Math.round(p.y - cy); if (x < 0 || y < 0 || x >= W - 1 || y >= H - 1) continue;
+      const i = y * W + x;
+      if (p.k === 'ash') { d[i] = mix(d[i], 0xffd0ccc8, 0.85); if (p.big) { d[i + 1] = mix(d[i + 1], 0xffb0aca8, 0.7); d[i + W] = mix(d[i + W], 0xffa8a4a0, 0.6); } }
+      else { const a = Math.min(1, p.life * 2); d[i] = U.screen(d[i], 0xff3a9aff, a); d[i - W] = U.screen(d[i - W], 0xff2a6aff, a * 0.5); }
+    }
+    // heat shimmer above the lava
+    const lx0 = Math.max(0, Math.floor(LAVA.x0 - cx)), lx1 = Math.min(W, Math.ceil(LAVA.x1 - cx)), ly1 = Math.min(H, Math.round(LAVA.y - cy)), ly0 = Math.max(0, ly1 - 60);
+    if (lx1 > lx0 && ly1 > 0) {
+      const row = new Uint32Array(W);
+      for (let y = ly0; y < ly1; y++) {
+        const k = (y - ly0) / 60, off = Math.round(Math.sin(y * 0.6 + t * 8) * 1.4 * k);
+        if (!off) continue;
+        for (let x = lx0; x < lx1; x++) row[x] = d[y * W + clamp(x + off, 0, W - 1)];
+        for (let x = lx0; x < lx1; x++) d[y * W + x] = row[x];
+      }
+    }
+    if (S.flash > 0) { S.flash = Math.max(0, S.flash - 1 / 80); const k = Math.round(S.flash * 110); for (let i = 0; i < d.length; i++) d[i] = U.mixk(d[i], 0xff60c0ff, k); }
+  };
+  def.spawn = (A, G) => {
+    S.ash.length = 0; S.seq = []; S.input = []; S.showI = -1; S.solved = Save.found('volcano.stones');
+    if (typeof VolcanoAI !== 'undefined') VolcanoAI.spawn(A, G, { SPRING, LAVA, PUDDLE, BATH });
+  };
+  def.update = (A, dt, t, G) => {
+    const mk = G.mudkip, cx = Game.cam.x, cy = Game.cam.y, VW = Game.VW, VH = Game.VH;
+    // ash + embers
+    const wantAsh = cx < 1600 ? 150 : cx < 2800 ? 40 : 12, wantEmb = cx + VW > 3600 ? 40 : 0;
+    let na = 0, ne = 0; for (const p of S.ash) p.k === 'ash' ? na++ : ne++;
+    for (let k = 0; k < 3 && na < wantAsh; k++, na++) S.ash.push({ k: 'ash', x: cx + Math.random() * (VW + 60) - 30, y: cy - 10 + (S.ash.length < 20 ? Math.random() * VH : 0), vy: 12 + Math.random() * 16, ph: Math.random() * 6, big: Math.random() < 0.25, life: 20 });
+    for (let k = 0; k < 2 && ne < wantEmb; k++, ne++) { const x = rnd2(Math.max(cx, LAVA.x0), Math.min(cx + VW, LAVA.x1)); S.ash.push({ k: 'ember', x, y: LAVA.y - 2, vy: -rnd2(20, 50), ph: Math.random() * 6, life: rnd2(1.5, 3) }); }
+    for (let i = S.ash.length - 1; i >= 0; i--) { const p = S.ash[i]; p.life -= dt; p.x += (Math.sin(t * 1.3 + p.ph) * 10 + (p.k === 'ash' ? 6 : 0)) * dt; p.y += p.vy * dt; if (p.life <= 0 || p.y > cy + VH + 10 || p.y < cy - 60 || (p.k === 'ash' && p.y > World.groundAt(p.x))) S.ash.splice(i, 1); }
+    // steam over the hot spring
+    if (Math.random() < dt * 8) { const x = rnd2(SPRING.x0 + 20, SPRING.x1 - 20); FX.add({ type: 'dust', x, y: SPRING.level - 2, vx: rnd2(-6, 6), vy: -rnd2(12, 24), r: 3 + Math.random() * 3, life: 1.6, c: 0xfff4f0ec, c2: 0xffd8d4d0, layer: 3 }); }
+    // steam vents: every few seconds a hot blast that throws Mudkip sky-high
+    for (const v of S.vents) {
+      v.t -= dt;
+      if (v.t <= 0) { v.t = 4 + Math.random() * 3; v.on = 1; Game.sfx('steam', v.x, 0.6); }
+      if (v.on > 0) {
+        v.on = Math.max(0, v.on - dt / 1.2);
+        for (let k = 0; k < 3; k++) FX.add({ type: 'dust', x: v.x + rnd2(-4, 4), y: World.groundAt(v.x) - 4, vx: rnd2(-10, 10), vy: -rnd2(90, 160), r: 3 + Math.random() * 4, life: 0.9, c: 0xfff8f4f0, c2: 0xffc8c4c0, layer: 3 });
+        if (mk && Math.abs(mk.x - v.x) < 12 && mk.mode === 'land' && mk.air <= 0) { mk.mode = 'fall'; mk.vy = -560; mk.vx = 0; mk.jumping = false; mk.flipT = 0.9; mk.flipLen = 0.9; mk.flipSpins = 2; mk.flipDir = 1; mk.flipped = true; Game.sfx('whoosh', v.x, 0.8); if (mk.say) mk.say('Wheee!', 1); Save.discover('volcano.vent'); }
+      }
+    }
+    // ash collecting in the ashy grass (for the glassblower)
+    if (mk && mk.moving && mk.x < 1450 && mk.mode === 'land') { S.sootT = (S.sootT || 0) + dt; if (S.sootT > 1.2) { S.sootT = 0; const n = (Save.data.stats.soot || 0) + 1; if (n <= 30) { Save.data.stats.soot = n; Save.save(); if (n % 10 === 0 || n === 30) HUD.toast('Ash collected: ' + n + '/30', { life: 1.4 }); } } }
+    // lava! too hot to touch: Mudkip bounces out yelping
+    S.burnCool -= dt;
+    if (mk && S.burnCool <= 0) {
+      const L = lavaAt(mk.x);
+      if (L && mk.y >= L.y - 3 && mk.mode !== 'swim') {
+        S.burnCool = 1; const toLeft = mk.x - L.x0 < L.x1 - mk.x;
+        mk.mode = 'fall'; mk.vy = -480; mk.vx = toLeft ? -150 : 150; mk.jumping = false; mk.dizzy = 1.2; mk.flipT = 0.7; mk.flipLen = 0.7; mk.flipSpins = 1; mk.flipDir = toLeft ? -1 : 1; mk.flipped = true;
+        FX.poof(mk.x, L.y - 4, 0xffe8e8e8, 0xffb0b0b0, 10, 6); Game.sfx('steam', mk.x, 1); Game.shake(2);
+        if (mk.say) mk.say('HOT HOT HOT!', 1.4);
+      }
+    }
+    // the stones' light show
+    if (S.showI >= 0) {
+      S.showT += dt;
+      const i = Math.floor(S.showT / 0.8);
+      if (i >= 4) { S.showI = -1; }
+      else if (i !== S.showI || S.showT < 0.02) { S.showI = i; const st = S.seq[i]; S.lit[st] = 0.7; Game.sfx('lava', STONES[st], 0.7); FX.add({ type: 'ring', x: STONES[st], y: World.groundAt(STONES[st]) - 12, r0: 3, r1: 18, life: 0.5, c: hex('#ffc040'), layer: 3 }); }
+    }
+    for (let k = 0; k < 4; k++) { S.lit[k] = Math.max(0, S.lit[k] - dt); if (A.stones) A.stones[k].frames = [S.stoneSpr[k][S.lit[k] > 0 || S.solved ? 1 : 0]]; }
+    if (!S.solved && mk && S.showI < 0 && !S.seq.length && Math.abs(mk.x - 3830) < 60 && !S.hinted) { S.hinted = true; HUD.toast('Four carved stones ring the crater... tap one to wake the lava.', { life: 3 }); }
+    if (typeof VolcanoAI !== 'undefined') VolcanoAI.update(A, dt, t, G);
+  };
+  def.weather = () => ({ rain: 0, fog: 0.12 });
+  def.ambient = (hour) => {
+    const out = [{ kind: 'mote', rate: 2, c: hex('#e0d8ce'), life: 6, sway: 10, bob: 4, vy: 2 }];
+    if (hour === 'night' || hour === 'dusk') out.push({ kind: 'firefly', rate: 1.2, c: hex('#ff9a4a'), life: 6, sway: 12, bob: 6, y: (x) => World.groundAt(x) - 10 - Math.random() * 60 });
+    else out.push({ kind: 'bird', rate: 0.1, group: [2, 3], vx0: 22, par: 0.3, c: hex('#2a2024'), life: 40, sway: 3, bob: 3, y: () => 150 + Math.random() * 60 });
+    return out;
+  };
+  def.onScan = (A) => { const mk = Game.mudkip; if (mk && mk.x > 3700) { HUD.toast(S.solved ? 'Scan: a colossal heat signature in the magma... awake.' : 'Scan: a colossal heat signature sleeps in the magma. The four stones hum.', { life: 3 }); return true; } return false; };
+  def.onSong = (x) => { if (typeof VolcanoAI !== 'undefined' && VolcanoAI.song) VolcanoAI.song(x); };
+  def.photoBonus = (A, crop, subs, main) => {
+    if (subs.some((s) => s.sp === 'groudon')) return { pts: 800, name: 'Lord of the land' };
+    if (Game.mudkip && Game.mudkip.x > 3700) return { pts: 250, name: 'Magma glow' };
+    if (Game.mudkip && Game.mudkip.x < 1450) return { pts: 150, name: 'Ashfall' };
+    return null;
+  };
+  def.S = S; def.LAVAS = LAVAS; def.STONES = STONES; def.SPRING = SPRING; def.LAVA = LAVA; def.PUDDLE = PUDDLE;
+  return def;
+})();
+
+/* ==== src/snap/areas/shoal.js ==== */
+/* ------------------------------------------------------------------
+   Shoal Cave — an icy sea cave on a snowy islet (Route 125).
+    · Snowy Shore: snow drifts over the sand, an icy tide lapping at the
+      rocks, Spheal lounging, and at night an aurora rippling over the
+      frozen sea. Latias and Latios sometimes race by at dusk.
+    · Tidal Cavern: through the great cave mouth, a tide pool glowing
+      blue under hanging icicles; Starmie shine in it at night.
+    · Ice Slide: a frozen waterfall and a floor of glassy ice — Mudkip
+      skates and slides! Snorunt play here.
+    · The Ice Chamber: braille dots on the wall, a circle on the floor
+      and a giant frozen in ice. "STAND IN THE CIRCLE. BE STILL. SING."
+------------------------------------------------------------------- */
+Areas.shoal = (() => {
+  const { clamp, lerp, rng, hash, bayer4, vnoise, mix, hex } = U;
+  const MOUTH = 760, CEIL = 452, TIDE = { x0: 0, x1: 250, level: 568 }, POOL = { x0: 1150, x1: 1480, level: 578 };
+  const ICE = { x0: 2060, x1: 2820 }, FALLX = 2420, WALL = 3470, RING = 3570, REGI = 3740;
+  const def = {
+    id: 'shoal', name: 'Shoal Cave', sub: 'Route 125 · Ice Cave', music: 'shoal', seed: 88, noSeason: true, cave: true,
+    W: 3900, H: 1000, sea: null, refY: 560, h0: 118, cy0: 330, ph: 0.05, skyH: 300, sunH: 130, band: 11, waves: 0.4,
+    camY: [-40, 860], frameY: 0.74, start: 380,
+    ground: [[0, 640], [120, 620], [230, 584], [300, 562], [500, 558], [760, 560], [900, 562], [1100, 566], [1160, 588], [1200, 620], [1300, 638], [1420, 626], [1470, 590], [1500, 566], [1700, 560], [1900, 558], [2060, 562], [2400, 564], [2820, 562], [2960, 556], [3100, 552], [3400, 550], [3900, 548]],
+    water: [{ x0: TIDE.x0, x1: TIDE.x1, level: TIDE.level, kind: 'tide' }, { x0: POOL.x0, x1: POOL.x1, level: POOL.level, kind: 'pool' }],
+    plats: [],
+    sky: {
+      noon: [[0, '#5a8ad0'], [0.45, '#8ab4e4'], [0.8, '#c8def0'], [1, '#e8f2f8']],
+      afternoon: [[0, '#5a7ec4'], [0.5, '#94acd8'], [0.85, '#dcd8e0'], [1, '#f4e4d4']],
+      night: [[0, '#02061a'], [0.4, '#061232'], [0.75, '#0e2250'], [1, '#1a3466']],
+    },
+    mats: {
+      ink: ['#0a0e18', '#141c2c'],
+      snow: ['#9aaac8', '#b8c6de', '#d4def0', '#eaf0fa', '#ffffff'],
+      sand: ['#6a6a7a', '#8a8a98', '#a8a8b4'],
+      ice: { c: ['#2a5a8a', '#3a82b8', '#5aaad8', '#8ad0f0', '#c0ecff', '#eafaff'], emit: false },
+      iceG: { c: ['#1a4a8a', '#2a8ad8', '#6ad0ff', '#d0f4ff'], emit: true },
+      rock: ['#141a26', '#1e2636', '#2a3448', '#3a4660', '#4e5c7a', '#687898'],
+      wall: ['#0e1426', '#141c32', '#1c2640', '#26324e', '#324060', '#425274'],
+      wallI: ['#16304a', '#1e4260', '#285878', '#347090', '#4a8aa8'],
+      far: ['#5a7298', '#6e86aa', '#869cbc', '#a2b6d0', '#c2d2e4'],
+      sea: ['#1a3a6a', '#24508a', '#3470a8', '#4a90c4'],
+      pine: ['#12302a', '#1a4236', '#265844', '#387056'],
+      bark: ['#2a1c14', '#3e2a1c', '#563a26'],
+      braille: { c: ['#1a2a4a', '#3a8aff', '#bfe8ff'], emit: true },
+      ring: { c: ['#2a6ab8', '#6ad0ff', '#e0faff'], emit: true },
+      aur: { c: ['#20c89a', '#6affc8', '#b88aff'], emit: true },
+    },
+  };
+  def.cycleRate = 4;
+  def.waterCols = (hour) => {
+    const night = hour === 'night';
+    return { top: night ? hex('#1a4a70') : hex('#5ab4e0'), mid: night ? hex('#0e2a48') : hex('#2a7ab4'), deep: night ? hex('#061426') : hex('#123e6a'), foam: hex('#f4fcff'), hi: night ? hex('#9ae0ff') : hex('#e4faff'), ray: null, maxD: 110 };
+  };
+  const S = { slide: 0, still: 0, dots: 0, awake: false, sungT: 0, frost: 0 };
+  const n1 = (x, y) => Terrain.n1(Math.floor(x) & 0xffff, Math.floor(y) & 0xffff), n2 = (x, y) => Terrain.n2(Math.floor(x) & 0xffff, Math.floor(y) & 0xffff);
+  const pickR = (ramp, t, x, y) => Terrain.pickR(ramp, t, x, y);
+  const ceilAt = (x) => CEIL + Math.sin(x * 0.011) * 10 + (vnoise(x * 0.04, 3, 21) - 0.5) * 16;
+  const inside = (x) => x > MOUTH;
+
+  /* ---------------- painters ---------------- */
+  function icicle(M, w, h, seed, up = false) {
+    const s = new ISpr(w + 2, h + 2);
+    for (let y = 0; y < h; y++) { const t = y / h, half = (w / 2) * (1 - t) ** 1.2 + 0.4; for (let x = -half; x <= half; x++) s.set(w / 2 + 1 + x, up ? h - y : y, pickR(M.ice.c ? M.ice : M.ice, 0.85 - (x + half) / (2 * half + 0.1) * 0.55 - t * 0.1, x, y)); }
+    Paint.outline(s, M.ink[1]);
+    s.ax = (w >> 1) + 1; s.ay = up ? h : 0;
+    return s;
+  }
+  function crystal(M, size, seed) { return Props2.crystal(M, size, seed, M.iceG); }
+  function ceilingChunk(M, x0, w, seed) {
+    const top = CEIL - 150, H = CEIL + 70 - top, s = new ISpr(w, H), r = rng(seed);
+    for (let xx = 0; xx < w; xx++) {
+      const x = x0 + xx; if (x < MOUTH - 40) continue;
+      const lip = x < MOUTH + 60 ? (MOUTH + 60 - x) * 0.9 : 0;
+      const yb = ceilAt(x) - top - lip;
+      for (let y = 0; y < yb; y++) { let lit = 0.35 - (yb - y) / 300 + (n2(x * 1.2, y * 2) - 0.5) * 0.35 + (y > yb - 3 ? 0.25 : 0); s.set(xx, y, pickR(y > yb - 5 ? M.wallI : M.wall, lit, x, y)); }
+      if (hash(x, 5, seed) > 0.985) { const c = crystal(M, 3 + hash(x, 6, seed) * 4, x); for (let y = 0; y < c.h; y++) for (let q = 0; q < c.w; q++) { const v = c.d[y * c.w + q]; if (v) s.set(xx - c.ax + q, yb + c.h - 1 - y - 3, v); } }
+    }
+    for (let xx = 6; xx < w - 6; xx += 7 + r() * 22) { const x = x0 + xx; if (x < MOUTH + 20) continue; const ic = icicle(M, 3 + r() * 7, 8 + r() * 30, Math.floor(x)); s.paste(ic, Math.round(xx - ic.ax), Math.round(ceilAt(x) - top - 2)); }
+    Paint.outline(s, M.ink[0]);
+    s.ax = 0; s.ay = 0; s.top = top;
+    return s;
+  }
+  function wallSpr(M, w, h, seed) {
+    const s = new ISpr(w, h), r = rng(seed);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let lit = 0.42 + (n2(x * 0.7 + seed, y * 0.9) - 0.5) * 0.4 + (Terrain.n3(x & 0xffff, (y + seed) & 0xffff) - 0.5) * 0.3 - Math.abs(y - h * 0.55) / h * 0.3;
+      if (((x + Math.floor(n1(x * 0.5, y * 0.1) * 13)) % 29) === 0) lit += 0.12;
+      s.set(x, y, pickR(n1(x * 0.3, y * 0.3) > 0.62 ? M.wallI : M.wall, lit, x, y));
+    }
+    for (let k = 0; k < w / 40; k++) { const c = crystal(M, 3 + r() * 6, seed + k); s.paste(c, Math.round(r() * w), Math.round(h * 0.3 + r() * h * 0.6)); }
+    return s;
+  }
+  function frozenFall(M, w, h) {
+    const s = new ISpr(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const u = x / w, edge = Math.min(u, 1 - u) * w + Math.sin(y * 0.07) * 3; if (edge < 1) continue; const band = Math.sin(x * 0.5 + y * 0.02) + Math.sin(x * 0.13); s.set(x, y, pickR(M.ice, 0.55 + band * 0.18 + (y > h - 10 ? 0.2 : 0), x, y)); }
+    Paint.outline(s, M.ink[1]);
+    s.ax = w >> 1; s.ay = h - 1;
+    return s;
+  }
+  function brailleWall(M) {
+    const w = 60, h = 84, s = new ISpr(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) s.set(x, y, pickR(M.rock, 0.5 + (n2(x * 3, y * 2) - 0.5) * 0.3 - (x < 2 || y < 2 ? -0.3 : 0), x, y));
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 8; c++) if (hash(r, c, 17) > 0.45) { const x = 6 + c * 6, y = 8 + r * 10; s.rect(x, y, 2, 2, M.braille[0]); }
+    Paint.outline(s, M.ink[0]);
+    s.ax = w >> 1; s.ay = h - 1;
+    return s;
+  }
+  function snowPine(M, H, seed) {
+    const s = new ISpr(Math.round(H * 0.7) + 4, H + 2), r = rng(seed), cx = s.w / 2;
+    for (let y = H - 8; y < H; y++) { s.set(cx, y, M.bark[1]); s.set(cx + 1, y, M.bark[2]); }
+    for (let t = 0; t < 5; t++) { const y0 = Math.round(t * (H - 10) / 5), y1 = Math.round((t + 1.3) * (H - 10) / 5); for (let y = y0; y < y1; y++) { const hw = ((y - y0) / (y1 - y0)) * (H * 0.12 + t * H * 0.06); for (let x = -hw; x <= hw; x++) { const top = (y - y0) < 2 || hash(Math.round(x), y, seed) > 0.8 && (y - y0) < (y1 - y0) * 0.4; s.set(cx + x, y, top ? M.snow[4] : pickR(M.pine, 0.7 - (x + hw) / (2 * hw + 1) * 0.5, x, y)); } } }
+    void r; Paint.outline(s, M.ink[0]);
+    s.ax = Math.round(cx); s.ay = H;
+    return s;
+  }
+
+  /* ---------------- build ---------------- */
+  def.build = (A) => {
+    const M = A.M, r = rng(A.seed);
+    const gy = (x) => World.groundAt(x);
+    const wet = (x) => (x > TIDE.x0 && x < TIDE.x1 - 10) || (x > POOL.x0 + 16 && x < POOL.x1 - 16);
+    Terrain.paint(A, {
+      bb: 7, bf: 5,
+      strip(x, y, u, e) {
+        const n = e.n2(x, y * 3);
+        if (wet(x)) return e.pickR(M.sand, 0.4 + (n - 0.5) * 0.4, x, y);
+        let t = 0.7 - u * 0.36 + (n - 0.5) * 0.3;
+        if (x > ICE.x0 && x < ICE.x1) return e.pickR(M.ice, t + 0.1 + (e.hash(x, y, 3) > 0.9 ? 0.2 : 0), x, y);
+        if (!inside(x)) return e.pickR(M.snow, t + 0.1, x, y);
+        return e.pickR(e.n1(x, y) > 0.55 ? M.snow : M.rock, t, x, y);
+      },
+      face(x, y, dep, e) {
+        if (dep <= 1) return M.ink[1];
+        const n1v = e.n1(x, y), n2v = e.n2(x, y);
+        const band = (dep + n1v * 12) / 18, bi = Math.floor(band);
+        let t = 0.55 - Math.min(0.5, dep / 240) - (bi % 3 === 1 ? 0.1 : 0) + (n2v - 0.5) * 0.25;
+        if (x > ICE.x0 && x < ICE.x1 && dep < 26) return e.pickR(M.ice, 0.55 - dep / 40, x, y);
+        if (dep < 4 && !inside(x)) return M.snow[1];
+        if (dep > 12 && e.hash(x, y, 13) > 0.9985) return M.iceG[2];
+        return e.pickR(M.rock, t, x, y);
+      },
+    });
+    const put = (s, x, zd, o) => A.put(s, x, zd, o);
+    // ---- the snowy shore ----
+    for (let x = 300; x < MOUTH - 40; x += 80 + r() * 110) put(snowPine(M, 70 + r() * 50, Math.floor(x)), x, -5, { sink: 3 });
+    for (let x = 260; x < MOUTH; x += 40 + r() * 60) put(Paint.rock(M, 14 + r() * 18, 9 + r() * 10, Math.floor(x), { ramp: M.rock, moss: M.snow }), x, r() < 0.5 ? 2 : -3, { sink: 3 });
+    // ---- the cave ceiling, world-locked ----
+    for (let x0 = MOUTH - 60; x0 < A.W + 40; x0 += 300) { const c = ceilingChunk(M, x0, 300, 700 + x0); A.props.push({ frames: [c], x: x0, y: c.top, zd: -9 }); }
+    // ---- tidal cavern ----
+    for (let x = MOUTH + 40; x < A.W - 30; x += 70 + r() * 120) { if (wet(x)) continue; const k = r(); if (k < 0.35) put(crystal(M, 5 + r() * 7, Math.floor(x)), x, r() < 0.5 ? -3 : 2, { sink: 2 }); else if (k < 0.7) put(icicle(M, 6 + r() * 8, 14 + r() * 26, Math.floor(x * 3), true), x, -4, { sink: 3 }); else put(Paint.rock(M, 16 + r() * 20, 10 + r() * 12, Math.floor(x), { ramp: M.rock, moss: M.snow }), x, 2, { sink: 3 }); }
+    A.glows.push({ x: (POOL.x0 + POOL.x1) / 2, y: POOL.level + 20, r: 180, flat: 2.5, c: hex('#4ab8ff'), a: 0.3, always: true });
+    // ---- the frozen waterfall and ice slide ----
+    A.props.push({ frames: [frozenFall(M, 44, Math.round(gy(FALLX) - ceilAt(FALLX) + 10))], x: FALLX, y: gy(FALLX) + 2, zd: -6 });
+    A.glows.push({ x: FALLX, y: gy(FALLX) - 60, r: 70, c: hex('#bfefff'), a: 0.35, always: true });
+    // ---- the ice chamber ----
+    A.wall = put(brailleWall(M), WALL, -4, { sink: 2 });
+    A.glows.push(S.ringGlow = { x: RING, y: gy(RING) - 2, r: 30, flat: 3, c: hex('#6ad0ff'), a: 0.3, always: true, k: 0.4 });
+    A.glows.push(S.wallGlow = { x: WALL, y: gy(WALL) - 40, r: 50, c: hex('#3a8aff'), a: 0.4, always: true, k: 0.2 });
+    for (const x of [3040, 3200, 3860]) { put(icicle(M, 16, 70, x, true), x, -5, { sink: 3 }); }
+    const det = (key, ramp, x, zd) => { const s = Paint.miniSpr(key, ramp); A.details.push({ s, x, y: gy(x) + zd, zd }); };
+    for (let x = 10; x < A.W; x += 6 + r() * 14) { if (wet(x)) continue; const k = r(), zd = (r() - 0.5) * 8; if (k < 0.3) det('pebble2', inside(x) ? M.rock : M.snow, x, zd); else if (k < 0.4) det('pebble', M.ice, x, zd); else if (k < 0.45 && !inside(x)) det('shell1', M.snow, x, zd); }
+
+    /* ---- backdrop: outside (sea, snowy islands), inside (ice walls, clipped to the cave mouth) ---- */
+    {
+      const w = 900, h = 90, s = new ISpr(w, h);
+      Paint.ridge(s, M, { ramp: M.far, base: h, amp: 70, seed: 5, freq: 0.01, peaks: [[200, 150, 0.9], [640, 120, 0.7]], snow: M.snow, snowD: 12, snowLine: 0.3 });
+      const L = A.layer(s, 0.03, { haze: 0.4, base: h - 1, x: -40 }); L.out = true;
+    }
+    {
+      const w = 1300, h = 120, s = new ISpr(w, h);
+      Paint.ridge(s, M, { ramp: M.rock, base: h, amp: 80, seed: 9, freq: 0.014, snow: M.snow, snowD: 16, snowLine: 0.1 });
+      for (let x = 0; x < w; x += 20 + r() * 40) { const p = snowPine(M, 24 + r() * 20, Math.floor(x)); s.paste(p, Math.round(x - p.ax), h - p.ay - 6 - Math.round(r() * 20)); }
+      const L = A.layer(s, 0.2, { haze: 0.3, base: h - 1, x: 0 }); L.out = true; L.skirt = M.rock[1];
+    }
+    S.wallS = wallSpr(M, 1800, 330, 17); S.wall2 = wallSpr(M, 2600, 300, 29);
+    // ---- 2.5D floor: snowy sand and the icy sea outside, frosted rock and ice inside ----
+    {
+      A.depthP0 = 0.55; A.depthHaze = 0.24;
+      A.floor = { p0: 0.55, D: 120,
+        row(wz, p, t) { return { t, C: def.waterCols(Stage.S.hour) }; },
+        tex(wx, wz, p, t, R) {
+          const n = Stage.noiseAt(wx * 0.4, wz * 1.2), n2v = Stage.noiseAt(wx * 1.7 + 50, wz * 3.1);
+          const k = (1 - p) / 0.45;
+          if (wx < 260 + k * 140) { const f = Math.sin(wx * 0.04 + wz * 0.5 + t) > 0.85; return f ? R.C.hi : n > 0.6 ? R.C.mid : R.C.top; }
+          if (wx < MOUTH) return M.snow[n > 0.6 ? 4 : n < 0.35 ? 2 : 3];
+          if (wx > POOL.x0 && wx < POOL.x1 && k < 0.7) { return n2v > 0.86 ? R.C.hi : R.C.top; }
+          if (wx > ICE.x0 && wx < ICE.x1) return n2v > 0.9 ? M.ice[5] : M.ice[n > 0.5 ? 4 : 3];
+          return n > 0.62 ? M.snow[2] : M.rock[n < 0.3 ? 2 : 3];
+        } };
+      const r2 = rng(5151);
+      for (let i = 0; i < 26; i++) { const p = 0.57 + r2() * 0.38, wx = 280 + r2() * (MOUTH - 300); A.scatterAt(snowPine(M, Math.round((60 + r2() * 40) * p), 5000 + i), wx, p); }
+      for (let i = 0; i < 60; i++) { const p = 0.56 + r2() * 0.42, wx = MOUTH + 40 + r2() * (A.W - MOUTH - 80); if (wx > POOL.x0 - 20 && wx < POOL.x1 + 20) continue; A.scatterAt(r2() < 0.5 ? crystal(M, Math.max(2, Math.round((4 + r2() * 6) * p)), 5100 + i) : icicle(M, Math.max(3, Math.round(8 * p)), Math.max(6, Math.round((18 + r2() * 20) * p)), 5200 + i, true), wx, p); }
+    }
+    // ---- foreground ----
+    for (let x = -40; x < A.W; x += 170 + r() * 200) {
+      const s = new ISpr(80, 100), st = icicle(M, 26 + r() * 20, 60 + r() * 30, Math.floor(x * 5), true);
+      s.paste(st, 40 - st.ax, 100 - st.h);
+      for (let k = 0; k < 2; k++) { const c = crystal(M, 6 + r() * 6, Math.floor(x) + k); s.paste(c, Math.round(8 + r() * 56), 100 - c.h); }
+      s.ax = 40; s.ay = 99;
+      A.foreItem(Paint.edge(s, M.ink[0]), x, gy(x) + 70 + r() * 20, { p: 1.35, flip: r() < 0.5 });
+    }
+    for (let x = MOUTH + 100; x < A.W; x += 240 + r() * 260) { const ic = icicle(M, 24 + r() * 24, 60 + r() * 60, Math.floor(x * 9)); A.foreItem(Paint.edge(ic, M.ink[0]), x, CEIL - 70, { p: 1.3, hang: true }); }
+    A.foreDark = 0.3; A.foreTint = 0xff301810;
+    // ---- hotspots ----
+    A.addHot({ x0: WALL - 30, x1: WALL + 30, y0: gy(WALL) - 84, y1: gy(WALL), x: WALL, reach: 50, tap() { Game.sfx('scan'); HUD.toast(S.awake ? 'The dots glow: "THE GIANT OF ICE HAS WOKEN."' : 'The braille reads: "STAND IN THE CIRCLE. BE STILL. THEN SING."', { life: 3.6 }); }, onScan() { HUD.toast('Scan: "STAND IN THE CIRCLE. BE STILL. THEN SING."', { life: 3.2 }); return true; } });
+  };
+
+  /* ---------------- drawing ---------------- */
+  // the icy sea band outside, and an aurora on clear nights
+  function outside(fb, cx, cy, t) {
+    const W = fb.w, H = fb.h, d = fb.d, hz = Stage.horizonS(cy), seaY = Math.round(TIDE.level - cy);
+    const C = def.waterCols(Stage.S.hour), far = C.mid, near = C.top;
+    const wm = Stage.waterMask(W * H), wc = Stage.S.wc;
+    for (let y = Math.max(0, hz); y < Math.min(H, seaY); y++) {
+      const u = (y - hz) / Math.max(1, seaY - hz), row = y * W, base = mix(far, near, Math.pow(u, 0.7));
+      for (let x = 0; x < W; x++) { let c = base; const wv = Math.sin((x + cx * (0.1 + u * 0.9)) * 0.21 + y * 1.3 + t) + Math.sin(x * 0.05 - t * 0.6); if (wv > 1.4) c = mix(c, C.hi, 0.5); if (hash((x + cx) >> 3, y, 5) > 0.992) c = 0xffffffff; d[row + x] = c; wm[row + x] = 1; wc[row + x] = c; }
+    }
+    // aurora ribbons
+    const hr = Stage.S.hour;
+    if (hr === 'night' || hr === 'dusk') {
+      const k = hr === 'night' ? 1 : 0.4, A0 = hex('#30e0a0'), A1 = hex('#b88aff');
+      for (let x = 0; x < W; x++) {
+        const wx = x + cx * 0.05, top = 30 + Math.sin(wx * 0.02 + t * 0.3) * 18 + Math.sin(wx * 0.007 - t * 0.1) * 24;
+        for (let j = 0; j < 46; j++) { const y = Math.round(top + j); if (y < 0 || y >= Math.min(H, hz)) continue; const a = (1 - j / 46) * (0.5 + 0.5 * Math.sin(wx * 0.05 + t + j * 0.05)) * 0.35 * k; if (a < 0.03) continue; const i = y * W + x; d[i] = U.screen(d[i], mix(A0, A1, j / 46 + Math.sin(wx * 0.01) * 0.2), a); }
+      }
+    }
+  }
+  // the cave's back wall, only to the right of the cave mouth (at the lane's depth)
+  function caveWall(fb, cx, cy, t, spr, p, yBase, hz) {
+    const W = fb.w, H = fb.h, d = fb.d, pal = Stage.framePal(hz, t);
+    const ox = Math.round(-cx * p + 40), oy = Math.round(yBase - cy);
+    for (let y = Math.max(0, oy); y < Math.min(H, oy + spr.h); y++) {
+      const edge = MOUTH - cx + Math.round(Math.sin((y + cy) * 0.09) * 6 + (y + cy - CEIL) * 0.25);
+      const row = (y - oy) * spr.w;
+      for (let x = Math.max(0, edge); x < W; x++) { const u = x - ox; if (u < 0 || u >= spr.w) continue; const v = spr.d[row + u]; if (v) d[y * W + x] = x - edge < 2 ? 0xff0a0e18 : pal[v]; }
+    }
+  }
+  def.drawBack = (A, fb, cx, cy, t) => {
+    Stage.drawSky(fb, cx, cy, t);
+    outside(fb, cx, cy, t);
+    for (const L of A.layers) if (L.out) Stage.drawLayer(fb, L, cx, cy, t);
+    const hz = Stage.horizonS(cy);
+    caveWall(fb, cx, cy, t, S.wallS, 0.35, CEIL - 140, 0.25);
+    caveWall(fb, cx, cy, t, S.wall2, 0.62, CEIL - 60, 0.12);
+    Stage.drawDepthFrom(fb, cx, cy, t, 0.5);
+    void hz;
+  };
+  def.post = (A, fb, cx, cy, t) => {
+    const W = fb.w, H = fb.h, d = fb.d;
+    // the stillness ring glows brighter as Mudkip waits in it; the wall's dots light one by one
+    const X = Math.round(RING - cx), Y = Math.round(World.groundAt(RING) - cy);
+    const k = S.awake ? 1 : S.dots / 7;
+    for (let a = 0; a < Math.PI * 2; a += 0.05) { const px = X + Math.round(Math.cos(a) * 18), py = Y + Math.round(Math.sin(a) * 4); if (px >= 0 && py >= 0 && px < W && py < H) d[py * W + px] = U.screen(d[py * W + px], hex('#6ad0ff'), 0.35 + k * 0.6); }
+    const wx = Math.round(WALL - cx), wy = Math.round(World.groundAt(WALL) - cy);
+    for (let i = 0; i < 7; i++) {
+      if (!S.awake && i >= S.dots) continue;
+      const [dx, dy] = [[-12, -60], [0, -60], [12, -60], [-6, -48], [6, -48], [0, -72], [0, -36]][i];
+      for (let q = -1; q <= 1; q++) for (let w = -1; w <= 1; w++) { const px = wx + dx + q, py = wy + dy + w; if (px >= 0 && py >= 0 && px < W && py < H) d[py * W + px] = U.mix(hex('#bfe8ff'), 0xffffffff, 0.3 + 0.3 * Math.sin(t * 5 + i)); }
+    }
+    if (S.frost > 0) { S.frost = Math.max(0, S.frost - 1 / 90); const kk = Math.round(S.frost * 120); for (let i = 0; i < d.length; i++) d[i] = U.mixk(d[i], 0xfffff4e8, kk); }
+  };
+  def.spawn = (A, G) => {
+    S.still = 0; S.dots = 0; S.awake = Save.found('regice.woke'); S.slide = 0;
+    if (typeof ShoalAI !== 'undefined') ShoalAI.spawn(A, G, { TIDE, POOL, ICE, RING, REGI, MOUTH });
+  };
+  def.update = (A, dt, t, G) => {
+    const mk = G.mudkip;
+    // glassy ice: Mudkip keeps sliding when it lets go (and sparkles as it skates)
+    if (mk && mk.mode === 'land' && mk.x > ICE.x0 && mk.x < ICE.x1) {
+      if (mk.keyDir) S.slide = lerp(S.slide, mk.keyDir * (mk.running ? 150 : 100), Math.min(1, dt * 2.5));
+      else if (Math.abs(S.slide) > 4) { const nx = clamp(mk.x + S.slide * dt, 30, A.W - 30); mk.x = nx; S.slide *= Math.exp(-dt * 0.8); if (Math.random() < dt * 20) FX.add({ type: 'spark', x: mk.x + (Math.random() - 0.5) * 8, y: World.groundAt(mk.x) - 1, size: 1, life: 0.4, c: 0xffffffff, c2: hex('#9ae0ff'), layer: 3 }); if (Math.random() < dt * 4) Game.sfx('icering', mk.x, 0.15); }
+      if (Math.abs(S.slide) > 60 && !S.skateTold) { S.skateTold = true; Save.discover('shoal.skate'); if (mk.say) mk.say('Wheee! Slippery!', 1.4); }
+    } else S.slide *= Math.exp(-dt * 6);
+    // the chamber: stand still in the circle...
+    if (!S.awake && mk) {
+      const inRing = Math.abs(mk.x - RING) < 16 && mk.mode === 'land' && !mk.keyDir && !mk.target && !mk.moving;
+      if (inRing) { S.still += dt; const want = Math.min(7, Math.floor(S.still / 0.6)); if (want > S.dots) { S.dots = want; Game.sfx('icering', WALL, 0.5 + want * 0.05); if (S.dots === 7) HUD.toast('All seven dots glow... now SING! (Sing TM, or play a song)', { life: 3 }); } }
+      else if (S.dots < 7) { if (S.still > 0 && S.dots > 0) Game.sfx('error', null, 0.3); S.still = 0; S.dots = 0; }
+      S.ringGlow.k = 0.4 + S.dots / 7 * 0.6; S.wallGlow.k = 0.2 + S.dots / 7 * 0.8;
+    }
+    if (typeof ShoalAI !== 'undefined') ShoalAI.update(A, dt, t, G, S);
+  };
+  def.onSong = (x) => {
+    if (!S.awake && S.dots >= 7 && Math.abs(x - RING) < 80) { S.awake = true; S.frost = 1; Game.shake(6); Game.sfx('freeze', REGI, 1); Game.sfx('rumble', REGI, 0.9); Save.discover('regice.woke'); Save.addItem('icegem', 1); HUD.toast('The ice giant awakens! (+ Never-Melt Ice)', { life: 3.4 }); if (Game.cine) Game.cine.pan(REGI, World.groundAt(REGI) - 50, { hold: 3, zoom: 1.12 }); if (typeof Legends !== 'undefined' && Legends.wakeRegice) Legends.wakeRegice(); }
+    if (typeof ShoalAI !== 'undefined' && ShoalAI.song) ShoalAI.song(x);
+  };
+  def.weather = () => ({ rain: 0, fog: 0.05, snow: 0.35 });
+  def.ambient = (hour) => {
+    const out = [{ kind: 'sparkle', rate: 2.2, c: hex('#bfefff'), life: 1.6, sway: 4, bob: 2, y: (x) => World.groundAt(x) - 10 - Math.random() * 90 }];
+    out.push({ kind: 'mote', rate: 2, c: hex('#e8f8ff'), life: 6, sway: 8, bob: 4, vy: 3 });
+    return out;
+  };
+  def.onScan = (A) => { const mk = Game.mudkip; if (mk && mk.x > 3300) { HUD.toast(S.awake ? 'Scan: an ancient Pokémon made of ice, awake and humming.' : 'Scan: something enormous is frozen in the ice beyond the circle.', { life: 3 }); return true; } return false; };
+  def.photoBonus = (A, crop, subs) => {
+    if (subs.some((s) => s.sp === 'regice')) return { pts: 800, name: 'Iceberg giant' };
+    if (subs.some((s) => s.sp === 'latias') && subs.some((s) => s.sp === 'latios')) return { pts: 900, name: 'Eon duo' };
+    if (Stage.S.hour === 'night' && Game.mudkip && Game.mudkip.x < MOUTH) return { pts: 400, name: 'Aurora night' };
+    return null;
+  };
+  def.S = S; def.GEO = { MOUTH, CEIL, TIDE, POOL, ICE, FALLX, WALL, RING, REGI };
+  return def;
+})();
+
 /* ==== src/snap/mailman.js ==== */
 /* ------------------------------------------------------------------
    Mailman — Pelipper the postman stands by his mailbox at the start
@@ -60511,7 +61598,9 @@ const Mailman = (() => {
   const F = { on: false, t: 0, who: null, cast: {}, dur: 3 };
   function cast(who) {
     if (F.cast[who]) return F.cast[who];
-    const c = CSP[who], S = (0, eval)(c.sp), P = Times.compile('noon'), list = [];
+    let c = CSP[who], S = null; try { S = (0, eval)(c.sp); } catch (e) { S = null; }
+    if (!S) { c = CSP.pelipper; S = Pelipper; F.who = 'pelipper'; }
+    const P = Times.compile('noon'), list = [];
     for (let i = 0; i < 4; i++) { const cr = new Critters.Critter(S, { kind: 'fly-' + who + i, scale: c.scale, yaw: 0.75, pitch: 0.1, qPose: 0.01 }); cr.noHD = true; cr.pose = c.flap([-0.9, -0.2, 0.7, -0.2][i]); list.push({ cr, P }); }
     const mk = new Critters.Critter(Mudkip, { kind: 'fly-mk', scale: 0.5, yaw: 0.9, pitch: 0.1, qPose: 0.01 }); mk.noHD = true; mk.pose = Object.assign({ eyes: 'happy', mouth: 1, legF: -0.6, legB: 0.7, tailLift: 0.3 }, Save.look(), { neck: null });
     list.push({ cr: mk, P: Times.compile('noon') });
@@ -60534,10 +61623,10 @@ const Mailman = (() => {
     // Mudkip rides on the back (Pelipper carries it in its beak pouch)
     if (F.who === 'pelipper') { blit(f, x, y); if (mk) blit(mk, x + (f ? f.w * 0.18 : 20), y + (f ? f.h * 0.12 : 10) + Math.sin(k * 6) * 2); }
     else { if (mk) blit(mk, x - 6, y - (f ? f.h * 0.28 : 30) + Math.sin(k * 6) * 2); blit(f, x, y); if (mk && F.who === 'altaria') blit(mk, x - 6, y - (f ? f.h * 0.28 : 30) + Math.sin(k * 6) * 2); }
-    const nm = { pelipper: 'Pelipper', tropius: 'Tropius', altaria: 'Altaria' }[F.who];
+    const nm = (CSP[F.who] && CSP[F.who].name) || { pelipper: 'Pelipper', tropius: 'Tropius', altaria: 'Altaria' }[F.who];
     Font.draw(fb, nm + ' is flying you there!', W / 2, H - 26, 0xffffffff, { font: 'title', align: 'center', outline: INK });
   }
-  return { spawn, start, stop, update, draw, F, CARRIER };
+  return { spawn, start, stop, update, draw, F, CARRIER, CSP };
 })();
 
 /* ==== src/snap/rhythm.js ==== */
@@ -60770,68 +61859,370 @@ const Rhythm = (() => {
   return Object.assign(R, { open, close, update, draw, key, down, wheel() {}, SONGS });
 })();
 
+/* ==== src/snap/expand.js ==== */
+/* ------------------------------------------------------------------
+   Expand — bigger maps. Weather Woods now runs on past the stump into
+   the Flower Meadow: a rolling hill of wildflowers (they change with
+   the seasons), a berry orchard, a creaking windmill on the hilltop
+   with a view over the treetops, and a picnic spot. Coral Cove's dunes
+   get a second tide pool path and Treetop Town a wider sky.
+------------------------------------------------------------------- */
+const Expand = (() => {
+  const { rng, hex, clamp } = U;
+  const F = Areas.forest;
+  if (F) {
+    const X0 = F.W, W1 = 4900, MILL = 3980;
+    F.W = W1;
+    // the meadow's rolling hill
+    F.ground = F.ground.filter((p) => p[0] < X0).concat([[3300, 550], [3450, 546], [3620, 534], [3800, 516], [3980, 508], [4160, 518], [4340, 538], [4520, 548], [4700, 552], [4900, 552]]);
+    function windmill(M, frame) {
+      const w = 50, h = 78, s = new ISpr(w + 60, h + 54), cx = (w + 60) / 2, base = h + 50;
+      // tapered stone tower with a door and window
+      for (let y = 0; y < h; y++) { const hw = 9 + y * 0.12; for (let x = -hw; x <= hw; x++) s.set(cx + x, base - h + y, Props.pick(M.wallW, 0.8 - (x + hw) / (2 * hw) * 0.45 + (y % 9 === 0 ? -0.15 : 0), x, y)); }
+      for (let y = base - 22; y < base; y++) for (let x = -5; x <= 5; x++) s.set(cx + x, y, x === -5 || x === 5 || y === base - 22 ? M.wood[1] : M.wood[3]);
+      for (let y = base - 56; y < base - 46; y++) for (let x = -4; x <= 4; x++) s.set(cx + x, y, Math.abs(x) === 4 || y === base - 56 ? M.wood[0] : M.win[1]);
+      // cap
+      for (let y = 0; y < 14; y++) { const hw = 6 + y; for (let x = -hw; x <= hw; x++) s.set(cx + x, base - h - 14 + y, Props.pick(M.roofB, 0.8 - y / 16, x, y)); }
+      // four sails, turning
+      const a0 = frame * Math.PI / 8, hx = cx, hy = base - h - 4;
+      for (let k = 0; k < 4; k++) {
+        const a = a0 + k * Math.PI / 2, dx = Math.cos(a), dy = Math.sin(a);
+        for (let j = 4; j < 40; j++) { const px = hx + dx * j, py = hy + dy * j; s.set(px, py, M.wood[1]); if (j > 10) for (let q = 1; q < 7; q++) s.set(px - dy * q, py + dx * q, (j + q) % 4 === 0 ? M.wood[2] : M.wallW[3]); }
+      }
+      for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) s.set(hx + x, hy + y, M.metal[2]);
+      Paint.outline(s, M.ink[0]);
+      s.ax = Math.round(cx); s.ay = base - 1;
+      return s;
+    }
+    const b0 = F.build;
+    F.build = (A) => {
+      b0(A);
+      const M = A.M, r = rng(7171), gy = (x) => World.groundAt(x);
+      const put = (s, x, zd, o) => A.put(s, x, zd, o);
+      // the windmill (sails turn: 4 frames)
+      A.mill = put([0, 1, 2, 3].map((f) => windmill(M, f)), MILL, -6, { sink: 2, fps: 3 });
+      A.glows.push({ x: MILL, y: gy(MILL) - 50, r: 18, c: hex('#ffd070'), a: 0.5 });
+      // wildflower meadow
+      for (let x = X0; x < W1 - 30; x += 6 + r() * 7) {
+        const fl = [M.flower, M.flowerY, M.lotus, M.berry][(r() * 4) | 0];
+        put(Paint.tuft(M, 10 + r() * 8, 10 + r() * 12, Math.floor(x * 7), { ramp: M.grass, flowers: [fl], density: 1.2 }), x, r() < 0.5 ? 3 : -3, { windFrames: true });
+      }
+      // orchard trees heavy with fruit, a picnic blanket and a signpost
+      for (const x of [3440, 3600, 4380, 4560]) put(Paint.tree(M, 110 + r() * 30, Math.floor(x), { trunkRamp: M.bark, leafRamp: M.leaf, fruit: M.fruit, fruitN: 12, crownW: 110, crownH: 70 }), x, -4, { sink: 4, foot: 14 });
+      { const s = new ISpr(40, 8); for (let y = 0; y < 8; y++) for (let x = 0; x < 40; x++) s.set(x, y, ((x >> 2) + (y >> 1)) % 2 ? M.capR[2] : M.stem[3]); Paint.outline(s, M.ink[0]); s.ax = 20; s.ay = 7; put(s, 4200, 3, { sink: 1 }); }
+      { const s = new ISpr(20, 28); for (let y = 8; y < 28; y++) { s.set(9, y, M.wood[1]); s.set(10, y, M.wood[2]); } for (let y = 2; y < 10; y++) for (let x = 0; x < 20; x++) s.set(x, y, x === 0 || x === 19 || y === 2 || y === 9 ? M.wood[0] : M.wood[4]); Paint.outline(s, M.ink[0]); s.ax = 10; s.ay = 27; put(s, 3360, -2, { sink: 1 }); }
+      A.addHot({ x0: 3346, x1: 3374, y0: gy(3360) - 28, y1: gy(3360), x: 3360, reach: 34, tap() { HUD.toast('Flower Meadow — "Rest your paws. The windmill has watched these fields for a hundred years."', { life: 3 }); } });
+      A.addHot({ x0: MILL - 20, x1: MILL + 20, y0: gy(MILL) - 120, y1: gy(MILL), x: MILL, reach: 50, tap() { HUD.toast('The old windmill creaks round and round. From up here you can see all of Weather Woods.', { life: 3 }); if (Save.discover('forest.windmill')) Save.addPoints(150); } });
+      // backdrop extension: rolling fields and far hills behind the meadow
+      {
+        const w = 1900, h = 90, s = new ISpr(w, h);
+        Paint.ridge(s, M, { ramp: M.hill, base: h, amp: 50, seed: 61, freq: 0.006 });
+        for (let x = 0; x < w; x += 30 + r() * 60) { const t = Paint.tree(M, 26 + r() * 18, Math.floor(x * 5), { trunkRamp: M.bark, leafRamp: M.leaf, crownW: 26, crownH: 18, trunkW: 2 }); s.paste(t, Math.round(x - t.ax), h - t.ay - 8 - Math.round(r() * 20)); }
+        const L = A.layer(s, 0.3, { haze: 0.3, base: h - 1, x: X0 * 0.3 - 200 }); L.skirt = M.hill[2];
+        A.layers.sort((a, b) => a.p - b.p);
+      }
+    };
+    const sp0 = F.spawn;
+    F.spawn = (A, G) => {
+      sp0(A, G);
+      if (typeof Eco === 'undefined') return;
+      Eco.add(G, 'linoone', 3700, { minX: 3350, maxX: 4800 });
+      for (const x of [3500, 3900, 4450]) Eco.add(G, 'budew', x, { range: 120 });
+      Eco.add(G, 'nuzleaf', 4300, { range: 220 });
+      Eco.add(G, 'swellow', 4000, { range: 700 });
+    };
+  }
+  return { forestX0: 3300 };
+})();
+
 /* ==== src/snap/wild.js ==== */
 /* ------------------------------------------------------------------
-   Wild — new residents of Hoenn living on the Eco brain: evolutions
-   next to their families (Marshtomp by Mudkip's shore, Lombre with the
-   Lotad), babies with their elders (Wynaut, Budew), Starmie at night by
-   the Staryu, Snorunt that love winter, and Latias drifting over the
-   woods at dusk.
+   Wild — the new residents of Hoenn, living on the Eco brain.
+   Evolutions settle next to their families (Marshtomp and Swampert on
+   Mudkip's beach, Lombre with the Lotad, Nuzleaf by the Seedot tree,
+   Linoone racing the Zigzagoon, Breloom sparring with Shroomish,
+   Masquerain over Surskit's pond, Vigoroth and Slaking by Slakoth's log,
+   Swellow teaching Taillow, Crawdaunt bossing the Corphish, Vibrava and
+   Flygon over Trapinch's pit, Starmie with the Staryu), babies tag after
+   their elders (Azurill, Wynaut, Budew), and the new places fill up:
+   Numel, Spinda, Torkoal and Slugma on Mt. Chimney; Snorunt, Spheal and
+   the Eon duo in Shoal Cave. Also: their Pokédex pages, quests, chatter,
+   flight carriers and map pins.
 ------------------------------------------------------------------- */
 const Wild = (() => {
-  const { rnd } = U;
-  const W = (m, st) => ({ walk: st.mv ? st.ph : 0 });
-  Eco.def('marshtomp', { sp: 'Marshtomp', scale: 0.42, speed: 42, persona: 'curious', diet: true, loco: 'walk', active: 'day',
-    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, crouch: 0, mouth: 0 }),
+  const { rnd, clamp, pick, hex } = U;
+  const E = Eco;
+  const fx = {
+    sparks: (m, c1, c2, n = 1, dy = 14) => { for (let i = 0; i < n; i++) FX.add({ type: 'spark', x: m.x + rnd(-8, 8), y: m.y - dy + rnd(-6, 6), size: 1, life: 0.5, c: hex(c1), c2: hex(c2), layer: 3 }); },
+    puff: (m, dy = 12) => FX.add({ type: 'dust', x: m.x + rnd(-4, 4), y: m.y - dy, vx: rnd(-8, 8), vy: -rnd(16, 30), r: 3 + Math.random() * 3, life: 1.2, c: 0xffd8d4d0, c2: 0xff9a9690, layer: 3 }),
+    bubbles: (m) => FX.add({ type: 'ring', x: m.x + rnd(-6, 6), y: m.y - 16 - rnd(0, 10), r0: 1, r1: 4, life: 0.6, c: 0xffffffff, layer: 3 }),
+  };
+  const bank = (st, k = 90) => clamp((st.vx || 0) / k, -1, 1);
+
+  /* ===================== species configs ===================== */
+  // ---- the Mudkip line ----
+  E.def('marshtomp', { sp: 'Marshtomp', scale: 0.42, speed: 42, persona: 'curious', diet: true, active: 'day',
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, crouch: 0, mouth: 0, side: 3 * Math.cos(m.yaw) }),
     acts: [{ id: 'mudplay', w: 2, T: [1.6, 2.6], sfx: 'mud', p: (m, k) => ({ crouch: Math.abs(Math.sin(k * 9)), mouth: 0.6 }), fx: (m) => { if (Math.random() < 0.2) FX.add({ type: 'drop', x: m.x + rnd(-8, 8), y: m.y - 4, vx: rnd(-40, 40), vy: -rnd(40, 80), g: 400, life: 0.6, c: 0xff3a5a7a, size: 1, floor: World.groundAt(m.x), layer: 2 }); } },
       { id: 'flex', w: 1, T: 1.5, face: 0.8, p: () => ({ mouth: 1, eyes: 'happy' }) }] });
-  Eco.def('lombre', { sp: 'Lombre', scale: 0.4, speed: 38, persona: 'showoff', diet: true, active: 'twilight',
-    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, swim: st.swim ? st.ph : 0 }),
+  E.def('swampert', { sp: 'Swampert', scale: 0.5, speed: 36, persona: 'calm', diet: true, active: 'any', alert: 0.6,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, crouch: 0, roar: 0, mouth: 0 }),
+    acts: [{ id: 'roar', w: 1, T: 1.8, face: 0.7, sfx: 'roar', vol: 0.4, cry: true, p: (m, k) => ({ roar: Math.sin(k * Math.PI), mouth: Math.sin(k * Math.PI) }), fx: (m, k) => { if (k > 0.3 && k < 0.6) Game.shake(0.6); } },
+      { id: 'guard', w: 2, T: [2, 3], p: () => ({ crouch: 0.8, eyes: 'open' }) },
+      { id: 'mudshot', w: 1, T: 1.2, sfx: 'mud', p: (m, k) => ({ mouth: k < 0.5 ? 1 : 0, crouch: 0.4 }), fx: (m, k, dt) => { if (Math.random() < dt * 30) FX.add({ type: 'drop', x: m.x + Math.cos(m.yaw) * 14, y: m.y - 22, vx: Math.cos(m.yaw) * rnd(120, 200), vy: -rnd(20, 60), g: 300, life: 0.8, c: 0xff2a4a6a, c2: 0xff3a6a8a, size: 2, floor: World.groundAt(m.x), layer: 3 }); } }] });
+  // ---- the Marill family (Weather Woods pond) ----
+  E.def('azurill', { sp: 'Azurill', scale: 0.3, speed: 30, persona: 'curious', baby: true, hopper: 150, active: 'day', diet: true, leash: 56,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, bounce: st.air > 0.5 ? 1 : 0.2 + 0.2 * Math.sin(st.t * 5 + m.seed), mouth: 0.3 }),
+    acts: [{ id: 'bounce', w: 3, T: [1.4, 2], hop: 240, sfx: 'boing', p: (m, k) => ({ bounce: 1 - k, eyes: 'happy', mouth: 0.8 }) },
+      { id: 'tailspin', w: 1, T: 1.2, p: (m, k) => ({ eyes: 'happy' }), fx: (m, k) => { m.rot = Math.sin(k * Math.PI * 2) * 0.3; }, after: (m) => { m.rot = 0; } }],
+    babyAct: { id: 'bounce', T: 1.2, hop: 200, sfx: 'boing', p: () => ({ bounce: 1, eyes: 'happy' }) } });
+  E.def('marill', { sp: 'Marill', scale: 0.34, speed: 34, persona: 'curious', loco: 'amphi', diet: true, active: 'day',
+    pose: (m, st) => ({ walk: st.mv && !st.swim ? st.ph : 0, swim: st.swim ? 1 : 0, mouth: 0.2 }),
+    swimAct: { id: 'splash', T: 1.4, sfx: 'splash', vol: 0.3, p: () => ({ eyes: 'happy', mouth: 1 }), fx: (m, k, dt) => { if (Math.random() < dt * 10) FX.add({ type: 'drop', x: m.x + rnd(-6, 6), y: AI.surf(m.x) - 1, vx: rnd(-40, 40), vy: -rnd(60, 110), g: 380, life: 0.6, c: 0xffe8fbff, size: 1, floor: AI.surf(m.x), layer: 3 }); } },
+    acts: [{ id: 'ballbounce', w: 2, T: 1.4, hop: 180, p: () => ({ eyes: 'happy', mouth: 0.8 }) }] });
+  E.def('azumarill', { sp: 'Azumarill', scale: 0.42, speed: 32, persona: 'calm', loco: 'amphi', diet: true, active: 'day',
+    pose: (m, st) => ({ walk: st.mv && !st.swim ? st.ph : 0, swim: st.swim ? 1 : 0, mouth: 0.1 }),
+    swimAct: { id: 'bubblebeam', T: 1.8, sfx: 'bubble', p: (m, k) => ({ mouth: 1 }), fx: (m, k, dt) => { if (Math.random() < dt * 14) fx.bubbles(m); } },
+    acts: [{ id: 'bubblebeam', w: 1, T: 1.6, face: 0.6, sfx: 'bubble', p: () => ({ mouth: 1 }), fx: (m, k, dt) => { if (Math.random() < dt * 14) fx.bubbles(m); } }] });
+  // ---- forest evolutions ----
+  E.def('lombre', { sp: 'Lombre', scale: 0.4, speed: 38, persona: 'showoff', diet: true, active: 'twilight',
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, swim: st.swim ? st.ph : 0, side: 3 * Math.cos(m.yaw) }),
     acts: [{ id: 'dance', dance: true, w: 2, T: [2, 3], sfx: 'bongo', p: (m, k, e) => ({ dance: e * 3, groove: Math.sin(e * 8), mouth: 0.8, eyes: 'happy' }) },
-      { id: 'prank', w: 1, T: 1.4, face: 0.9, p: (m, k) => ({ mouth: 1, lean: 0.4 }), after: () => Game.sfx('yum', null, 0.4) }] });
-  Eco.def('wynaut', { sp: 'Wynaut', scale: 0.36, speed: 34, persona: 'curious', baby: true, hopper: 120, active: 'day',
-    pose: (m, st, t) => ({ walk: st.mv ? st.ph : 0, sway: Math.sin(st.t * 3 + m.seed) * 0.5 }),
-    acts: [{ id: 'sway', dance: true, w: 2, T: [1.5, 2.5], p: (m, k, e) => ({ sway: Math.sin(e * 7), arms: 1, mouth: 1, eyes: 'happy' }) }] });
-  Eco.def('budew', { sp: 'Budew', scale: 0.34, speed: 22, persona: 'shy', baby: true, active: 'day', hibernate: true,
-    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, bloom: Eco.season() === 'spring' ? 1 : 0.3 }),
-    acts: [{ id: 'bloom', w: 2, T: [2, 3], when: () => Game.hour() !== 'night', p: (m, k) => ({ bloom: Math.sin(k * Math.PI), tilt: Math.sin(k * 12) * 0.2 }), fx: (m) => { if (Math.random() < 0.1) FX.sparkles(m.x, m.y - 12, 2, 8, 0xffffffff, 0xffa0d8ff); } }] });
-  Eco.def('snorunt', { sp: 'Snorunt', scale: 0.38, speed: 36, persona: 'shy', cold: true, active: 'any',
-    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, shiver: Eco.season() === 'winter' ? 0 : Math.sin(st.t * 30) * 0.3 }),
-    acts: [{ id: 'snowplay', w: 2, T: [1.6, 2.4], sfx: 'crunch', when: () => Eco.season() === 'winter', p: () => ({ mouth: 1, eyes: 'happy' }), hop: 160 },
-      { id: 'hide', w: 1, T: 2.5, p: () => ({ shiver: 0.6, eyes: 'closed' }) }] });
-  Eco.def('starmie', { sp: 'Starmie', scale: 0.38, speed: 60, loco: 'swim', persona: 'calm', active: 'night',
+      { id: 'prank', w: 1, T: 1.4, face: 0.9, p: () => ({ mouth: 1, lean: 0.4 }), after: () => Game.sfx('yum', null, 0.4) }] });
+  E.def('nuzleaf', { sp: 'Nuzleaf', scale: 0.4, speed: 44, persona: 'showoff', diet: true, active: 'day',
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, whistle: 0, mouth: 0 }),
+    acts: [{ id: 'whistle', w: 3, T: [2.2, 3.2], dance: true, sfx: 'whistle', p: (m, k, e) => ({ whistle: 1, eyes: Math.sin(e * 3) > 0 ? 'happy' : 'closed' }), fx: (m, k, dt) => { if (Math.random() < dt * 3) FX.add({ type: 'icon', icon: 'note', x: m.x + rnd(-6, 6), y: m.y - 30, vx: rnd(-6, 6), vy: -14, life: 1.4, layer: 3 }); } },
+      { id: 'leafdance', w: 1, T: 2, p: (m, k, e) => ({ eyes: 'happy', mouth: 0.6 }), fx: (m, k) => { m.rot = Math.sin(k * Math.PI * 4) * 0.12; }, after: (m) => { m.rot = 0; } }] });
+  E.def('linoone', { sp: 'Linoone', scale: 0.46, speed: 72, dashK: 2.4, persona: 'curious', diet: true, smell: 460, active: 'day', prey: ['zigzagoon'], chaseRate: 0.12,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, dash: st.mv > 1.2 ? 1 : 0, sniff: 0 }),
+    acts: [{ id: 'dash', w: 3, T: [1, 1.6], dash: 190, sfx: 'whoosh', vol: 0.3, p: () => ({ dash: 1, eyes: 'happy' }), fx: (m, k, dt) => { if (Math.random() < dt * 16) FX.add({ type: 'dust', x: m.x, y: m.y - 1, vx: -Math.cos(m.yaw) * 30, vy: -6, r: 2, life: 0.35, c: 0xffd8ecf4, c2: 0xffb0c8d8, layer: 2 }); } },
+      { id: 'sniff', w: 2, T: [1.5, 2.5], p: (m, k, e) => ({ sniff: 0.7 + Math.sin(e * 14) * 0.3 }) }] });
+  E.def('breloom', { sp: 'Breloom', scale: 0.42, speed: 46, persona: 'showoff', active: 'day', diet: true,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, punch: 0, tail: Math.sin(st.t * 3 + m.seed) * 0.4 }),
+    acts: [{ id: 'machpunch', w: 3, T: 1.1, face: 0.5, sfx: 'whoosh', p: (m, k) => ({ punch: k > 0.3 && k < 0.7 ? 1 : 0, mouth: 0.8 }), fx: (m, k) => { if (k > 0.35 && k < 0.4) { FX.add({ type: 'ring', x: m.x + Math.cos(m.yaw) * 22, y: m.y - 18, r0: 2, r1: 12, life: 0.3, c: 0xffffffff, layer: 4 }); Game.sfx('bonk', m.x, 0.5); } } },
+      { id: 'spores', w: 1, T: 2, p: () => ({ eyes: 'closed' }), fx: (m, k, dt) => { if (Math.random() < dt * 14) FX.add({ type: 'spark', x: m.x + rnd(-10, 10), y: m.y - 28 - rnd(0, 10), size: 1, life: 1, c: hex('#e8ffb0'), c2: hex('#9ad060'), layer: 3 }); } }] });
+  E.def('masquerain', { sp: 'Masquerain', scale: 0.36, speed: 34, persona: 'calm', loco: 'hover', hover: 44, active: 'day',
+    pose: (m, st) => ({ flap: st.t * 16, mouth: 0 }),
+    acts: [{ id: 'intimidate', w: 1, T: 1.6, face: 0.9, sfx: 'chime', p: () => ({ eyes: 'open' }), fx: (m, k) => { if (k > 0.4 && k < 0.45) FX.add({ type: 'ring', x: m.x, y: m.y - 10, r0: 4, r1: 20, life: 0.4, c: hex('#9ad8ff'), layer: 3 }); } },
+      { id: 'hover', w: 2, T: [2, 3], p: () => ({}) }] });
+  E.def('vigoroth', { sp: 'Vigoroth', scale: 0.45, speed: 64, persona: 'grumpy', active: 'any', roamRate: 0.9, actRate: 0.5,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, arms: st.t * (st.mv ? 12 : 7) + m.seed, mouth: 0.4 }),
+    acts: [{ id: 'frenzy', w: 3, T: [1.4, 2.2], dash: 140, sfx: 'grr', vol: 0.4, p: (m, k, e) => ({ arms: e * 20, mouth: 1 }), fx: (m, k, dt) => { if (Math.random() < dt * 4) m.yaw = Math.PI - m.yaw; } },
+      { id: 'scratch', w: 1, T: 1.2, sfx: 'scratch', p: (m, k, e) => ({ arms: e * 30, eyes: 'closed' }) }] });
+  E.def('slaking', { sp: 'Slaking', scale: 0.56, speed: 10, persona: 'calm', active: 'day', hibernate: true, roamRate: 0.1, actRate: 0.7, alert: 0.3, diet: true,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, lie: st.mv ? 0 : 1, scratch: 0 }),
+    acts: [{ id: 'lounge', w: 4, T: [4, 7], p: (m, k, e) => ({ lie: 1, eyes: Math.sin(e) > 0.6 ? 'closed' : 'open' }) },
+      { id: 'yawn', w: 2, T: 2, sfx: 'yum', vol: 0.3, p: (m, k) => ({ lie: 1, mouth: Math.sin(k * Math.PI), eyes: 'closed' }) },
+      { id: 'scratch', w: 1, T: 1.6, p: (m, k, e) => ({ lie: 1, scratch: 0.5 + 0.5 * Math.sin(e * 10) }) }] });
+  // ---- birds and bugs ----
+  E.def('swellow', { sp: 'Swellow', scale: 0.4, speed: 110, persona: 'showoff', loco: 'fly', alt: [70, 160], perch: 0.25, active: 'day', diet: true,
+    pose: (m, st) => ({ flap: st.fly ? st.fl : 0, spread: st.fly ? 1 : 0, dive: st.act === 'dive' ? 1 : 0, perch: st.fly ? 0 : 1, walk: !st.fly && st.mv ? st.ph : 0 }),
+    acts: [{ id: 'dive', w: 2, when: (m) => m.mode === 'fly', run: function* (m) { const tx = m.x + Math.cos(m.yaw) * 120, g = World.groundAt(tx); Game.sfx('whoosh', m.x, 0.5); yield* m.flyTo(tx, g - 16, m.speed * 1.8, 'dive', { agile: 4, peak: (d) => (d < 40 ? 1 : 0.6) }); yield* m.flyTo(tx + Math.cos(m.yaw) * 80, g - m.alt[1], m.speed, 'fly'); } },
+      { id: 'aerial', w: 1, when: (m) => m.mode === 'fly', run: function* (m) { let e = 0; while (e < 1.2) { const dt = yield; e += dt; m.rot = e / 1.2 * Math.PI * 2; m.setAct('aerial', 0.9); } m.rot = 0; } }] });
+  E.def('vibrava', { sp: 'Vibrava', scale: 0.38, speed: 40, persona: 'curious', loco: 'hover', hover: 34, active: 'day',
+    pose: (m, st) => ({ flap: st.t * 40, spread: 1, mouth: 0 }),
+    acts: [{ id: 'buzz', w: 3, T: [1.6, 2.4], face: 0.7, sfx: 'zap', p: () => ({ spread: 1, mouth: 0.5 }), fx: (m, k, dt) => { if (Math.random() < dt * 6) FX.add({ type: 'ring', x: m.x, y: m.y - 8, r0: 3, r1: 26, flat: 0.8, life: 0.5, c: hex('#bfffd0'), layer: 3 }); } }] });
+  E.def('flygon', { sp: 'Flygon', scale: 0.52, speed: 38, persona: 'calm', loco: 'hover', hover: 46, active: 'any',
+    pose: (m, st) => ({ flap: st.t * 22, spread: 1, walk: 0 }),
+    acts: [{ id: 'sandstorm', w: 1, T: 2.4, sfx: 'dust', p: () => ({ spread: 1 }), fx: (m, k, dt) => { for (let i = 0; i < 2; i++) if (Math.random() < dt * 30) FX.add({ type: 'dust', x: m.x + rnd(-40, 40), y: World.groundAt(m.x) - rnd(0, 30), vx: rnd(40, 90) * (Math.random() < 0.5 ? -1 : 1), vy: -rnd(4, 16), r: 2, life: 0.8, c: hex('#f0d890'), c2: hex('#c8a060'), layer: 3 }); } },
+      { id: 'glide', w: 2, T: [2, 3], p: () => ({ spread: 1 }) }] });
+  // ---- beach ----
+  E.def('crawdaunt', { sp: 'Crawdaunt', scale: 0.48, speed: 30, persona: 'grumpy', diet: true, active: 'any', prey: ['corphish'], chaseRate: 0.15,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, claw: 0.15 + Math.sin(st.t * 2 + m.seed) * 0.08, side: 3 * Math.cos(m.yaw) }),
+    acts: [{ id: 'crabhammer', w: 2, T: 1.2, face: 0.6, sfx: 'snip', p: (m, k) => ({ claw: k < 0.5 ? 1 : 0.2, mouth: 0.6 }), fx: (m, k) => { if (k > 0.5 && k < 0.55) { Game.shake(1); FX.add({ type: 'ring', x: m.x + Math.cos(m.yaw) * 16, y: m.y - 4, r0: 2, r1: 14, flat: 0.4, life: 0.4, c: 0xffffffff, layer: 3 }); } } },
+      { id: 'boss', w: 1, T: 2, face: 1, p: () => ({ claw: 1 }) }] });
+  E.def('wynaut', { sp: 'Wynaut', scale: 0.36, speed: 34, persona: 'curious', baby: true, hopper: 120, active: 'day',
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, sway: Math.sin(st.t * 3 + m.seed) * 0.5 }),
+    acts: [{ id: 'sway', dance: true, w: 2, T: [1.5, 2.5], p: (m, k, e) => ({ sway: Math.sin(e * 7), arms: 1, mouth: 1, eyes: 'happy' }) }],
+    babyAct: { id: 'sway', T: 1.6, p: (m, k, e) => ({ sway: Math.sin(e * 7), arms: 1, mouth: 1, eyes: 'happy' }) } });
+  E.def('wobbuffet', { sp: 'Wobbuffet', scale: 0.46, speed: 18, persona: 'calm', active: 'any', alert: 0.4,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, sway: Math.sin(st.t * 1.6 + m.seed) * 0.4, salute: 0, squish: 0 }),
+    acts: [{ id: 'salute', w: 3, T: 1.8, face: 1, cry: true, p: (m, k) => ({ salute: Math.sin(k * Math.PI) > 0.3 ? 1 : 0, eyes: 'closed', mouth: 0.5 }) },
+      { id: 'counter', w: 1, T: 1, sfx: 'boing', p: (m, k) => ({ squish: Math.sin(k * Math.PI) }), fx: (m, k) => { if (k > 0.5 && k < 0.56) FX.add({ type: 'ring', x: m.x, y: m.y - 24, r0: 4, r1: 30, life: 0.4, c: hex('#ffb0d0'), layer: 4 }); } }],
+    onPoke: (m) => { m.doTask(m.perform(m.cfg.acts[1]), 3); m.emote('shock', 1); } });
+  E.def('starmie', { sp: 'Starmie', scale: 0.38, speed: 60, loco: 'swim', persona: 'calm', active: 'night',
     pose: (m, st) => ({ spin: st.t * (st.mv ? 5 : 1.5), glow: 0.5 + 0.5 * Math.sin(st.t * 3) }),
     acts: [{ id: 'jewel', w: 2, T: [1.5, 2.5], sfx: 'twinkle', p: (m, k, e) => ({ spin: e * 14, glow: 1 }) }] });
-  Eco.def('latias', { sp: 'Latias', scale: 0.4, speed: 90, loco: 'fly', alt: [80, 150], persona: 'shy', perch: 0, active: 'any',
-    pose: (m, st) => ({ fly: 1, bank: Math.max(-1, Math.min(1, (st.vx || 0) / 90)) }),
-    acts: [{ id: 'cloak', w: 1, T: 2.5, sfx: 'twinkle', p: () => ({ eyes: 'happy' }), fx: (m, k) => { m.hideK = Math.sin(k * Math.PI) * 0.8; }, after: (m) => { m.hideK = 0; } }] });
+  E.def('staryuS', { dex: 'staryu', sp: 'Staryu', scale: 0.32, speed: 50, loco: 'swim', persona: 'calm', active: 'night',
+    pose: (m, st) => ({ spin: st.t * (st.mv ? 4 : 1.2), glow: 0.5 + 0.5 * Math.sin(st.t * 2.4 + m.seed), bend: Math.sin(st.t * 0.8 + m.seed) * 0.08 }),
+    acts: [{ id: 'glow', w: 1, T: 1.6, p: () => ({ glow: 1 }) }] });
+  // ---- forest babies ----
+  E.def('budew', { sp: 'Budew', scale: 0.34, speed: 22, persona: 'shy', baby: true, active: 'day', hibernate: true,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, bloom: Eco.season() === 'spring' ? 1 : 0.3 }),
+    acts: [{ id: 'bloom', w: 2, T: [2, 3], when: () => Game.hour() !== 'night', p: (m, k) => ({ bloom: Math.sin(k * Math.PI), tilt: Math.sin(k * 12) * 0.2 }), fx: (m) => { if (Math.random() < 0.1) FX.sparkles(m.x, m.y - 12, 2, 8, 0xffffffff, 0xffa0d8ff); } }] });
+  // ---- Mt. Chimney ----
+  E.def('numel', { sp: 'Numel', scale: 0.4, speed: 18, persona: 'calm', herd: 110, diet: true, active: 'day', hot: true,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, hump: 0.1 + Math.sin(st.t * 1.5 + m.seed) * 0.05, mouth: 0 }),
+    acts: [{ id: 'ember', w: 2, T: 1.6, sfx: 'steam', vol: 0.4, p: (m, k) => ({ hump: Math.sin(k * Math.PI), eyes: 'happy' }), fx: (m, k, dt) => { if (Math.random() < dt * 24) fx.sparks(m, '#ffe070', '#ff5a10', 1, 22); if (Math.random() < dt * 5) fx.puff(m, 24); } },
+      { id: 'graze', w: 3, T: [2, 3.5], p: (m, k, e) => ({ mouth: Math.sin(e * 10) > 0 ? 0.6 : 0.1 }) }] });
+  E.def('spinda', { sp: 'Spinda', scale: 0.4, speed: 30, persona: 'curious', active: 'day', diet: true,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, wobble: st.t * 2.4 + m.seed, spots: m.spots || 1, mouth: 0.3 }),
+    acts: [{ id: 'dizzy', w: 3, T: [1.6, 2.4], p: (m, k, e) => ({ wobble: e * 9, eyes: 'closed', mouth: 0.6 }), fx: (m, k, dt) => { m.x += Math.sin(Game.t * 5) * 20 * dt; if (Math.random() < dt * 2) FX.add({ type: 'icon', icon: 'swirl', x: m.x, y: m.y - 30, vx: 4, vy: -10, life: 1, layer: 3 }); } },
+      { id: 'teeter', w: 1, dance: true, T: 2.4, sfx: 'boing', vol: 0.3, p: (m, k, e) => ({ wobble: e * 6, eyes: 'happy', mouth: 0.9 }), fx: (m, k) => { m.rot = Math.sin(k * Math.PI * 3) * 0.18; }, after: (m) => { m.rot = 0; } }] });
+  E.def('torkoal', { sp: 'Torkoal', scale: 0.42, speed: 12, persona: 'shy', active: 'day', hot: true, wade: true,
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, smoke: 0, hide: 0, mouth: 0 }),
+    acts: [{ id: 'smokering', w: 3, T: 2.2, face: 0.6, sfx: 'steam', vol: 0.5, p: (m, k) => ({ smoke: Math.sin(k * Math.PI), mouth: 0.4 }), fx: (m, k, dt) => { if (k > 0.3 && k < 0.34) { const [hx, hy] = m.at('top'); FX.add({ type: 'ring', x: hx, y: hy - 6, r0: 3, r1: 10, flat: 0.5, life: 1.6, c: 0xffd8d4d0, layer: 4, vy: -18 }); } if (Math.random() < dt * 8) fx.puff(m, 26); } },
+      { id: 'hide', w: 1, T: [2, 3], p: () => ({ hide: 1, eyes: 'closed' }) }] });
+  E.def('slugma', { sp: 'Slugma', scale: 0.34, speed: 10, persona: 'calm', active: 'any', hot: true, lavaOk: true, wade: true,
+    pose: (m, st) => ({ ooze: st.t * (st.mv ? 5 : 1.6) + m.seed, mouth: 0.2 }),
+    physics: (m) => { const L = Game.area && Game.area.def.LAVAS && Game.area.def.LAVAS.find((q) => m.x > q.x0 && m.x < q.x1 && World.groundAt(m.x) > q.y); if (L) { m.y = L.y + 6; return true; } return false; },
+    acts: [{ id: 'melt', w: 2, T: 2, sfx: 'lava', vol: 0.4, p: () => ({ eyes: 'happy' }), fx: (m, k, dt) => { if (Math.random() < dt * 16) fx.sparks(m, '#ffe070', '#ff3a10', 1, 8); } }] });
+  // ---- the Eon duo ----
+  E.def('latias', { sp: 'Latias', scale: 0.4, speed: 90, persona: 'shy', loco: 'fly', alt: [50, 140], perch: 0, active: 'any', alert: 0.6,
+    pose: (m, st) => ({ fly: 1, bank: bank(st), mouth: 0 }),
+    acts: [{ id: 'cloak', w: 2, T: 2.5, sfx: 'twinkle', p: () => ({ eyes: 'happy' }), fx: (m, k) => { m.hideK = Math.sin(k * Math.PI) * 0.85; }, after: (m) => { m.hideK = 0; } },
+      { id: 'mistball', w: 1, T: 1.6, face: 0.6, sfx: 'chime', p: (m, k) => ({ mouth: 0.6 }), fx: (m, k, dt) => { if (Math.random() < dt * 20) fx.sparks(m, '#ffffff', '#ff9ac8', 1, 6); } }] });
+  E.def('latios', { sp: 'Latios', scale: 0.42, speed: 110, persona: 'calm', loco: 'fly', alt: [50, 150], perch: 0, active: 'any', alert: 0.6,
+    pose: (m, st) => ({ fly: 1, bank: bank(st), mouth: 0 }),
+    acts: [{ id: 'lusterpurge', w: 1, T: 1.6, face: 0.6, sfx: 'zap', p: () => ({ mouth: 0.8 }), fx: (m, k, dt) => { if (Math.random() < dt * 20) fx.sparks(m, '#ffffff', '#6ab0ff', 1, 6); } },
+      { id: 'race', w: 2, run: function* (m) { const tx = clamp(m.x + (Math.random() < 0.5 ? -1 : 1) * 300, m.minX, m.maxX); Game.sfx('whoosh', m.x, 0.5); yield* m.flyTo(tx, m.y + rnd(-20, 20), m.speed * 2.2, 'race', { agile: 3, peak: () => 0.8 }); } }] });
+  // ---- Shoal Cave (Spheal and Sealeo on the snowy shore) ----
+  E.def('snorunt', { sp: 'Snorunt', scale: 0.38, speed: 36, persona: 'shy', cold: true, active: 'any',
+    pose: (m, st) => ({ walk: st.mv ? st.ph : 0, shiver: Eco.season() === 'winter' || (Game.area && Game.area.def.cave) ? 0 : Math.sin(st.t * 30) * 0.3 }),
+    acts: [{ id: 'snowplay', w: 2, T: [1.6, 2.4], sfx: 'crunch', when: () => Eco.season() === 'winter' || (Game.area && Game.areaId === 'shoal'), p: () => ({ mouth: 1, eyes: 'happy' }), hop: 160 },
+      { id: 'hide', w: 1, T: 2.5, p: () => ({ shiver: 0.6, eyes: 'closed' }) }] });
+  E.def('sphealS', { dex: 'spheal', sp: 'Spheal', scale: 0.36, speed: 34, persona: 'curious', cold: true, herd: 90, diet: true, active: 'any',
+    pose: (m, st) => ({ roll: st.mv ? st.ph * 1.2 : 0, squash: Math.sin(st.t * 2.1 + m.seed) * 0.02, clap: 0, mouth: 0.25, headPitch: 0, tailWag: Math.sin(st.t * 3 + m.seed) * 0.4 }),
+    acts: [{ id: 'clap', w: 2, T: 1.6, face: 0.8, sfx: 'clap', p: (m, k, e) => ({ clap: Math.sin(e * 18) > 0 ? 1 : 0, eyes: 'happy', mouth: 1 }) },
+      { id: 'roll', w: 2, T: 1.4, dash: 90, p: (m, k, e) => ({ roll: e * 9 }) }] });
+  E.def('sealeoS', { dex: 'sealeo', sp: 'Sealeo', scale: 0.44, speed: 24, persona: 'showoff', cold: true, active: 'any',
+    pose: (m, st) => ({ squash: Math.sin(st.t * 1.8 + m.seed) * 0.015, headPitch: 0.05, headYaw: 0, mouth: 0.2, flipper: 0, clap: 0, tailWag: Math.sin(st.t * 2.2) * 0.3, lean: 0 }),
+    acts: [{ id: 'pose', w: 2, T: 2, face: 1, p: () => ({ headPitch: -0.2, mouth: 0.6, eyes: 'happy' }) },
+      { id: 'clap', w: 1, T: 1.4, sfx: 'clap', p: (m, k, e) => ({ clap: Math.sin(e * 16) > 0 ? 1 : 0, flipper: 0.8 }) }] });
 
+  /* ===================== Pokédex pages ===================== */
+  Object.assign(DexData.TYPES, { Fairy: '#f0a0d0', Fighting: '#c05a3a', Fire: '#f08030', Poison: '#a040a0' });
   const D = DexData.S;
-  const add = (id, e) => { D[id] = e; if (!DexData.ORDER.includes(id)) { DexData.ORDER.push(id); DexData.ORDER.sort((a, b) => D[a].no - D[b].no); } };
+  const add = (id, e) => { D[id] = e; if (!DexData.ORDER.includes(id)) DexData.ORDER.push(id); };
   const B = (n, tier, hint) => ({ n, tier, hint });
-  add('marshtomp', { no: 259, name: 'Marshtomp', type: ['Water', 'Ground'], h: 0.7, area: ['beach'], persona: 'curious', blurb: 'Mudkip all grown up! It plays in the mud along the shore and is much stronger than it looks.', beh: { walk: B('Stomping', 1, 'Marshtomp stomps along the beach.'), mudplay: B('Mud play', 2, 'It loves splashing in wet sand.'), flex: B('Flexing', 3, 'Stand close and it shows off its muscles.') }, obj: [{ id: 'marshtomp.flex', t: 'Marshtomp flexing', beh: 'flex', reward: 'pts:400' }] });
+  add('marshtomp', { no: 259, name: 'Marshtomp', type: ['Water', 'Ground'], h: 0.7, area: ['beach'], persona: 'curious', blurb: 'Mudkip all grown up! It plays in the mud along the shore and is much stronger than it looks.', beh: { walk: B('Stomping', 1, 'Marshtomp stomps along the beach.'), mudplay: B('Mud play', 2, 'It loves splashing in wet sand.'), flex: B('Flexing', 3, 'Stand close and it shows off its muscles.'), family: B('Big brother', 4, 'Marshtomp watches over the little ones.') }, obj: [{ id: 'marshtomp.flex', t: 'Marshtomp flexing', beh: 'flex', reward: 'pts:400' }] });
+  add('swampert', { no: 260, name: 'Swampert', type: ['Water', 'Ground'], h: 1.5, area: ['beach'], persona: 'calm', blurb: 'The final form of the Mudkip line. It can haul huge boulders and senses storms coming through its fins.', beh: { walk: B('Striding', 1, 'Swampert patrols the shore.'), guard: B('On guard', 2, 'It crouches low, ready for anything.'), mudshot: B('Mud Shot', 3, 'Swampert flings mud when it plays.'), roar: B('Mighty roar', 4, 'Get it to face you... and roar!') }, obj: [{ id: 'swampert.roar', t: 'Swampert roaring', beh: 'roar', reward: 'pts:700' }, { id: 'swampert.mud', t: 'Swampert\'s Mud Shot', beh: 'mudshot', reward: 'pts:500' }] });
+  add('azurill', { no: 298, name: 'Azurill', type: ['Normal', 'Fairy'], h: 0.2, area: ['forest'], persona: 'curious', baby: 1, blurb: 'A baby Pokémon that bounces on its big rubbery tail. It follows Marill everywhere.', beh: { walk: B('Toddling', 1, 'Azurill toddle after Marill by the pond.'), bounce: B('Tail bounce', 3, 'Azurill bounce on their tails when happy.'), nuzzle: B('Nuzzle', 3, 'Babies love their family.'), tailspin: B('Tail spin', 2, 'It spins its tail like a ball.') }, obj: [{ id: 'azurill.bounce', t: 'Azurill bouncing', beh: 'bounce', reward: 'pts:400' }] });
+  add('marill', { no: 183, name: 'Marill', type: ['Water', 'Fairy'], h: 0.4, area: ['forest'], persona: 'curious', blurb: 'Its oily tail ball floats on water, so it never sinks. It dives to eat water plants.', beh: { walk: B('Waddling', 1, 'Marill waddle around the pond.'), swim: B('Swimming', 2, 'Watch it paddle in the pond.'), splash: B('Splash play', 3, 'Marill splash about when they swim.'), family: B('Family time', 4, 'Marill looks after little Azurill.') }, obj: [{ id: 'marill.splash', t: 'Marill splashing', beh: 'splash', reward: 'pts:400' }] });
+  add('azumarill', { no: 184, name: 'Azumarill', type: ['Water', 'Fairy'], h: 0.8, area: ['forest'], persona: 'calm', blurb: 'Its long ears can hear the tiniest sound. It makes bubble balloons for crying children.', beh: { walk: B('Strolling', 1, 'Azumarill stroll by the water.'), swim: B('Swimming', 2, 'It swims in the woods pond.'), bubblebeam: B('Bubble Beam', 3, 'Azumarill blows bubbles when it swims.'), family: B('Family time', 4, 'The whole family by the pond!') }, obj: [{ id: 'azumarill.bubble', t: 'Azumarill\'s Bubble Beam', beh: 'bubblebeam', reward: 'pts:500' }] });
   add('lombre', { no: 271, name: 'Lombre', type: ['Water', 'Grass'], h: 1.2, area: ['forest'], persona: 'showoff', blurb: 'A cheeky prankster of the riverside. It loves to surprise fishermen, and dances at twilight.', beh: { walk: B('Sneaking', 1, 'Lombre creeps by the river at dawn and dusk.'), dance: B('River dance', 3, 'Play a song near Lombre.'), prank: B('Prank face', 2, 'Lombre loves a good trick.') }, obj: [{ id: 'lombre.dance', t: 'Lombre dancing', beh: 'dance', reward: 'pts:500' }] });
-  add('wynaut', { no: 360, name: 'Wynaut', type: ['Psychic'], h: 0.6, area: ['beach'], persona: 'curious', blurb: 'A cheerful baby Pokémon. It sways in happy groups and toughens up by pushing against its friends.', beh: { walk: B('Bouncing', 1, 'Wynaut bounce around the dunes.'), sway: B('Happy sway', 2, 'Wynaut sways when it is happy... or when music plays.'), nuzzle: B('Nuzzle', 3, 'Babies love their family.') }, obj: [{ id: 'wynaut.sway', t: 'Wynaut swaying', beh: 'sway', reward: 'pts:300' }] });
-  add('budew', { no: 406, name: 'Budew', type: ['Grass', 'Poison'], h: 0.2, area: ['forest'], persona: 'shy', blurb: 'A tiny baby bud. In spring its bud opens a little and it smells wonderful. In winter it stays shut tight.', beh: { idle: B('Budding', 1, 'Look closely in the forest flowers.'), bloom: B('Blooming', 3, 'Budew bloom best in spring sunshine.') }, obj: [{ id: 'budew.bloom', t: 'Budew blooming', beh: 'bloom', reward: 'pts:400' }] });
-  add('snorunt', { no: 361, name: 'Snorunt', type: ['Ice'], h: 0.7, area: ['canopy'], persona: 'shy', blurb: 'It is said that a home visited by Snorunt will prosper. It shivers in summer but plays happily in snow.', beh: { walk: B('Pattering', 1, 'Snorunt wanders the treetops.'), hide: B('Hiding', 2, 'Shy Snorunt hide their faces.'), snowplay: B('Snow play', 4, 'Come back in winter!') }, obj: [{ id: 'snorunt.snow', t: 'Snorunt playing in snow', beh: 'snowplay', reward: 'hat.beanie' }] });
-  add('starmie', { no: 121, name: 'Starmie', type: ['Water', 'Psychic'], h: 1.1, area: ['beach'], persona: 'calm', blurb: 'Its jewel core shines in seven colours. At night it spins through the sea like a falling star.', beh: { swim: B('Spinning swim', 2, 'Starmie swim the reef at night.'), jewel: B('Jewel flash', 3, 'Its core flashes as it spins.') }, obj: [{ id: 'starmie.jewel', t: 'Starmie flashing its core', beh: 'jewel', reward: 'pts:500' }] });
-  add('latias', { no: 380, name: 'Latias', type: ['Dragon', 'Psychic'], h: 1.4, area: ['forest'], legendary: 1, rare: 2, persona: 'shy', blurb: 'A legendary Pokémon that can bend light to turn invisible. It glides gently over the woods.', beh: { fly: B('Gliding', 3, 'Look up over Weather Woods.'), cloak: B('Invisible!', 4, 'Latias fades from view... snap it just before!') }, obj: [{ id: 'latias.cloak', t: 'Latias turning invisible', beh: 'cloak', reward: 'pts:1000' }] });
-  Object.assign(Talk.CHAT || {}, {});
+  add('nuzleaf', { no: 274, name: 'Nuzleaf', type: ['Grass', 'Dark'], h: 1.0, area: ['forest'], persona: 'showoff', blurb: 'It plays a leaf flute that makes listeners uneasy. Seedot gather round when it plays.', beh: { walk: B('Prowling', 1, 'Nuzleaf wander near the Seedot tree.'), whistle: B('Leaf flute', 3, 'Nuzleaf plays the leaf on its head like a flute.'), leafdance: B('Leaf dance', 2, 'It twirls its leaf when happy.') }, obj: [{ id: 'nuzleaf.whistle', t: 'Nuzleaf playing its leaf flute', beh: 'whistle', reward: 'pts:500' }] });
+  add('linoone', { no: 264, name: 'Linoone', type: ['Normal'], h: 0.5, area: ['forest'], persona: 'curious', blurb: 'It charges in straight lines at amazing speed — but cannot turn corners. It races Zigzagoon for fun.', beh: { walk: B('Trotting', 1, 'Linoone trot through the grass.'), dash: B('Straight dash', 3, 'Linoone sprint dead straight. Snap it at full speed!'), sniff: B('Sniffing', 2, 'It sniffs for buried treasure.'), chase: B('Racing Zigzagoon', 4, 'Linoone loves a race with Zigzagoon.') }, obj: [{ id: 'linoone.dash', t: 'Linoone dashing', beh: 'dash', reward: 'pts:500' }] });
+  add('breloom', { no: 286, name: 'Breloom', type: ['Grass', 'Fighting'], h: 1.2, area: ['forest'], persona: 'showoff', blurb: 'Its stretchy arms throw lightning-fast punches. It trains the young Shroomish.', beh: { walk: B('Hopping', 1, 'Breloom hop among the mushrooms.'), machpunch: B('Mach Punch', 4, 'Breloom\'s punch is so fast — time your shot!'), spores: B('Spore cloud', 2, 'Breloom puffs spores from its cap.') }, obj: [{ id: 'breloom.punch', t: 'Breloom\'s Mach Punch', beh: 'machpunch', reward: 'pts:700' }] });
+  add('masquerain', { no: 284, name: 'Masquerain', type: ['Bug', 'Flying'], h: 0.8, area: ['forest'], persona: 'calm', blurb: 'The eye patterns on its antennae scare off enemies. It hovers over ponds like a little helicopter.', beh: { float: B('Hovering', 1, 'Masquerain hover over the pond.'), hover: B('Hovering', 1, 'Look over the pond.'), intimidate: B('Scary eyes', 3, 'It flashes its big eye patterns at you.') }, obj: [{ id: 'masquerain.eyes', t: 'Masquerain\'s scary eyes', beh: 'intimidate', reward: 'pts:500' }] });
+  add('vigoroth', { no: 288, name: 'Vigoroth', type: ['Normal'], h: 1.4, area: ['forest'], persona: 'grumpy', blurb: 'It cannot keep still — its blood boils and it must run around. It never lets Slakoth sleep in peace.', beh: { walk: B('Restless', 1, 'Vigoroth never stops moving.'), frenzy: B('Frenzy', 3, 'It goes wild, arms spinning!'), scratch: B('Scratching', 2, 'Vigoroth scratches everything.') }, obj: [{ id: 'vigoroth.frenzy', t: 'Vigoroth in a frenzy', beh: 'frenzy', reward: 'pts:500' }] });
+  add('slaking', { no: 289, name: 'Slaking', type: ['Normal'], h: 2.0, area: ['forest'], persona: 'calm', blurb: 'The laziest Pokémon of all. It lies on its side eating the grass within reach, then scoots to a new spot.', beh: { lounge: B('Lounging', 1, 'Slaking lies around all day.'), yawn: B('Big yawn', 3, 'Catch Slaking mid-yawn.'), scratch: B('Belly scratch', 2, 'It scratches its tummy.'), walk: B('Moving?!', 4, 'Slaking walking is a rare sight indeed.') }, obj: [{ id: 'slaking.yawn', t: 'Slaking yawning', beh: 'yawn', reward: 'pts:500' }, { id: 'slaking.walk', t: 'Slaking actually moving', beh: 'walk', reward: 'pts:900' }] });
+  add('swellow', { no: 277, name: 'Swellow', type: ['Normal', 'Flying'], h: 0.7, area: ['canopy'], persona: 'showoff', blurb: 'It keeps its glossy wings in perfect condition, and teaches young Taillow to fly.', beh: { fly: B('Soaring', 1, 'Swellow circle above Treetop Town.'), dive: B('Steep dive', 3, 'Swellow dive at blinding speed.'), aerial: B('Aerial Ace', 4, 'It loops the loop!') }, obj: [{ id: 'swellow.dive', t: 'Swellow diving', beh: 'dive', reward: 'pts:500' }, { id: 'swellow.ace', t: 'Swellow\'s loop-the-loop', beh: 'aerial', reward: 'pts:700' }] });
+  add('vibrava', { no: 329, name: 'Vibrava', type: ['Ground', 'Dragon'], h: 1.1, area: ['beach'], persona: 'curious', blurb: 'It vibrates its wings so fast they make ultrasonic waves. It hovers over the Fossil Cliffs.', beh: { float: B('Hovering', 1, 'Vibrava hover near Trapinch\'s pit.'), buzz: B('Sonic wings', 3, 'Vibrava buzz their wings to make sound waves.') }, obj: [{ id: 'vibrava.buzz', t: 'Vibrava buzzing its wings', beh: 'buzz', reward: 'pts:500' }] });
+  add('flygon', { no: 330, name: 'Flygon', type: ['Ground', 'Dragon'], h: 2.0, area: ['beach'], persona: 'calm', blurb: 'The Desert Spirit. Its wings sing as it flies, whipping up sandstorms — and it can carry a rider far away.', beh: { float: B('Hovering', 1, 'Flygon hover over the Fossil Cliffs.'), glide: B('Gliding', 2, 'Flygon glide on the sea breeze.'), sandstorm: B('Sandstorm', 4, 'Flygon whips up the sand with its wings.') }, obj: [{ id: 'flygon.storm', t: 'Flygon\'s sandstorm', beh: 'sandstorm', reward: 'pts:700' }] });
+  add('crawdaunt', { no: 342, name: 'Crawdaunt', type: ['Water', 'Dark'], h: 1.1, area: ['beach'], persona: 'grumpy', blurb: 'The rogue of the beach. It bosses the Corphish around and snaps its claws at anything that comes near.', beh: { walk: B('Swaggering', 1, 'Crawdaunt swagger along the shore.'), boss: B('Boss pose', 2, 'It shows off its huge claws.'), crabhammer: B('Crabhammer', 4, 'Snap Crawdaunt mid-swing.'), chase: B('Bossing Corphish', 3, 'It chases Corphish around.') }, obj: [{ id: 'crawdaunt.hammer', t: 'Crawdaunt\'s Crabhammer', beh: 'crabhammer', reward: 'pts:700' }] });
+  add('wynaut', { no: 360, name: 'Wynaut', type: ['Psychic'], h: 0.6, area: ['beach', 'volcano'], persona: 'curious', baby: 1, blurb: 'A cheerful baby Pokémon. It sways in happy groups and toughens up by pushing against its friends.', beh: { walk: B('Bouncing', 1, 'Wynaut bounce around.'), sway: B('Happy sway', 2, 'Wynaut sways when it is happy... or when music plays.'), nuzzle: B('Nuzzle', 3, 'Babies love their family.') }, obj: [{ id: 'wynaut.sway', t: 'Wynaut swaying', beh: 'sway', reward: 'pts:300' }] });
+  add('wobbuffet', { no: 202, name: 'Wobbuffet', type: ['Psychic'], h: 1.3, area: ['volcano'], persona: 'calm', blurb: 'It hates light and shock. When attacked, it puffs up and counters! Wobbuffet salutes everyone it meets.', beh: { walk: B('Wobbling', 1, 'Wobbuffet wobble by the bathhouse.'), salute: B('Salute!', 3, 'WOBBUFFET! (It salutes.)'), counter: B('Counter', 4, 'Poke it and it bounces back!'), family: B('Proud parent', 4, 'Wobbuffet looks after the Wynaut.') }, obj: [{ id: 'wobbuffet.salute', t: 'Wobbuffet saluting', beh: 'salute', reward: 'pts:500' }, { id: 'wobbuffet.counter', t: 'Wobbuffet countering', beh: 'counter', reward: 'pts:600' }] });
+  add('starmie', { no: 121, name: 'Starmie', type: ['Water', 'Psychic'], h: 1.1, area: ['beach', 'shoal'], persona: 'calm', blurb: 'Its jewel core shines in seven colours. At night it spins through the sea like a falling star.', beh: { swim: B('Spinning swim', 2, 'Starmie swim at night.'), jewel: B('Jewel flash', 3, 'Its core flashes as it spins.') }, obj: [{ id: 'starmie.jewel', t: 'Starmie flashing its core', beh: 'jewel', reward: 'pts:500' }] });
+  add('budew', { no: 406, name: 'Budew', type: ['Grass', 'Poison'], h: 0.2, area: ['forest'], persona: 'shy', baby: 1, blurb: 'A tiny baby bud. In spring its bud opens a little and it smells wonderful. In winter it stays shut tight.', beh: { idle: B('Budding', 1, 'Look closely in the forest flowers.'), bloom: B('Blooming', 3, 'Budew bloom best in spring sunshine.') }, obj: [{ id: 'budew.bloom', t: 'Budew blooming', beh: 'bloom', reward: 'pts:400' }] });
+  add('snorunt', { no: 361, name: 'Snorunt', type: ['Ice'], h: 0.7, area: ['canopy', 'shoal'], persona: 'shy', blurb: 'It is said that a home visited by Snorunt will prosper. It shivers in summer but plays happily in snow.', beh: { walk: B('Pattering', 1, 'Snorunt wander the ice.'), hide: B('Hiding', 2, 'Shy Snorunt hide their faces.'), snowplay: B('Snow play', 4, 'Snorunt love to play in the snow and ice.') }, obj: [{ id: 'snorunt.snow', t: 'Snorunt playing in snow', beh: 'snowplay', reward: 'hat.beanie' }] });
+  add('numel', { no: 322, name: 'Numel', type: ['Fire', 'Ground'], h: 0.7, area: ['volcano'], persona: 'calm', blurb: 'Magma bubbles inside its hump at 1,200°C. It is so slow it barely notices when you touch it.', beh: { walk: B('Plodding', 1, 'Numel plod across the ash fields.'), graze: B('Grazing', 1, 'Numel nibble the ashy grass.'), ember: B('Hump ember', 3, 'Its hump puffs embers when it is happy.') }, obj: [{ id: 'numel.ember', t: 'Numel puffing embers', beh: 'ember', reward: 'pts:400' }] });
+  add('spinda', { no: 327, name: 'Spinda', type: ['Normal'], h: 1.1, area: ['volcano'], persona: 'curious', blurb: 'No two Spinda have the same spot pattern! It totters about as if dizzy — which confuses its foes.', beh: { walk: B('Tottering', 1, 'Spinda totter about on the ash.'), dizzy: B('Dizzy spin', 3, 'Spinda get dizzy... very dizzy.'), teeter: B('Teeter Dance', 4, 'Play a song and Spinda starts its famous dance.') }, obj: [{ id: 'spinda.teeter', t: 'Spinda\'s Teeter Dance', beh: 'teeter', reward: 'pts:700' }] });
+  add('torkoal', { no: 324, name: 'Torkoal', type: ['Fire'], h: 0.5, area: ['volcano'], persona: 'shy', blurb: 'It burns coal in its shell for energy, and blows black smoke rings from its nostrils.', beh: { walk: B('Crawling', 1, 'Torkoal crawl near the hot spring.'), smokering: B('Smoke ring', 3, 'Torkoal puffs perfect smoke rings.'), hide: B('Shell hide', 2, 'Shy Torkoal pull into their shells.') }, obj: [{ id: 'torkoal.ring', t: 'Torkoal\'s smoke ring', beh: 'smokering', reward: 'pts:500' }] });
+  add('slugma', { no: 218, name: 'Slugma', type: ['Fire'], h: 0.7, area: ['volcano'], persona: 'calm', blurb: 'Its body is made of magma. If it stops moving it cools and hardens, so it keeps oozing about.', beh: { walk: B('Oozing', 1, 'Slugma ooze through the lava puddles.'), melt: B('Melting glow', 3, 'Slugma glows hotter when happy.') }, obj: [{ id: 'slugma.melt', t: 'Slugma glowing', beh: 'melt', reward: 'pts:500' }] });
+  add('latias', { no: 380, name: 'Latias', type: ['Dragon', 'Psychic'], h: 1.4, area: ['volcano', 'shoal'], legendary: 1, rare: 2, persona: 'shy', blurb: 'A legendary Pokémon that can bend light to turn invisible. Gentle and shy, she understands human feelings.', beh: { fly: B('Gliding', 3, 'Latias glides through the sky.'), float: B('Hovering', 2, 'Latias hides near the bathhouse.'), cloak: B('Invisible!', 4, 'Latias fades from view... snap it just before!'), mistball: B('Mist Ball', 4, 'A glowing ball of mist.'), pair: B('Eon duo', 4, 'Latias and Latios flying together!') }, obj: [{ id: 'latias.cloak', t: 'Latias turning invisible', beh: 'cloak', reward: 'pts:1000' }, { id: 'latias.pair', t: 'The Eon duo flying together', beh: 'pair', reward: 'pts:1500' }] });
+  add('latios', { no: 381, name: 'Latios', type: ['Dragon', 'Psychic'], h: 2.0, area: ['shoal'], legendary: 1, rare: 2, persona: 'calm', blurb: 'A legendary Pokémon that can fly faster than a jet plane. He shares what he sees with Latias.', beh: { fly: B('Soaring', 3, 'Latios soars over the frozen sea.'), race: B('Jet speed', 4, 'Latios races across the sky.'), lusterpurge: B('Luster Purge', 4, 'A burst of blue light.'), pair: B('Eon duo', 4, 'Latios and Latias flying together!') }, obj: [{ id: 'latios.race', t: 'Latios at full speed', beh: 'race', reward: 'pts:1000' }] });
+  add('groudon', { no: 383, name: 'Groudon', type: ['Ground'], h: 3.5, area: ['volcano'], legendary: 1, rare: 2, persona: 'calm', blurb: 'The legendary Pokémon said to have raised the land. It sleeps in magma, and its light dries up the rain.', beh: { sleep: B('Magma slumber', 3, 'Something enormous sleeps in the crater\'s lava.'), rise: B('Awakening', 4, 'Solve the magma stones...'), roar: B('Earth-shaking roar', 4, 'Groudon roars at the sky.'), drought: B('Drought', 4, 'Its roar makes the sunlight blaze.'), glow: B('Lava lines', 3, 'Its markings glow like magma.') }, obj: [{ id: 'groudon.rise', t: 'Groudon awakening', beh: 'rise', reward: 'pts:1500' }, { id: 'groudon.drought', t: 'Groudon calling the sun', beh: 'drought', reward: 'pts:1200' }] });
+  add('regice', { no: 378, name: 'Regice', type: ['Ice'], h: 1.8, area: ['shoal'], legendary: 1, rare: 2, persona: 'calm', blurb: 'Its body is made of Antarctic ice that never melts. It was sealed away in a cave long ago.', beh: { dormant: B('Frozen', 3, 'A giant frozen in the ice chamber.'), awake: B('Awakening', 4, 'Stand in the circle, be still... then sing.'), icebeam: B('Ice Beam', 4, 'Regice breathes a freezing beam.'), glow: B('Braille glow', 3, 'Its seven dots glow.') }, obj: [{ id: 'regice.awake', t: 'Regice awakening', beh: 'awake', reward: 'pts:1500' }, { id: 'regice.beam', t: 'Regice\'s Ice Beam', beh: 'icebeam', reward: 'pts:1000' }] });
+  add('rayquaza', { no: 384, name: 'Rayquaza', type: ['Dragon', 'Flying'], h: 7.0, area: ['canopy', 'volcano'], legendary: 1, rare: 2, persona: 'calm', blurb: 'It lives in the ozone layer and descends to calm Groudon and Kyogre when they clash.', beh: { soar: B('Sky dragon', 4, 'Once a great Pokémon wakes, watch the sky...'), roar: B('Dragon roar', 4, 'Rayquaza roars as it passes overhead.') }, obj: [{ id: 'rayquaza.soar', t: 'Rayquaza soaring overhead', beh: 'soar', reward: 'pts:2000' }, { id: 'rayquaza.roar', t: 'Rayquaza roaring', beh: 'roar', reward: 'pts:2000' }] });
+  // every creature also shares the ecosystem moments
+  for (const k of ['marshtomp', 'swampert', 'marill', 'azumarill', 'wobbuffet', 'numel']) if (D[k] && !D[k].beh.family) D[k].beh.family = B('Family time', 4, 'Watch it with its little ones.');
+  for (const k of Object.keys(E.SP)) { const d = D[E.SP[k].dex || k]; if (d) { d.beh.eat = d.beh.eat || B('Snacking', 2, 'Hungry Pokémon raid ripe berry bushes.'); d.beh.sleep = d.beh.sleep || B('Sleeping', 1, 'Come back when it is resting.'); } }
+  DexData.ORDER.sort((a, b) => D[a].no - D[b].no);
+  Object.assign(DexData.AREAS, {
+    volcano: { name: 'Fiery Path', sub: 'Mt. Chimney · Lavaridge', need: 99, blurb: 'Ash falls like snow on the slopes of a smoking volcano. A hot-spring town, jagged black rock, and a crater full of magma.' },
+    shoal: { name: 'Shoal Cave', sub: 'Route 125 Ice Cave', need: 99, blurb: 'A snowy islet with an ice cave full of frozen waterfalls, glittering tide pools and an ancient sealed chamber.' },
+  });
 
+  /* ===================== chatter ===================== */
+  Object.assign(Talk.CHAT || {}, {
+    marshtomp: ['Marsh-tomp!', '(It flexes proudly.) You look just like I did!', 'Mud fight? MUD FIGHT!'],
+    swampert: ['Swam-pert.', '(It pats your head gently with a huge hand.)', 'A storm is coming... I can feel it in my fins.'],
+    azurill: ['Azu! Azu!', '(It bounces on its tail. Boing boing!)'], marill: ['Ma-rill!', '(Its tail ball bobs happily.)'], azumarill: ['Azu-marill.', '(It hears you before you speak.)'],
+    lombre: ['Lom-bre! Hehe!', '(It is hiding something behind its back.)'], nuzleaf: ['Nuz...', '(It toots a note on its leaf.)'], linoone: ['Lin-oone!', 'Race you! Straight line only!'],
+    breloom: ['Bre-loom!', '(It shadowboxes at lightning speed.)'], masquerain: ['Masq...', '(Its big eye patterns stare at you.)'], vigoroth: ['VIGO! VIGO! VIGO!', 'Can\'t stop! Won\'t stop!'],
+    slaking: ['...', '(Slaking scratches its belly and does not look at you.)'], swellow: ['Swel-loooow!', '(It preens its glossy wings.)'], vibrava: ['Bzzzzz!', '(Its wings hum like a tuning fork.)'],
+    flygon: ['Flyyy-gon!', '(Its wings sing a desert song.)'], crawdaunt: ['*SNAP*', 'This is MY beach, shrimp.'], wynaut: ['Wynaut!', '(It sways left and right.)'],
+    wobbuffet: ['WOBBUFFET!', '(It salutes.)'], starmie: ['Hyah!', '(Its jewel blinks in seven colours.)'], budew: ['Bu...', '(Its little bud trembles.)'],
+    snorunt: ['Snow-run!', '(It shivers... happily?)'], numel: ['Nuuu...mel.', '(It forgot what it was doing.)'], spinda: ['Spin-daaa~', '(It wobbles in a little circle.)'],
+    torkoal: ['*puff puff*', '(A smoke ring drifts from its nose.)'], slugma: ['*blorp*', '(It is very warm. Maybe don\'t hug it.)'], latias: ['Ahh~', '(She tilts her head curiously.)'], latios: ['Hyuuu!', '(He looks toward the sea.)'],
+    groudon: ['GROOOOAR!', '(The ground trembles.)'], regice: ['...', '(Seven dots glow in a pattern.)'], rayquaza: ['...!'], sphealS: ['Spheal!'], sealeoS: ['Sea-leo!'],
+  });
+
+  /* ===================== quests ===================== */
+  Talk.QUESTS.push(
+    { id: 'q.flygon', area: 'beach', giver: 'flygon', title: 'Wings of the Desert',
+      intro: ['(Flygon hums a desert song. Its wings buzz like singing sand.)', 'Flyyy-gon! (It points at the smoking mountain far away.)', 'It could fly you to Mt. Chimney... if you photograph a Vibrava buzzing its wings!'],
+      photo: { sp: 'vibrava', beh: 'buzz' }, wait: ['(Flygon waits. Find a Vibrava by the Fossil Cliffs and snap it buzzing.)'],
+      done: ['FLYYYGON! (It loves the photo!)', '(Climb on! Next stop: Fiery Path!)'], reward: 'pts:500', unlock: 'volcano' },
+    { id: 'q.latias', area: 'volcano', giver: 'latias', title: 'The Shy Dragon',
+      intro: ['(Latias shimmers into view, then hides behind her wings.)', '...Latios is waiting for me at Shoal Cave, across the sea.', 'I am too nervous... Could you show me a photo of Torkoal blowing a smoke ring? It always makes me laugh!'],
+      photo: { sp: 'torkoal', beh: 'smokering' }, wait: ['(Latias peeks out. "A smoke ring photo, please...")'],
+      done: ['Hehe! Look at that smoke ring!', 'I feel brave now. Hold on tight — we fly to Shoal Cave!'], reward: 'pts:600', unlock: 'shoal' },
+    { id: 'q.numel', area: 'volcano', giver: 'numel', title: 'Sleepy Numel',
+      intro: ['Nuuu...mel.', '(Numel is so slow it forgot what it was doing.)', '(Maybe a song right next to it will wake it up!)'],
+      progress: 'song', n: 1, wait: ['Nuuu... (It is still waiting for a song.)'], done: ['NUMEL! (Its hump puffs a happy ember.)', '(It nudges some warm Razz Berries toward you.)'], reward: 'pts:400', onDone: () => Save.addItem('razz', 2) },
+    { id: 'q.spinda', area: 'volcano', giver: 'spinda', title: 'Dizzy Dance',
+      intro: ['Spin-daaa~', 'Everything is spinning... is it spinning for you too?', 'Show me three dizzy belly flops next to me! (Jump, then press Down!)'],
+      progress: 'flops', n: 3, wait: ['Spin-da! {left} more!'], done: ['Wheeeee! Now YOU are dizzy too!', '(It teaches you its secret wobble. Your photos sparkle a little more!)'], reward: 'pts:500' },
+    { id: 'q.wobbuffet', area: 'volcano', giver: 'wobbuffet', title: 'Proud Parent',
+      intro: ['WOBBUFFET!', '(It points at the little Wynaut swaying nearby, then at your camera.)', '(It wants a photo of its Wynaut swaying happily!)'],
+      photo: { sp: 'wynaut', beh: 'sway' }, wait: ['WOBBU? (A swaying Wynaut photo, please!)'], done: ['WOBBUFFEEET!!', '(It salutes you very, very proudly.)'], reward: 'pts:500' },
+    { id: 'q.slaking', area: 'forest', giver: 'slaking', title: 'Lazy Lunch',
+      intro: ['...', '(Slaking points at its mouth. Then at the berry bushes. Then closes its eyes.)', '(Bring it 2 Nanab Berries. It is not getting up.)'],
+      fetch: { item: 'nanab', n: 2 }, wait: ['... (Still waiting. {left} more Nanab Berries.)'], done: ['*munch*... *munch*...', '(Slaking gives you a thumbs up without opening its eyes.)'], reward: 'pts:500' },
+    { id: 'q.azurill', area: 'forest', giver: 'azurill', title: 'Bounce Bounce',
+      intro: ['Azu! Azu!', '(It bounces on its tail, again and again.)', '(It wants a photo of itself mid-bounce!)'],
+      photo: { sp: 'azurill', beh: 'bounce' }, wait: ['Azu? (Did you get my bounce?)'], done: ['AZU-RILL! (It bounces so high it lands in the pond.)', '(Marill fishes it out and thanks you.)'], reward: 'pts:400' },
+    { id: 'q.latios', area: 'shoal', giver: 'latios', title: 'Eon Duo',
+      intro: ['Hyuuu... (Latios looks relieved to see Latias.)', 'Thank you for bringing her here.', 'We fly together over the frozen sea at dusk. Will you photograph us side by side?'],
+      photo: { sp: 'latias', beh: 'pair' }, wait: ['(Watch the sky over the shore around dusk...)'], done: ['What a beautiful photo...', 'Latias says you are the best photographer in Hoenn!'], reward: 'pts:1200' },
+  );
+
+  /* ===================== flights and map ===================== */
+  if (typeof Mailman !== 'undefined') {
+    Object.assign(Mailman.CARRIER, { volcano: 'flygon', shoal: 'latias' });
+    Object.assign(Mailman.CSP, {
+      flygon: { sp: 'Flygon', scale: 0.46, name: 'Flygon', flap: (k) => ({ flap: k * 2.2, spread: 1, eyes: 'happy', mouth: 0.3 }) },
+      latias: { sp: 'Latias', scale: 0.4, name: 'Latias', flap: (k) => ({ fly: 1, bank: k * 0.25, eyes: 'happy', mouth: 0.3 }) },
+    });
+  }
+  if (typeof WorldMap !== 'undefined' && WorldMap.LOC) Object.assign(WorldMap.LOC, {
+    volcano: { x: 122, y: 118, yaw: 0.1, label: 'Fiery Path' },
+    shoal: { x: 44, y: 214, yaw: -0.7, label: 'Shoal Cave' },
+  });
+
+  /* ===================== spawns in the existing places ===================== */
   const wrap = (id, fn) => { const A = Areas[id]; if (!A) return; const s0 = A.spawn; A.spawn = (a, G) => { s0(a, G); try { fn(a, G); } catch (e) { console.error(e); } }; };
   wrap('beach', (A, G) => {
-    Eco.add(G, 'marshtomp', 1500, { range: 300 });
-    Eco.family(G, 'marshtomp', 'wynaut', 900, 0);
-    Eco.add(G, 'wynaut', 1000, { range: 200 }); Eco.add(G, 'wynaut', 1060, { range: 200 });
-    if (Game.hour() === 'night' || Game.hour() === 'dusk') Eco.add(G, 'starmie', 2000, { box: { x0: 1500, x1: 2600, y0: World.SEA + 30, y1: World.SEA + 160 } });
+    E.add(G, 'marshtomp', 760, { range: 240 });
+    E.add(G, 'swampert', 1060, { range: 200 });
+    E.add(G, 'wynaut', 640, { range: 180 }); E.add(G, 'wynaut', 700, { range: 180 });
+    E.add(G, 'crawdaunt', 1100, { range: 260 });
+    E.add(G, 'vibrava', 4020, { range: 200 }); E.add(G, 'vibrava', 4280, { range: 160 });
+    E.add(G, 'flygon', 4460, { range: 220 });
+    const h = Game.hour();
+    if (h === 'night' || h === 'dusk') E.add(G, 'starmie', 2000, { box: { x0: 1500, x1: 2600, y0: World.SEA + 30, y1: World.SEA + 160 } });
   });
   wrap('forest', (A, G) => {
-    Eco.add(G, 'lombre', 1600, { range: 250 });
-    for (const x of [380, 1900, 2950]) Eco.add(G, 'budew', x, { range: 90 });
-    Eco.add(G, 'latias', 1800, { range: 900, y: 300 });
+    const POND = { x0: 2250, x1: 2780, level: 576 }, RIVER = { x0: 930, x1: 1475, level: 578 };
+    E.add(G, 'lombre', 1540, { range: 200, water: RIVER });
+    for (const x of [380, 1900, 2950]) E.add(G, 'budew', x, { range: 90 });
+    E.add(G, 'nuzleaf', 660, { range: 160 });
+    E.add(G, 'linoone', 3000, { minX: 2830, maxX: 3240 });
+    E.add(G, 'breloom', 2960, { range: 150 });
+    E.add(G, 'masquerain', 2520, { minX: POND.x0 + 30, maxX: POND.x1 - 30 });
+    E.family(G, 'marill', 'azurill', 2200, 2, { water: POND, range: 200 });
+    E.add(G, 'azumarill', 2840, { water: POND, range: 220 });
+    E.add(G, 'vigoroth', 560, { range: 260 });
+    E.add(G, 'slaking', 3160, { range: 60 });
+    E.add(G, 'latias', 1800, { range: 900, y: 300 });
   });
-  wrap('canopy', (A, G) => { Eco.add(G, 'snorunt', 900, { range: 200 }); Eco.add(G, 'snorunt', 2200, { range: 200 }); });
-  return {};
+  wrap('canopy', (A, G) => {
+    E.add(G, 'snorunt', 900, { range: 200 }); E.add(G, 'snorunt', 2200, { range: 200 });
+    E.add(G, 'swellow', 1400, { range: 900 });
+  });
+  return { fx };
 })();
 
 /* ==== src/snap/bite.js ==== */
@@ -60959,6 +62350,7 @@ const Arcade = (() => {
     if (!A.live) return;
     cleanup();
     A.live = false; A.phase = 'off'; A.g = null; Game.camFocus = null;
+    if (A.song && typeof Music !== 'undefined' && Game.area) { A.song = false; Music.areaTrack(Game.area.def.music); }
     release(A.partner); release(A.partner2); A.partner = A.partner2 = null;
     Game.sfx('back');
   }
@@ -60972,6 +62364,7 @@ const Arcade = (() => {
   function start(id) {
     const M = mk(), p = A.partner; if (!M || !p || !p.alive) { leave(); return; }
     A.phase = 'play';
+    if (typeof Music !== 'undefined' && Music.play && !A.song) { A.song = true; Music.play('festival'); }
     const G = A.g = { id, t: 0, over: 0, msg: '', win: false };
     Game.sfx('chime', null, 0.6);
     if (id === 'battle') {
@@ -61740,6 +63133,7 @@ const Game = (() => {
     if (typeof Social !== 'undefined') Social.update(dt, t);
     if (typeof Bite !== 'undefined' && !(typeof Arcade !== 'undefined' && Arcade.live)) Bite.update(dt);
     if (typeof Arcade !== 'undefined') Arcade.update(dt);
+    if (typeof Legends !== 'undefined') Legends.update(dt);
     G.mons = G.mons.filter((m) => m.alive);
     if (G.area.def.update) G.area.def.update(G.area, dt, t, G);
     FX.update(dt);
@@ -61818,6 +63212,7 @@ const Game = (() => {
     if (typeof Shaders !== 'undefined') Shaders.apply(fb, cx, cy, t);
     if (!G.lowFx) Stage.bloom(fb, G.hour() === 'night' ? 0.9 : 0.4, G.hour() === 'night' ? 150 : 222);
     if (A.def.post) A.def.post(A, fb, cx, cy, t);
+    if (typeof Legends !== 'undefined') Legends.post(fb);
     if (typeof Shaders !== 'undefined') Shaders.grade(fb);
     Stage.vignette(fb, 0.25);
     mark('post');

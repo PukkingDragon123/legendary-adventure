@@ -27,7 +27,7 @@ const WorldMap = (() => {
     falls: { x: 93, y: 88, yaw: -0.5, label: 'Starfall Cave' },
     stage: { x: 208, y: 190, yaw: 1.25, label: 'Seaside Stage' },
   };
-  const ROUTES = [['beach', 'forest'], ['forest', 'canopy'], ['canopy', 'falls'], ['forest', 'stage'], ['beach', 'stage']];
+  const ROUTES = [['beach', 'forest'], ['forest', 'canopy'], ['canopy', 'falls'], ['forest', 'stage'], ['beach', 'stage'], ['canopy', 'volcano'], ['beach', 'shoal']];
   const RIVERS = [
     [[136, 121], [150, 127], [164, 133], [178, 141], [194, 149], [210, 155], [228, 158], [246, 160], [256, 161]],
     [[97, 95], [91, 106], [82, 118], [71, 131], [58, 143], [42, 151], [22, 156], [4, 158]],
@@ -155,6 +155,7 @@ const WorldMap = (() => {
         }
         if (segD(x, y, 136, 200, 160, 196) < 5 && h > 0.12) c = mix(cliff, rock2, n * 0.4);
         if (dv < 30 && h > 0.5) c = mix(c, ash, 0.62);
+        if (Math.hypot(x - 41, y - 220) < 16 && h > 0.02) c = mix(c, snow, 0.8 - (n > 0.7 ? 0.2 : 0));
         if (dv < 6 && h > 0.85) c = lava;
         // soft texture
         if (c !== lava) c = mix(c, f > 0.5 ? 0xffffffff : 0xff102018, Math.abs(f - 0.5) * 0.28);
@@ -198,6 +199,7 @@ const WorldMap = (() => {
     institute: { rows: ['......a......', '.....BBB.....', '....BBBBB....', '.WWWWWWWWWWW.', '.WwWwWWWwWwW.', '.WWWWWWWWWWW.', '.WwWwWdWwWwW.', '.WWWWWdWWWWW.', 'GGGGGGGGGGGGG'], pal: { a: '#c8c8d0', B: '#3a7ad8', W: '#f4f6fa', w: '#8ac8f0', d: '#5a6070', G: '#6a9a5a' }, lit: 'w' },
     stage: { rows: ['....PPPPPPP....', '..PPYYYYYYYPP..', '.PYYkkkkkkkYYP.', 'PYkkkkkkkkkkkYP', 'PYkkppppppkkkYP', 'PYkpkkkkkkpkkYP', 'PYkkkkkkkkkkkYP', 'WWWWWWWWWWWWWWW', 'wwwwwwwwwwwwwww', '..s.........s..'], pal: { P: '#e04a8a', Y: '#ffd84a', k: '#3a2448', p: '#6ac8ff', W: '#f4e8d0', w: '#a88060', s: '#5a4a3a' }, lit: 'Yp' },
     cave: { rows: ['..rrrrr..', '.rrkkkrr.', 'rrkkckkrr', 'rkkkkkkkr', 'rkkkkkkkr', 'rrkkkkkrr'], pal: { r: '#7a6a5c', k: '#141018', c: '#9ae8ff' }, lit: 'c' },
+    icecave: { rows: ['..wwwww..', '.wwiiiww.', 'wwikkkiww', 'wikkckkiw', 'wikkkkkiw', 'wwkkkkkww'], pal: { w: '#f4f8ff', i: '#9ad8f8', k: '#10203a', c: '#6ad0ff' }, lit: 'c' },
     boat: { rows: ['...W...', '...WW..', '...WWW.', '...WWWW', 'bbbbbbb', '.bbbbb.'], pal: { W: '#f8f8f8', b: '#9a5a3a' } },
     wailord: { rows: ['......BBBBB......', '...BBBBBBBBBBB...', '.BBBBBBBBBBBBBBB.', 'wwwwwwwwwwwwwwwww'], pal: { B: '#3a6ab8', w: '#e8f4ff' } },
     rock: { rows: ['.rrr.', 'rrrrr', 'wwwww'], pal: { r: '#6a6a74', w: '#e8f4ff' } },
@@ -261,6 +263,10 @@ const WorldMap = (() => {
     add('tent', 101, 97, { sc: 0.9 });
     // Seaside Stage
     add('stage', 209, 191, { sc: 1.05 });
+    // Lavaridge huts on the volcano's flank, and the icy mouth of Shoal Cave on its islet
+    for (const [x, y, k] of [[116, 124, 'houseR'], [121, 127, 'houseG'], [111, 121, 'houseB']]) if (land(x, y) !== null) add(k, x, y, { sc: 0.8 });
+    add('icecave', 40, 214, { sc: 1.1 });
+    for (const [x, y] of [[34, 222], [47, 225], [37, 211], [50, 216]]) if (land(x, y) !== null) add('snowpine', x, y, { sc: 0.9 });
     // forests and meadows elsewhere
     for (let k = 0; k < 900 && BB.length < 420; k++) {
       const x = 20 + r() * 216, y = 30 + r() * 200, h = land(x, y);

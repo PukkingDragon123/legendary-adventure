@@ -41,6 +41,7 @@ const Harvest = (() => {
     coT: ['#0e3a3a', '#1a6a64', '#34a08e', '#7ad8c0'], anem: ['#5a1650', '#94337e', '#c862aa', '#eea0da'], sponge: ['#6a5010', '#a8801e', '#dcb03a', '#f8dc70'],
     crys: { c: ['#1e3a8a', '#3a7ae0', '#7ac0ff', '#d0ecff'], emit: true }, crysP: { c: ['#4a1e8a', '#8a4ae0', '#c49aff', '#f0dcff'], emit: true },
     ink: ['#10121c'],
+    ashT: ['#3e3a38', '#58524e', '#766e68', '#968e86', '#bab2a8'], snowT: ['#8a9ab8', '#aebcd6', '#d0dcee', '#eef4fc', '#ffffff'],
   };
   const TAB = new Pal.Table(MATS);
   function palette() {
@@ -58,6 +59,8 @@ const Harvest = (() => {
     forest: { land: ['g1', 'g2'], flowers: ['flP', 'flY', 'flB', 'flW'], items: ['shroom', 'shroom', 'gem'], motes: 'leaves', rocks: 'rockW', shrooms: true },
     canopy: { land: ['g1', 'g2'], flowers: ['flY', 'flP'], items: ['shroom'], motes: 'leaves', rocks: 'rockW', shrooms: true, sparse: 0.6 },
     falls: { land: ['g1'], flowers: ['flB'], items: ['gem', 'gem', 'starp', 'shroomG'], motes: 'dust', rocks: 'rock', crystals: true, sparse: 0.5 },
+    volcano: { land: ['ashT', 'dune'], flowers: ['flY', 'flP'], items: ['gem', 'starp', 'shroom'], motes: 'dust', rocks: 'rock', sparse: 0.7 },
+    shoal: { land: ['snowT'], flowers: ['flB', 'flW'], items: ['shell', 'gem', 'pearl'], motes: 'dust', rocks: 'rockW', crystals: true, sparse: 0.6 },
   };
   const TMS = { beach: [{ id: 'bubble', x: 2520 }, { id: 'ice', x: 4720 }], forest: [{ id: 'dig', x: 2150 }], canopy: [{ id: 'growl', x: 3215 }], falls: [{ id: 'smash', x: 3470 }] };
   const ITEM = {
@@ -74,8 +77,9 @@ const Harvest = (() => {
     sitrus: { inv: 'sitrus', name: 'Sitrus Berry', mat: 'berryS', lure: 'Makes Pokémon happy and playful.' },
   };
   H.BERRY = BERRY;
-  const PLANTS = { beach: ['oran', 'pecha', 'oran'], forest: ['oran', 'razz', 'nanab', 'sitrus'], canopy: ['nanab', 'pecha', 'sitrus'], falls: ['razz', 'oran'] };
+  const PLANTS = { beach: ['oran', 'pecha', 'oran'], forest: ['oran', 'razz', 'nanab', 'sitrus'], canopy: ['nanab', 'pecha', 'sitrus'], falls: ['razz', 'oran'], volcano: ['razz', 'sitrus', 'oran'], shoal: ['pecha', 'oran'] };
   function surfaceKind(x) {
+    if (Game.area && Game.area.def.hazardAt && Game.area.def.hazardAt(x)) return 'lava';
     const lvl = World.waterAt(x);
     if (lvl === null) return 'land';
     return World.groundAt(x) - lvl > 30 ? 'sea' : 'shallow';
@@ -89,6 +93,7 @@ const Harvest = (() => {
     // foreground tufts, flowers, pebbles and rocks along the front edge of the lane
     for (let x = 20; x < W - 20; x += 5 + r() * 9 / sparse) {
       const k = surfaceKind(x), g = World.groundAt(x);
+      if (k === 'lava') continue;
       if (k === 'shallow') { if (r() < 0.35) H.tufts.push({ x, kind: 'reed', n: 3 + (r() * 3 | 0), h: 10 + r() * 10, ph: r() * 6, push: 0, zd: band * 0.4 }); continue; }
       if (k === 'sea') {
         // seabed life in front of the reef
@@ -114,7 +119,7 @@ const Harvest = (() => {
     // harvestables
     for (let x = 120; x < W - 100; x += 90 + r() * 140) {
       const k = surfaceKind(x);
-      if (k === 'shallow') continue;
+      if (k === 'shallow' || k === 'lava') continue;
       if (World.platAt(x) && k === 'sea') continue;
       let kind = st.items[(r() * st.items.length) | 0];
       if (k === 'sea') kind = r() < 0.3 ? 'pearl' : r() < 0.7 ? 'shell' : 'starp';

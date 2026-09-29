@@ -35,7 +35,7 @@ const Eco = (() => {
       const mode = loco === 'swim' ? 'swim' : loco === 'fly' ? 'fly' : loco === 'hover' ? 'float' : 'land';
       const S = spc(c.sp);
       const y0 = o.y ?? (mode === 'land' ? gy(x) : mode === 'swim' ? (o.box ? (o.box.y0 + o.box.y1) / 2 : World.SEA + 60) : gy(x) - (c.hover ?? 60));
-      super(S, Object.assign({ kind: c.kind || id, dex: id, x, y: y0, yaw: chance(0.5) ? 0.9 : Math.PI - 0.9, z: c.z ?? 2, scale: (c.scale ?? 0.5) * (o.size ?? 1), qPose: c.qPose ?? 0.06, qFields: c.qf, persona: o.persona || c.persona || 'calm', mode, shadowK: c.shadowK }, o.mon || {}));
+      super(S, Object.assign({ kind: c.kind || c.dex || id, dex: c.dex || id, x, y: y0, yaw: chance(0.5) ? 0.9 : Math.PI - 0.9, z: c.z ?? 2, scale: (c.scale ?? 0.5) * (o.size ?? 1), qPose: c.qPose ?? 0.06, qFields: c.qf, persona: o.persona || c.persona || 'calm', mode, shadowK: c.shadowK }, o.mon || {}));
       this.eco = true; this.cfg = c; this.loco = loco;
       this.speed = (c.speed ?? 45) * (o.speedK ?? 1); this.senseR = c.senseR ?? 140; this.alert = c.alert ?? 1;
       this.minX = o.minX ?? (x - (o.range ?? 260)); this.maxX = o.maxX ?? (x + (o.range ?? 260)); this.home = x; this.range = o.range ?? 260;
@@ -108,7 +108,7 @@ const Eco = (() => {
       yield* this.walkTo(clamp(this.x + rnd(-this.range * 0.7, this.range * 0.7), this.minX, this.maxX), this.speed, { act: 'walk', stop: this.dryStop() });
     }
     // land walkers never wander into deep water (amphibians choose to)
-    dryStop() { if (this.loco === 'amphi' || this.cfg.wade) return null; return () => World.isWet(this.x + Math.cos(this.yaw) * 8, 12); }
+    dryStop() { const hz = (x) => Game.area && Game.area.def.hazardAt && !this.cfg.lavaOk && Game.area.def.hazardAt(x); if (this.loco === 'amphi' || this.cfg.wade) return () => hz(this.x + Math.cos(this.yaw) * 8); return () => World.isWet(this.x + Math.cos(this.yaw) * 8, 12) || hz(this.x + Math.cos(this.yaw) * 8); }
     *goNear(x, gap, speed, act) {
       const side = this.x < x ? -1 : 1, tx = clamp(x + side * gap, this.minX - 60, this.maxX + 60);
       if (this.loco === 'swim') { yield* this.swimTo(tx, this.y + rnd(-20, 20), speed, 4, act); return; }

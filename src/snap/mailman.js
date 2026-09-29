@@ -54,7 +54,9 @@ const Mailman = (() => {
   const F = { on: false, t: 0, who: null, cast: {}, dur: 3 };
   function cast(who) {
     if (F.cast[who]) return F.cast[who];
-    const c = CSP[who], S = (0, eval)(c.sp), P = Times.compile('noon'), list = [];
+    let c = CSP[who], S = null; try { S = (0, eval)(c.sp); } catch (e) { S = null; }
+    if (!S) { c = CSP.pelipper; S = Pelipper; F.who = 'pelipper'; }
+    const P = Times.compile('noon'), list = [];
     for (let i = 0; i < 4; i++) { const cr = new Critters.Critter(S, { kind: 'fly-' + who + i, scale: c.scale, yaw: 0.75, pitch: 0.1, qPose: 0.01 }); cr.noHD = true; cr.pose = c.flap([-0.9, -0.2, 0.7, -0.2][i]); list.push({ cr, P }); }
     const mk = new Critters.Critter(Mudkip, { kind: 'fly-mk', scale: 0.5, yaw: 0.9, pitch: 0.1, qPose: 0.01 }); mk.noHD = true; mk.pose = Object.assign({ eyes: 'happy', mouth: 1, legF: -0.6, legB: 0.7, tailLift: 0.3 }, Save.look(), { neck: null });
     list.push({ cr: mk, P: Times.compile('noon') });
@@ -77,8 +79,8 @@ const Mailman = (() => {
     // Mudkip rides on the back (Pelipper carries it in its beak pouch)
     if (F.who === 'pelipper') { blit(f, x, y); if (mk) blit(mk, x + (f ? f.w * 0.18 : 20), y + (f ? f.h * 0.12 : 10) + Math.sin(k * 6) * 2); }
     else { if (mk) blit(mk, x - 6, y - (f ? f.h * 0.28 : 30) + Math.sin(k * 6) * 2); blit(f, x, y); if (mk && F.who === 'altaria') blit(mk, x - 6, y - (f ? f.h * 0.28 : 30) + Math.sin(k * 6) * 2); }
-    const nm = { pelipper: 'Pelipper', tropius: 'Tropius', altaria: 'Altaria' }[F.who];
+    const nm = (CSP[F.who] && CSP[F.who].name) || { pelipper: 'Pelipper', tropius: 'Tropius', altaria: 'Altaria' }[F.who];
     Font.draw(fb, nm + ' is flying you there!', W / 2, H - 26, 0xffffffff, { font: 'title', align: 'center', outline: INK });
   }
-  return { spawn, start, stop, update, draw, F, CARRIER };
+  return { spawn, start, stop, update, draw, F, CARRIER, CSP };
 })();

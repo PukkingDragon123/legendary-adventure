@@ -263,6 +263,7 @@ const Game = (() => {
     if (typeof Social !== 'undefined') Social.update(dt, t);
     if (typeof Bite !== 'undefined' && !(typeof Arcade !== 'undefined' && Arcade.live)) Bite.update(dt);
     if (typeof Arcade !== 'undefined') Arcade.update(dt);
+    if (typeof Legends !== 'undefined') Legends.update(dt);
     G.mons = G.mons.filter((m) => m.alive);
     if (G.area.def.update) G.area.def.update(G.area, dt, t, G);
     FX.update(dt);
@@ -341,6 +342,7 @@ const Game = (() => {
     if (typeof Shaders !== 'undefined') Shaders.apply(fb, cx, cy, t);
     if (!G.lowFx) Stage.bloom(fb, G.hour() === 'night' ? 0.9 : 0.4, G.hour() === 'night' ? 150 : 222);
     if (A.def.post) A.def.post(A, fb, cx, cy, t);
+    if (typeof Legends !== 'undefined') Legends.post(fb);
     if (typeof Shaders !== 'undefined') Shaders.grade(fb);
     Stage.vignette(fb, 0.25);
     mark('post');

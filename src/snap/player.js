@@ -263,6 +263,7 @@ const Player = (() => {
       Save.data.stats.pounds = (Save.data.stats.pounds || 0) + 1;
       if (typeof Talk !== 'undefined') Talk.event('flop', x);
       if (typeof Harvest !== 'undefined') Harvest.pound(x, y);
+      if (Game.area && Game.area.def.onPound) Game.area.def.onPound(x, y);
     }
     // running into a Pokémon: bonk!
     bumpCheck() {

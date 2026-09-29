@@ -12,8 +12,14 @@ const Music = (() => {
     crossing: { file: 'music/crossing-the-sea.mp3', title: 'Crossing the Sea', from: 'Pokémon Ruby & Sapphire', bpm: 124, tint: '#5ad0ff' },
     lake: { file: 'music/lake-theme.mp3', title: 'Lake Theme', from: 'Pokémon Diamond & Pearl', bpm: 96, tint: '#7affc0' },
     space: { file: 'music/flight-to-space.mp3', title: 'Flight to Space', from: 'Pokémon Omega Ruby & Alpha Sapphire', bpm: 140, tint: '#c8a0ff' },
+    // original themes played by the built-in synth band
+    ashen: { synth: 'ashen', title: 'Ashen Road', from: 'Mudkip Snap · Fiery Path', bpm: 92, tint: '#ff8a4a' },
+    shoal: { synth: 'shoal', title: 'Crystal Shoal', from: 'Mudkip Snap · Shoal Cave', bpm: 72, tint: '#9ae0ff' },
+    meadow: { synth: 'meadow', title: 'Seasons Waltz', from: 'Mudkip Snap', bpm: 108, tint: '#a8f070' },
+    festival: { synth: 'festival', title: 'Playground Parade', from: 'Mudkip Snap · Minigames', bpm: 138, tint: '#ffd23a' },
+    legend: { synth: 'legend', title: 'Awakening', from: 'Mudkip Snap · Legends', bpm: 126, tint: '#ff4a6a' },
   };
-  const ORDER = ['crossing', 'lake', 'space'];
+  const ORDER = ['crossing', 'lake', 'space', 'meadow', 'ashen', 'shoal', 'festival', 'legend'];
   const M = {
     cur: null, want: null, el: null, vol: 0, target: 0.62, playing: false, failed: {}, unlocked: false,
     ang: 0, spin: 0, energy: 0, beat: 0, lastBeat: 0, notes: [], sparks: [], melo: null, hoverRec: false,
@@ -53,6 +59,15 @@ const Music = (() => {
   function start(id) {
     const T = TRACKS[id]; if (!T) return;
     const a = el();
+    if (T.synth) {
+      try { a.pause(); } catch (e) { /* ignore */ }
+      if (M.loaded !== id) { M.loaded = id; M.showT = 5; M.marq = 0; }
+      M.cur = id; M.playing = Sound.on && M.unlocked;
+      if (Sound.setSong) Sound.setSong(T.synth);
+      Sound.synthMusic(true);
+      return;
+    }
+    if (Sound.setSong) Sound.setSong(null);
     // beat visuals use the song's tempo rather than an analyser: routing <audio> through WebAudio can silence it in sandboxed or file:// pages
     if (M.loaded !== id) { M.loaded = id; a.src = T.file; M.showT = 5; M.marq = 0; }
     M.cur = id;
@@ -82,7 +97,7 @@ const Music = (() => {
       // gentle fade near the end of a song, then it starts over
       if (a.duration && isFinite(a.duration) && a.duration - a.currentTime < 3 && M.playing) a.volume = M.vol * clamp((a.duration - a.currentTime) / 3, 0, 1);
       else try { a.volume = M.vol; } catch (e) { /* iOS ignores volume */ }
-      M.playing = M.playing && !a.paused;
+      if (!(TRACKS[M.cur] && TRACKS[M.cur].synth)) M.playing = M.playing && !a.paused;
     }
     const T = TRACKS[M.cur];
     // beat energy
