@@ -522,7 +522,7 @@ const Photo = (() => {
     UI.rectA(fb, px + pw / 2 - 16, py - 9, 32, 9, CARD.tape, 0.8);
     Font.draw(fb, res.species ? C.name + (C.bname ? '  ·  ' + C.bname : '') : 'No Pokémon in shot', px + pw / 2, py + ph + 6, 0xff1b2240, { font: 'small', align: 'center' });
     if (C.held) Font.draw(fb, 'MOMENT CAPTURE', px + 4, py + 4, 0xffffffff, { font: 'small', outline: 0xff1b2240 });
-    if (C.rec && (C.rec.newSpecies || C.rec.newBeh) && Math.sin(C.t * 10) > -0.3) Font.icon(fb, 'new', px + pw - 14, py + 2, 1);
+    if (C.rec && (C.rec.newSpecies || C.rec.newBeh) && Math.sin(C.t * 10) > -0.3) Font.icon(fb, 'new', px + pw - 24, py + 3, 1);
     // the bars
     const bx = portrait ? x0 + 16 : px + pw + 18, by = portrait ? py + ph + 26 : y0 + 18, bw = portrait ? cw - 90 : x0 + cw - bx - 70;
     const R = res.rating;

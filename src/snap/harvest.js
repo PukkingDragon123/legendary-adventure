@@ -71,7 +71,7 @@ const Harvest = (() => {
   }
   function reset(A, id) {
     H.items.length = 0; H.spots.length = 0; H.tufts.length = 0; H.under.length = 0; H.motes.length = 0; H.fish.length = 0; H.eyes.length = 0;
-    H.area = id; H.palKey = '';
+    H.area = id; H.palKey = ''; H.flocks.length = 0;
     let sd = 7; for (const ch of id) sd = (sd * 31 + ch.charCodeAt(0)) | 0;
     const st = STYLE[id] || STYLE.forest, r = U.rng(Math.abs(sd) % 1000003), band = (A.band || 12);
     const W = World.W, sparse = st.sparse ?? 1;
@@ -208,8 +208,9 @@ const Harvest = (() => {
         if (Save.discover('peek.' + Game.areaId + '.' + e.i)) Save.addPoints(80);
       }
     }
-    // ambient motes
+    // ambient motes and far-away flocks
     updateMotes(dt, t);
+    updateFlocks(dt);
   }
   function popBerry(tf) {
     const x = tf.x, y = World.groundAt(x) - 6;
@@ -251,6 +252,37 @@ const Harvest = (() => {
     }
     for (const s of H.fish) { s.t += dt; s.x += s.dir * 34 * dt; s.y += Math.sin(s.t * 1.4) * 6 * dt; if (Math.abs(s.x - (cx + VW / 2)) > VW) s.dead = true; if (Game.mudkip && Math.hypot(Game.mudkip.x - s.x, Game.mudkip.y - s.y) < 40) { s.dir = Math.sign(s.x - Game.mudkip.x) || s.dir; s.y += (s.y > Game.mudkip.y ? 1 : -1) * 40 * dt; } }
     H.fish = H.fish.filter((s) => !s.dead);
+  }
+
+  /* ---------- Pokémon far away in the sky: flocks crossing behind the lane ---------- */
+  const FLOCK = { beach: { c: [0xffffffff, 0xff8a8e98], n: [3, 7], name: 'wingull' }, forest: { c: [0xff5a3a26, 0xff2a2a3a], n: [4, 9], name: 'taillow' }, canopy: { c: [0xfffae8d8, 0xffe0c8b8], n: [2, 5], name: 'swablu', puff: true } };
+  H.flocks = [];
+  function updateFlocks(dt) {
+    const F = FLOCK[H.area]; if (!F) return;
+    if (H.flocks.length < 2 && Math.random() < dt * 0.08) {
+      const dir = Math.random() < 0.5 ? 1 : -1, p = 0.3 + Math.random() * 0.15, cx = Game.cam.x;
+      const n = F.n[0] + ((Math.random() * (F.n[1] - F.n[0] + 1)) | 0), birds = [];
+      for (let i = 0; i < n; i++) { const row = Math.ceil(i / 2), side = i % 2 ? 1 : -1; birds.push({ dx: -row * 7 * dir, dy: i ? side * row * 4 : 0, ph: Math.random() * 6 }); }
+      const hz = World.HORIZON || 300;
+      H.flocks.push({ lx: cx * p + (dir > 0 ? -40 : Game.VW + 40), y: Math.min(hz - 30, Game.cam.y + Game.VH * 0.25) - Math.random() * 40, dir, p, v: 18 + Math.random() * 14, birds, t: 0, F });
+    }
+    for (const f of H.flocks) { f.t += dt; f.lx += f.dir * f.v * dt; f.y += Math.sin(f.t * 0.5) * 2 * dt; const X = f.lx - Game.cam.x * f.p; if (X < -120 || X > Game.VW + 120) f.dead = f.t > 2; }
+    H.flocks = H.flocks.filter((f) => !f.dead);
+  }
+  function drawFar(fb, cx, cy, t) {
+    if (!Game.area || H.area !== Game.areaId) return;
+    const hr = Game.hour(), dusk = hr === 'dusk' || hr === 'night';
+    for (const f of H.flocks) {
+      const X0 = f.lx - cx * f.p, Y0 = f.y - cy;
+      for (const b of f.birds) {
+        const X = Math.round(X0 + b.dx), Y = Math.round(Y0 + b.dy + Math.sin(f.t * 2 + b.ph) * 1.5);
+        if (X < -4 || Y < -4 || X >= fb.w + 4 || Y >= fb.h + 4) continue;
+        const c = dusk ? 0xff201822 : f.F.c[0], c2 = dusk ? 0xff201822 : f.F.c[1];
+        if (f.F.puff) { for (let yy = -1; yy <= 1; yy++) for (let xx = -2; xx <= 2; xx++) if (xx * xx + yy * yy * 3 <= 5) put(fb, X + xx, Y + yy, c); put(fb, X + f.dir * 3, Y, 0xffd8a060); continue; }
+        const up = Math.sin(f.t * 9 + b.ph) > 0;
+        put(fb, X, Y, c); put(fb, X - 1, Y + (up ? -1 : 1), c); put(fb, X + 1, Y + (up ? -1 : 1), c); put(fb, X - 2, Y + (up ? -2 : 1), c2); put(fb, X + 2, Y + (up ? -2 : 1), c2);
+      }
+    }
   }
 
   /* ---------- drawing ---------- */
@@ -326,12 +358,14 @@ const Harvest = (() => {
         break;
       }
       case 'tm': {
-        // a spinning TM disc with a glow
+        // a spinning TM disc under a beacon of light, with orbiting sparkles
         const col = Moves.DEF[it.tm] ? Moves.DEF[it.tm].col : 0xffffffff;
-        glow(fb, X, Y, col, 12, 0.35 + 0.1 * Math.sin(t * 3));
-        const w = Math.max(1, Math.abs(Math.cos(t * 2.2)) * 6);
-        for (let y = -6; y <= 6; y++) for (let x = -7; x <= 7; x++) {
-          const u = x / w, v = y / 6, d = u * u + v * v; if (d > 1) continue;
+        for (let y = -46; y < 0; y++) { const a = 0.22 * (1 + y / 46) * (0.75 + 0.25 * Math.sin(t * 4 + y * 0.3)); for (let x = -3; x <= 3; x++) { const X2 = X + x, Y2 = Y + y; if (X2 < 0 || Y2 < 0 || X2 >= fb.w || Y2 >= fb.h) continue; const i2 = Y2 * fb.w + X2; fb.d[i2] = U.screen(fb.d[i2], col, a * (1 - Math.abs(x) / 4)); } }
+        for (let k = 0; k < 3; k++) { const an = t * 2.2 + k * 2.1; put(fb, Math.round(X + Math.cos(an) * 11), Math.round(Y + Math.sin(an) * 4), 0xffffffff); }
+        glow(fb, X, Y, col, 14, 0.4 + 0.12 * Math.sin(t * 3));
+        const w = Math.max(1, Math.abs(Math.cos(t * 2.2)) * 7);
+        for (let y = -7; y <= 7; y++) for (let x = -8; x <= 8; x++) {
+          const u = x / w, v = y / 7, d = u * u + v * v; if (d > 1) continue;
           const c = d > 0.72 ? 0xff1b2240 : d < 0.08 ? 0xff1b2240 : d < 0.18 ? 0xffe8ecf8 : U.tweak(col, 0, 1, u < 0 ? 0.12 : -0.06);
           putO(fb, X + x, Y + y, c, occ, o);
         }
@@ -464,5 +498,5 @@ const Harvest = (() => {
       blend(fb, X, Y, s.col, 0.75); blend(fb, X - s.dir, Y, s.col, 0.6); blend(fb, X - 2 * s.dir, Y + (Math.sin(s.t * 12 + f.ph) > 0 ? 1 : -1), s.col, 0.45); put(fb, X + s.dir, Y, 0xffffffff);
     }
   }
-  return Object.assign(H, { reset, draw, drawUnder, drawFore, update, dig, pound, questSpots, TMS });
+  return Object.assign(H, { reset, draw, drawUnder, drawFore, drawFar, update, dig, pound, questSpots, TMS });
 })();

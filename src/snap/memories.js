@@ -448,7 +448,7 @@ const Memories = (() => {
   }
   function update(dt) {
     const C = M.cur;
-    if (!C) { if (M.queue.length && Game.mode === 'explore' && !(typeof Talk !== 'undefined' && Talk.busy())) play(M.queue.shift()); return; }
+    if (!C) { if (M.queue.length && Game.mode === 'explore' && !(typeof Talk !== 'undefined' && Talk.busy()) && !(Game.cine && Game.cine.shot) && !Photo.card) play(M.queue.shift()); return; }
     C.T += dt;
     if (!C.loaded) { const ok = pumpCast(C.cast, C.T > 2.5); if (ok || C.T > 3) { if (!ok) pumpCast(C.cast, true); C.loaded = true; } return; }
     const sh = shot(); if (!sh) return;
@@ -532,7 +532,7 @@ const Memories = (() => {
   const origDiscover = Save.discover;
   Save.discover = function (id) {
     const r = origDiscover.call(Save, id);
-    if (r) for (const [mid, sc] of Object.entries(SCENES)) if (sc.trigger === id && !saved()[mid]) setTimeout(() => { if (!M.queue.includes(mid)) M.queue.push(mid); }, sc.delay ?? 2500);
+    if (r) for (const [mid, sc] of Object.entries(SCENES)) if (sc.trigger === id && !saved()[mid]) setTimeout(() => { if (!M.queue.includes(mid)) M.queue.push(mid); }, sc.delay ?? 5000);
     return r;
   };
   const list = () => Object.entries(SCENES).map(([id, s]) => ({ id, no: s.no, title: s.title, who: s.who, seen: !!saved()[id] }));

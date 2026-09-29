@@ -237,6 +237,8 @@ const Game = (() => {
     if (scr) { scr.update(dt); HUD.update(dt); Music.update(dt); return; }
     if (typeof Moves !== 'undefined') Moves.update(dt);
     if (typeof Pad !== 'undefined') Pad.apply(G.mudkip, dt);
+    // a Memory waiting to play (after a big discovery)
+    if (typeof Memories !== 'undefined' && Memories.queue.length && G.mode === 'explore') Memories.update(0);
     // the move wheel slows time right down while you choose
     if (typeof Moves !== 'undefined' && Moves.wheel) dt *= 0.2;
     G.t += dt;
@@ -284,6 +286,7 @@ const Game = (() => {
     for (const m of G.mons) if (m.visible && m.alive && (m.always || onScreen(m, cx, cy, 160))) m.sprite(P);
     mark('sprites');
     for (const m of G.mons) if (m.layer === 'far' && m.visible && m.alive) m.draw(fb, cx, cy, occ);
+    if (typeof Harvest !== 'undefined') Harvest.drawFar(fb, cx, cy, t);
     Stage.drawTerrain(fb, cx, cy, t);
     if (A.def.drawLane) A.def.drawLane(A, fb, cx, cy, t);
     Stage.drawProps(fb, cx, cy, t, false);

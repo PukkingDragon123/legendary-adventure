@@ -95,7 +95,7 @@ const Moves = (() => {
       const src = Mons.all.find((m) => m !== mk && m.alive && d.watch.kinds.includes(m.kind) && d.watch.acts.includes(m.act.id) && Math.hypot(m.x - mk.x, m.y - mk.y) < 170);
       if (src) {
         M.watchT[d.id] = (M.watchT[d.id] || 0) + dt;
-        if (M.watchT[d.id] > 0.6 && !mk.watching) { mk.watching = src; }
+        if (M.watchT[d.id] > 0.6 && !mk.watching) { mk.watching = src; if (!M.hinted) M.hinted = {}; if (!M.hinted[d.id]) { M.hinted[d.id] = 1; HUD.toast('Mudkip is watching ' + (DexData.S[src.dex] ? DexData.S[src.dex].name : 'it') + ' very closely...', { life: 2.2, col: d.col }); } }
         if (M.watchT[d.id] > 2.4) { M.watchT[d.id] = 0; mk.watching = null; unlock(d.id, 'Mudkip copied ' + (DexData.S[src.dex] ? DexData.S[src.dex].name : 'it') + '!'); }
       } else if (M.watchT[d.id]) M.watchT[d.id] = Math.max(0, M.watchT[d.id] - dt * 0.5);
     }
