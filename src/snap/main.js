@@ -203,6 +203,13 @@ const Game = (() => {
     const c = G.cam, mk = G.mudkip;
     if (!mk) return;
     if (G.mode === 'camera') { G.cine.shot = null; G.cine.zGoal = 1; applyCineZoom(dt); Photo.updateCam(dt); return; }
+    // a game or cutscene framing a spot in the world
+    if (G.camFocus) {
+      const f = G.camFocus; G.cine.shot = null; G.cine.zGoal = f.zoom || 1.2; applyCineZoom(dt);
+      const k = 1 - Math.exp(-dt * (f.speed || 2.5));
+      c.x += (f.x - G.VW * 0.5 - c.x) * k; c.y += (f.y - G.VH * 0.55 - c.y) * k; clampCam();
+      return;
+    }
     if (G.cine.update(dt)) { applyCineZoom(dt); return; }
     applyCineZoom(dt);
     const lead = mk.moving ? Math.cos(mk.yaw) * (36 + clamp((Math.abs(mk.vx || 0) - 90) / 40, 0, 1) * 34) : 0;
@@ -227,8 +234,8 @@ const Game = (() => {
     if (!drag) { c.lookX *= Math.exp(-dt * 1.2); c.lookY *= Math.exp(-dt * 1.2); }
     clampCam();
   }
-  const SCREEN = () => ({ rhythm: typeof Rhythm !== 'undefined' ? Rhythm : null, bag: typeof Bag !== 'undefined' ? Bag : null, style: typeof Style !== 'undefined' ? Style : null, memory: typeof Memories !== 'undefined' ? Memories : null, games: typeof Arcade !== 'undefined' ? Arcade : null })[G.mode] || null;
-  G.frozenMode = () => G.mode === 'dex' || G.mode === 'map' || G.mode === 'bag' || G.mode === 'style' || G.mode === 'memory' || G.mode === 'rhythm' || G.mode === 'games';
+  const SCREEN = () => ({ rhythm: typeof Rhythm !== 'undefined' ? Rhythm : null, bag: typeof Bag !== 'undefined' ? Bag : null, style: typeof Style !== 'undefined' ? Style : null, memory: typeof Memories !== 'undefined' ? Memories : null })[G.mode] || null;
+  G.frozenMode = () => G.mode === 'dex' || G.mode === 'map' || G.mode === 'bag' || G.mode === 'style' || G.mode === 'memory' || G.mode === 'rhythm';
   function update(dt) {
     G.rt += dt;
     if (typeof Talk !== 'undefined') Talk.update(dt);
@@ -254,7 +261,8 @@ const Game = (() => {
     if (typeof Harvest !== 'undefined') Harvest.update(dt, t);
     for (const m of G.mons) if (m.alive) m.update(dt, t);
     if (typeof Social !== 'undefined') Social.update(dt, t);
-    if (typeof Bite !== 'undefined') Bite.update(dt);
+    if (typeof Bite !== 'undefined' && !(typeof Arcade !== 'undefined' && Arcade.live)) Bite.update(dt);
+    if (typeof Arcade !== 'undefined') Arcade.update(dt);
     G.mons = G.mons.filter((m) => m.alive);
     if (G.area.def.update) G.area.def.update(G.area, dt, t, G);
     FX.update(dt);
@@ -302,9 +310,11 @@ const Game = (() => {
       Critters.shadow(fb, cx, cy, m.x, base + 1 + m.zd, m.width() * 0.36 * (1 - h / 400), 2.6, 0.85 * (1 - h / 160));
     }
     Items.drawBack(fb, cx, cy, t);
+    if (typeof Arcade !== 'undefined' && Arcade.live) Arcade.drawWorld(fb, cx, cy, t, true);
     const mids = G.mons.filter((m) => !m.layer && m.visible && m.alive).sort((a, b) => (a.zd - b.zd) || (a.z - b.z));
     for (const m of mids) { m.draw(fb, cx, cy, occ); if (m.drawExtra) m.drawExtra(fb, cx, cy, P, t, occ); }
     if (typeof Accs !== 'undefined') Accs.draw(fb, cx, cy);
+    if (typeof Arcade !== 'undefined' && Arcade.live) Arcade.drawWorld(fb, cx, cy, t, false);
     Items.draw(fb, cx, cy, t);
     if (typeof Harvest !== 'undefined') Harvest.draw(fb, cx, cy, t);
     if (typeof Toys !== 'undefined') { Toys.drawShells(fb, cx, cy, t); if (!o.ids) Toys.drawPrompts(fb, cx, cy, t); }
@@ -328,8 +338,10 @@ const Game = (() => {
     if (typeof Harvest !== 'undefined') Harvest.drawFore(fb, cx, cy, t);
     Stage.drawFore(fb, cx, cy, t, dof ? dof.fore : 1);
     FX.draw(fb, cx, cy, 4, t);
+    if (typeof Shaders !== 'undefined') Shaders.apply(fb, cx, cy, t);
     if (!G.lowFx) Stage.bloom(fb, G.hour() === 'night' ? 0.9 : 0.4, G.hour() === 'night' ? 150 : 222);
     if (A.def.post) A.def.post(A, fb, cx, cy, t);
+    if (typeof Shaders !== 'undefined') Shaders.grade(fb);
     Stage.vignette(fb, 0.25);
     mark('post');
   }
@@ -552,12 +564,13 @@ const Game = (() => {
     // modal layers first: dialogue, the photo rating card, the move wheel
     if (typeof Talk !== 'undefined' && Talk.down(ux, uy)) { P0.ui = true; P0.sink = true; return; }
     if (Photo.cardDown && Photo.cardDown(ux, uy)) { P0.ui = true; P0.sink = true; return; }
+    if (G.mode === 'explore' && typeof Arcade !== 'undefined' && Arcade.live && Arcade.down(ux, uy)) { P0.ui = true; P0.sink = true; return; }
     if (G.mode === 'explore' && typeof Moves !== 'undefined' && Moves.wheel) { Moves.tapWheel(ux, uy); P0.ui = true; P0.sink = true; return; }
     if (G.mode === 'explore' && typeof Pad !== 'undefined' && Pad.down(ux, uy, e.pointerId, touch)) { P0.pad = true; return; }
     if (freePtrs().length === 1 && HUD.down(ux, uy, e.pointerId)) { P0.ui = true; return; }
     if (G.mode === 'dex') { Dex.down(ux, uy); P0.ui = true; return; }
     if (G.mode === 'map') { P0.ui = true; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y), m0: WorldMap.dist }; } return; }
-    if (SCREEN() && SCREEN().down && (G.mode === 'rhythm' || G.mode === 'memory' || G.mode === 'games')) { SCREEN().down(ux, uy); P0.sink = true; P0.games = G.mode === 'games'; return; }
+    if (SCREEN() && SCREEN().down && (G.mode === 'rhythm' || G.mode === 'memory')) { SCREEN().down(ux, uy); P0.sink = true; return; }
     if (G.mode === 'title' || SCREEN()) { P0.ui = true; return; }
     const fp = freePtrs();
     if (fp.length === 1) drag = { x0: x, y0: y, lx: G.cam.lookX, ly: G.cam.lookY, moved: false, t0: performance.now(), pid: e.pointerId };
@@ -594,7 +607,6 @@ const Game = (() => {
     const [x, y] = devXY(e);
     ptrs.delete(e.pointerId);
     if (p.pad) { Pad.up(e.pointerId); return; }
-    if (p.games && typeof Arcade !== 'undefined') Arcade.up();
     if (p.sink) return;
     if (p.ui) { if (G.mode === 'dex') { if (e.type === 'pointercancel') Dex.cancel && Dex.cancel(); else Dex.up(x / US, y / US); } else HUD.up(x / US, y / US, e.pointerId); return; }
     if (pinch) { if (freePtrs().length < 2) { pinch = null; drag = null; } return; }
@@ -628,6 +640,7 @@ const Game = (() => {
     if (G.mode === 'map') { WorldMap.key(k); e.preventDefault(); return; }
     const scr = SCREEN(); if (scr) { scr.key(k, e); e.preventDefault(); return; }
     if (typeof Talk !== 'undefined' && Talk.key(k, e)) { e.preventDefault(); return; }
+    if (G.mode === 'explore' && typeof Arcade !== 'undefined' && Arcade.live && Arcade.key(k, e)) { e.preventDefault(); return; }
     if (Photo.cardKey && Photo.cardKey(k, e)) { e.preventDefault(); return; }
     if (typeof Moves !== 'undefined' && Moves.wheel && !e.repeat && Moves.wheelKey(k)) { e.preventDefault(); return; }
     const first = !keysDown.has(k);
@@ -665,7 +678,6 @@ const Game = (() => {
     keysMove();
   });
   window.addEventListener('keyup', (e) => {
-    if (G.mode === 'games' && typeof Arcade !== 'undefined') { Arcade.key(e.key.length === 1 ? e.key.toLowerCase() : e.key, e); return; }
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     keysDown.delete(k);
     if ((k === 'x' || k === 'j' || (k === 'e' && Moves.pressing)) && G.mode === 'explore') Moves.release();

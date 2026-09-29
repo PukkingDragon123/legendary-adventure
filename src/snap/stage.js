@@ -174,6 +174,7 @@ const Stage = (() => {
         }
       }
     }
+    { const sun = L.sun; S.sunPos = A.noSun ? null : { x: Math.round(sun.x * W - cx * 0.01), y: Math.round(hz - (1 - sun.y) * (A.sunH || 170)), r: sun.r, kind: sun.kind, glow: U.hex(sun.glow), vis: 1 - S.w.rain * 0.8 }; }
     // clouds (4-shade sprites mapped to the hour's cloud colours)
     const cc = L.cloudC;
     const cpal = [0, cc[0], cc[1], cc[2], cc[3]];
@@ -189,7 +190,12 @@ const Stage = (() => {
         for (let xx = 0; xx < s.w; xx++) { const v = sd[yy * s.w + xx]; if (!v) continue; const tx = x + xx; if (tx < 0 || tx >= W) continue; d[ty * W + tx] = cpal[v]; }
       }
     }
+    // the pure sky, kept for the shader pass (god rays find the gaps where it still shows)
+    if (!S.skyBuf || S.skyBuf.length !== d.length) S.skyBuf = new Uint32Array(d.length);
+    S.skyBuf.set(d.subarray(0, yEnd * W)); S.skyOn = true; S.skyEnd = yEnd; S.skyHz = hz;
   }
+  // water pixels on the perspective planes (the shader pass reflects the world in them)
+  function waterMask(n) { if (!S.wm || S.wm.length !== n) { S.wm = new Uint8Array(n); S.wc = new Uint32Array(n); } S.wmUsed = true; return S.wm; }
 
   /* ================= background layers ================= */
   function layerY(L, cy) {
@@ -247,6 +253,7 @@ const Stage = (() => {
     if (pl - hz < 8) return;
     const y0 = Math.max(0, Math.ceil(hz + (pl - hz) * F.p0)), y1 = Math.min(H, Math.ceil(hz + (pl - hz) * (F.p1 ?? 1)) + (F.extra ?? 12));
     const base = cx + W / 2, D = F.D ?? 120;
+    const wm = waterMask(W * H), wc = S.wc;
     let lastH = -1, pal = null;
     for (let y = y0; y < y1; y++) {
       const p = Math.min(1.2, (y + 0.5 - hz) / (pl - hz));
@@ -259,7 +266,9 @@ const Stage = (() => {
       let wx = base - (W / 2) * inv;
       for (let x = 0; x < W; x++, wx += inv) {
         const v = F.tex(wx, wz, p, t, ctx);
-        if (v) d[row + x] = v < 256 ? pal[v] : v;
+        if (!v) continue;
+        if (v < 256) d[row + x] = pal[v];
+        else { d[row + x] = v; wm[row + x] = 1; wc[row + x] = v; }
       }
     }
   }
@@ -341,10 +350,15 @@ const Stage = (() => {
     if (!wc) return;
     const deep = wc.deep, mid = wc.mid, top = wc.top, foam = wc.foam, hi = wc.hi, maxD = wc.maxD || 700;
     const ray = wc.ray;
+    let body = null;
     for (let x = 0; x < W; x++) {
       const wx = x + cx;
       const lvl = World.waterAt(wx);
       if (lvl === null) continue;
+      if (!body || wx < body.x0 || wx > body.x1) body = A.water.find((w) => wx >= w.x0 && wx <= w.x1) || null;
+      // ponds, rivers and cave pools are a solid body of water (the wall behind is seen through it);
+      // the open sea has its own underwater backdrop
+      const closed = body && body.kind !== 'sea';
       const s = WorldRender.surfaceAt(wx, t);
       const sy = Math.round(s - cy);
       const gy = World.groundAt(wx);
@@ -360,7 +374,15 @@ const Stage = (() => {
         const dep = y + cy - s;
         if (dep < 0) continue;
         const o = occ ? occ[i] : 1;
-        if (o) {
+        if (!o && closed) {
+          // the back of the pool seen through the water: depth fog, a lit band under the surface, caustics
+          const k = clamp(dep / Math.min(maxD, 120), 0, 1);
+          let c = mix(d[i], k < 0.4 ? mid : deep, 0.55 + k * 0.38);
+          if (dep < 5) c = mix(c, top, 0.5 - dep * 0.08);
+          const cv = CAUS.c[((y + cy + Math.round(t * 9)) & 63) * 64 + ((wx + Math.round(Math.sin(t * 0.7 + y * 0.05) * 6)) & 63)];
+          if (cv && dep < 60) c = U.screen(c, top, (cv / 255) * 0.13 * (1 - dep / 60));
+          d[i] = c;
+        } else if (o) {
           const k = clamp(dep / maxD, 0, 1);
           // foreground things in water get tinted by depth; the seabed also picks up caustics near the top
           let c = mix(d[i], k < 0.5 ? mid : deep, (0.18 + k * 0.62) * sk);
@@ -375,6 +397,18 @@ const Stage = (() => {
         if (ray && dep < 420) {
           const rr = Math.sin((wx + (y + cy) * 0.55) * 0.045 + t * 0.35) + Math.sin((wx + (y + cy) * 0.6) * 0.017 - t * 0.2) * 0.8;
           if (rr > 1.25) d[i] = U.screen(d[i], ray, 0.1 * (1 - dep / 420) * (rr - 1.25) * 3);
+        }
+      }
+      // reflection band: the world above mirrored in the surface, wobbling with the ripples (fresnel fade)
+      if (sy > 1 && sy < H - 2) {
+        const RB = closed ? 12 : 8, k0 = closed ? 0.42 : 0.26;
+        for (let j = 2; j < RB && sy + j < H; j++) {
+          const yy = sy + j, i = yy * W + x, o = occ ? occ[i] : 1;
+          if (o > 1) continue;
+          const src = sy - j + 1, xs = clamp(x + Math.round(Math.sin(t * 2.2 + yy * 0.9 + wx * 0.05) * (1 + j * 0.15)), 0, W - 1);
+          if (src < 0) break;
+          const a = k0 * (1 - j / RB);
+          if (a > bayer4(x, yy) * 0.15) d[i] = mix(d[i], d[src * W + xs], a);
         }
       }
       // surface line + sparkle
@@ -570,5 +604,5 @@ const Stage = (() => {
     if (A) { A.t += dt; for (const p of A.props) if (p.shake > 0) p.shake = Math.max(0, p.shake - dt * 2); }
   }
 
-  return { S, Area, load, setHour, setWeather, palFor, framePal, drawSky, drawLayers, drawLayer, layerY, drawDepthFrom, drawFloor, noiseAt, depthHaze, horizonS, planeS, drawTerrain, drawProps, drawProp, drawLate, drawWater, drawFore, blurFrame, drawGlows, bloom, vignette, update, get A() { return S.A; } };
+  return { S, Area, waterMask, load, setHour, setWeather, palFor, framePal, drawSky, drawLayers, drawLayer, layerY, drawDepthFrom, drawFloor, noiseAt, depthHaze, horizonS, planeS, drawTerrain, drawProps, drawProp, drawLate, drawWater, drawFore, blurFrame, drawGlows, bloom, vignette, update, get A() { return S.A; } };
 })();

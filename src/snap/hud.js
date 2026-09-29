@@ -304,8 +304,16 @@ const HUD = (() => {
     if (Game.mode === 'style') { Style.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'memory') { Memories.draw(fb, t); return; }
     if (Game.mode === 'rhythm') { Rhythm.draw(fb, t); drawToasts(fb, S, t, true); return; }
-    if (Game.mode === 'games') { Arcade.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'camera') { Photo.drawUI(fb, t); Music.drawUI(fb, t, 'camera'); Talk.drawBubbles(fb, t); drawToasts(fb, S, t, false, Music.rect ? 60 : 34); Photo.drawCard && Photo.drawCard(fb, t); return; }
+    const play = typeof Arcade !== 'undefined' && (Arcade.live || Arcade.bars > 0);
+    if (play) {
+      Arcade.drawUI(fb, t);
+      Talk.drawBubbles(fb, t);
+      if (typeof Pad !== 'undefined') Pad.draw(fb, S, t);
+      drawToasts(fb, S, t, false, 40);
+      Talk.drawDialog(fb, t);
+      return;
+    }
     drawScan(fb, S, t);
     Talk.drawBubbles(fb, t);
     if (typeof Harvest !== 'undefined' && !Talk.busy()) Harvest.drawPrompt(fb, t);

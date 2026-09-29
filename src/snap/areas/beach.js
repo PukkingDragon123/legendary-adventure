@@ -525,6 +525,7 @@ Areas.beach = (() => {
     const y0 = Math.max(0, hz), y1 = Math.min(H, Math.max(hz, seaS + 2));
     const far = rain > 0 ? mix(C.far, 0xff605a58, rain * 0.3) : C.far, near = rain > 0 ? mix(C.near, 0xff807a70, rain * 0.3) : C.near;
     const sunX = Math.round(Pal.LOOK[hr].sun.x * W - cx * 0.01);
+    const wm = Stage.waterMask(W * H), wcb = Stage.S.wc;
     for (let y = y0; y < y1; y++) {
       const u = (y - hz) / Math.max(1, seaS - hz);
       const base = mix(far, near, Math.pow(u, 0.7));
@@ -543,6 +544,7 @@ Areas.beach = (() => {
         d[row + x] = c;
       }
       if (u < 0.04) for (let x = 0; x < W; x++) d[row + x] = mix(d[row + x], Pal.LOOK[hr].hazeC, 0.5 - u * 10);
+      for (let x = 0; x < W; x++) { wm[row + x] = 1; wcb[row + x] = d[row + x]; }
     }
     // sailboats + sandbar island on the sea, backdrop dunes on the land side
     Stage.drawLayer(fb, A.layers[1], cx, cy, t);

@@ -48,6 +48,7 @@ const Pad = (() => {
     if (P.b) P.b.t += dt;
     if (!mk) return;
     if (Game.mode !== 'explore' || (typeof Talk !== 'undefined' && Talk.busy())) { mk.keyDir = 0; mk.keyY = 0; mk.running = false; mk.jumpHeld = false; return; }
+    if (typeof Arcade !== 'undefined' && Arcade.live && Arcade.drive(mk, dt)) return;
     const K = P.keys;
     const sx = Math.abs(P.dx) > 0.2 ? Math.sign(P.dx) : 0, sy = Math.abs(P.dy) > 0.6 && Math.abs(P.dy) > Math.abs(P.dx) ? Math.sign(P.dy) : 0;
     const swim = mk.mode === 'swim';
@@ -60,6 +61,7 @@ const Pad = (() => {
   function draw(fb, S, t) {
     const W = fb.w, H = fb.h, L = (P.L = layout(W, H));
     if (Game.mode !== 'explore' || (typeof Talk !== 'undefined' && Talk.busy())) return;
+    if (typeof Arcade !== 'undefined' && Arcade.live && !Arcade.freeMove()) return;
     // joystick (touch screens)
     if (P.touch) {
       const on = !!P.stick;
@@ -82,7 +84,7 @@ const Pad = (() => {
     if (P.b && P.b.t > 0.18) { const k = Math.min(1, (P.b.t - 0.18) / 0.3); for (let a = 0; a < 32 * k; a++) { const an = -Math.PI / 2 + a / 32 * Math.PI * 2; UI.put(fb, Math.round(L.bx + Math.cos(an) * (L.bR + 3)), Math.round(L.by + Math.sin(an) * (L.bR + 3)), 0xffffffff); } }
     Font.draw(fb, 'B', L.bx + L.bR - 3, L.by - L.bR - 2, 0xffffffff, { font: 'small', outline: INK });
     // keyboard hint (fades after the first jump)
-    if (!P.touch && P.hint > 0 && Game.t > 3) { P.hint = Math.max(0, P.hint - 1 / 900); const a = Math.min(1, P.hint * 3); if (a > 0.05) Font.draw(fb, 'Arrows move  ·  Space jump (again: flip, Down: belly flop)  ·  E pick up  ·  X move  ·  Q wheel  ·  F throw berry  ·  G guitar jam  ·  C camera  ·  Shift run', W / 2, H - 10, U.mix(0x00ffffff, 0xffffffff, a) | 0xff000000, { font: 'small', align: 'center', outline: INK }); }
+    if (!P.touch && P.hint > 0 && Game.t > 3 && !(typeof Arcade !== 'undefined' && Arcade.live)) { P.hint = Math.max(0, P.hint - 1 / 900); const a = Math.min(1, P.hint * 3); if (a > 0.05) Font.draw(fb, 'Arrows move  ·  Space jump (again: flip, Down: belly flop)  ·  E pick up  ·  X move  ·  Q wheel  ·  F throw berry  ·  G guitar jam  ·  C camera  ·  Shift run', W / 2, H - 10, U.mix(0x00ffffff, 0xffffffff, a) | 0xff000000, { font: 'small', align: 'center', outline: INK }); }
   }
   // two stacked up-chevrons (jump!)
   function jumpIcon(fb, cx, cy, r) {

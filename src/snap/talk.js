@@ -235,7 +235,7 @@ const Talk = (() => {
       drawBubble(fb, x, y, b.text, 1, pop);
     }
     // quest markers over the givers
-    if (Game.mode !== 'explore' || T.dlg) return;
+    if (Game.mode !== 'explore' || T.dlg || (typeof Arcade !== 'undefined' && Arcade.live)) return;
     for (const q of QUESTS) {
       if (q.area !== Game.areaId) continue;
       const s = qState(q.id); if (s && s.s === 'done') continue;
