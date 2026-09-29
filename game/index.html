@@ -53309,6 +53309,78 @@ const Memories = (() => {
         { d: 3.4, draw: (fb, k, t, C) => { shards(fb, t, C, 1 - ease(k)); if (k > 0.8 && !C.boom) { C.boom = 1; C.flash = 1; Game.sfx('portal', null, 1); } } },
       ],
     },
+
+    /* ---------------- VI · Groudon ---------------- */
+    groudon: {
+      no: 'VI', title: 'The Land Awakens', who: 'Groudon', trigger: 'groudon.woke', reward: 'pts:1500', delay: 7000,
+      cast: Object.assign({ gro: { sp: 'Groudon', scale: 0.9, yaw: 1.2, pose: { eyes: 'open', glow: 1 } }, groRoar: { sp: 'Groudon', scale: 0.9, yaw: 1.2, pose: { eyes: 'open', glow: 1, roar: 1, mouth: 1 } } }, mkPoses),
+      shots: [
+        { d: 3, title: true, draw: (fb, k, t) => { vgrad(fb, [[0, '#1a0404'], [1, '#3a0a04']]); }, sfx: [[0.3, 'rumble']] },
+        { d: 4.6, say: ['', '(The ground is warm... and beating, like a giant heart.)'], shake: [0.5, 2], draw: (fb, k, t, C) => {
+          vgrad(fb, [[0, '#2a0806'], [0.6, '#6a1a08'], [1, '#c8400c']]);
+          for (let x = 0; x < fb.w; x++) { const y = fb.h * 0.72 + Math.sin(x * 0.05 + t) * 3; for (let yy = Math.round(y); yy < fb.h; yy++) put(fb, x, yy, U.mix(hex('#ffb030'), hex('#c8200a'), clamp((yy - y) / 30 + Math.sin(x * 0.2 + t * 3) * 0.2, 0, 1))); }
+          if (Math.random() < 0.6) part(C, { kind: 'spark', x: rnd(0, fb.w), y: fb.h * 0.72, vy: -rnd(30, 80), vx: rnd(-10, 10), life: 1.6, c: hex('#ffd060') });
+          drawFx(fb, C);
+          blit(fb, S_(C, 'mkShock'), fb.w * 0.3, fb.h * 0.62, 0.5, { tint: hex('#401008'), tk: 0.3 });
+        } },
+        { d: 5.4, shake: [1.2, 6], draw: (fb, k, t, C) => {
+          vgrad(fb, [[0, '#300a06'], [0.55, '#8a2a0a'], [1, '#ff7a1a']]);
+          const rise = ease(clamp(k * 1.3, 0, 1)), gs = S_(C, 'gro');
+          if (gs) { const y = lerp(fb.h + gs.h * 0.5, fb.h * 0.5, rise); blit(fb, gs, fb.w * 0.58, y, 1, { tint: hex('#401008'), tk: 0.25 * (1 - rise) }); for (let i = 0; i < 5; i++) glow(fb, fb.w * 0.58 + (i - 2) * gs.w * 0.14, y + Math.sin(i) * gs.h * 0.2, 8 + Math.sin(t * 5 + i) * 2, hex('#ffe070'), 0.5 * rise); }
+          for (let x = 0; x < fb.w; x++) { const y = fb.h * 0.8 + Math.sin(x * 0.05 + t) * 3; for (let yy = Math.round(y); yy < fb.h; yy++) put(fb, x, yy, U.mix(hex('#ffc040'), hex('#c8200a'), clamp((yy - y) / 20, 0, 1))); }
+          if (k > 0.75 && !C.roar) { C.roar = 1; Game.sfx('roar', null, 1); C.flash = 0.5; C.shake = 6; }
+        } },
+        { d: 5.4, say: ['Groudon', 'Who dares wake the land? ...Oh. A tiny one. With a camera.'], draw: (fb, k, t, C) => { groStage(fb, t, C, 'gro'); } },
+        { d: 5.4, say: ['Groudon', 'Kyogre and I fought over the whole world once. It was very silly.'], draw: (fb, k, t, C) => { groStage(fb, t, C, 'gro'); blit(fb, S_(C, 'mkTilt'), fb.w * 0.2, fb.h * 0.74, 0.5); } },
+        { d: 5, say: ['Groudon', 'Now the sun shines where I walk. Take your picture, little one!'], draw: (fb, k, t, C) => { groStage(fb, t, C, 'groRoar'); blit(fb, S_(C, 'mkHappy'), fb.w * 0.2, fb.h * 0.74 + Math.abs(Math.sin(t * 5)) * -4, 0.5); glow(fb, fb.w * 0.8, fb.h * 0.15, 30 + k * 40, hex('#fff0a0'), 0.8); } },
+        { d: 3, flashAt: 0.45, draw: (fb, k, t, C) => { groStage(fb, t, C, 'groRoar'); glow(fb, fb.w / 2, fb.h * 0.4, 30 + k * 300, hex('#fff0b0'), k * 1.5); if (k > 0.4 && !C.boom) { C.boom = 1; C.flash = 1; Game.sfx('timewave', null, 1); } } },
+      ],
+    },
+    /* ---------------- VII · Regice ---------------- */
+    regice: {
+      no: 'VII', title: 'The Iceberg Giant', who: 'Regice', trigger: 'regice.woke', reward: 'pts:1500', delay: 6000,
+      cast: Object.assign({ reg: { sp: 'Regice', scale: 1.1, yaw: Math.PI / 2 - 0.15, pose: { awake: 1, glow: 1 } }, regArms: { sp: 'Regice', scale: 1.1, yaw: Math.PI / 2 - 0.15, pose: { awake: 1, glow: 1, arms: 1 } } }, mkPoses),
+      shots: [
+        { d: 3, title: true, draw: (fb) => { vgrad(fb, [[0, '#020818'], [1, '#0a2244']]); }, sfx: [[0.4, 'icering']] },
+        { d: 5, say: ['', '(Seven dots... glowing in the ice, one after another.)'], draw: (fb, k, t, C) => {
+          vgrad(fb, [[0, '#040c20'], [1, '#102a4a']]);
+          const cx = fb.w / 2, cy = fb.h * 0.45, n = Math.floor(k * 8);
+          const D = [[-24, 0], [0, 0], [24, 0], [-12, 22], [12, 22], [0, -24], [0, 44]];
+          D.forEach(([dx, dy], i) => { if (i < n) { disc(fb, cx + dx, cy + dy, 5, hex('#bfe8ff')); glow(fb, cx + dx, cy + dy, 16, hex('#6ad0ff'), 0.6); } else disc(fb, cx + dx, cy + dy, 5, hex('#1a2a4a')); });
+          if (n !== C.n) { C.n = n; if (n > 0) Game.sfx('icering', null, 0.6); }
+        } },
+        { d: 5.4, shake: [1, 4], draw: (fb, k, t, C) => {
+          vgrad(fb, [[0, '#06142a'], [0.7, '#1a4a6a'], [1, '#bfe8ff']]);
+          for (let i = 0; i < 80; i++) { const x = (U.hash(i, 3, 1) * fb.w + t * 20 * (0.5 + U.hash(i, 3, 2))) % fb.w, y = (U.hash(i, 3, 3) * fb.h + t * 30) % fb.h; put(fb, x, y, WHITE); }
+          const rs = S_(C, 'reg'), a = ease(clamp(k * 1.4, 0, 1));
+          if (rs) blit(fb, rs, fb.w / 2, fb.h * 0.52, lerp(0.6, 1, a), { tint: hex('#0a1a30'), tk: 0.6 * (1 - a) });
+          if (k > 0.7 && !C.b) { C.b = 1; Game.sfx('freeze', null, 1); C.flash = 0.6; }
+        } },
+        { d: 5.2, say: ['Regice', '...  ...  ... (Its dots blink a message: FRIEND.)'], draw: (fb, k, t, C) => { iceStage(fb, t, C, 'reg'); blit(fb, S_(C, 'mkUp'), fb.w * 0.2, fb.h * 0.74, 0.5); } },
+        { d: 5, say: ['Mudkip', 'Mud... kip! (It says we are friends!)'], draw: (fb, k, t, C) => { iceStage(fb, t, C, 'regArms'); blit(fb, S_(C, 'mkHappy'), fb.w * 0.2, fb.h * 0.74 - Math.abs(Math.sin(t * 5)) * 4, 0.5); } },
+        { d: 3, flashAt: 0.4, draw: (fb, k, t, C) => { iceStage(fb, t, C, 'regArms'); glow(fb, fb.w / 2, fb.h * 0.45, 30 + k * 280, hex('#dff8ff'), k * 1.5); if (k > 0.4 && !C.boom) { C.boom = 1; C.flash = 1; Game.sfx('icering', null, 1); } } },
+      ],
+    },
+    /* ---------------- VIII · The Eon duo ---------------- */
+    eon: {
+      no: 'VIII', title: 'Wings of Light', who: 'Latias & Latios', trigger: 'quest.latios', reward: 'pts:2000', delay: 3000,
+      cast: Object.assign({ lat: { sp: 'Latias', scale: 1, yaw: 0.35, pose: { fly: 1, eyes: 'happy' } }, los: { sp: 'Latios', scale: 1, yaw: 0.35, pose: { fly: 1 } } }, mkPoses),
+      shots: [
+        { d: 3, title: true, draw: (fb) => { vgrad(fb, [[0, '#1a1040'], [1, '#e86a8a']]); }, sfx: [[0.4, 'whoosh']] },
+        { d: 6, say: ['Latias', 'Hold on tight! We will show you the whole of Hoenn!'], draw: (fb, k, t, C) => {
+          vgrad(fb, [[0, '#2a1a5a'], [0.5, '#c85a8a'], [0.8, '#ffb070'], [1, '#ffe0a0']]);
+          for (let i = 0; i < 6; i++) { const y = fb.h * (0.2 + i * 0.13), x = fb.w - ((t * (80 + i * 30) + i * 90) % (fb.w + 120)) + 60; for (let yy = -5; yy <= 5; yy++) for (let xx = -26; xx <= 26; xx++) if ((xx / 26) ** 2 + (yy / 5) ** 2 < 1) add(fb, x + xx, y + yy, WHITE, 0.3); }
+          const la = S_(C, 'lat'), lo = S_(C, 'los'), y0 = fb.h * 0.45;
+          blit(fb, lo, fb.w * 0.4 + Math.sin(t * 1.3) * 10, y0 + 22 + Math.cos(t * 1.1) * 8, 0.8);
+          blit(fb, la, fb.w * 0.58 + Math.sin(t * 1.1) * 10, y0 - 8 + Math.sin(t * 1.4) * 8, 0.8);
+          blit(fb, S_(C, 'mkHappy'), fb.w * 0.58 + Math.sin(t * 1.1) * 10, y0 - 26 + Math.sin(t * 1.4) * 8, 0.4);
+          for (let i = 0; i < 3; i++) part(C, { kind: 'spark', x: fb.w * 0.5 + rnd(-40, 40), y: y0 + rnd(-10, 30), vx: -rnd(80, 160), life: 0.8, c: i % 2 ? hex('#ffb0c8') : hex('#a8c8ff') });
+          drawFx(fb, C);
+        } },
+        { d: 5, say: ['Latios', 'Thank you for bringing my sister to me, photographer.'], draw: (fb, k, t, C) => { vgrad(fb, [[0, '#0a1030'], [1, '#2a3a7a']]); stars(fb, 9, 90, t, { vx: 6, a: 0.8 }); blit(fb, S_(C, 'los'), fb.w * 0.5, fb.h * 0.45 + Math.sin(t) * 6, 0.9); } },
+        { d: 3, flashAt: 0.4, draw: (fb, k, t, C) => { vgrad(fb, [[0, '#2a1a5a'], [1, '#ffb0c8']]); glow(fb, fb.w / 2, fb.h * 0.45, 30 + k * 280, hex('#ffe8f4'), k * 1.5); if (k > 0.4 && !C.boom) { C.boom = 1; C.flash = 1; Game.sfx('twinkle', null, 1); } } },
+      ],
+    },
   };
 
   /* ---- scene pieces ---- */
@@ -53329,6 +53401,20 @@ const Memories = (() => {
     if (ds) { blit(fb, ds, cx, fb.h * 0.8 - ds.h * 0.5 + Math.sin(t * 1.2) * 2, 1, { tint: hex('#3a2a8a'), tk: 0.18 }); glow(fb, cx - ds.w * 0.02, fb.h * 0.8 - ds.h * 0.46, 8 + Math.sin(t * 5) * 2, hex('#5ae0ff'), 0.5); }
     for (let i = 0; i < 2; i++) if (Math.random() < 0.4) part(C, { x: rnd(0, fb.w), y: fb.h + 2, vy: -rnd(20, 60), life: 3, c: hex('#9ff0ff'), s: 1 });
     drawFx(fb, C);
+  }
+  function groStage(fb, t, C, pose) {
+    vgrad(fb, [[0, '#3a0c06'], [0.55, '#9a3a10'], [1, '#ffa040']]);
+    const gs = S_(C, pose);
+    if (gs) { const x = fb.w * 0.6, y = fb.h * 0.5 + Math.sin(t * 0.8) * 3; blit(fb, gs, x, y, 1); for (let i = 0; i < 5; i++) glow(fb, x + (i - 2) * gs.w * 0.14, y + Math.sin(i) * gs.h * 0.2, 7 + Math.sin(t * 5 + i) * 2, hex('#ffe070'), 0.45); }
+    for (let x = 0; x < fb.w; x++) { const y = fb.h * 0.82 + Math.sin(x * 0.05 + t) * 3; for (let yy = Math.round(y); yy < fb.h; yy++) put(fb, x, yy, U.mix(hex('#ffc040'), hex('#c8200a'), clamp((yy - y) / 20, 0, 1))); }
+    if (Math.random() < 0.5) part(C, { kind: 'spark', x: rnd(0, fb.w), y: fb.h * 0.82, vy: -rnd(30, 90), life: 1.4, c: hex('#ffd060') });
+    drawFx(fb, C);
+  }
+  function iceStage(fb, t, C, pose) {
+    vgrad(fb, [[0, '#06142a'], [0.7, '#1a4a6a'], [1, '#8ad0f0']]);
+    for (let i = 0; i < 60; i++) { const x = (U.hash(i, 5, 1) * fb.w + t * 12 * (0.5 + U.hash(i, 5, 2))) % fb.w, y = (U.hash(i, 5, 3) * fb.h + t * 24) % fb.h; put(fb, x, y, WHITE); }
+    const rs = S_(C, pose);
+    if (rs) { blit(fb, rs, fb.w * 0.6, fb.h * 0.52, 1); glow(fb, fb.w * 0.6, fb.h * 0.42, 22 + Math.sin(t * 3) * 4, hex('#6ad0ff'), 0.5); }
   }
   function kyogreStage(fb, t, C, pose, k) {
     vgrad(fb, [[0, '#02081a'], [1, '#041430']]);
@@ -61487,6 +61573,7 @@ Areas.shoal = (() => {
   };
   def.post = (A, fb, cx, cy, t) => {
     const W = fb.w, H = fb.h, d = fb.d;
+    for (const p of S.snow || []) { const x = Math.round(p.x - cx), y = Math.round(p.y - cy); if (x < 0 || y < 0 || x >= W - 1 || y >= H - 1) continue; const i = y * W + x; d[i] = mix(d[i], 0xffffffff, 0.9); if (p.big) { d[i + 1] = mix(d[i + 1], 0xfff0f4ff, 0.7); d[i + W] = mix(d[i + W], 0xfff0f4ff, 0.7); } }
     // the stillness ring glows brighter as Mudkip waits in it; the wall's dots light one by one
     const X = Math.round(RING - cx), Y = Math.round(World.groundAt(RING) - cy);
     const k = S.awake ? 1 : S.dots / 7;
@@ -61505,6 +61592,12 @@ Areas.shoal = (() => {
   };
   def.update = (A, dt, t, G) => {
     const mk = G.mudkip;
+    // snow falls on the open shore only (the cave roof keeps it out)
+    const cx = Game.cam.x, cy = Game.cam.y, VW = Game.VW, VH = Game.VH;
+    S.snow = S.snow || [];
+    const want = cx < MOUTH ? Math.round(110 * clamp((MOUTH - cx) / VW, 0, 1)) : 0;
+    for (let k = 0; k < 4 && S.snow.length < want; k++) S.snow.push({ x: cx + Math.random() * Math.min(VW + 40, MOUTH - cx + 20) - 20, y: cy - 6 + (S.snow.length < 30 ? Math.random() * VH : 0), vy: 14 + Math.random() * 18, ph: Math.random() * 6, big: Math.random() < 0.22 });
+    for (let i = S.snow.length - 1; i >= 0; i--) { const p = S.snow[i]; p.x += (Math.sin(t * 1.3 + p.ph) * 10 + 4) * dt; p.y += p.vy * dt; if (p.y > World.groundAt(p.x) || p.y > cy + VH + 8 || p.x > MOUTH + 10 || p.x < cx - 40) S.snow.splice(i, 1); }
     // glassy ice: Mudkip keeps sliding when it lets go (and sparkles as it skates)
     if (mk && mk.mode === 'land' && mk.x > ICE.x0 && mk.x < ICE.x1) {
       if (mk.keyDir) S.slide = lerp(S.slide, mk.keyDir * (mk.running ? 150 : 100), Math.min(1, dt * 2.5));
@@ -61524,7 +61617,7 @@ Areas.shoal = (() => {
     if (!S.awake && S.dots >= 7 && Math.abs(x - RING) < 80) { S.awake = true; S.frost = 1; Game.shake(6); Game.sfx('freeze', REGI, 1); Game.sfx('rumble', REGI, 0.9); Save.discover('regice.woke'); Save.addItem('icegem', 1); HUD.toast('The ice giant awakens! (+ Never-Melt Ice)', { life: 3.4 }); if (Game.cine) Game.cine.pan(REGI, World.groundAt(REGI) - 50, { hold: 3, zoom: 1.12 }); if (typeof Legends !== 'undefined' && Legends.wakeRegice) Legends.wakeRegice(); }
     if (typeof ShoalAI !== 'undefined' && ShoalAI.song) ShoalAI.song(x);
   };
-  def.weather = () => ({ rain: 0, fog: 0.05, snow: 0.35 });
+  def.weather = () => ({ rain: 0, fog: 0.05, snow: 0 });
   def.ambient = (hour) => {
     const out = [{ kind: 'sparkle', rate: 2.2, c: hex('#bfefff'), life: 1.6, sway: 4, bob: 2, y: (x) => World.groundAt(x) - 10 - Math.random() * 90 }];
     out.push({ kind: 'mote', rate: 2, c: hex('#e8f8ff'), life: 6, sway: 8, bob: 4, vy: 3 });

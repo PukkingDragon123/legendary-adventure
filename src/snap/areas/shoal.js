@@ -245,6 +245,7 @@ Areas.shoal = (() => {
   };
   def.post = (A, fb, cx, cy, t) => {
     const W = fb.w, H = fb.h, d = fb.d;
+    for (const p of S.snow || []) { const x = Math.round(p.x - cx), y = Math.round(p.y - cy); if (x < 0 || y < 0 || x >= W - 1 || y >= H - 1) continue; const i = y * W + x; d[i] = mix(d[i], 0xffffffff, 0.9); if (p.big) { d[i + 1] = mix(d[i + 1], 0xfff0f4ff, 0.7); d[i + W] = mix(d[i + W], 0xfff0f4ff, 0.7); } }
     // the stillness ring glows brighter as Mudkip waits in it; the wall's dots light one by one
     const X = Math.round(RING - cx), Y = Math.round(World.groundAt(RING) - cy);
     const k = S.awake ? 1 : S.dots / 7;
@@ -263,6 +264,12 @@ Areas.shoal = (() => {
   };
   def.update = (A, dt, t, G) => {
     const mk = G.mudkip;
+    // snow falls on the open shore only (the cave roof keeps it out)
+    const cx = Game.cam.x, cy = Game.cam.y, VW = Game.VW, VH = Game.VH;
+    S.snow = S.snow || [];
+    const want = cx < MOUTH ? Math.round(110 * clamp((MOUTH - cx) / VW, 0, 1)) : 0;
+    for (let k = 0; k < 4 && S.snow.length < want; k++) S.snow.push({ x: cx + Math.random() * Math.min(VW + 40, MOUTH - cx + 20) - 20, y: cy - 6 + (S.snow.length < 30 ? Math.random() * VH : 0), vy: 14 + Math.random() * 18, ph: Math.random() * 6, big: Math.random() < 0.22 });
+    for (let i = S.snow.length - 1; i >= 0; i--) { const p = S.snow[i]; p.x += (Math.sin(t * 1.3 + p.ph) * 10 + 4) * dt; p.y += p.vy * dt; if (p.y > World.groundAt(p.x) || p.y > cy + VH + 8 || p.x > MOUTH + 10 || p.x < cx - 40) S.snow.splice(i, 1); }
     // glassy ice: Mudkip keeps sliding when it lets go (and sparkles as it skates)
     if (mk && mk.mode === 'land' && mk.x > ICE.x0 && mk.x < ICE.x1) {
       if (mk.keyDir) S.slide = lerp(S.slide, mk.keyDir * (mk.running ? 150 : 100), Math.min(1, dt * 2.5));
@@ -282,7 +289,7 @@ Areas.shoal = (() => {
     if (!S.awake && S.dots >= 7 && Math.abs(x - RING) < 80) { S.awake = true; S.frost = 1; Game.shake(6); Game.sfx('freeze', REGI, 1); Game.sfx('rumble', REGI, 0.9); Save.discover('regice.woke'); Save.addItem('icegem', 1); HUD.toast('The ice giant awakens! (+ Never-Melt Ice)', { life: 3.4 }); if (Game.cine) Game.cine.pan(REGI, World.groundAt(REGI) - 50, { hold: 3, zoom: 1.12 }); if (typeof Legends !== 'undefined' && Legends.wakeRegice) Legends.wakeRegice(); }
     if (typeof ShoalAI !== 'undefined' && ShoalAI.song) ShoalAI.song(x);
   };
-  def.weather = () => ({ rain: 0, fog: 0.05, snow: 0.35 });
+  def.weather = () => ({ rain: 0, fog: 0.05, snow: 0 });
   def.ambient = (hour) => {
     const out = [{ kind: 'sparkle', rate: 2.2, c: hex('#bfefff'), life: 1.6, sway: 4, bob: 2, y: (x) => World.groundAt(x) - 10 - Math.random() * 90 }];
     out.push({ kind: 'mote', rate: 2, c: hex('#e8f8ff'), life: 6, sway: 8, bob: 4, vy: 3 });
