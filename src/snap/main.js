@@ -304,6 +304,7 @@ const Game = (() => {
     Items.drawBack(fb, cx, cy, t);
     const mids = G.mons.filter((m) => !m.layer && m.visible && m.alive).sort((a, b) => (a.zd - b.zd) || (a.z - b.z));
     for (const m of mids) { m.draw(fb, cx, cy, occ); if (m.drawExtra) m.drawExtra(fb, cx, cy, P, t, occ); }
+    if (typeof Accs !== 'undefined') Accs.draw(fb, cx, cy);
     Items.draw(fb, cx, cy, t);
     if (typeof Harvest !== 'undefined') Harvest.draw(fb, cx, cy, t);
     if (typeof Toys !== 'undefined') { Toys.drawShells(fb, cx, cy, t); if (!o.ids) Toys.drawPrompts(fb, cx, cy, t); }
