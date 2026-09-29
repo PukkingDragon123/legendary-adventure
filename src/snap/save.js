@@ -7,8 +7,8 @@
 const Save = (() => {
   const KEY = 'mudkip-snap-v1';
   const fresh = () => ({
-    v: 1, points: 0, photos: {}, seen: {}, beh: {}, obj: {}, quests: {}, owned: { 'skin.classic': 1, 'neck.camera': 1, 'banner.rookie': 1, 'deco.none': 1 },
-    equip: { skin: 'skin.classic', banner: 'banner.rookie', key: null, deco: 'deco.none', hat: null, shirt: null, glasses: null, neck: 'neck.camera' },
+    v: 1, points: 0, photos: {}, seen: {}, beh: {}, obj: {}, quests: {}, owned: { 'skin.classic': 1, 'neck.camera': 1, 'banner.rookie': 1, 'deco.none': 1, 'hat.straw': 1, 'glasses.round': 1, 'fun.stache': 1 },
+    equip: { skin: 'skin.classic', banner: 'banner.rookie', key: null, deco: 'deco.none', hat: null, shirt: null, glasses: null, neck: 'neck.camera', shoes: null, fun: null },
     items: { berry: 3 }, areas: { beach: 1 }, visits: {}, disc: {}, album: [], lastArea: 'beach', songs: {}, tut: {}, shots: 0, stats: {},
   });
   let data = fresh();
@@ -36,7 +36,7 @@ const Save = (() => {
   // Mudkip's cosmetic pose fields from equipped items
   function look() {
     const e = data.equip, o = {};
-    for (const s of ['hat', 'shirt', 'glasses', 'neck']) if (e[s]) o[s] = e[s].split('.')[1];
+    for (const s of ['hat', 'shirt', 'glasses', 'neck', 'shoes', 'fun']) if (e[s]) o[s] = e[s].split('.')[1];
     return o;
   }
   const unlocked = (a) => !!data.areas[a];

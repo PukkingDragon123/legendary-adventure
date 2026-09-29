@@ -122,7 +122,7 @@ const Music = (() => {
     const T = TRACKS[M.cur];
     if (!T || (!M.playing && M.spin < 0.05 && !M.melo)) { M.rect = null; if (M.melo) Melo.draw(fb, t); return; }
     const R = 15;
-    const cx = mode === 'camera' ? 74 : 26, cy = mode === 'camera' ? 36 : fb.h - 62;
+    const cx = mode === 'camera' ? 74 : fb.w - 24, cy = mode === 'camera' ? 36 : 54;
     M.rect = { x: cx, y: cy, r: R };
     const pulse = M.beat, E = M.energy;
     // aura: pink + green glow rings

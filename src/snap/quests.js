@@ -62,8 +62,8 @@ const Quests = (() => {
     if (Q.lastUnlockCheck > 3) { Q.lastUnlockCheck = 0; checkUnlocks(); checkBirch(); }
     // light-touch tutorial
     const T = Save.data.tut;
-    if (Game.mode === 'explore' && Game.rt > 3 && !T.walk) { T.walk = 1; HUD.toast('Tap anywhere to walk or swim. Drag to look around.', { life: 4.5 }); }
-    if (Game.mode === 'explore' && Game.rt > 12 && !T.snap && Save.data.shots === 0) { T.snap = 1; HUD.toast('Tap SNAP to open your camera!', { life: 4 }); }
+    if (Game.mode === 'explore' && Game.rt > 3 && !T.walk) { T.walk = 1; HUD.toast(typeof Pad !== 'undefined' && Pad.touch ? 'Stick to move, A to jump (tap twice to flip!), B to use a move. Or just tap where to go.' : 'Arrow keys to move, Space to jump (twice to flip!). Or click where to go.', { life: 5 }); }
+    if (Game.mode === 'explore' && Game.rt > 12 && !T.snap && Save.data.shots === 0) { T.snap = 1; HUD.toast('Tap SNAP (or press C) to open your camera. Hold the shutter to capture the perfect moment!', { life: 4.5 }); }
     if (Save.data.shots === 1 && !T.dex) { T.dex = 1; setTimeout(() => HUD.toast('Your photo is in the Pokédex (top right).', { life: 4 }), 2600); }
   }
   function onStart() { checkUnlocks(); }

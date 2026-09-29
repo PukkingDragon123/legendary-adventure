@@ -71,9 +71,9 @@ const Mudkip = (() => {
     [GOLD]: 1, [DARK]: 1, [LENS]: 1, [METAL]: 1, [SHADE]: 1 };
 
   /* ---------- shapes ---------- */
-  const FIN_CTRL = [[8.6, -5], [9.6, 1], [9.8, 7], [9, 13], [7.2, 18.6], [4.4, 23.6], [1, 27.4], [-2.6, 29.2], [-5.6, 28.4], [-7.3, 25.2], [-7.9, 19.6], [-8.1, 13], [-8.5, 6], [-9.1, 0], [-9.6, -5]];
+  const FIN_CTRL = [[8.8, -5], [10, 1], [10.6, 7], [10.4, 13], [9.4, 18.4], [7.4, 22.9], [4.4, 26.3], [0.8, 28.2], [-3.1, 28], [-6.2, 25.8], [-7.9, 21.2], [-8.5, 14], [-8.9, 7], [-9.3, 0], [-9.6, -5]];
   const FIN_POLY = Shape2D.catmull(FIN_CTRL, true, 8);
-  const FIN_BACK = Shape2D.catmull([[-2.6, 29.2], [-5.6, 28.4], [-7.3, 25.2], [-7.9, 19.6], [-8.1, 13], [-8.5, 6], [-9.1, 0]], false, 8);
+  const FIN_BACK = Shape2D.catmull([[0.8, 28.2], [-3.1, 28], [-6.2, 25.8], [-7.9, 21.2], [-8.5, 14], [-8.9, 7], [-9.3, 0]], false, 8);
   const FIN_BB = Shape2D.bbox(FIN_POLY, 0.5);
   const FIN_RIDGES = [
     Shape2D.catmull([[3.2, 4], [3.6, 10], [2.6, 16], [0.4, 21.5], [-2.2, 25.2]], false, 5),
@@ -107,9 +107,9 @@ const Mudkip = (() => {
 
   // Gill: rounded cheek base with three pointed, faceted spikes (u = outward, v = up)
   const GILL_SPIKES = [
-    { a: 1.02, len: 12.6, w: 3.5, bend: -0.12 },
-    { a: 0.2, len: 13.4, w: 3.7, bend: -0.06 },
-    { a: -0.66, len: 11.2, w: 3.4, bend: 0.1 },
+    { a: 1.02, len: 9.6, w: 4.1, bend: -0.1 },
+    { a: 0.2, len: 10.6, w: 4.3, bend: -0.05 },
+    { a: -0.66, len: 8.8, w: 4, bend: 0.08 },
   ].map((s) => {
     const r0 = 3;
     const a2 = s.a + s.bend;
@@ -122,9 +122,9 @@ const Mudkip = (() => {
       dir: [Math.cos(a2), Math.sin(a2)],
     };
   });
-  const GILL_R = 5.6;
+  const GILL_R = 6.1;
   const gillShape = {
-    bb: [-7, -11, 14, 13.5],
+    bb: [-8, -10, 12, 12],
     test(u, v) {
       for (const s of GILL_SPIKES) {
         if (Shape2D.inTri(u, v, s.tip, s.b1, s.b2)) {
@@ -177,7 +177,7 @@ const Mudkip = (() => {
       { hip: [-8.4, -4.5, -7.1], sw: -P.legB, id: 5 },
     ];
     // cosmetics: is anything worn? (the plain model skips every cosmetic code path)
-    const dressed = !!(P.hat || P.shirt || P.glasses || P.neck || P.hold);
+    const dressed = !!(P.hat || P.shirt || P.glasses || P.neck || P.hold || P.shoes || P.fun);
     // holding the guitar: the near front leg (the camera-side one) strums
     const gside = P.side !== undefined && P.side < 0 ? -1 : 1;
     const strumLeg = P.hold === 'guitar' ? (gside > 0 ? 2 : 3) : 0;
@@ -289,8 +289,10 @@ const Mudkip = (() => {
   ================================================================ */
   // part / group ids (Mudkip's own parts are 1..10)
   const G = { HAT: 11, HAT2: 12, HAT3: 13, HAT4: 14, HAT5: 15, SHIRT: 16, SLV2: 17, SLV3: 18, SHIRT2: 19,
-    GLN: 20, GLF: 21, GLB: 22, NECK: 23, NECK2: 24, NECK3: 25, HOLD: 26, HOLD2: 27, HOLD3: 28 };
-  const ACC_PRI = { 11: 3, 12: 3, 13: 4, 14: 4, 15: 4, 16: 2, 17: 3, 18: 3, 19: 3, 20: 5, 21: 5, 22: 4, 23: 4, 24: 3, 25: 5, 26: 4, 27: 3, 28: 5 };
+    GLN: 20, GLF: 21, GLB: 22, NECK: 23, NECK2: 24, NECK3: 25, HOLD: 26, HOLD2: 27, HOLD3: 28,
+    FT2: 29, FT3: 30, FT4: 31, FT5: 32, FUN: 33, FUN2: 34 };
+  const ACC_PRI = { 11: 3, 12: 3, 13: 4, 14: 4, 15: 4, 16: 2, 17: 3, 18: 3, 19: 3, 20: 5, 21: 5, 22: 4, 23: 4, 24: 3, 25: 5, 26: 4, 27: 3, 28: 5,
+    29: 2, 30: 1, 31: 2, 32: 1, 33: 3, 34: 5 };
   const HR = HEAD_R;
   const K = code;
   const W0 = F(M3.I(), [0, 0, 0]);
@@ -465,6 +467,56 @@ const Mudkip = (() => {
         add(eAx(h, q.p, basis(q.n), [1.5, 1.7, 1.0], G.HAT4, (s) => K(PINK, s[1] > 0.3 && s[0] < 0.2 ? 2 : 0)));
       }
     },
+    // party hat: a striped cone perched at a jaunty angle on the camera side, with a pom-pom
+    party(h, add, sd) {
+      const n = V3.norm([0.28, 0.86, 0.42 * sd]);
+      const base = headPt(V3.norm([0.18, 0.7, 0.55 * sd]), -0.6).p;
+      const ax = basis(n), N = 11, L = 15;
+      for (let i = 0; i < N; i++) {
+        const u = i / (N - 1), r = 5.2 * (1 - u) + 0.6;
+        const c = V3.add(base, V3.scale(n, u * L));
+        const stripe = Math.floor(u * 5 + 0.3) % 2;
+        add(eAx(h, c, ax, [r, r, 1.3], i < 5 ? G.HAT : G.HAT2, () => K(stripe ? YELLOW : PINK, i % 3 === 0 ? 1 : 0)));
+      }
+      add(eA(chain(h, T(...V3.add(base, V3.scale(n, L + 1.2)))), [2.3, 2.3, 2.3], G.HAT3, () => K(WHITE)));
+      // the elastic under the chin
+      add(rodA(h, V3.add(base, V3.scale(ax[0], -4.6)), headPt(V3.norm([0.55, -0.55, 0.62 * sd]), 0.4).p, 0.35, G.HAT4, () => K(DARK)));
+    },
+    // royal crown: a gold band round the head fin with five points and three gems
+    crown(h, add, sd) {
+      const n = V3.norm([-0.1, 1, 0]), d = 0.34, e = 0.26, k = 1.08;
+      add(eA(h, [HR[0] * k, HR[1] * k, HR[2] * k], G.HAT, (s) => { const q = dot3(s, n) - d; if (q < 0 || q > e) return 0; return K(GOLD, q < 0.05 ? -1 : q > e - 0.05 ? 1 : 0); }));
+      const a = V3.norm(V3.cross(n, [0, 0, 1])), b = V3.cross(n, a), top = d + e, rr = Math.sqrt(1 - top * top);
+      for (let i = 0; i < 7; i++) {
+        const an = (i / 7) * Math.PI * 2 + 0.2;
+        const dir = V3.add(V3.scale(n, top), V3.add(V3.scale(a, Math.cos(an) * rr), V3.scale(b, Math.sin(an) * rr)));
+        const p = headPt(V3.norm(dir), 1.1).p;
+        add(eAx(h, V3.add(p, V3.scale(n, 1.6)), basis(n), [1.5, 1.5, 3.0], G.HAT2, () => K(GOLD, 1)));
+        add(eA(chain(h, T(...V3.add(p, V3.scale(n, 4.8)))), [1.0, 1.0, 1.0], G.HAT3, () => K(GOLD, 2)));
+      }
+      const gems = [[0.0, RED], [0.75 * sd, NAVY], [-0.75 * sd, GREEN]];
+      for (const [az, col] of gems) {
+        const dir = V3.norm([Math.cos(az), d + e * 0.5, Math.sin(az) * 1.05]);
+        const q = headPt(dir, 1.9);
+        add(eAx(h, q.p, basis(q.n), [1.4, 1.6, 0.9], G.HAT4, (s) => K(col, s[1] > 0.3 && s[0] < 0 ? 2 : 0)));
+      }
+    },
+    // propeller cap: four-colour beanie, a stick behind the fin and two spinning blades
+    propeller(h, add, sd, P) {
+      const n = V3.norm([-0.12, 1, 0]), d = 0.3;
+      const cols = [RED, YELLOW, NAVY, GREEN];
+      add(eA(h, [HR[0] * 1.1, HR[1] * 1.12, HR[2] * 1.1], G.HAT, (s) => { if (dot3(s, n) < d) return 0; const q = Math.floor(((Math.atan2(s[2], s[0]) + Math.PI) / (Math.PI * 2)) * 4) % 4; return K(cols[q]); }));
+      add(eA(h, [HR[0] * 1.14, HR[1] * 1.15, HR[2] * 1.14], G.HAT2, (s) => { const q = dot3(s, n); return q < d || q > d + 0.08 ? 0 : K(WHITE); }));
+      // (the rotor is tipped toward the camera so the blades read as blades, not a line)
+      const root = headPt(V3.norm([-0.55, 0.83, 0.1 * sd]), 1.2).p, up = V3.norm([-0.2, 1, 0.55 * sd]), tip = V3.add(root, V3.scale(up, 5.5));
+      add(rodA(h, root, tip, 0.75, G.HAT3, () => K(METAL)));
+      const ang = +P.prop || 0, bx = basis(up);
+      for (const sgn of [1, -1]) {
+        const dir = V3.add(V3.scale(bx[0], Math.cos(ang) * sgn), V3.scale(bx[1], Math.sin(ang) * sgn));
+        add(eAx(h, V3.add(tip, V3.scale(dir, 5.2)), [V3.norm(dir), up, V3.norm(V3.cross(dir, up))], [5.6, 0.9, 2.3], G.HAT4, () => K(sgn > 0 ? RED : YELLOW, 1)));
+      }
+      add(eA(chain(h, T(...tip)), [1.1, 0.9, 1.1], G.HAT5, () => K(GOLD, 1)));
+    },
     // plush lobster: red cap with tail segments down the back, eyes on stalks, antennae, two claws
     lobster(h, add) {
       const n = V3.norm([-0.16, 1, 0]), d = 0.24;
@@ -599,7 +651,7 @@ const Mudkip = (() => {
     const add = (p) => { prims.push(p); if (pri[p.grp] === undefined) pri[p.grp] = ACC_PRI[p.grp] ?? 3; return p; };
     const { body, head, legs, gside } = fr;
     const sd = P.side === undefined ? 1 : Math.max(-1, Math.min(1, P.side));
-    if (own(HATS, P.hat)) HATS[P.hat](head, add, sd);
+    if (own(HATS, P.hat)) HATS[P.hat](head, add, sd, P);
     if (own(SHIRTS, P.shirt)) shirt(P.shirt, body, legs, add);
     if (P.glasses === 'star' || P.glasses === 'round') glasses(P.glasses, head, add);
     // neck
@@ -611,6 +663,37 @@ const Mudkip = (() => {
       add(eA(chain(body, T(16.6, 0.4, 1.8)), [1.9, 1.9, 1.9], G.NECK2, () => K(RED, -1)));
       add(eAx(body, [17.4, -3.2, 2.9], basis([0.2, 0, 1]), [1.9, 3.8, 0.9], G.NECK3, () => K(RED)));
       add(eAx(body, [17.0, -2.4, 0.2], basis([0.25, 0, 1]), [1.8, 3.4, 0.9], G.NECK3, () => K(RED, -1)));
+    }
+    // shoes: rain boots or sneakers over each paw
+    if (P.shoes === 'boots' || P.shoes === 'sneakers') {
+      const ids = { 2: G.FT2, 3: G.FT3, 4: G.FT4, 5: G.FT5 };
+      for (const id of [2, 3, 4, 5]) {
+        const f = legs[id]; if (!f) continue;
+        if (P.shoes === 'boots') {
+          add(eA(chain(f, T(1.0, -6.1, 0)), [4.4, 3.5, 4.0], ids[id], (s) => K(YELLOW, s[1] > 0.55 ? 1 : 0)));
+          add(eA(chain(f, T(0.6, -3.4, 0)), [3.9, 1.3, 3.7], ids[id], () => K(YELLOW, -1)));
+          add(eA(chain(f, T(1.1, -8.9, 0)), [4.6, 0.9, 4.2], ids[id], () => K(DARK)));
+        } else {
+          add(eA(chain(f, T(1.4, -6.5, 0)), [4.3, 3.0, 3.9], ids[id], (s) => K(s[0] > 0.72 ? WHITE : RED)));
+          add(eA(chain(f, T(1.4, -8.7, 0)), [4.6, 1.0, 4.1], ids[id], () => K(WHITE, -1)));
+          add(eA(chain(f, T(3.0, -4.6, 0)), [1.3, 0.7, 2.0], ids[id], () => K(WHITE, 1)));
+        }
+      }
+    }
+    // fun extras
+    if (P.fun === 'ring') {
+      // a striped swim ring round the tummy
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2;
+        add(eA(chain(body, T(Math.cos(a) * 15.2, -3.4, Math.sin(a) * 11.4)), [3.3, 3.0, 3.3], G.FUN, () => K(Math.floor(i / 3) % 2 ? WHITE : RED)));
+      }
+    } else if (P.fun === 'stache') {
+      // a very distinguished moustache under the nose, curling up at the ends
+      for (const sz of [1, -1]) for (let i = 0; i < 5; i++) {
+        const u = i / 4, az = sz * (0.05 + u * 0.5), v = -0.33 + u * u * 0.2;
+        const q = headPt(sphv(az, v), 0.6 + u * 0.3);
+        add(eAx(head, q.p, basis(q.n), [2.0 - u * 0.7, 1.4 - u * 0.4, 0.9], G.FUN2, () => K(DARK, i === 0 ? 1 : 0)));
+      }
     }
     if (P.hold === 'camera') {
       // camera raised to the face, lens forward; the neck strap keeps it tethered
@@ -682,12 +765,27 @@ const Mudkip = (() => {
     sleepN: ['k.k', '.k.'],
     sleepF: ['k.', '.k'],
   };
+  // HD (double-resolution) eyes: round and glossy, like the official art
+  const EYES_XL = {
+    open: ['.kkk.', 'kwwkk', 'kwwkk', 'kkkkk', 'kkbbk', '.kbk.'],
+    openN: ['.kk.', 'wwkk', 'wwkk', 'kkkk', 'kbbk', '.kk.'],
+    openF: ['.k.', 'kwk', 'kkk', 'kkk', 'kbk', '.k.'],
+    happy: ['.kkk.', 'kk.kk', 'k...k'],
+    happyN: ['.kk.', 'kk.k', 'k..k'],
+    happyF: ['.k.', 'k.k', 'k.k'],
+    blink: ['.....', '.....', '.....', '.....', 'kkkkk', '.kkk.'],
+    blinkN: ['....', '....', '....', '....', 'kkkk', '.kk.'],
+    blinkF: ['...', '...', '...', '...', 'kkk', '.k.'],
+    sleep: ['k...k', 'kk.kk', '.kkk.'],
+    sleepN: ['k..k', 'kkkk', '.kk.'],
+    sleepF: ['k.k', '.k.'],
+  };
   const EYES = EYES_S;
 
   /* ---------- renderer: shared Creature pipeline with Mudkip's eye stamps ---------- */
   const EYEC = { k: '#101826', w: '#ffffff', b: '#2e4a78' };
   function render(model, opt) {
-    const set = (opt.scale || 1) >= 1.2 ? EYES_L : EYES_S;
+    const sc = opt.scale || 1, set = sc >= 1.1 ? EYES_XL : sc >= 0.9 ? EYES_L : EYES_S;
     for (const st of model.stamps) st.set = set;
     return Creature.render(model, opt);
   }

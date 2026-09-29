@@ -60,8 +60,15 @@ const Rewards = (() => {
     'neck.camera': { slot: 'neck', name: 'Snap Camera', desc: 'Your trusty camera.' },
     'neck.bow': { slot: 'neck', name: 'Bow Tie', desc: 'Very dapper.' },
     'neck.scarf': { slot: 'neck', name: 'Red Scarf', desc: 'A gift from a fluffy friend.' },
+    'hat.party': { slot: 'hat', name: 'Party Hat', desc: 'Pink and yellow stripes, worn at a jaunty angle.' },
+    'hat.crown': { slot: 'hat', name: 'Royal Crown', desc: 'Bagon insists it is a crown. It is.' },
+    'hat.propeller': { slot: 'hat', name: 'Propeller Cap', desc: 'It spins when you run. It does not help you fly.' },
+    'shoes.boots': { slot: 'shoes', name: 'Rain Boots', desc: 'Yellow boots for dancing in puddles.' },
+    'shoes.sneakers': { slot: 'shoes', name: 'Red Sneakers', desc: 'Very fast looking. Mudkip is not faster.' },
+    'fun.stache': { slot: 'fun', name: 'Fancy Moustache', desc: 'Distinguished. Extremely distinguished.' },
+    'fun.ring': { slot: 'fun', name: 'Swim Ring', desc: 'Mudkip can swim. It just likes the ring.' },
   };
-  const SLOTS = [['hat', 'Hats'], ['shirt', 'Shirts'], ['glasses', 'Shades'], ['neck', 'Neck'], ['skin', 'Skins'], ['banner', 'Banners'], ['key', 'Charms'], ['deco', 'Frames']];
+  const SLOTS = [['hat', 'Hats'], ['shirt', 'Shirts'], ['glasses', 'Shades'], ['neck', 'Neck'], ['shoes', 'Shoes'], ['fun', 'Fun'], ['skin', 'Skins'], ['banner', 'Banners'], ['key', 'Charms'], ['deco', 'Frames']];
   const name = (id) => (C[id] ? C[id].name : id);
   // pts:N / item:berry:N / catalog id
   function grant(id) {

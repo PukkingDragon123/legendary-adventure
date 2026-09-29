@@ -13,7 +13,7 @@ Areas.falls = (() => {
   const def = {
     id: 'falls', name: 'Starfall Cave', sub: 'Meteor Falls', music: 'space', seed: 57,
     W: GEO.W, H: 900, sea: null, refY: 560, h0: 118, cy0: 330, ph: 0.05, skyH: 300, sunH: 140, band: 10, waves: 0.4,
-    camY: [SKY0 + 20, 820], frameY: 0.66, start: 200,
+    camY: [SKY0 + 20, 820], frameY: 0.74, start: 200,
     ground: GEO.ground,
     water: [{ x0: GEO.POOL.x0, x1: GEO.POOL.x1, level: GEO.POOL.level, kind: 'pool' }, { x0: GEO.GLOW.x0, x1: GEO.GLOW.x1, level: GEO.GLOW.level, kind: 'pool' }, { x0: GEO.SPRING.x0, x1: GEO.SPRING.x1, level: GEO.SPRING.level, kind: 'pool' }],
     plats: [

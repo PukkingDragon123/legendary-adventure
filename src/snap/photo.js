@@ -115,6 +115,12 @@ const Photo = (() => {
     L.frost = Math.max(0, L.frost - dt * 0.18); L.smear = Math.max(0, L.smear - dt * 0.22); L.stat = Math.max(0, L.stat - dt * 0.8); L.blur = Math.max(0, L.blur - dt * 1.5);
     if (L.crack) { L.crack.t -= dt; if (L.crack.t <= 0) L.crack = null; }
     if (P.recent) { P.recent.t += dt; if (P.recent.t > (P.on ? 3.4 : 3.8)) P.recent = null; }
+    if (P.card) { P.card.t += dt; if (P.card.t > 9) P.card = null; }
+    if (P.hold) {
+      const H = P.hold;
+      if (!P.on) P.hold = null;
+      else { H.t += dt; H.newBest = Math.max(0, H.newBest - dt); if (H.t >= H.next) { H.next = H.t + 0.22; sampleHold(H); } if (H.t >= 5) { P.hold = null; finishHold(H); } }
+    }
     if (!P.on) return;
     // focus: auto-focus after aiming settles; locked subjects are tracked
     if (P.focusMode === 'lock' && (!P.focus || !P.focus.alive || !inView(P.focus))) { P.focusMode = 'auto'; P.focus = null; }
@@ -141,6 +147,12 @@ const Photo = (() => {
     P.cool = 0.45; P.flash = 1; P.shots++;
     Game.sfx('shutter');
     for (const m of Mons.all) if (m !== Game.mudkip) m.hear('shutter', m.x, 0.5);
+    const res = evaluate();
+    register(res);
+    return res;
+  }
+  // judge the current frame (no side effects): quick = skip the thumbnail's image URL (used while holding)
+  function evaluate(quick = false) {
     // render a judging frame with object ids
     const cx = Math.round(Game.cam.x), cy = Math.round(Game.cam.y);
     const pid = new Map();
@@ -202,11 +214,29 @@ const Photo = (() => {
       const score = Math.round(main.base + bonus + special);
       const medal = score >= 6000 ? 4 : score >= 4000 ? 3 : score >= 2200 ? 2 : 1;
       res = { species: main.sp, beh: main.beh, stars: main.tier, score, medal, parts: Object.assign({}, main.parts, { vis: main.visMul, focus: main.focusMul, lens: main.lensMul, others: bonus, special, specialName }), others, area: Game.areaId, mon: main.m };
+      res.rating = rate(main, others.length, special);
     }
-    // thumbnail from the visible crop
-    const shot = cropBuf(fb, c);
+    // thumbnail from the visible crop (from the double-resolution frame, so Pokémon look the same as in play)
+    const hd = Game.hdFrame ? Game.hdFrame(cx, cy) : null;
+    const shot = hd ? cropBuf(hd, { x: c.x * 2, y: c.y * 2, w: c.w * 2, h: c.h * 2 }, quick) : cropBuf(fb, c, quick);
     res.buf = shot.thumb;
     res.img = shot.url;
+    return res;
+  }
+  // the five-part rating shown on the photo card (each 0..1) and a letter grade
+  function rate(main, nOthers, special) {
+    const d = DexData.S[main.sp] || {};
+    const pose = clamp(main.face * 0.75 + (['pose', 'curious', 'notice'].includes(main.beh) ? 0.25 : 0.1) + main.peak * 0.1, 0, 1);
+    const act = [0, 0.3, 0.55, 0.8, 1][main.tier] || 0.3;
+    const sizeF = main.parts.size / 1800, place = main.parts.place / 1000;
+    const frame = clamp(sizeF * 0.35 + place * 0.3 + main.visK * 0.2 + main.sharp * 0.15, 0, 1);
+    const rare = clamp((d.legendary ? 1 : d.rare === 2 ? 0.85 : d.rare === 1 ? 0.65 : 0.35) + nOthers * 0.08 + (special ? 0.15 : 0), 0, 1);
+    const time = clamp(main.peak * 0.85 + (main.peak > 0.9 ? 0.15 : 0), 0, 1);
+    const avg = pose * 0.18 + act * 0.26 + frame * 0.26 + rare * 0.1 + time * 0.2;
+    const grade = avg >= 0.86 ? 'S' : avg >= 0.72 ? 'A' : avg >= 0.56 ? 'B' : avg >= 0.4 ? 'C' : 'D';
+    return { pose, act, frame, rare, time, avg, grade };
+  }
+  function register(res) {
     // registration
     let rec = null;
     if (res.species) {
@@ -215,10 +245,42 @@ const Photo = (() => {
       Quests.checkPhoto(res, rec);
       if (res.mon && res.mon.onPhoto) res.mon.onPhoto(res);
     } else Save.recordPhoto(res);
-    P.recent = { res, rec, t: 0, name: res.species ? DexData.S[res.species].name : '', bname: res.species && DexData.S[res.species].beh[res.beh] ? DexData.S[res.species].beh[res.beh].n : '' };
-    setTimeout(() => { if (res.species) { Game.sfx('stamp'); setTimeout(() => SFX.rank(0, 1, res.medal), 150); if (rec && rec.newSpecies) setTimeout(() => Game.sfx('newEntry'), 700); } }, 250);
+    P.recent = null;
+    P.card = { res, rec, t: 0, name: res.species ? DexData.S[res.species].name : '', bname: res.species && DexData.S[res.species].beh[res.beh] ? DexData.S[res.species].beh[res.beh].n : '', held: !!res.held };
+    setTimeout(() => { if (res.species) { if (rec && rec.newSpecies) setTimeout(() => Game.sfx('newEntry'), 1500); } }, 250);
     U.emit('photo', res);
     return res;
+  }
+  /* ---------- hold the shutter: the camera watches for up to 5 s and keeps the best moment ---------- */
+  function shutterDown() {
+    if (!P.on || P.cool > 0) return;
+    if (P.card && P.card.t > 0.5) { P.card = null; return; }
+    P.hold = { t: 0, best: null, next: 0.05, n: 0, newBest: 0 };
+    Game.sfx('focus');
+  }
+  function shutterUp(cancel) {
+    const H = P.hold; if (!H) return;
+    P.hold = null;
+    if (cancel === true) return;
+    if (H.t < 0.3 || !H.best) { shoot(); return; }
+    finishHold(H);
+  }
+  function sampleHold(H) {
+    const res = evaluate(true);
+    H.n++;
+    const sc = res.species ? res.score * (res.rating ? 0.7 + res.rating.avg * 0.6 : 1) : 0;
+    if (!H.best || sc > H.bestS) { H.best = res; H.bestS = sc; H.newBest = 0.35; if (res.species) Game.sfx('blip', null, 0.25); }
+  }
+  function finishHold(H) {
+    const res = H.best;
+    P.cool = 0.6; P.flash = 1; P.shots++;
+    Game.sfx('shutter');
+    for (const m of Mons.all) if (m !== Game.mudkip) m.hear('shutter', m.x, 0.5);
+    if (res.buf && !res.img) res.img = bufURL(res.buf);
+    res.held = true;
+    // patience pays: the chosen moment scores a timing bonus
+    if (res.species) { res.score = Math.round(res.score * 1.1); if (res.rating) { res.rating.time = Math.min(1, res.rating.time + 0.1); const r = res.rating; r.avg = r.pose * 0.18 + r.act * 0.26 + r.frame * 0.26 + r.rare * 0.1 + r.time * 0.2; r.grade = r.avg >= 0.86 ? 'S' : r.avg >= 0.72 ? 'A' : r.avg >= 0.56 ? 'B' : r.avg >= 0.4 ? 'C' : 'D'; } res.medal = res.score >= 6000 ? 4 : res.score >= 4000 ? 3 : res.score >= 2200 ? 2 : 1; }
+    register(res);
   }
   function spritePx(m) {
     const s = m.spr; if (!s) return 1;
@@ -226,7 +288,17 @@ const Photo = (() => {
     let n = 0; for (let i = 0; i < s.d.length; i++) if (s.d[i]) n++;
     return (s.px = Math.max(1, n));
   }
-  function cropBuf(fb, c) {
+  function bufURL(b) {
+    try {
+      const cvs = document.createElement('canvas'); cvs.width = b.w; cvs.height = b.h;
+      const x2 = cvs.getContext('2d'), im = x2.createImageData(b.w, b.h);
+      new Uint32Array(im.data.buffer).set(b.d); x2.putImageData(im, 0, 0);
+      let url = cvs.toDataURL('image/png');
+      if (url.length > 26000) url = cvs.toDataURL('image/jpeg', 0.9);
+      return url;
+    } catch (e) { return null; }
+  }
+  function cropBuf(fb, c, quick = false) {
     const k = Math.max(1, Math.ceil(c.w / 180));
     const w = Math.floor(c.w / k), h = Math.floor(c.h / k);
     const b = new PX.Buf(w, h);
@@ -236,15 +308,7 @@ const Photo = (() => {
       for (let j = 0; j < k; j++) for (let i = 0; i < k; i++) { const v = fb.d[(c.y + y * k + j) * fb.w + c.x + x * k + i]; r += v & 255; g += (v >>> 8) & 255; bl += (v >>> 16) & 255; }
       const q = k * k; b.d[y * w + x] = U.pack(r / q, g / q, bl / q);
     }
-    let url = null;
-    try {
-      const cvs = document.createElement('canvas'); cvs.width = w; cvs.height = h;
-      const x2 = cvs.getContext('2d'), im = x2.createImageData(w, h);
-      new Uint32Array(im.data.buffer).set(b.d); x2.putImageData(im, 0, 0);
-      url = cvs.toDataURL('image/png');
-      if (url.length > 26000) url = cvs.toDataURL('image/jpeg', 0.9);
-    } catch (e) { /* headless or tainted: keep the in-memory copy only */ }
-    return { thumb: b, url };
+    return { thumb: b, url: quick ? null : bufURL(b) };
   }
 
   /* ---------- lens attacks ---------- */
@@ -381,7 +445,16 @@ const Photo = (() => {
     UI.orb(fb, scx, scy + pr, sr, 0xfff2f4fa, { ol: S.ink });
     UI.orb(fb, scx, scy + pr, sr - 4, P.cool > 0 ? U.tweak(S.accent, 0, 1, -0.2) : S.accent, { ol: S.ink });
     Font.icon(fb, 'cam', scx - 4, scy - 3 + pr, 1);
-    HUD.btn('shutter', scx - sr - 3, scy - sr - 3, sr * 2 + 6, sr * 2 + 6, () => shoot());
+    HUD.btn('shutter', scx - sr - 3, scy - sr - 3, sr * 2 + 6, sr * 2 + 6, null, { drag: (ux, uy, ph) => { if (ph === 'down') shutterDown(); else if (ph === 'up') shutterUp(); } });
+    // hold ring: the camera is watching for the best moment
+    if (P.hold) {
+      const H = P.hold, k = Math.min(1, H.t / 5);
+      for (let a = 0; a < 64 * k; a++) { const an = -Math.PI / 2 + (a / 64) * Math.PI * 2; UI.put(fb, Math.round(scx + Math.cos(an) * (sr + 4)), Math.round(scy + Math.sin(an) * (sr + 4)), H.newBest > 0 ? 0xff5aff7a : 0xffffffff); UI.put(fb, Math.round(scx + Math.cos(an) * (sr + 5)), Math.round(scy + Math.sin(an) * (sr + 5)), 0xff1b2240); }
+      const secs = Math.max(0, 5 - H.t).toFixed(1);
+      Font.draw(fb, 'CAPTURING  ' + secs, (x0 + x1) / 2, y0 + 6, Math.sin(t * 10) > 0 ? 0xff4a4aff : 0xffffffff, { font: 'small', align: 'center', outline: 0xff0a0e1a });
+      if (H.best && H.best.species) Font.draw(fb, 'best so far: ' + (DexData.S[H.best.species] ? DexData.S[H.best.species].name : '') + '  ' + (H.best.rating ? H.best.rating.grade : ''), (x0 + x1) / 2, y0 + 16, 0xffffffff, { font: 'small', align: 'center', outline: 0xff0a0e1a });
+      if (H.newBest > 0) { const q = Math.round(H.newBest * 20); for (const [sx, sy] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]]) UI.ring(fb, sx, sy, 6 + q, 0xff5aff7a, 1); }
+    } else if (!P.card) Font.draw(fb, 'tap: snap   hold: capture the moment', (x0 + x1) / 2, y1 - 10, 0xc0ffffff, { font: 'small', align: 'center', outline: 0xff0a0e1a });
     // close + grid toggles (top-left of frame)
     const cb = HUD.pressed('camx') ? 1 : 0;
     UI.panel(fb, 4, H - 22 - cb * 0, 20, 18, { r: 3, ol: S.ink, fill: S.btn });
@@ -423,5 +496,67 @@ const Photo = (() => {
       if (r.rec && (r.rec.newSpecies || r.rec.newBeh) && Math.sin(r.t * 10) > -0.4) Font.icon(fb, 'new', x + w - 13, y + 1, 1);
     } else Font.draw(fb, 'No Pokémon', x + w / 2, y + th + 12, 0xff6a7088, { font: 'small', align: 'center' });
   }
-  return Object.assign(P, { frameRect, open, close, setZoom, aimDrag, aimEnd, keyAim, updateCam, tapFocus, update, dof, shoot, hitLens, drawLens, drawUI, drawRecent, inView, crop });
+  /* ---------- the rating card ---------- */
+  const BARS = [['POSE', 'pose', U.hex('#ff9a5a')], ['ACTIVITY', 'act', U.hex('#5ad8ff')], ['FRAMING', 'frame', U.hex('#7aff9a')], ['RARITY', 'rare', U.hex('#d87aff')], ['TIMING', 'time', U.hex('#ffd84a')]];
+  const GRADE_C = { S: U.hex('#ffd23a'), A: U.hex('#5aff9a'), B: U.hex('#5ad0ff'), C: U.hex('#ff9ab8'), D: U.hex('#c0c4d0') };
+  const CARD = { bg: U.hex('#221c3e'), dots: U.hex('#5a4a8a'), label: U.hex('#d8d0f8'), track: U.hex('#120e24'), hint: U.hex('#8a82b0'), tape: U.hex('#ffe8a0') };
+  function drawCard(fb, t) {
+    const C = P.card; if (!C) return;
+    const res = C.res, W = fb.w, H = fb.h, k = U.ease.outBack(Math.min(1, C.t / 0.35));
+    const out = C.t > 8.5 ? (C.t - 8.5) / 0.5 : 0;
+    UI.rectA(fb, 0, 0, W, H, 0xff0a0e20, 0.55 * Math.min(1, C.t / 0.2) * (1 - out));
+    const portrait = H > W;
+    const cw = Math.min(W - 16, portrait ? 320 : 460), ch = Math.min(H - 16, portrait ? 360 : 230);
+    const x0 = Math.round((W - cw) / 2), y0 = Math.round((H - ch) / 2 + (1 - k) * 80 + out * 60);
+    UI.rrect(fb, x0, y0 + 4, cw, ch, 10, 0xff0a0e1a);
+    UI.rrect(fb, x0, y0, cw, ch, 10, 0xff1b2240); UI.rrect(fb, x0 + 2, y0 + 2, cw - 4, ch - 4, 8, CARD.bg);
+    for (let x = x0 + 10; x < x0 + cw - 10; x += 6) UI.put(fb, x, y0 + 5, CARD.dots);
+    // the photo, as a polaroid with a strip of tape
+    const tb = res.buf;
+    const maxPW = portrait ? cw - 24 : Math.round(cw * 0.52), maxPH = portrait ? Math.round(ch * 0.45) : ch - 56;
+    const sc = tb ? Math.min(maxPW / tb.w, maxPH / tb.h) : 1;
+    const pw = tb ? Math.round(tb.w * sc) : maxPW, ph = tb ? Math.round(tb.h * sc) : maxPH;
+    const px = x0 + 12, py = y0 + 14;
+    UI.rrect(fb, px - 5, py - 5, pw + 10, ph + 22, 2, 0xfffbf8f0);
+    if (tb) UI.imgFit(fb, tb, px, py, pw, ph);
+    UI.rectA(fb, px + pw / 2 - 16, py - 9, 32, 9, CARD.tape, 0.8);
+    Font.draw(fb, res.species ? C.name + (C.bname ? '  ·  ' + C.bname : '') : 'No Pokémon in shot', px + pw / 2, py + ph + 6, 0xff1b2240, { font: 'small', align: 'center' });
+    if (C.held) Font.draw(fb, 'MOMENT CAPTURE', px + 4, py + 4, 0xffffffff, { font: 'small', outline: 0xff1b2240 });
+    if (C.rec && (C.rec.newSpecies || C.rec.newBeh) && Math.sin(C.t * 10) > -0.3) Font.icon(fb, 'new', px + pw - 14, py + 2, 1);
+    // the bars
+    const bx = portrait ? x0 + 16 : px + pw + 18, by = portrait ? py + ph + 26 : y0 + 18, bw = portrait ? cw - 90 : x0 + cw - bx - 70;
+    const R = res.rating;
+    if (R) {
+      BARS.forEach(([lab, key, col], i) => {
+        const y = by + i * 20, kk = clamp((C.t - 0.35 - i * 0.18) / 0.5, 0, 1), v = R[key] * U.ease.outCubic(kk);
+        Font.draw(fb, lab, bx, y, CARD.label, { font: 'small' });
+        UI.rrect(fb, bx, y + 9, bw, 7, 3, CARD.track); UI.rrect(fb, bx + 1, y + 10, Math.max(0, Math.round((bw - 2) * v)), 5, 2, col);
+        if (kk > 0) Font.draw(fb, String(Math.round(v * 100)), bx + bw + 4, y + 8, 0xffffffff, { font: 'small' });
+        if (kk > 0 && kk < 0.1 && !C['s' + i]) { C['s' + i] = 1; Game.sfx('blip', null, 0.3); }
+      });
+      // grade stamp
+      const gk = clamp((C.t - 1.5) / 0.3, 0, 1);
+      if (gk > 0) {
+        if (!C.stamped) { C.stamped = 1; Game.sfx('stamp'); setTimeout(() => SFX.rank(0, 1, res.medal || 1), 120); Game.shake && Game.shake(1.5); }
+        const gx = portrait ? x0 + cw - 40 : x0 + cw - 38, gy = portrait ? by + 40 : y0 + ch - 70, s = gk < 1 ? 3 - gk * 1 : 2;
+        const col = GRADE_C[R.grade];
+        UI.disc(fb, gx, gy, 24, 0xff0a0e1a); UI.ring(fb, gx, gy, 22, col, 3); UI.ring(fb, gx, gy, 17, col, 1);
+        Font.draw(fb, R.grade, gx, gy - 9 * s / 2 - 2, col, { font: 'title', align: 'center', sc: Math.round(s) });
+        if (R.grade === 'S') for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + t * 2; UI.put(fb, Math.round(gx + Math.cos(a) * 29), Math.round(gy + Math.sin(a) * 29), 0xfffff4a0); }
+      }
+    }
+    // points and medal
+    const pts = res.species ? Math.round(res.score * clamp((C.t - 1.7) / 1, 0, 1)) : 0;
+    const ty = portrait ? y0 + ch - 22 : y0 + ch - 24;
+    if (res.species) {
+      const mc = [0, 0xffc07a3a, 0xffb8c0d0, 0xffffc83a, 0xff9af0ff][res.medal || 1];
+      UI.disc(fb, bx + 6, ty + 5, 6, 0xff0a0e1a); UI.disc(fb, bx + 6, ty + 5, 5, mc);
+      Font.draw(fb, pts + ' pts', bx + 16, ty + 1, 0xffffffff, { font: 'body' });
+      Font.draw(fb, DexData.MEDALS[res.medal || 1] + '  ' + '{star}'.repeat(res.stars || 0), bx + 16, ty + 13, U.tweak(mc, 0, 1, 0.1), { font: 'small' });
+    }
+    if (C.t > 0.8) Font.draw(fb, 'tap to continue', x0 + cw - 10, y0 + ch - 11, CARD.hint, { font: 'small', align: 'right' });
+  }
+  function cardDown() { if (!P.card) return false; if (P.card.t > 0.5) P.card = null; return true; }
+  function cardKey(k) { if (!P.card) return false; if (P.card.t > 0.5 && (k === ' ' || k === 'Enter' || k === 'Escape' || k === 'x')) { P.card = null; return true; } return k === ' ' || k === 'Enter'; }
+  return Object.assign(P, { frameRect, open, close, setZoom, aimDrag, aimEnd, keyAim, updateCam, tapFocus, update, dof, shoot, evaluate, shutterDown, shutterUp, hitLens, drawLens, drawUI, drawRecent, drawCard, cardDown, cardKey, inView, crop });
 })();

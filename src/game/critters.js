@@ -99,6 +99,9 @@ const Critters = (() => {
 
   const q = (v, s) => Math.round(v / s) * s;
   let uid = 0;
+  // HD mode: a creature only switches to a new pose once its double-resolution sprite is ready too,
+  // so it never flickers between low- and high-resolution art
+  const HDS = { on: false };
 
   class Critter {
     constructor(sp, o = {}) {
@@ -184,7 +187,13 @@ const Critters = (() => {
           Budget.left -= performance.now() - t0;
         }
       }
-      if (s) this.spr = s;
+      if (s) {
+        if (HDS.on && !this.noHD) {
+          const h2 = this.sprite2(P);
+          if (h2) { this.spr = s; this.spr2 = h2; }
+          else if (!this.spr) this.spr = s; // anchors / hit tests only: not drawn until its HD sprite exists
+        } else this.spr = s;
+      }
       return this.spr;
     }
     // double-resolution sprite of the current pose (for the HD pass); returns null until it is ready
@@ -372,5 +381,5 @@ const Critters = (() => {
     hit(wx, wy, pad = 3) { return Math.hypot(wx - this.x, wy - this.y) < this.R + pad; }
   }
 
-  return { Critter, BeachBall, Budget, Pool, shadow, setShadowColor, dropTime, cacheStats: () => ({ n: cache.size, mb: (bytes / 1048576).toFixed(1), wk: Pool.ready ? Pool.workers.length : 0, q: Pool.queue.size }) };
+  return { Critter, BeachBall, Budget, Pool, HDS, shadow, setShadowColor, dropTime, cacheStats: () => ({ n: cache.size, mb: (bytes / 1048576).toFixed(1), wk: Pool.ready ? Pool.workers.length : 0, q: Pool.queue.size }) };
 })();

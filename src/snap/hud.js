@@ -106,7 +106,8 @@ const HUD = (() => {
     return p;
   }
   function drawCameraButton(fb, S, t) {
-    const R = 17, cx = fb.w - R - 10, cy = fb.h - R - 16;
+    const L = typeof Pad !== 'undefined' && Pad.L ? Pad.L : null;
+    const R = 15, cx = L ? Math.round(L.camX) : fb.w - R - 10, cy = L ? Math.round(L.camY) : fb.h - R - 16;
     const p = pressed('cam') ? 1 : 0;
     // pulse ring when something special is happening
     if (H.op >= 3) { const k = (H.opT * 1.6) % 1; UI.ring(fb, cx, cy, R + 3 + Math.round(k * 8), H.op >= 4 ? 0xffffd23a : 0xffffffff, 1); if (Math.sin(H.opT * 8) > 0) Font.draw(fb, '!', cx + R - 2, cy - R - 6, 0xffffd23a, { font: 'title', outline: INK }); }
@@ -140,34 +141,98 @@ const HUD = (() => {
       btn('t-' + tl.id, x - 1, y - 1, sz + 2, sz + 4, () => tool(tl.id));
     });
   }
+  /* ---- pixel-art icons for the top bar (drawn from primitives so they stay crisp) ---- */
+  const IC = { ink: INK, w: WHITE };
+  function icoDex(fb, cx, cy, S) {
+    UI.rrect(fb, cx - 6, cy - 7, 12, 15, 3, INK); UI.rrect(fb, cx - 5, cy - 6, 10, 13, 2, U.hex('#e8384a'));
+    UI.hline(fb, cx - 3, cx + 3, cy - 5, U.hex('#ff7a84'));
+    UI.disc(fb, cx - 2, cy - 3, 2, INK); UI.disc(fb, cx - 2, cy - 3, 1, U.hex('#5ac8ff')); UI.put(fb, cx - 3, cy - 4, WHITE);
+    UI.put(fb, cx + 2, cy - 4, U.hex('#ffd23a')); UI.put(fb, cx + 4, cy - 4, U.hex('#6aff8a'));
+    UI.rect(fb, cx - 4, cy + 1, 8, 4, INK); UI.rect(fb, cx - 3, cy + 2, 6, 2, U.hex('#9fe8b0'));
+    UI.hline(fb, cx - 5, cx + 4, cy - 1, U.hex('#a8182a'));
+  }
+  function icoMap(fb, cx, cy) {
+    const c = [U.hex('#f4e2b0'), U.hex('#e2cc92'), U.hex('#f4e2b0')];
+    for (let i = 0; i < 3; i++) { const x0 = cx - 7 + i * 5, dy = i % 2 ? 1 : 0; UI.rect(fb, x0, cy - 5 + dy, 5, 10, INK); UI.rect(fb, x0 + 1, cy - 4 + dy, 3, 8, c[i]); }
+    UI.rect(fb, cx - 5, cy - 2, 2, 2, U.hex('#4ab860')); UI.rect(fb, cx + 1, cy + 1, 3, 2, U.hex('#4a90e8'));
+    // dotted route and a red X
+    UI.put(fb, cx - 3, cy + 1, U.hex('#b06a3a')); UI.put(fb, cx - 1, cy, U.hex('#b06a3a')); UI.put(fb, cx + 1, cy - 1, U.hex('#b06a3a'));
+    const r = U.hex('#e8384a'); UI.put(fb, cx + 3, cy - 4, r); UI.put(fb, cx + 5, cy - 4, r); UI.put(fb, cx + 4, cy - 3, r); UI.put(fb, cx + 3, cy - 2, r); UI.put(fb, cx + 5, cy - 2, r);
+  }
+  function icoBag(fb, cx, cy) {
+    const o = U.hex('#f28a3a'), oD = U.hex('#c8602a'), oL = U.hex('#ffb872'), fl = U.hex('#dc6e2e');
+    // handle loop
+    UI.hline(fb, cx - 2, cx + 1, cy - 8, INK); UI.put(fb, cx - 3, cy - 7, INK); UI.put(fb, cx + 2, cy - 7, INK);
+    UI.rrect(fb, cx - 6, cy - 6, 12, 14, 3, INK); UI.rrect(fb, cx - 5, cy - 5, 10, 12, 2, o);
+    UI.hline(fb, cx - 3, cx + 2, cy - 5, oL); UI.vline(fb, cx - 5, cy - 3, cy + 4, oL);
+    UI.hline(fb, cx - 3, cx + 2, cy + 6, oD); UI.vline(fb, cx + 4, cy - 3, cy + 4, oD);
+    // flap with a buckle
+    UI.rrect(fb, cx - 5, cy - 5, 10, 5, 2, fl); UI.hline(fb, cx - 5, cx + 4, cy, INK);
+    UI.rect(fb, cx - 1, cy - 1, 2, 3, U.hex('#ffd23a')); UI.put(fb, cx - 1, cy - 1, WHITE);
+    // front pocket
+    UI.rect(fb, cx - 3, cy + 2, 6, 4, INK); UI.rect(fb, cx - 2, cy + 3, 4, 2, U.hex('#e27a36'));
+  }
+  function icoHat(fb, cx, cy, t) {
+    const st = U.hex('#f2cc66'), stD = U.hex('#c89c40'), rb = U.hex('#e8384a');
+    // crown
+    UI.rrect(fb, cx - 5, cy - 6, 10, 9, 3, INK); UI.rrect(fb, cx - 4, cy - 5, 8, 7, 2, st);
+    UI.hline(fb, cx - 3, cx + 1, cy - 5, U.hex('#fff0b8'));
+    UI.rect(fb, cx - 4, cy - 1, 8, 2, rb); UI.put(fb, cx + 2, cy - 1, U.hex('#ff8a8a'));
+    // brim
+    for (let x = -8; x <= 8; x++) { const h = x * x > 49 ? 1 : 2; for (let y = 0; y < h; y++) UI.put(fb, cx + x, cy + 2 + y, st); UI.put(fb, cx + x, cy + 2 + h, INK); UI.put(fb, cx + x, cy + 1, x > -6 && x < 6 ? stD : INK); }
+    UI.put(fb, cx - 9, cy + 3, INK); UI.put(fb, cx + 9, cy + 3, INK);
+    // twinkle
+    const k = Math.sin(t * 3) > 0 ? 1 : 0, sx = cx + 7, sy = cy - 6;
+    UI.put(fb, sx, sy, WHITE); UI.put(fb, sx - 1, sy, WHITE); UI.put(fb, sx + 1, sy, WHITE); UI.put(fb, sx, sy - 1, WHITE); UI.put(fb, sx, sy + 1, WHITE);
+    if (k) { UI.put(fb, sx - 2, sy, U.hex('#fff4a0')); UI.put(fb, sx + 2, sy, U.hex('#fff4a0')); UI.put(fb, sx, sy - 2, U.hex('#fff4a0')); UI.put(fb, sx, sy + 2, U.hex('#fff4a0')); }
+  }
+  function icoSound(fb, cx, cy, on) {
+    UI.rect(fb, cx - 6, cy - 2, 3, 5, WHITE); for (let i = 0; i < 4; i++) UI.vline(fb, cx - 3 + i, cy - 2 - i, cy + 2 + i, WHITE);
+    if (on) { for (const r of [3, 6]) for (let a = -0.9; a <= 0.9; a += 0.12) UI.put(fb, Math.round(cx + 2 + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), WHITE); }
+    else { const r = U.hex('#ff5a6a'); for (let i = -2; i <= 2; i++) { UI.put(fb, cx + 4 + i, cy + i, r); UI.put(fb, cx + 4 + i, cy - i, r); } }
+  }
+  const TOPI = { dex: (fb, x, y, S, t) => icoDex(fb, x, y, S), map: (fb, x, y) => icoMap(fb, x, y), bag: (fb, x, y) => icoBag(fb, x, y), style: (fb, x, y, S, t) => icoHat(fb, x, y, t), snd: (fb, x, y) => icoSound(fb, x, y, Sound.on) };
   function drawTop(fb, S, t) {
-    // right: Pokédex, map, sound
-    const bw = 22, y = 6;
+    // right: Pokédex, map, bag, wardrobe, sound — icon buttons, no words
+    const bw = 24, y = 6;
     const items = [
-      { id: 'dex', icon: 'dexIcon', fn: () => (Game.mode === 'dex' ? Dex.close() : Dex.open()) },
-      { id: 'map', icon: 'map', fn: () => (Game.mode === 'map' ? WorldMap.close() : WorldMap.open()) },
-      { id: 'snd', icon: Sound.on ? 'snd' : 'mute', fn: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); } },
+      { id: 'dex', fn: () => (Game.mode === 'dex' ? Dex.close() : Dex.open()), badge: Quests.unseen() },
+      { id: 'map', fn: () => (Game.mode === 'map' ? WorldMap.close() : WorldMap.open()) },
+      { id: 'bag', fn: () => Bag.open(), badge: typeof Bag !== 'undefined' && Bag.fresh && Bag.fresh() },
+      { id: 'style', fn: () => Style.open(), badge: typeof Style !== 'undefined' && Style.fresh && Style.fresh() },
+      { id: 'snd', fn: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); } },
     ];
     items.forEach((it, i) => {
-      const x = fb.w - 6 - (items.length - i) * (bw + 4);
-      const p = pressed(it.id) ? 1 : 0;
-      UI.rrect(fb, x, y + 2, bw, bw, 4, 0xff0a0e1a);
-      UI.panel(fb, x, y + p, bw, bw, { r: 4, ol: S.ink, fill: it.id === 'dex' ? S.body : S.btn, hi: U.tweak(it.id === 'dex' ? S.body : S.btn, 0, 1, 0.14) });
-      const I = ICONS[it.icon];
-      iconAt(fb, it.icon, x + Math.floor((bw - I.m[0].length * (it.id === 'dex' ? 1 : 1)) / 2), y + p + Math.floor((bw - I.m.length) / 2), 1);
+      const x = fb.w - 6 - (items.length - i) * (bw + 3);
+      const p = pressed(it.id) ? 1 : 0, hov = H.hoverId === it.id;
+      UI.rrect(fb, x, y + 2, bw, bw, 6, 0xff0a0e1a);
+      const fill = it.id === 'dex' ? S.body : hov ? U.tweak(S.btn, 0, 1, 0.08) : S.btn;
+      UI.panel(fb, x, y + p, bw, bw, { r: 6, ol: S.ink, fill, hi: U.tweak(fill, 0, 1, 0.16) });
+      TOPI[it.id](fb, x + bw / 2, y + p + bw / 2, S, t);
       btn(it.id, x - 1, y - 1, bw + 2, bw + 4, it.fn);
-      if (it.id === 'dex' && Quests.unseen()) { UI.disc(fb, x + bw - 2, y + 2, 3, 0xffff3a4a); UI.put(fb, x + bw - 2, y + 2, 0xffffffff); }
+      if (it.badge) { UI.disc(fb, x + bw - 2, y + 2, 3, 0xffff3a4a); UI.put(fb, x + bw - 2, y + 2, 0xffffffff); }
+      if (hov) Font.draw(fb, { dex: 'Pokédex (P)', map: 'Map (M)', bag: 'Bag (B)', style: 'Wardrobe (V)', snd: 'Sound' }[it.id], x + bw / 2, y + bw + 5, 0xffffffff, { font: 'small', align: 'center', outline: INK });
     });
     // left: clock (tap = let time pass) + points
     const hr = Game.hour();
     const x = 6;
     const p = pressed('clock') ? 1 : 0;
-    UI.rrect(fb, x, y + 2, 22, 22, 4, 0xff0a0e1a);
-    UI.panel(fb, x, y + p, 22, 22, { r: 4, ol: S.ink, fill: S.btn });
-    Font.icon(fb, hr === 'night' || hr === 'dusk' ? 'moon' : 'sun', x + 4, y + 4 + p, 2);
-    btn('clock', x - 1, y - 1, 24, 26, () => Game.tryTime());
-    UI.panel(fb, x + 26, y + 3 + p * 0, 64, 16, { r: 3, ol: S.ink, fill: U.mix(S.btn, 0xff000000, 0.2), hi: null, sh: null });
-    Font.draw(fb, '{coin}' + Save.data.points, x + 30, y + 8, 0xffffffff, { font: 'small' });
+    UI.rrect(fb, x, y + 2, 24, 24, 6, 0xff0a0e1a);
+    UI.panel(fb, x, y + p, 24, 24, { r: 6, ol: S.ink, fill: S.btn });
+    Font.icon(fb, hr === 'night' || hr === 'dusk' ? 'moon' : 'sun', x + 5, y + 5 + p, 2);
+    btn('clock', x - 1, y - 1, 26, 28, () => Game.tryTime());
+    UI.panel(fb, x + 28, y + 4, 64, 16, { r: 4, ol: S.ink, fill: U.mix(S.btn, 0xff000000, 0.2), hi: null, sh: null });
+    Font.draw(fb, '{coin}' + Save.data.points, x + 32, y + 9, 0xffffffff, { font: 'small' });
+  }
+  // throw a berry at the nearest Pokémon in front (or just ahead)
+  function throwBerry() {
+    const mk = Game.mudkip; if (!mk || Game.mode !== 'explore') return;
+    if (!Save.useItem('berry')) { toast('No berries left — shake a berry bush or dig!'); Game.sfx('error'); return; }
+    const d = Math.cos(mk.yaw) >= 0 ? 1 : -1;
+    let best = null, bd = 1e9;
+    for (const m of Mons.all) { if (m === mk || !m.alive || !m.visible) continue; const dx = (m.x - mk.x) * d; if (dx < 8 || dx > 160) continue; const q = dx + Math.abs(m.y - mk.y); if (q < bd) { bd = q; best = m; } }
+    const tx = best ? best.x - d * 10 : mk.x + d * 60, ty = best ? best.y - 4 : World.standY(mk.x + d * 60);
+    mk.wakeUp(); mk.doTask(mk.throwBerry(tx, ty), 2);
   }
   function drawBanner(fb, S, t) {
     const b = H.ban; if (!b) return;
@@ -224,18 +289,24 @@ const HUD = (() => {
     if (Game.mode === 'title') { drawTitle(fb, t); return; }
     if (Game.mode === 'dex') { Dex.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'map') { WorldMap.draw(fb, t); drawToasts(fb, S, t, true); return; }
-    if (Game.mode === 'camera') { Photo.drawUI(fb, t); Music.drawUI(fb, t, 'camera'); drawToasts(fb, S, t, false, Music.rect ? 60 : 34); return; }
+    if (Game.mode === 'bag') { Bag.draw(fb, t); drawToasts(fb, S, t, true); return; }
+    if (Game.mode === 'style') { Style.draw(fb, t); drawToasts(fb, S, t, true); return; }
+    if (Game.mode === 'memory') { Memories.draw(fb, t); return; }
+    if (Game.mode === 'camera') { Photo.drawUI(fb, t); Music.drawUI(fb, t, 'camera'); Talk.drawBubbles(fb, t); drawToasts(fb, S, t, false, Music.rect ? 60 : 34); Photo.drawCard && Photo.drawCard(fb, t); return; }
     drawScan(fb, S, t);
+    Talk.drawBubbles(fb, t);
     drawTop(fb, S, t);
-    drawTools(fb, S, t);
-    drawCameraButton(fb, S, t);
+    if (typeof Pad !== 'undefined') Pad.draw(fb, S, t);
+    if (!Talk.busy()) drawCameraButton(fb, S, t);
     Music.drawUI(fb, t, 'explore');
-    Photo.drawRecent(fb, t);
     drawBanner(fb, S, t);
     drawScope(fb, t);
     drawToasts(fb, S, t);
     Quests.drawPop(fb, t);
     if (WorldMap.reveal) WorldMap.drawReveal(fb, t);
+    if (typeof Moves !== 'undefined') { Moves.drawWheel(fb, S, t); Moves.drawLearn(fb, S, t); }
+    Talk.drawDialog(fb, t);
+    if (Photo.drawCard) Photo.drawCard(fb, t);
   }
-  return Object.assign(H, { btn, down, move, up, hover, pressed, toast, banner, tool, update, draw, iconAt, ICONS, scope });
+  return Object.assign(H, { btn, down, move, up, hover, pressed, toast, banner, tool, update, draw, iconAt, ICONS, scope, throwBerry, icoBag, icoHat, icoDex, icoMap });
 })();

@@ -25,13 +25,16 @@ const Game = (() => {
   // HD pass: the world is drawn at the pixel-art resolution, then Pokémon are re-drawn at twice the
   // resolution on top (3D models rendered at 2× scale), so creatures look smooth and detailed
   G.hd = !qs.has('lowres');
+  Critters.HDS.on = G.hd;
   let dpr = 1, devW = 0, devH = 0, zBase = 4, US = 3;
   function layout() {
     dpr = window.devicePixelRatio || 1;
     const r = wrap.getBoundingClientRect();
     devW = Math.max(200, Math.round(r.width * dpr)); devH = Math.max(150, Math.round(r.height * dpr));
     const step = 1; // (the HD canvas is scaled by z/2; fine at any zoom on high-DPI screens)
-    zBase = Math.max(step, Math.round(devH / 330 / step) * step);
+    // close camera: about 205 world pixels tall, so Mudkip and the Pokémon fill the screen
+    // (portrait phones: keep at least ~190 world pixels across)
+    zBase = Math.max(step, Math.min(Math.round(devH / 205 / step) * step, Math.floor(devW / 190)));
     while ((devW / zBase) * (devH / zBase) > 300000) zBase += step;
     G.zStep = step;
     if (!G.zoomSet) { G.zoom = zBase; G.zoomSet = true; }
@@ -76,6 +79,10 @@ const Game = (() => {
     c.x = G.VW >= A.W ? (A.W - G.VW) / 2 : clamp(c.x, 0, A.W - G.VW);
     const y0 = A.camY ? A.camY[0] : -100, y1 = A.camY ? A.camY[1] : A.H - G.VH;
     c.y = clamp(c.y, y0, Math.max(y0, y1 - G.VH));
+    // never look down into the ground: the bottom edge stays just below the deepest ground in view
+    let gmax = -1e9;
+    for (let x = c.x; x <= c.x + G.VW; x += 16) { const g = World.groundAt(x); if (g > gmax) gmax = g; }
+    if (gmax > -1e9) c.y = Math.min(c.y, Math.max(y0, gmax + (A.floorPeek ?? 40) - G.VH));
   }
   G.clampCam = clampCam;
 
@@ -130,7 +137,7 @@ const Game = (() => {
     if (def.spawn) def.spawn(A, G);
     if (def.weather) Weather.set(def.weather(G.hour()), true); else Weather.set({ rain: 0, fog: 0 }, true);
     Stage.setHour(G.hour(), true);
-    G.cam.x = G.mudkip.x - G.VW * 0.45; G.cam.y = G.mudkip.y - G.VH * (A.frameY ?? 0.7); clampCam();
+    G.cam.x = G.mudkip.x - G.VW * 0.45; G.cam.y = G.mudkip.y - G.VH * (A.frameY ?? 0.76); clampCam();
     if (G.started && !o.noIntro) G.cine.intro();
     Save.visit(id);
     Music.areaTrack(def.music);
@@ -167,7 +174,7 @@ const Game = (() => {
         const c = G.cam;
         if (sh.kind === 'intro') {
           const k = ease(Math.min(1, sh.t / sh.dur));
-          const mk = G.mudkip, tx = mk.x - G.VW * 0.5, ty = mk.y - G.VH * (G.area.frameY ?? 0.7);
+          const mk = G.mudkip, tx = mk.x - G.VW * 0.5, ty = mk.y - G.VH * (G.area.frameY ?? 0.76);
           c.x = lerp(sh.fromX, tx, k); c.y = lerp(sh.fromY, ty, k); clampCam();
           this.zGoal = lerp(sh.zoom, 1, k);
           if (sh.t >= sh.dur) this.shot = null;
@@ -214,15 +221,24 @@ const Game = (() => {
     G.camF = G.camF || { x: 0, y: 0 };
     const kf = 1 - Math.exp(-dt * 1.2);
     G.camF.x += (fx - G.camF.x) * kf; G.camF.y += (fy - G.camF.y) * kf;
-    const tx = mk.x - G.VW * 0.5 + lead + c.lookX + G.camF.x, ty = mk.y - G.VH * (mk.inWater ? 0.5 : (G.area.frameY ?? 0.7)) + c.lookY + G.camF.y;
+    const tx = mk.x - G.VW * 0.5 + lead + c.lookX + G.camF.x, ty = mk.y - G.VH * (mk.inWater ? 0.5 : (G.area.frameY ?? 0.76)) + c.lookY + G.camF.y;
     const k = 1 - Math.exp(-dt * 3.2);
     c.x += (tx - c.x) * k; c.y += (ty - c.y) * k;
     if (!drag) { c.lookX *= Math.exp(-dt * 1.2); c.lookY *= Math.exp(-dt * 1.2); }
     clampCam();
   }
+  const SCREEN = () => ({ bag: typeof Bag !== 'undefined' ? Bag : null, style: typeof Style !== 'undefined' ? Style : null, memory: typeof Memories !== 'undefined' ? Memories : null })[G.mode] || null;
+  G.frozenMode = () => G.mode === 'dex' || G.mode === 'map' || G.mode === 'bag' || G.mode === 'style' || G.mode === 'memory';
   function update(dt) {
     G.rt += dt;
+    if (typeof Talk !== 'undefined') Talk.update(dt);
     if (G.mode === 'dex' || G.mode === 'map') { if (G.mode === 'dex') Dex.update(dt); if (G.mode === 'map') WorldMap.update(dt); HUD.update(dt); Music.update(dt); return; }
+    const scr = SCREEN();
+    if (scr) { scr.update(dt); HUD.update(dt); Music.update(dt); return; }
+    if (typeof Moves !== 'undefined') Moves.update(dt);
+    if (typeof Pad !== 'undefined') Pad.apply(G.mudkip, dt);
+    // the move wheel slows time right down while you choose
+    if (typeof Moves !== 'undefined' && Moves.wheel) dt *= 0.2;
     G.t += dt;
     const t = G.t;
     G.hourT += dt; if (G.hourT > G.HOUR_LEN) G.nextHour();
@@ -231,7 +247,10 @@ const Game = (() => {
     Stage.update(dt, t);
     Weather.update(dt, t);
     Items.update(dt, t);
+    Player.Bubbles.update(dt);
+    if (typeof Harvest !== 'undefined') Harvest.update(dt, t);
     for (const m of G.mons) if (m.alive) m.update(dt, t);
+    if (typeof Social !== 'undefined') Social.update(dt, t);
     G.mons = G.mons.filter((m) => m.alive);
     if (G.area.def.update) G.area.def.update(G.area, dt, t, G);
     FX.update(dt);
@@ -281,6 +300,7 @@ const Game = (() => {
     const mids = G.mons.filter((m) => !m.layer && m.visible && m.alive).sort((a, b) => (a.zd - b.zd) || (a.z - b.z));
     for (const m of mids) { m.draw(fb, cx, cy, occ); if (m.drawExtra) m.drawExtra(fb, cx, cy, P, t, occ); }
     Items.draw(fb, cx, cy, t);
+    if (typeof Harvest !== 'undefined') Harvest.draw(fb, cx, cy, t);
     if (typeof Toys !== 'undefined') { Toys.drawShells(fb, cx, cy, t); if (!o.ids) Toys.drawPrompts(fb, cx, cy, t); }
     if (!o.ids) drawPin(fb, cx, cy);
     Stage.drawProps(fb, cx, cy, t, true);
@@ -288,13 +308,17 @@ const Game = (() => {
     if (A.def.drawFront) A.def.drawFront(A, fb, cx, cy, t);
     // big creatures nearer than the lane's front props (e.g. Milotic in front of the bridge)
     for (const m of G.mons) if (m.layer === 'near' && m.visible && m.alive) { m.draw(fb, cx, cy, occ); if (m.drawExtra) m.drawExtra(fb, cx, cy, P, t, occ); }
+    // seabed life in front of everything under the water (tinted by the water pass)
+    if (typeof Harvest !== 'undefined') Harvest.drawUnder(fb, cx, cy, t);
     mark('scene');
     Stage.drawWater(fb, cx, cy, t);
+    Player.Bubbles.draw(fb, cx, cy);
     mark('water');
     FX.draw(fb, cx, cy, 1, t); FX.draw(fb, cx, cy, 2, t);
     Weather.draw(fb, cx, cy, t);
     FX.draw(fb, cx, cy, 3, t);
     Stage.drawGlows(fb, cx, cy, t);
+    if (typeof Harvest !== 'undefined') Harvest.drawFore(fb, cx, cy, t);
     Stage.drawFore(fb, cx, cy, t, dof ? dof.fore : 1);
     FX.draw(fb, cx, cy, 4, t);
     if (!G.lowFx) Stage.bloom(fb, G.hour() === 'night' ? 0.9 : 0.4, G.hour() === 'night' ? 150 : 222);
@@ -304,21 +328,23 @@ const Game = (() => {
   }
   G.drawWorld = drawWorld;
   G.fb = () => fb; G.idb = () => idb; G.occ = () => occ;
+  // the current world frame composed at double resolution (for photos): { d, w, h } or null
+  G.hdFrame = (cx, cy) => { if (!G.hd) return null; pre.set(fb.d); composeHD(cx, cy); return { d: hb, w: fb.w * 2, h: fb.h * 2 }; };
   function render() {
     if (G.area) {
       const sh = G.shakeA > 0 ? G.shakeA : 0;
       const cx = Math.round(G.cam.x + (sh ? (Math.random() - 0.5) * sh * 2 : 0)), cy = Math.round(G.cam.y + (sh ? (Math.random() - 0.5) * sh * 2 : 0));
       G.cx = cx; G.cy = cy;
-      if (G.mode !== 'dex' && G.mode !== 'map' || !G.frozenFrame) {
+      if (!G.frozenMode() || !G.frozenFrame) {
         drawWorld(cx, cy, G.t);
         if (G.hd) pre.set(fb.d);
         if (G.mode === 'camera') Photo.drawLens(fb, G.t);
         if (G.hd) composeHD(cx, cy);
-        if (G.mode === 'dex' || G.mode === 'map') G.frozenFrame = true;
+        if (G.frozenMode()) G.frozenFrame = true;
       }
       ctx.putImageData(img, 0, 0);
     }
-    if (G.mode !== 'dex' && G.mode !== 'map') G.frozenFrame = false;
+    if (!G.frozenMode()) G.frozenFrame = false;
     // UI
     ufb.d.fill(0);
     HUD.draw(ufb, G.rt);
@@ -339,8 +365,9 @@ const Game = (() => {
     for (const m of G.mons) {
       if (!m.visible || !m.alive || !m.spr || m.hideK >= 0.999 || !m.pid || m.layer === 'sea') continue;
       if (m.x + m.SW < cx - 20 || m.x - m.SW > cx + W + 20) continue;
-      const h2 = m.sprite2(P);
-      if (!h2) continue;
+      const h2 = m.spr2;
+      if (!h2 || m.noHD) continue;
+      if (m.rot) { composeRot(m, h2, cx, cy, W, H, W2, d); continue; }
       const s = h2.s, pid = m.pid;
       const bury2 = m.bury ? Math.round(s.h * m.bury) : 0;
       const X0 = m.flip ? Math.round(m.x) * 2 + h2.OX - s.x0 - s.w + 1 - cx * 2 : Math.round(m.x) * 2 - h2.OX + s.x0 - cx * 2;
@@ -365,6 +392,35 @@ const Game = (() => {
           }
           hb[Y * W2 + X] = 0xff000000 | (b << 16) | (g << 8) | r;
         }
+      }
+    }
+  }
+
+  // the HD pass for a rotated creature: rotate its 2× sprite about the same centre as the 1× one
+  function composeRot(m, h2, cx, cy, W, H, W2, d) {
+    const s = h2.s, s1 = m.spr, pid = m.pid;
+    const px = (m.ox() - cx + s1.w / 2) * 2, py = (m.oy() - cy + s1.h / 2 + (m.rotY || 0)) * 2;
+    const ca = Math.cos(m.rot), sa = Math.sin(m.rot), R = Math.ceil(Math.hypot(s.w, s.h) / 2) + 2;
+    const PX0 = Math.round(px), PY0 = Math.round(py), hw = s.w / 2, hh = s.h / 2;
+    const tint = m.tint || 0, tk = m.tintK || 0;
+    for (let y = -R; y <= R; y++) {
+      const Y = PY0 + y; if (Y < 0 || Y >= H * 2) continue;
+      const ly = Y >> 1;
+      for (let x = -R; x <= R; x++) {
+        const X = PX0 + x; if (X < 0 || X >= W2) continue;
+        const u = Math.floor(x * ca + y * sa + hw), v = Math.floor(-x * sa + y * ca + hh);
+        if (u < 0 || v < 0 || u >= s.w || v >= s.h) continue;
+        let c = s.d[v * s.w + (m.flip ? s.w - 1 - u : u)]; if (!c) continue;
+        const li = ly * W + (X >> 1);
+        if (idb[li] !== pid || d[li] !== pre[li]) continue;
+        const raw = rawb[li], fin = d[li];
+        if (tk) c = U.mix(c, tint, tk);
+        let r = c & 255, g = (c >>> 8) & 255, b = (c >>> 16) & 255;
+        if (raw !== fin) {
+          r += (fin & 255) - (raw & 255); g += ((fin >>> 8) & 255) - ((raw >>> 8) & 255); b += ((fin >>> 16) & 255) - ((raw >>> 16) & 255);
+          r = r < 0 ? 0 : r > 255 ? 255 : r; g = g < 0 ? 0 : g > 255 ? 255 : g; b = b < 0 ? 0 : b > 255 ? 255 : b;
+        }
+        hb[Y * W2 + X] = 0xff000000 | (b << 16) | (g << 8) | r;
       }
     }
   }
@@ -397,9 +453,11 @@ const Game = (() => {
       if (h instanceof Mons.Mon) {
         const side = mk.x < h.x ? -1 : 1;
         const reach = h.width() * 0.5 + 26;
-        if (Math.abs(mk.x - h.x) < reach + 30 && (mk.mode === h.mode || h.mode !== 'swim')) { h.onPoke(mk); mk.happyT = 0.3; }
+        // quest givers talk; everyone else says something and reacts to the poke
+        const poke = () => { if (!h.alive) return; if (!(typeof Talk !== 'undefined' && Talk.tryTalk(h))) h.onPoke(mk); };
+        if (Math.abs(mk.x - h.x) < reach + 30 && (mk.mode === h.mode || h.mode !== 'swim')) { poke(); mk.happyT = 0.3; }
         else if (h.mode === 'swim' || h.mode === 'fly') { mk.goTo(targetFor(h.x + side * reach, h.y)); }
-        else mk.goTo(Object.assign(targetFor(h.x + side * reach, h.y - 4), { then: () => { if (h.alive) { h.onPoke(mk); } } }));
+        else mk.goTo(Object.assign(targetFor(h.x + side * reach, h.y - 4), { then: poke }));
         return;
       }
       if (h.tap) {
@@ -453,35 +511,48 @@ const Game = (() => {
   const ptrs = new Map();
   let drag = null, pinch = null;
   const devXY = (e) => { const r = ui.getBoundingClientRect(); return [(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]; };
+  // pointers not held by the on-screen pad (joystick / A / B)
+  const freePtrs = () => [...ptrs.values()].filter((p) => !p.pad);
   ui.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     Sound.init && Music.unlock();
     ui.setPointerCapture(e.pointerId);
     const [x, y] = devXY(e);
+    const touch = e.pointerType === 'touch' || e.pointerType === 'pen';
     ptrs.set(e.pointerId, { x, y });
+    const P0 = ptrs.get(e.pointerId);
     const ux = x / US, uy = y / US;
-    if (ptrs.size === 1 && HUD.down(ux, uy, e.pointerId)) { ptrs.get(e.pointerId).ui = true; return; }
-    if (G.mode === 'dex') { Dex.down(ux, uy); ptrs.get(e.pointerId).ui = true; return; }
-    if (G.mode === 'map') { ptrs.get(e.pointerId).ui = true; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y), m0: WorldMap.dist }; } return; }
-    if (G.mode === 'title') return;
-    if (ptrs.size === 1) drag = { x0: x, y0: y, lx: G.cam.lookX, ly: G.cam.lookY, moved: false, t0: performance.now() };
-    else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y), z0: Photo.zoom }; drag = null; }
+    // modal layers first: dialogue, the photo rating card, the move wheel
+    if (typeof Talk !== 'undefined' && Talk.down(ux, uy)) { P0.ui = true; P0.sink = true; return; }
+    if (Photo.cardDown && Photo.cardDown(ux, uy)) { P0.ui = true; P0.sink = true; return; }
+    if (G.mode === 'explore' && typeof Moves !== 'undefined' && Moves.wheel) { Moves.tapWheel(ux, uy); P0.ui = true; P0.sink = true; return; }
+    if (G.mode === 'explore' && typeof Pad !== 'undefined' && Pad.down(ux, uy, e.pointerId, touch)) { P0.pad = true; return; }
+    if (freePtrs().length === 1 && HUD.down(ux, uy, e.pointerId)) { P0.ui = true; return; }
+    if (G.mode === 'dex') { Dex.down(ux, uy); P0.ui = true; return; }
+    if (G.mode === 'map') { P0.ui = true; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y), m0: WorldMap.dist }; } return; }
+    if (G.mode === 'title' || SCREEN()) { P0.ui = true; return; }
+    const fp = freePtrs();
+    if (fp.length === 1) drag = { x0: x, y0: y, lx: G.cam.lookX, ly: G.cam.lookY, moved: false, t0: performance.now(), pid: e.pointerId };
+    else if (fp.length === 2) { const [a, b] = fp; pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y), z0: Photo.zoom }; drag = null; }
   });
   ui.addEventListener('pointermove', (e) => {
     const [x, y] = devXY(e);
     if (!ptrs.has(e.pointerId)) { HUD.hover(x / US, y / US); return; }
     const p = ptrs.get(e.pointerId);
     p.x = x; p.y = y;
+    if (p.pad) { Pad.move(x / US, y / US, e.pointerId); if (Moves.wheel && Pad.b && Pad.b.pid === e.pointerId) Moves.wheelPoint(x / US, y / US); return; }
+    if (p.sink) return;
     if (p.ui) { if (G.mode === 'dex') Dex.move(x / US, y / US); else HUD.move(x / US, y / US, e.pointerId); return; }
-    if (pinch && ptrs.size >= 2) {
-      const [a, b] = [...ptrs.values()];
+    const fp = freePtrs();
+    if (pinch && fp.length >= 2) {
+      const [a, b] = fp;
       const d = Math.hypot(a.x - b.x, a.y - b.y), k = d / pinch.d0;
       if (G.mode === 'map') { WorldMap.dist = U.clamp(pinch.m0 / k, 0.55, 1.6); return; }
       if (G.mode === 'camera') Photo.setZoom(pinch.z0 * k);
       else if (k > 1.3) { setZoom(G.zoom + 1); pinch.d0 = d; } else if (k < 0.77) { setZoom(G.zoom - 1); pinch.d0 = d; }
       return;
     }
-    if (!drag) return;
+    if (!drag || drag.pid !== e.pointerId) return;
     const dx = x - drag.x0, dy = y - drag.y0;
     if (!drag.moved && Math.hypot(dx, dy) > 10 * dpr) drag.moved = true;
     if (drag.moved) {
@@ -494,9 +565,11 @@ const Game = (() => {
     const p = ptrs.get(e.pointerId);
     const [x, y] = devXY(e);
     ptrs.delete(e.pointerId);
+    if (p.pad) { Pad.up(e.pointerId); return; }
+    if (p.sink) return;
     if (p.ui) { if (G.mode === 'dex') { if (e.type === 'pointercancel') Dex.cancel && Dex.cancel(); else Dex.up(x / US, y / US); } else HUD.up(x / US, y / US, e.pointerId); return; }
-    if (pinch) { if (ptrs.size < 2) { pinch = null; drag = null; } return; }
-    if (drag) {
+    if (pinch) { if (freePtrs().length < 2) { pinch = null; drag = null; } return; }
+    if (drag && drag.pid === e.pointerId) {
       if (!drag.moved && e.type === 'pointerup') {
         const [wx, wy] = G.devToWorld(x, y);
         if (G.mode === 'camera') Photo.tapFocus(wx, wy); else if (G.mode === 'explore') tapWorld(wx, wy);
@@ -511,39 +584,70 @@ const Game = (() => {
     e.preventDefault();
     if (G.mode === 'dex') { Dex.wheel(e.deltaY); return; }
     if (G.mode === 'map') { WorldMap.wheel(e.deltaY); return; }
+    const scr = SCREEN(); if (scr) { scr.wheel && scr.wheel(e.deltaY); return; }
     if (G.mode === 'camera') { Photo.setZoom(Photo.zoom * Math.exp(-e.deltaY * 0.0015)); return; }
     wheelAcc += e.deltaY;
     const [x, y] = devXY(e);
     if (wheelAcc > 90) { setZoom(G.zoom - 1, x, y); wheelAcc = 0; } else if (wheelAcc < -90) { setZoom(G.zoom + 1, x, y); wheelAcc = 0; }
   }, { passive: false });
   const keysDown = new Set();
+  const MOVE_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
   window.addEventListener('keydown', (e) => {
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (G.mode === 'title') { if (k === 'Enter' || k === ' ') { start(); e.preventDefault(); } return; }
     if (G.mode === 'dex') { Dex.key(k); e.preventDefault(); return; }
     if (G.mode === 'map') { WorldMap.key(k); e.preventDefault(); return; }
+    const scr = SCREEN(); if (scr) { scr.key(k, e); e.preventDefault(); return; }
+    if (typeof Talk !== 'undefined' && Talk.key(k, e)) { e.preventDefault(); return; }
+    if (Photo.cardKey && Photo.cardKey(k, e)) { e.preventDefault(); return; }
+    if (typeof Moves !== 'undefined' && Moves.wheel && !e.repeat && Moves.wheelKey(k)) { e.preventDefault(); return; }
+    const first = !keysDown.has(k);
     keysDown.add(k);
-    if (k === 'c') { G.mode === 'camera' ? Photo.close() : Photo.open(); }
-    else if (k === ' ' || k === 'Enter') { if (G.mode === 'camera') Photo.shoot(); else Photo.open(); e.preventDefault(); }
+    const mk = G.mudkip;
+    if (G.mode === 'camera') {
+      if ((k === ' ' || k === 'Enter') && first) Photo.shutterDown ? Photo.shutterDown() : Photo.shoot();
+      else if (k === 'c' || k === 'Escape') Photo.close();
+      else if (k === '+' || k === '=') Photo.setZoom(Photo.zoom * 1.25);
+      else if (k === '-' || k === '_') Photo.setZoom(Photo.zoom / 1.25);
+      if (k === ' ' || k === 'Enter' || k.startsWith('Arrow')) e.preventDefault();
+      keysMove();
+      return;
+    }
+    if (G.mode !== 'explore') return;
+    if (k === ' ') { if (first && mk) mk.jumpPress(); e.preventDefault(); }
+    else if ((k === 'ArrowUp' || k === 'w') && first && mk && mk.mode !== 'swim') { mk.jumpPress(); e.preventDefault(); }
+    else if (k === 'Enter' || k === 'c') Photo.open();
+    else if ((k === 'x' || k === 'e' || k === 'j') && first) Moves.press();
+    else if (k === 'q' && first) Moves.toggleWheel();
+    else if (k === 'f' && first) HUD.throwBerry && HUD.throwBerry();
+    else if (k === 'b' || k === 'i') Bag.open();
+    else if (k === 'v') Style.open();
     else if (k === 'p' || k === 'Tab') { Dex.open(); e.preventDefault(); }
     else if (k === 'm') WorldMap.open();
-    else if (k === 'Escape') { if (G.mode === 'camera') Photo.close(); }
     else if (k === 't') G.tryTime();
-    else if (k === '+' || k === '=') G.mode === 'camera' ? Photo.setZoom(Photo.zoom * 1.25) : setZoom(G.zoom + 1);
-    else if (k === '-' || k === '_') G.mode === 'camera' ? Photo.setZoom(Photo.zoom / 1.25) : setZoom(G.zoom - 1);
-    else if (k === '1') HUD.tool('water'); else if (k === '2') HUD.tool('song'); else if (k === '3') HUD.tool('berry'); else if (k === '4') HUD.tool('scan');
+    else if (k === '+' || k === '=') setZoom(G.zoom + 1);
+    else if (k === '-' || k === '_') setZoom(G.zoom - 1);
+    else if (MOVE_KEYS.includes(k) && first) { const m = Moves.LIST[+k - 1]; if (m) { Moves.select(Moves.LIST.indexOf(m)); if (Moves.has(m.id)) HUD.toast(m.name + ' ready', { life: 1, col: m.col }); } }
+    if (k.startsWith('Arrow')) e.preventDefault();
     keysMove();
   });
-  window.addEventListener('keyup', (e) => { keysDown.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key); keysMove(); });
-  window.addEventListener('blur', () => { keysDown.clear(); keysMove(); });
+  window.addEventListener('keyup', (e) => {
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    keysDown.delete(k);
+    if ((k === 'x' || k === 'e' || k === 'j') && G.mode === 'explore') Moves.release();
+    if ((k === ' ' || k === 'Enter') && G.mode === 'camera' && Photo.shutterUp) Photo.shutterUp();
+    keysMove();
+  });
+  window.addEventListener('blur', () => { keysDown.clear(); keysMove(); if (typeof Pad !== 'undefined') Pad.reset(); if (Photo.shutterUp) Photo.shutterUp(true); });
   function keysMove() {
     const mk = G.mudkip; if (!mk) return;
     const L = keysDown.has('ArrowLeft') || keysDown.has('a'), R = keysDown.has('ArrowRight') || keysDown.has('d');
     const Up = keysDown.has('ArrowUp') || keysDown.has('w'), Dn = keysDown.has('ArrowDown') || keysDown.has('s');
-    if (G.mode === 'camera') { Photo.keyAim((R ? 1 : 0) - (L ? 1 : 0), (Dn ? 1 : 0) - (Up ? 1 : 0)); return; }
-    mk.keyDir = (R ? 1 : 0) - (L ? 1 : 0); mk.keyY = (Dn ? 1 : 0) - (Up ? 1 : 0);
-    mk.sneak = keysDown.has('Shift');
+    if (G.mode === 'camera') { Photo.keyAim((R ? 1 : 0) - (L ? 1 : 0), (Dn ? 1 : 0) - (Up ? 1 : 0)); Pad.setKeys({ dx: 0, dy: 0, run: false, jump: false, sneak: false }); return; }
+    if (Moves.wheel) { Pad.setKeys({ dx: 0, dy: 0, run: false, jump: false }); return; }
+    Pad.setKeys({ dx: (R ? 1 : 0) - (L ? 1 : 0), dy: (Dn ? 1 : 0) - (Up ? 1 : 0), run: keysDown.has('Shift'), sneak: keysDown.has('z'), jump: keysDown.has(' ') || (Up && mk.mode !== 'swim') });
   }
+  G.keysDown = keysDown;
 
   /* ---------- start ---------- */
   function start() {
@@ -583,6 +687,8 @@ const Game = (() => {
   window.addEventListener('popstate', () => { if (G.mode === 'dex') Dex.close(); else if (G.mode === 'map') WorldMap.close(); else if (G.mode === 'camera') Photo.close(); });
   G.pushBack = () => { try { history.pushState({ snap: 1 }, ''); } catch (e) { /* sandboxed */ } };
   function boot() {
+    // touch screens show the joystick from the start
+    try { if (typeof Pad !== 'undefined' && ((window.matchMedia && matchMedia('(pointer: coarse)').matches) || navigator.maxTouchPoints > 0)) Pad.touch = true; } catch (e) { /* ignore */ }
     const wk = document.getElementById('wk-src');
     if (wk && !qs.has('noworker')) Critters.Pool.init(wk.textContent);
     Save.load();

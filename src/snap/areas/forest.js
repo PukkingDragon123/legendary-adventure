@@ -13,7 +13,7 @@ Areas.forest = (() => {
   const def = {
     id: 'forest', name: 'Weather Woods', sub: 'Route 119 Rainforest', music: 'lake', seed: 23,
     W: 3300, H: 900, sea: null, refY: 560, h0: 118, cy0: 330, ph: 0.05, skyH: 300, sunH: 130, band: 12, waves: 0.6,
-    camY: [-60, 900], frameY: 0.68, start: 240,
+    camY: [-60, 900], frameY: 0.76, start: 240,
     ground: [[0, 560], [200, 556], [420, 562], [700, 558], [880, 562], [925, 572], [960, 600], [1010, 628], [1100, 640], [1200, 648], [1300, 640], [1400, 626], [1445, 600], [1478, 572], [1520, 562], [1800, 556], [2000, 560], [2200, 562], [2248, 572], [2290, 600], [2400, 614], [2520, 618], [2640, 612], [2740, 598], [2782, 572], [2820, 562], [3000, 556], [3300, 550]],
     water: [{ x0: RIVER.x0, x1: RIVER.x1, level: RIVER.level, kind: 'river' }, { x0: POND.x0, x1: POND.x1, level: POND.level, kind: 'pond' }],
     plats: [{ x0: BRIDGE.x0, x1: BRIDGE.x1, y: BRIDGE.y, kind: 'bridge', ladders: [1195] }],

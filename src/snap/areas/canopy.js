@@ -14,7 +14,7 @@ Areas.canopy = (() => {
   const def = {
     id: 'canopy', name: 'Treetop Town', sub: 'Fortree Canopy', music: 'space', seed: 41,
     W: GEO.W, H: 900, sea: null, refY: 560, h0: 118, cy0: 330, ph: 0.05, skyH: 300, sunH: 140, band: 8, waves: 0,
-    camY: [-80, 840], frameY: 0.64, start: 230, clouds: 9,
+    camY: [-80, 840], frameY: 0.7, floorPeek: 140, start: 230, clouds: 9,
     ground,
     water: [],
     plats: GEO.segs.filter((s) => s.k !== 'deck').map((s) => ({ x0: s.x0, x1: s.x1, y: 1e6, kind: s.k === 'bridge' ? 'bridge' : 'branch', fy: (x) => GEO.groundAt(x) })),

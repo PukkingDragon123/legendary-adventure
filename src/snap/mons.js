@@ -188,6 +188,8 @@ const Mons = (() => {
     draw(fb, cx, cy, occ) {
       const s = this.spr;
       if (!s || !this.visible || this.hideK >= 0.999) return;
+      if (Critters.HDS.on && !this.spr2 && !this.noHD && this.layer !== 'sea') return;
+      if (this.rot) { this.drawRot(fb, cx, cy, occ); return; }
       const X = this.ox() - cx, Y = this.oy() - cy + (this.bury ? Math.round(s.h * this.bury) : 0);
       const W = fb.w, H = fb.h, d = fb.d;
       const rows = this.bury ? Math.max(1, Math.round(s.h * (1 - this.bury))) : s.h;
@@ -213,6 +215,28 @@ const Mons = (() => {
       }
     }
   }
+
+  // rotated blit (somersaults, faceplants, playing dead): nearest-neighbour around the sprite centre
+  Mon.prototype.drawRot = function (fb, cx, cy, occ) {
+    const s = this.spr, W = fb.w, H = fb.h, d = fb.d;
+    const px = this.ox() - cx + s.w / 2, py = this.oy() - cy + s.h / 2 + (this.rotY || 0);
+    const ca = Math.cos(this.rot), sa = Math.sin(this.rot), R = Math.ceil(Math.hypot(s.w, s.h) / 2) + 1;
+    const PX0 = Math.round(px), PY0 = Math.round(py), hw = s.w / 2, hh = s.h / 2;
+    const idb = Stage.S.idOn ? Stage.S.idb : null, pid = this.pid || 0, rawb = Stage.S.rawb, occV = this.occV;
+    const tint = this.tint || 0, tk = this.tintK || 0;
+    for (let y = -R; y <= R; y++) {
+      const Y = PY0 + y; if (Y < 0 || Y >= H) continue;
+      for (let x = -R; x <= R; x++) {
+        const X = PX0 + x; if (X < 0 || X >= W) continue;
+        const u = Math.floor(x * ca + y * sa + hw), v = Math.floor(-x * sa + y * ca + hh);
+        if (u < 0 || v < 0 || u >= s.w || v >= s.h) continue;
+        const c = s.d[v * s.w + (this.flip ? s.w - 1 - u : u)]; if (!c) continue;
+        const cc = tk ? U.mix(c, tint, tk) : c, i = Y * W + X;
+        d[i] = cc; if (occ) occ[i] = occV;
+        if (idb) { idb[i] = pid; if (rawb) rawb[i] = cc; }
+      }
+    }
+  };
 
   return { Mon, Task, wait, until, both, all, rnd, pick, chance };
 })();

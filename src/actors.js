@@ -76,12 +76,17 @@ class MudkipActor {
     const side = Math.max(-1, Math.min(1, Math.cos(yaw) * 3));
     P.finTwist = q((pose.finTwist ?? 0.32) * side, 0.04);
     P.tailTwist = q((pose.tailTwist ?? -0.85) * side, 0.04);
+    // cosmetics (the game's wardrobe dresses the painting's Mudkip)
+    if (this.extra) { for (const k in this.extra) if (this.extra[k] !== null && this.extra[k] !== undefined) P[k] = this.extra[k]; P.side = side; }
     const key = yaw + '|' + Object.values(P).join('|');
     let s = this.cache.get(key);
+    // optional render budget: at most n new poses per frame (keep the last one meanwhile)
+    if (!s && this.budget && this.budget.n <= 0 && this.last) return this.last;
     if (!s) {
       s = Mudkip.render(Mudkip.build(P), {
         yaw, pitch: this.pitch, scale: this.scale, W: this.SW, H: this.SH, ox: this.OX, oy: this.OY, pal: this.pal, light: this.light,
       });
+      if (this.budget) this.budget.n--;
       this.cache.set(key, s);
       if (this.cache.size > 400) this.cache.delete(this.cache.keys().next().value);
     }

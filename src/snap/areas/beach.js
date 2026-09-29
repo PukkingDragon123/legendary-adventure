@@ -612,6 +612,7 @@ Areas.beach = (() => {
     if (typeof FossilAI !== 'undefined') FossilAI.update(A, dt, t, G);
     if (typeof SeaAI !== 'undefined') SeaAI.update(A, dt, t, G);
   };
+  def.ball = () => (BeachAI.S ? BeachAI.S.ball : null);
   def.spawn = (A, G) => { BeachAI.spawn(A, G); if (typeof FossilAI !== 'undefined') FossilAI.spawn(A, G); if (typeof SeaAI !== 'undefined') SeaAI.spawn(A, G); };
   def.weather = (hour) => ({ rain: 0, fog: hour === 'dawn' ? 0.25 : 0 });
   def.ambient = (hour, W) => {
