@@ -147,7 +147,7 @@ const Latios = (() => {
     { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 2 },
   ];
   const TRI = { t0: 3.55, t1: 4.55, w: 11 };          // belly triangle (spline param range, top half-width)
-  const PATCH = { t: 3.3, dt: 0.95, z: 0.62, dz: 0.42, y: -0.25, dy: 0.55 };
+  const PATCH = { t: 3.45, dt: 0.62, z: 0.8, dz: 0.3, y: -0.15, dy: 0.5 };
   const HEAD = { h: [48, 203, 0], j: [112, 125, 0], ph: -0.06, pj: 0.06 };
   const CRAN_R = [24, 19.5, 19], SNOUT_C = [16.5, -5.5, 0], SNOUT_R = [19.5, 11.5, 13], SNOUT_TILT = -0.1;
   const jawLine = (x) => (x > 8 ? -3 - (x - 8) * 0.1 : -3 - (8 - x) * 0.26);
