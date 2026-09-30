@@ -40,11 +40,11 @@ const Swellow = (() => {
   const NAVY = 1, RED = 2, WHITE = 3, BEAK = 4, LEG = 5, CLAW = 6, MOUTH = 7, EYEK = 8, EYEW = 9;
   const MAT = { NAVY, RED, WHITE, BEAK, LEG, CLAW, MOUTH, EYEK, EYEW };
   const PAL = Creature.palette({
-    [NAVY]:  { r: ['#0e1e40', '#162c5a', '#1f4078', '#305a9a', '#5480bc'], od: '#060c1e', ol: '#10204a', ln: '#0c1a3c' },
-    [RED]:   { r: ['#860c2a', '#ae1438', '#d6234c', '#ec5270', '#fc92a4'], od: '#46040f', ol: '#7a0a24', ln: '#700a22' },
+    [NAVY]:  { r: ['#161828', '#22253c', '#303452', '#434a6c', '#636a8c'], od: '#0a0a14', ol: '#1a1c2e', ln: '#141626' },
+    [RED]:   { r: ['#7e2236', '#a2344a', '#c44c62', '#da6c80', '#eea0ac'], od: '#420c18', ol: '#76202e', ln: '#6c1c2a' },
     [WHITE]: { r: ['#a4aabe', '#c8cede', '#eceff6', '#fafbfd', '#ffffff'], od: '#3c4460', ol: '#68708c', ln: '#8088a4' },
-    [BEAK]:  { r: ['#b8860c', '#d8a818', '#f2c82a', '#fadd66', '#fff2b0'], od: '#5c4204', ol: '#94700a', ln: '#8e6a0c' },
-    [LEG]:   { r: ['#8e1030', '#b41c40', '#d83456', '#ee6078', '#fc9eae'], od: '#46040f', ol: '#7a0a24', ln: '#700a22' },
+    [BEAK]:  { r: ['#a8883a', '#c8a44a', '#e2c060', '#f0d888', '#fcf0c0'], od: '#5a4418', ol: '#8e7030', ln: '#86682a' },
+    [LEG]:   { r: ['#8a3444', '#aa4a5a', '#c86474', '#dc8490', '#ecb0b8'], od: '#48141e', ol: '#7a2c38', ln: '#702834' },
     [CLAW]:  { r: ['#22242c', '#30323c', '#40444e', '#585c68', '#80848e'], od: '#0e1014', ol: '#22242c', ln: '#1a1c22' },
     [MOUTH]: { r: ['#4e1224', '#6a1c30', '#86283e', '#a03c50', '#b85668'], od: '#2a0610', ol: '#4e1224', ln: '#46101e' },
     [EYEK]:  { r: ['#08090e', '#0c0e14', '#10141c', '#181e28', '#242c38'], od: '#040508', ol: '#040508', ln: '#040508' },
@@ -151,7 +151,7 @@ const Swellow = (() => {
   const WING_G = bakeShape(Shape2D.poly([[0, -10], [0, 11], [16, 12.5], [38, 9.5], [60, 4.5], [82, 0.6], [62, -3.2], [40, -6.5], [18, -10]], C_NAVY, 8));
   const WING_LN = Shape2D.catmull([[6, -4], [30, -2.5], [58, -0.6]], false, 4);
   // streamer: long thin blade, crimson tip
-  const STR_G = bakeShape(Shape2D.poly([[0, -4], [30, -3.6], [62, -2.6], [86, -1], [96, 0], [86, 1.6], [62, 3.4], [30, 4.2], [0, 4.2]], C_NAVY, 6, (u) => (u > 60 ? C_RED : C_NAVY)));
+  const STR_G = bakeShape(Shape2D.poly([[0, -4], [30, -3.6], [62, -2.6], [86, -1], [96, 0], [86, 1.6], [62, 3.4], [30, 4.2], [0, 4.2]], C_NAVY, 6, (u, v) => (u > 18 && u < 88 && v > -0.5 && v < 2.6 - 0.02 * Math.abs(u - 55) ? C_RED : C_NAVY)));
   // pointed lower tail
   const TAIL_G = bakeShape(Shape2D.poly([[0, -6], [18, -5], [36, -2.5], [48, 0], [36, 2.5], [18, 5], [0, 6]], C_NAVY, 6));
   // crest spike
@@ -172,8 +172,8 @@ const Swellow = (() => {
     const kind = ['open', 'happy', 'blink', 'closed'].includes(P.eyes) ? P.eyes : 'open';
     const hop = walking ? 3.5 * Math.abs(Math.sin(st)) : 0;
     // body pitch: perched upright, level in flight, nose down in a dive
-    const pitch = lerp(0.05, 0.5, pe) * (1 - dv) - 0.95 * dv;
-    const root = chain(T(0, 55 + hop, 0), R(M3.rz(pitch)));
+    const pitch = lerp(0.05, 0.42, pe) * (1 - dv) - 0.95 * dv;
+    const root = chain(T(0, lerp(55, 44, pe) + hop, 0), R(M3.rz(pitch)));
 
     /* --- body --- */
     prims.push(ellF(root, [39, 24.5, 22.5], 1, 1, bodyMat));
