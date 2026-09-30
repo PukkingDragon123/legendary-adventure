@@ -243,7 +243,7 @@ const Latias = (() => {
     // ear fins: swept back from the back of the head, tilted outward
     for (const sd of [1, -1]) {
       const root = HP([-12, 8.5, sd * 9]);
-      const dir = HD(nrm([-1, -0.08 + 0.1 * k, sd * 0.42]));
+      const dir = HD(nrm([-1, 0.42 - 0.3 * k, sd * 0.42]));
       const L = frameUV(dir, HD([0, 1, sd * 0.7]), sd < 0);
       prims.push(shell(root, L, EAR, sd > 0 ? 22 : 23, sd > 0 ? 3 : 4, WHITE, 1.6));
     }
