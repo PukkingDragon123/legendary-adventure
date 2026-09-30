@@ -746,7 +746,7 @@ const BeachAI = (() => {
     const W = fb.w, H = fb.h, d = fb.d, hsh = U.hash, fbm = U.fbm, mix = U.mix;
     const night = Stage.S.hour === 'night' || Stage.S.hour === 'dusk';
     const waterAt = (dep) => { const k1 = clamp(dep / 260, 0, 1), k2 = clamp((dep - 260) / 520, 0, 1); return k2 > 0 ? mix(C.deep, C.abyss, k2) : mix(C.top, C.deep, k1 * k1 * 0.4 + k1 * 0.6); };
-    const drop = (wx) => clamp((wx - 10700) / 1600, 0, 1) * 420 + Math.max(0, 1 - Math.abs(wx - 2950) / 420) * 160;
+    const drop = (wx) => clamp((wx - 10700) / 1600, 0, 1) * 250 + Math.max(0, 1 - Math.abs(wx - 2950) / 420) * 160;
     const LAY = [[0.3, 330, 0.3, 11], [0.5, 430, 0.48, 23], [0.72, 520, 0.64, 37]];
     const rowC = new Uint32Array(H * 4);
     for (const [p, base, dark, seed] of LAY) {
@@ -761,7 +761,7 @@ const BeachAI = (() => {
         let h1 = 50 + fbm(wx * 0.0045, 0.2, seed, 4) * 190;
         const pin = fbm(wx * 0.03, 1.3, seed + 5, 2); if (pin > 0.62) h1 += (pin - 0.62) * 260; // rock pinnacles
         h1 += Math.max(0, Math.sin(wx * 0.07 + seed)) * 6 * (hsh(Math.floor(wx / 9), seed, 3) > 0.5 ? 1 : 0); // coral bumps along the crest
-        const topW = SEA + base + drop(lane) * (0.5 + p * 0.6) - h1;
+        const topW = SEA + base + drop(lane) * (0.3 + p * 0.4) - h1;
         const top = Math.round(topW - oy);
         if (top >= H) continue;
         const col = Math.floor(wx);

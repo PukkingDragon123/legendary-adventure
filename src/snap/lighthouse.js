@@ -495,6 +495,8 @@ const Lighthouse = (() => {
       if (u0) u0(A, dt, t, G);
       const mk = G.mudkip; S.near = null; if (!mk) return;
       const gy = World.groundAt(DX);
+      // the gallery railing keeps Mudkip from walking off (a jump can still clear it)
+      if (A.gallery && mk.plat === A.gallery && mk.air <= 0) mk.x = clamp(mk.x, A.gallery.x0 + 3, A.gallery.x1 - 3);
       if (A.gallery && mk.plat === A.gallery && Math.abs(mk.x - DX) < 20) S.near = { x: DX, y: A.gallery.y - 30, label: 'Go inside', fn: fromGallery };
       else if (mk.mode === 'land' && !mk.plat && Math.abs(mk.x - DX) < 16 && Math.abs(mk.y - gy) < 12) S.near = { x: DX, y: gy - 50, label: 'Enter the lighthouse', fn: enterTower };
       // the panoramic sweep from the gallery

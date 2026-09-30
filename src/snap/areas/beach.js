@@ -248,10 +248,10 @@ Areas.beach = (() => {
           // deep bedrock: layered strata, boulder clusters and cracks that darken gradually into the deep
           const dd = y - Math.max(SEA, g);
           if (dd > 40) {
-            const n3 = e.n1(x * 0.35, y * 0.35), bk = clamp((dd - 40) / 420, 0, 1);
+            const n3 = e.n1(Math.floor(x * 0.4), Math.floor(y * 0.4)), bk = clamp((dd - 40) / 260, 0, 1);
             const strata = Math.sin((y + n1 * 26 + Math.sin(x * 0.011) * 18) * 0.11);
             const boulder = n3 > 0.64, crack = Math.abs(n2 - 0.5) < 0.018;
-            let t = 0.64 - bk * 0.6 + strata * 0.16 + (n2 - 0.5) * 0.26 + (boulder ? 0.16 + (n3 - 0.64) * 1.2 : 0) - (crack ? 0.25 : 0);
+            let t = 0.6 - bk * 0.55 + strata * 0.2 + (n2 - 0.5) * 0.26 + (boulder ? 0.16 + (n3 - 0.64) * 1.2 : 0) - (crack ? 0.25 : 0);
             if (bk < 0.3 && bayer4(x, y) > bk / 0.3) return e.pickR(M.bedFace, t + 0.12, x, y);
             return e.pickR(boulder ? M.rockU : M.bedDeep, t, x, y);
           }
@@ -282,6 +282,13 @@ Areas.beach = (() => {
         : k < 0.8 ? Paint.miniSpr(['shell1', 'shell2', 'shell3', 'conch'][Math.floor(r() * 4)], M.shell)
         : Paint.rock(M, 7 + r() * 7, 5 + r() * 4, i, { ramp: under ? M.rockU : M.rock, flat: false, cracks: 0 });
       Terrain.stamp(A, s, x, g + 6 + dep);
+    }
+    // buried boulders and rock seams under the sea slopes, so the cross-section reads as real ground
+    for (let i = 0; i < 320; i++) {
+      const x = r() < 0.4 ? 1100 + r() * 2950 : 8420 + r() * 4180, g = gy(x);
+      if (g < SEA + 20) continue;
+      const dep = 14 + Math.pow(r(), 1.4) * 320;
+      Terrain.stamp(A, Paint.rock(M, 10 + r() * 30, 6 + r() * 16, 900 + i, { ramp: dep > 120 ? M.bedDeep.slice(1) : M.rockU, flat: false, cracks: 1 }), x, g + 8 + dep);
     }
     // ---- dock (walkable platform) ----
     const posts = []; for (let x = DOCK.x0 + 14; x <= DOCK.x1; x += 72) posts.push(x);
