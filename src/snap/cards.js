@@ -945,7 +945,7 @@ const Cards = (() => {
     const noMoves = my && !G.hand.some((h, i) => canPlay(G, i));
     const ew = 66, eh = 22;
     btn(fb, W - ew - 6, H - 60 + off, ew, eh, my ? 'END TURN' : G.step === 'them' ? 'FOE TURN' : '...', my ? (noMoves ? '#3ab860' : '#2a8a4a') : '#46505e', endTurn, { dim: !my, on: noMoves && ((t * 3) | 0) % 2 === 0 });
-    if (G.step === 'you' && G.turn === 1 && !G.seq && G.handK > 0.9) txt(fb, typeof Pad !== 'undefined' && Pad.touch ? 'TAP A CARD, TAP AGAIN TO PLAY' : 'CLICK A CARD TO PLAY  (1-9 / ARROWS + SPACE, E ENDS TURN)', W / 2, H - D.ch * 0.58 - 12 + off, 0xffd8e0f0, { align: 'center' });
+    if (G.step === 'you' && G.turn === 1 && !G.seq && G.handK > 0.9) txt(fb, typeof Pad !== 'undefined' && Pad.touch ? 'TAP A CARD, TAP AGAIN TO PLAY' : 'CLICK A CARD TO PLAY  (1-9 / ARROWS + SPACE, E ENDS TURN)', W / 2, Math.round(H * 0.1) + 6, 0xffd8e0f0, { align: 'center' });
   }
   function targetUI(G, tgt, W, H) {
     if (tgt === 'up') return [W / 2 - 5, -20];
