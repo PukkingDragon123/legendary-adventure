@@ -674,7 +674,7 @@ const Cards = (() => {
     if (G.zoom) G.zoom.t += dt;
     if (G.step === 'prize') G.prizeT += dt;
     if (G.step === 'lost') G.lostT += dt;
-    if (G.banner) { G.banner.t += dt; if (G.banner.t > 1) G.banner = null; }
+    if (G.banner) { G.banner.t += dt * (C.sel >= 0 || C.hov >= 0 ? 2 : 1); if (G.banner.t > 0.66) G.banner = null; }
     G.hailT = Math.max(0, (G.hailT || 0) - dt); G.koFlash = Math.max(0, (G.koFlash || 0) - dt);
     // nothing left to play: the turn ends by itself after a beat (the END TURN button fills up)
     if (G.step === 'you' && !G.seq && !C.deckView && G.handK > 0.9 && !G.hand.some((h, i) => canPlay(G, i))) { G.autoT += dt; if (G.autoT > 1.4) endTurn(); } else G.autoT = 0;
@@ -828,11 +828,13 @@ const Cards = (() => {
     // the foe's next move: a tab hanging under the inner end of its panel
     let limit = right ? x : x + w;
     if (!isYou && G.intent && (G.step === 'you' || G.step === 'them')) {
-      const mv = G.intent, I = intentText(G), lab = 'NEXT: ' + mv.n.toUpperCase() + '  ' + (I.ic === 'atk' ? I.txt + ' DMG' : I.long || I.txt);
+      const mv = G.intent, I = intentText(G);
+      let lab = 'NEXT: ' + mv.n.toUpperCase() + '  ' + (I.ic === 'atk' ? I.txt + (Font.measure(mv.n + ' 00 DMG', 'small') < w - 60 ? ' DMG' : '') : I.long || I.txt);
+      while (lab.length > 6 && Font.measure(lab, 'small') > w - 18) lab = lab.slice(0, -1);
       const w2 = Math.min(w - 8, Font.measure(lab, 'small') + 10), ix = right ? x + 3 : x + w - 3 - w2, iy = y + h + 1;
       const col = I.ic === 'z' ? hex('#3a6a8a') : I.ic === 'atk' ? (I.d >= 9 && ((t * 4) | 0) % 2 ? hex('#e84a2a') : hex('#b8302a')) : I.ic === 'blk' ? hex('#2a5aa8') : hex('#7a4a9a');
       UI.rrect(fb, ix - 1, iy - 1, w2 + 2, 11, 3, INK); UI.rrect(fb, ix, iy, w2, 9, 2, col);
-      txt(fb, lab, ix + w2 / 2, iy + 2, WHITE, { align: 'center', outline: undefined, maxW: w2 - 4 });
+      txt(fb, lab, ix + w2 / 2, iy + 2, WHITE, { align: 'center', outline: undefined });
       limit = right ? ix + w2 + 3 : ix - 3;
     }
     // statuses under the panel, from the outer end
@@ -967,7 +969,7 @@ const Cards = (() => {
   // YOUR TURN / FOE TURN: a ribbon sweeps across the middle of the screen
   function drawBanner(fb, t, G) {
     const B = G.banner; if (!B || G.zoom) return;
-    const W = fb.w, H = fb.h, k = B.t, inK = ease(Math.min(1, k / 0.16)), outK = k > 0.72 ? ease((k - 0.72) / 0.26) : 0;
+    const W = fb.w, H = fb.h, k = B.t, inK = ease(Math.min(1, k / 0.12)), outK = k > 0.46 ? ease((k - 0.46) / 0.2) : 0;
     const h = H >= 250 ? 34 : 26, y = Math.round(H * 0.4 - h / 2), x = Math.round((1 - inK) * -W + outK * W);
     const c = hex(B.col);
     UI.rect(fb, x, y - 2, W, h + 4, INK);
@@ -1210,6 +1212,21 @@ const Cards = (() => {
     }
   }
   const pick2 = (G, a) => a[(G.turn + G.dealt) % a.length];
+  function deckList(fb, ids, counts) {
+    const W = fb.w, H = fb.h, cols = W >= 380 ? 2 : 1, gap = 6, colW = Math.floor((W - 16 - (cols - 1) * gap) / cols);
+    const per = Math.ceil(ids.length / cols), y0 = 32, avail = H - 18 - y0, rowH = clamp(Math.floor(avail / per), 14, 26);
+    ids.forEach((id, i) => {
+      const c = def(id), col = Math.floor(i / per), row = i % per, x = 8 + col * (colW + gap), y = y0 + row * rowH, h = rowH - 2;
+      const K = CardArt.KIND[c.kind] || CardArt.KIND.skill;
+      UI.rrect(fb, x, y, colW, h, 3, INK); UI.rrect(fb, x + 1, y + 1, colW - 2, h - 2, 2, U.mix(K.base, INK, 0.45));
+      const tw = Math.round(h * 0.74); CardArt.blit(fb, CardArt.face(c, dims(W, H).cw, dims(W, H).ch), x + 2, y + 1, tw, h - 2);
+      UI.disc(fb, x + tw + 9, y + Math.round(h / 2), 5, INK); UI.disc(fb, x + tw + 9, y + Math.round(h / 2), 4, c.cost === 0 ? hex('#8ab8d8') : hex('#e87a1a'));
+      txt(fb, String(c.cost), x + tw + 9, y + Math.round(h / 2) - 3, c.costUp ? hex(GRN) : WHITE, { align: 'center' });
+      const nx = x + tw + 17, nm = c.name + (counts[id] > 1 ? '  x' + counts[id] : '') + (c.tm ? '  ' + c.tm : '');
+      txt(fb, nm, nx, y + 2, c.up ? hex(GRN) : WHITE, { outline: undefined });
+      if (h >= 18) { let d = c.desc; const maxW = colW - (nx - x) - 4; while (d.length > 4 && Font.measure(d, 'small') > maxW) d = d.slice(0, -2); if (d !== c.desc) d = d.replace(/\[[^\]]*$/, '') + '..'; txt(fb, d, nx, y + h - 8, 0xffd8e0f0, { outline: undefined }); }
+    });
+  }
   function drawDeck(fb, t) {
     const W = fb.w, H = fb.h, G = C.g;
     UI.rectA(fb, 0, 0, W, H, 0xff05060c, 0.86);
@@ -1221,6 +1238,8 @@ const Cards = (() => {
     const cols = Math.min(ids.length, Math.max(4, Math.floor((W - 16) / 60)));
     const rows = Math.ceil(ids.length / cols);
     const cw = clamp(Math.min(Math.floor((W - 16) / cols) - 6, Math.floor(((H - 60) / rows - 6) / 1.38)), 40, 76), ch = Math.round(cw * 1.38);
+    // small screens: a readable list (thumbnail, cost, name, rules text) instead of tiny cards
+    if (cw < 54) { deckList(fb, ids, counts); const hint = tmMoves().length ? 'TM cards come from moves you learn in the world' : 'Learn TMs in the world to unlock new cards!'; txt(fb, hint + (G ? '  ·  tap or D to close' : ''), W / 2, H - 10, hex(GOLD), { align: 'center' }); C.btns.push({ x: 0, y: 20, w: W, h: H - 20, fn: () => { C.deckView = false; } }); return; }
     const D = { cw, ch, bw: cw, bh: ch };
     const x0 = Math.round(W / 2 - (cols * (cw + 6) - 6) / 2), y0 = 34;
     ids.forEach((id, i) => {

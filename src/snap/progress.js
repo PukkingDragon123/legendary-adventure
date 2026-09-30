@@ -348,12 +348,12 @@ const Progress = (() => {
     if (P.lvUp) {
       const U0 = P.lvUp, t0 = U0.t;
       // the celebration waits for the explore screen (not while taking photos, talking or reading the log)
-      if (t0 >= 0 || (Game.mode === 'explore' && !Talk.dlg && !P.log)) U0.t += dt;
+      if (t0 >= 0 || (Game.mode === 'explore' && !Talk.dlg && !P.log && !(typeof Cards !== 'undefined' && Cards.live))) U0.t += dt; // (not during a card battle)
       if (t0 < 0 && U0.t >= 0) lvStart();
       if (t0 < FLIP && U0.t >= FLIP) lvFlip();
       if (U0.t > LVT) { P.lvUp = null; lvLand(); }
     }
-    if (!P.lvUp && P.cards.length) { P.cards[0].t += dt; if (P.cards[0].t > 3.8) P.cards.shift(); }
+    if (!P.lvUp && P.cards.length && !(typeof Cards !== 'undefined' && Cards.live)) { P.cards[0].t += dt; if (P.cards[0].t > 3.8) P.cards.shift(); }
     // unlock=all: locked moves stay out of the way
     if (!has('wheel') && Moves.wheel) Moves.closeWheel();
     // collecting revealed clues
@@ -683,7 +683,7 @@ const Progress = (() => {
     Font.draw(fb, f.desc, x + 12, y + 20, 0xff5a6080, { font: 'small' });
   }
   { const b0 = Talk.drawBubbles; Talk.drawBubbles = function (fb, t) { const r = b0.call(this, fb, t); try { drawClues(fb, t); if (Game.mode === 'explore' && !(typeof Arcade !== 'undefined' && Arcade.live)) { drawLevel(fb, t); arrowTo(fb, t); } } catch (e) { console.error(e); } return r; }; }
-  { const d0 = Talk.drawDialog; Talk.drawDialog = function (fb, t) { const r = d0.call(this, fb, t); try { if (P.log) drawLog(fb, t); else if (!Talk.dlg) drawCards(fb, t); } catch (e) { console.error(e); } return r; }; }
+  { const d0 = Talk.drawDialog; Talk.drawDialog = function (fb, t) { const r = d0.call(this, fb, t); try { if (P.log) drawLog(fb, t); else if (!Talk.dlg && !(typeof Cards !== 'undefined' && Cards.live && !(P.lvUp && P.lvUp.t >= 0))) drawCards(fb, t); } catch (e) { console.error(e); } return r; }; }
 
   /* ---------- world map markers ---------- */
   { const w0 = WorldMap.draw; WorldMap.draw = function (fb, t) {

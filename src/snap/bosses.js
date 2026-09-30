@@ -147,8 +147,9 @@ const Bosses = (() => {
     const M = WorldMap, id = M.sel; if (!id || M.travel || !AREA[id] || !Save.unlocked(id)) return;
     const k = M.closing ? 1 - M.closing / 0.4 : Math.min(1, M.anim * 1.6);
     const W = fb.w, H = fb.h, cw = Math.min(214, W - 16), ch = 80, cx = 8, cy = H - ch - 8 + Math.round((1 - k) * 90);
-    const B = AREA[id], done = beaten(id) || ALL;
-    const lab = (done ? '{check} ' : '') + 'BOSS: ' + nm(B.dex).toUpperCase() + (done ? '' : !awake(id, B.dex) && B.needs && qd(B.needs) ? '  · help "' + qd(B.needs).title + '"' : '  · not beaten');
+    const B = AREA[id], done = beaten(id) || ALL, pre = B.needs && qd(B.needs);
+    let lab = done ? '{check} BOSS BEATEN: ' + nm(B.dex).toUpperCase() : 'BOSS: ' + nm(B.dex).toUpperCase() + (awake(id, B.dex) ? '  · ready to battle!' : pre ? '  · first: ' + pre.title : '');
+    while (lab.length > 8 && Font.measure(lab, 'small') > cw - 12) lab = lab.slice(0, -1);
     const w = Math.min(cw, Font.measure(lab, 'small') + 10), x = cx + cw - w, y = cy - 11;
     UI.rrect(fb, x, y, w, 12, 3, 0xff1b2240);
     UI.rrect(fb, x + 1, y + 1, w - 2, 10, 2, done ? hex('#2a8a4a') : hex('#b82a2a'));
