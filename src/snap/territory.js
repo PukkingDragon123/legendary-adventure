@@ -103,7 +103,7 @@ const Territory = (() => {
   }
   function battle(m) {
     if (typeof Cards === 'undefined') return false;
-    return Cards.start(m, { onEnd: (win, G) => ended(m, win, G) });
+    return Cards.start(m, { arena: true, onEnd: (win, G) => ended(m, win, G) });
   }
   function xp(n, why, key) {
     try {

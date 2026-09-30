@@ -84,7 +84,7 @@ const CardArt = (() => {
     let r;
     try { const g = pal(); r = Mudkip.render(Mudkip.build(P), { yaw, pitch: o.pitch ?? 0.14, scale: sc, W, H, ox, oy, pal: g.pal, light: g.light }); } catch (e) { return {}; }
     const s = r.buf, X0 = Math.round(fx - ox), Y0 = Math.round(fy - oy);
-    const rot = o.rot || 0, ca = Math.cos(rot), sa = Math.sin(rot), pcx = ox, pcy = oy - 12 * sc * 2.4;
+    const rot = o.rot || 0, ca = Math.cos(rot), sa = Math.sin(rot), pcx = ox, pcy = oy - 28 * sc;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       let sx = x, sy = y;
       if (rot) { const dx = x - pcx, dy = y - pcy; sx = Math.round(pcx + dx * ca + dy * sa); sy = Math.round(pcy - dx * sa + dy * ca); }

@@ -34,8 +34,8 @@ const files = [
   ...opt(AI.map((a) => `src/snap/ai/${a}.js`)),
   ...opt(AREAS.map((a) => `src/snap/areas/${a}.js`)),
   ...opt(['src/snap/gallery.js']),
-  'src/snap/mailman.js', 'src/snap/rhythm.js', 'src/snap/expand.js', 'src/snap/wild.js', 'src/snap/bite.js', 'src/snap/arcade.js', ...opt(['src/snap/cards.js', 'src/snap/territory.js']), 'src/snap/boardwalk.js', 'src/snap/lighthouse.js', ...opt(['src/snap/bar.js', 'src/snap/hosts.js']), 'src/snap/backmons.js', 'src/snap/accs.js', 'src/snap/regi.js',
-  ...opt(['src/snap/quests2.js', 'src/snap/progress.js']),
+  'src/snap/mailman.js', 'src/snap/rhythm.js', 'src/snap/expand.js', 'src/snap/wild.js', 'src/snap/bite.js', 'src/snap/arcade.js', ...opt(['src/snap/cardart.js', 'src/snap/cards.js', 'src/snap/arena.js', 'src/snap/territory.js']), 'src/snap/boardwalk.js', 'src/snap/lighthouse.js', ...opt(['src/snap/bar.js', 'src/snap/hosts.js']), 'src/snap/backmons.js', 'src/snap/accs.js', 'src/snap/regi.js',
+  ...opt(['src/snap/quests2.js', 'src/snap/progress.js', 'src/snap/rotom.js']),
   'src/snap/main.js',
 ];
 const names = ['Mudkip', ...SPECIES.map(cap)];

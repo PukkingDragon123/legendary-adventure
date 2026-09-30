@@ -13,7 +13,7 @@
      tailTwist   rad        tail twist (cheated by side)   bodyDip    0..2  walk bob (units)
      legF, legB  rad        front / back leg swing (+z leg +, -z leg -)
      legSplay    rad        legs out to the sides          gill       rad   cheek gill fan
-     mouth       0..1       open amount (0.6)              eyes       'open'|'happy'|'blink'|'sleep'
+     mouth       0..1       open amount (0.6)              eyes       'open'|'happy'|'blink'|'sleep'|'x'
      noNostrils  bool       hide nostril dots              side       -1..1 ≈3·cos(yaw), passed by the game
    Cosmetics (rewards for the photographer). Real 3D parts on the head/body frames;
    none are built unless a field is set, so the plain look is untouched:
@@ -865,6 +865,7 @@ const Mudkip = (() => {
     sleep: ['k.k', '.k.'],
     sleepN: ['k.', '.k'],
     sleepF: ['k'],
+    x: ['k.k', '.k.', 'k.k'], xN: ['k.k', '.k.', 'k.k'], xF: ['k', 'k'],
   };
   const EYES_L = {
     open: ['.kk.', 'kwwk', 'kwkk', 'kkbk', '.kk.'],
@@ -879,6 +880,7 @@ const Mudkip = (() => {
     sleep: ['k..k', '.kk.'],
     sleepN: ['k.k', '.k.'],
     sleepF: ['k.', '.k'],
+    x: ['k..k', '.kk.', '.kk.', 'k..k'], xN: ['k.k', '.k.', 'k.k'], xF: ['k.', '.k', 'k.'],
   };
   // HD (double-resolution) eyes: round and glossy, like the official art
   const EYES_XL = {
@@ -894,6 +896,7 @@ const Mudkip = (() => {
     sleep: ['k...k', 'kk.kk', '.kkk.'],
     sleepN: ['k..k', 'kkkk', '.kk.'],
     sleepF: ['k.k', '.k.'],
+    x: ['kk.kk', '.kkk.', '.kkk.', 'kk.kk'], xN: ['k..k', '.kk.', '.kk.', 'k..k'], xF: ['k.k', '.k.', 'k.k'],
   };
   const EYES = EYES_S;
 

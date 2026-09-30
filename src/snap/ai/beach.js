@@ -264,9 +264,9 @@ const BeachAI = (() => {
     *overEdge(tx) {
       const d = tx > this.x ? 1 : -1;
       const it = typeof Items !== 'undefined' && Items.list.find((q) => q.claim === this && !q.eaten && Math.abs(q.x - tx) < 30);
-      yield* this.faceTo(d, false);
       let e = 0;
       if (it) {
+        yield* this.faceTo(d, false);
         // a mighty sniff: the berry flies up into its mouth
         const x0 = it.x, y0 = it.y; it.state = 'held';
         while (e < 0.7) { const dt = yield; e += dt; const k = Math.min(1, e / 0.7); const [mx, my] = this.at('mouth'); it.x = lerp(x0, mx, k * k); it.y = lerp(y0, my, k * k) - Math.sin(k * Math.PI) * 18; this.o.mouth = 0.4 + k * 0.6; this.o.headPitch = 0.25; this.setAct('eat', 0.6); }
@@ -275,9 +275,9 @@ const BeachAI = (() => {
         return;
       }
       Game.sfx('grr', this.x, 0.8);
-      while (e < 0.55) {
-        const dt = yield; e += dt;
-        const wind = Math.min(1, e / 0.3), blast = e > 0.3 ? Math.sin(Math.min(1, (e - 0.3) / 0.25) * Math.PI) : 0;
+      while (e < 0.4) {
+        const dt = yield; e += dt; this.turn(this.face(d, false), dt, 12);
+        const wind = Math.min(1, e / 0.2), blast = e > 0.2 ? Math.sin(Math.min(1, (e - 0.2) / 0.2) * Math.PI) : 0;
         this.o.headPitch = 0.1 - 0.2 * wind * (1 - blast) + 0.45 * blast; this.o.mouth = 0.2 + blast * 0.8; this.o.flipper = blast; this.o.squash = -0.06 * wind + 0.1 * blast;
         this.setAct('battle', 0.6 + blast * 0.4);
         if (blast > 0.2 && Math.random() < dt * 40) { const [mx, my] = this.at('mouth'); FX.add({ type: 'spark', x: mx + d * rnd(0, 20), y: my + rnd(-3, 5), vx: d * rnd(90, 160), vy: rnd(-10, 25), size: 1 + (Math.random() * 2 | 0), life: 0.4, c: 0xffffffff, c2: hex('#bfefff'), layer: 3 }); }

@@ -966,7 +966,7 @@ const Dex = (() => {
     const arrow = (dir, ax) => {
       const en = dir < 0 ? H.pg > 0 : H.pg < pages - 1, c = en ? P.rim : P.scrD, id = 'pgarr' + dir;
       const hv = D.hoverId === id;
-      for (let k = 0; k < 4; k++) UI.vline(fb, ax + (dir < 0 ? k : -k), iy + 1 - (3 - k) , iy + 1 + (3 - k) - 1, hv && en ? P.red : c);
+      for (let k = 0; k < 4; k++) UI.vline(fb, ax + (dir < 0 ? -k : k), iy + 1 - (3 - k), iy + 1 + (3 - k) - 1, hv && en ? P.red : c);
       btn(id, ax - 10, iy - 8, 20, 18, () => flipHome(dir));
     };
     arrow(-1, bx0 - 12); arrow(1, bx0 + tw + 11);

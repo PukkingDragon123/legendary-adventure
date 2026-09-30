@@ -6,8 +6,8 @@ const Spheal = (() => {
   const { ell, plate, chain, T, R, F, onEll, sph, code } = Creature;
 
   // material ids
-  const BODY = 1, BELLY = 2, SPOT = 3, FANG = 4, MOUTH = 5, TONGUE = 6, FLIP = 7, LIP = 8, EARIN = 9;
-  const MAT = { BODY, BELLY, SPOT, FANG, MOUTH, TONGUE, FLIP, LIP, EARIN };
+  const BODY = 1, BELLY = 2, SPOT = 3, FANG = 4, MOUTH = 5, TONGUE = 6, FLIP = 7, LIP = 8, EARIN = 9, EYE = 10;
+  const MAT = { BODY, BELLY, SPOT, FANG, MOUTH, TONGUE, FLIP, LIP, EARIN, EYE };
 
   const PAL = Creature.palette({
     [BODY]:   { r: ['#4b5eb0', '#6782cf', '#86a1e4', '#a9c1f4', '#c8dafc'], od: '#27357a', ol: '#4a60b4', ln: '#5068b8' },
@@ -18,6 +18,7 @@ const Spheal = (() => {
     [SPOT]:   { r: ['#a9bae2', '#cad7f3', '#eef3ff', '#ffffff', '#ffffff'], od: '#4a5eae', ol: '#7189cc', ln: '#8ea3d8' },
     [FANG]:   { r: ['#aab6cf', '#cfd8ea', '#f4f7fc', '#ffffff', '#ffffff'], od: '#465476', ol: '#66769c', ln: '#76849f' },
     [MOUTH]:  { r: ['#561828', '#742336', '#943244', '#b24756', '#cc646e'], od: '#380c18', ol: '#561424', ln: '#561424' },
+    [EYE]:    { r: ['#0e1224', '#161b2e', '#1e2540', '#2a3458', '#3a4a7a'], od: '#080a14', ol: '#101426', ln: '#101426' },
     [TONGUE]: { r: ['#bc4c62', '#d8687a', '#ee8a94', '#ffadb0', '#ffcfcc'], od: '#6e1428', ol: '#8e2038', ln: '#b04450' },
   });
   const GLOSSY = { [BODY]: 1, [BELLY]: 1, [FLIP]: 0, [SPOT]: 0 };
@@ -75,17 +76,17 @@ const Spheal = (() => {
 
   /* ---------- eye stamps (k = pupil, w = shine, b = glint) ---------- */
   const EYES = {
-    open: ['.kk.', 'kwkk', 'kkbk', '.kk.'],
-    openN: ['.k.', 'kwk', 'kbk', '.k.'],
-    openF: ['kk', 'wk', 'kk'],
-    happy: ['.kk.', 'k..k'],
-    happyN: ['.k.', 'k.k'],
+    open: ['.kkkk.', 'kwwkkk', 'kwwkkk', 'kkkkbk', 'kkkbbk', '.kkkk.'],
+    openN: ['.kkk.', 'kwwkk', 'kwkkk', 'kkkbk', '.kkk.'],
+    openF: ['.kk', 'wkk', 'kkb', '.kk'],
+    happy: ['.kkkk.', 'kk..kk', 'k....k'],
+    happyN: ['.kkk.', 'kk.kk', 'k...k'],
     happyF: ['kk', 'k.'],
-    blink: ['kkkk', '.kk.'],
-    blinkN: ['kkk', '.k.'],
+    blink: ['kkkkkk', '.kkkk.'],
+    blinkN: ['kkkkk', '.kkk.'],
     blinkF: ['kk'],
-    closed: ['k..k', '.kk.'],
-    closedN: ['k.k', '.k.'],
+    closed: ['k....k', '.kkkk.'],
+    closedN: ['k...k', '.kkk.'],
     closedF: ['k.', '.k'],
     dizzy: ['.kkkkk.', 'k.....k', 'k.kkk.k', 'k.k.k.k', 'k..kk.k', '.k....k', '..kkkk.'],
     dizzyN: ['.kkkk.', 'k....k', 'k.kk.k', 'k.k.kk', '.k....', '..kkk.'],
@@ -252,8 +253,20 @@ const Spheal = (() => {
     };
     prims.push(flipper(1, bf.n), flipper(-1, bf.f), ...tail(bf.t));
 
+    /* --- eyes: big round glossy black eyes (geometry, so they scale with the sprite) with a large white shine --- */
+    const open = !P.eyes || P.eyes === 'open';
+    if (open) for (const side of [1, -1]) {
+      const d = sph(side * 0.44, 0.7);
+      const n = V3.norm([d[0] / BR[0], d[1] / BR[1], d[2] / BR[2]]);
+      const tu = V3.norm(V3.cross([0, 1, 0], n)), tv = V3.cross(n, tu);
+      const f = chain(head, T(d[0] * BR[0] - n[0] * 1.2, d[1] * BR[1] - n[1] * 1.2, d[2] * BR[2] - n[2] * 1.2), F(M3.cols(n, tv, tu), [0, 0, 0]));
+      // local s: x = out of the face, y = up, z = sideways; shine up and toward the camera side
+      prims.push(ell(f, [3.6, 10, 8.4], { part: side > 0 ? 12 : 13, grp: side > 0 ? 12 : 13,
+        mat: (q) => ((q[1] - 0.3) ** 2 + (q[2] + side * 0.22) ** 2 < 0.13 ? code(SPOT, 2) : (q[1] + 0.52) ** 2 + (q[2] - side * 0.3) ** 2 < 0.04 ? code(EYE, 2) : code(EYE)) }));
+    }
+
     /* --- anchors --- */
-    const eyeN = onBallH(0.5, 0.8), eyeF = onBallH(-0.5, 0.8);
+    const eyeN = onBallH(0.44, 0.7), eyeF = onBallH(-0.44, 0.7);
     const lipMid = onBallH(0, faceLip(0));
     const snoutTip = V3.add(snoutPrim.c, M3.v(snoutPrim.L, [1, 0.1, 0]));
     const anchors = {
@@ -270,12 +283,12 @@ const Spheal = (() => {
       anchors,
       pose: P,
       bends: bf,
-      stamps: [
+      stamps: open ? [] : [
         { at: eyeN, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
         { at: eyeF, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
       ],
       dots: [1, -1].map((sd) => ({ at: onEll(snoutPrim, V3.norm([0.62, 0.55, sd * 0.42])), mat: LIP, tone: 1, onlyMat: BODY, minFacing: 0.45 })),
-      pri: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 1, 7: 1, 10: 2, 11: 2 },
+      pri: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 1, 7: 1, 10: 2, 11: 2, 12: 2, 13: 2 },
       glossy: GLOSSY,
       baseMat: BODY,
       shadowSteps: 18,

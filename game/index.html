@@ -723,7 +723,7 @@ const Creature = (() => {
      tailTwist   rad        tail twist (cheated by side)   bodyDip    0..2  walk bob (units)
      legF, legB  rad        front / back leg swing (+z leg +, -z leg -)
      legSplay    rad        legs out to the sides          gill       rad   cheek gill fan
-     mouth       0..1       open amount (0.6)              eyes       'open'|'happy'|'blink'|'sleep'
+     mouth       0..1       open amount (0.6)              eyes       'open'|'happy'|'blink'|'sleep'|'x'
      noNostrils  bool       hide nostril dots              side       -1..1 ≈3·cos(yaw), passed by the game
    Cosmetics (rewards for the photographer). Real 3D parts on the head/body frames;
    none are built unless a field is set, so the plain look is untouched:
@@ -1575,6 +1575,7 @@ const Mudkip = (() => {
     sleep: ['k.k', '.k.'],
     sleepN: ['k.', '.k'],
     sleepF: ['k'],
+    x: ['k.k', '.k.', 'k.k'], xN: ['k.k', '.k.', 'k.k'], xF: ['k', 'k'],
   };
   const EYES_L = {
     open: ['.kk.', 'kwwk', 'kwkk', 'kkbk', '.kk.'],
@@ -1589,6 +1590,7 @@ const Mudkip = (() => {
     sleep: ['k..k', '.kk.'],
     sleepN: ['k.k', '.k.'],
     sleepF: ['k.', '.k'],
+    x: ['k..k', '.kk.', '.kk.', 'k..k'], xN: ['k.k', '.k.', 'k.k'], xF: ['k.', '.k', 'k.'],
   };
   // HD (double-resolution) eyes: round and glossy, like the official art
   const EYES_XL = {
@@ -1604,6 +1606,7 @@ const Mudkip = (() => {
     sleep: ['k...k', 'kk.kk', '.kkk.'],
     sleepN: ['k..k', 'kkkk', '.kk.'],
     sleepF: ['k.k', '.k.'],
+    x: ['kk.kk', '.kkk.', '.kkk.', 'kk.kk'], xN: ['k..k', '.kk.', '.kk.', 'k..k'], xF: ['k.k', '.k.', 'k.k'],
   };
   const EYES = EYES_S;
 
@@ -20278,8 +20281,8 @@ const Spheal = (() => {
   const { ell, plate, chain, T, R, F, onEll, sph, code } = Creature;
 
   // material ids
-  const BODY = 1, BELLY = 2, SPOT = 3, FANG = 4, MOUTH = 5, TONGUE = 6, FLIP = 7, LIP = 8, EARIN = 9;
-  const MAT = { BODY, BELLY, SPOT, FANG, MOUTH, TONGUE, FLIP, LIP, EARIN };
+  const BODY = 1, BELLY = 2, SPOT = 3, FANG = 4, MOUTH = 5, TONGUE = 6, FLIP = 7, LIP = 8, EARIN = 9, EYE = 10;
+  const MAT = { BODY, BELLY, SPOT, FANG, MOUTH, TONGUE, FLIP, LIP, EARIN, EYE };
 
   const PAL = Creature.palette({
     [BODY]:   { r: ['#4b5eb0', '#6782cf', '#86a1e4', '#a9c1f4', '#c8dafc'], od: '#27357a', ol: '#4a60b4', ln: '#5068b8' },
@@ -20290,6 +20293,7 @@ const Spheal = (() => {
     [SPOT]:   { r: ['#a9bae2', '#cad7f3', '#eef3ff', '#ffffff', '#ffffff'], od: '#4a5eae', ol: '#7189cc', ln: '#8ea3d8' },
     [FANG]:   { r: ['#aab6cf', '#cfd8ea', '#f4f7fc', '#ffffff', '#ffffff'], od: '#465476', ol: '#66769c', ln: '#76849f' },
     [MOUTH]:  { r: ['#561828', '#742336', '#943244', '#b24756', '#cc646e'], od: '#380c18', ol: '#561424', ln: '#561424' },
+    [EYE]:    { r: ['#0e1224', '#161b2e', '#1e2540', '#2a3458', '#3a4a7a'], od: '#080a14', ol: '#101426', ln: '#101426' },
     [TONGUE]: { r: ['#bc4c62', '#d8687a', '#ee8a94', '#ffadb0', '#ffcfcc'], od: '#6e1428', ol: '#8e2038', ln: '#b04450' },
   });
   const GLOSSY = { [BODY]: 1, [BELLY]: 1, [FLIP]: 0, [SPOT]: 0 };
@@ -20347,17 +20351,17 @@ const Spheal = (() => {
 
   /* ---------- eye stamps (k = pupil, w = shine, b = glint) ---------- */
   const EYES = {
-    open: ['.kk.', 'kwkk', 'kkbk', '.kk.'],
-    openN: ['.k.', 'kwk', 'kbk', '.k.'],
-    openF: ['kk', 'wk', 'kk'],
-    happy: ['.kk.', 'k..k'],
-    happyN: ['.k.', 'k.k'],
+    open: ['.kkkk.', 'kwwkkk', 'kwwkkk', 'kkkkbk', 'kkkbbk', '.kkkk.'],
+    openN: ['.kkk.', 'kwwkk', 'kwkkk', 'kkkbk', '.kkk.'],
+    openF: ['.kk', 'wkk', 'kkb', '.kk'],
+    happy: ['.kkkk.', 'kk..kk', 'k....k'],
+    happyN: ['.kkk.', 'kk.kk', 'k...k'],
     happyF: ['kk', 'k.'],
-    blink: ['kkkk', '.kk.'],
-    blinkN: ['kkk', '.k.'],
+    blink: ['kkkkkk', '.kkkk.'],
+    blinkN: ['kkkkk', '.kkk.'],
     blinkF: ['kk'],
-    closed: ['k..k', '.kk.'],
-    closedN: ['k.k', '.k.'],
+    closed: ['k....k', '.kkkk.'],
+    closedN: ['k...k', '.kkk.'],
     closedF: ['k.', '.k'],
     dizzy: ['.kkkkk.', 'k.....k', 'k.kkk.k', 'k.k.k.k', 'k..kk.k', '.k....k', '..kkkk.'],
     dizzyN: ['.kkkk.', 'k....k', 'k.kk.k', 'k.k.kk', '.k....', '..kkk.'],
@@ -20524,8 +20528,20 @@ const Spheal = (() => {
     };
     prims.push(flipper(1, bf.n), flipper(-1, bf.f), ...tail(bf.t));
 
+    /* --- eyes: big round glossy black eyes (geometry, so they scale with the sprite) with a large white shine --- */
+    const open = !P.eyes || P.eyes === 'open';
+    if (open) for (const side of [1, -1]) {
+      const d = sph(side * 0.44, 0.7);
+      const n = V3.norm([d[0] / BR[0], d[1] / BR[1], d[2] / BR[2]]);
+      const tu = V3.norm(V3.cross([0, 1, 0], n)), tv = V3.cross(n, tu);
+      const f = chain(head, T(d[0] * BR[0] - n[0] * 1.2, d[1] * BR[1] - n[1] * 1.2, d[2] * BR[2] - n[2] * 1.2), F(M3.cols(n, tv, tu), [0, 0, 0]));
+      // local s: x = out of the face, y = up, z = sideways; shine up and toward the camera side
+      prims.push(ell(f, [3.6, 10, 8.4], { part: side > 0 ? 12 : 13, grp: side > 0 ? 12 : 13,
+        mat: (q) => ((q[1] - 0.3) ** 2 + (q[2] + side * 0.22) ** 2 < 0.13 ? code(SPOT, 2) : (q[1] + 0.52) ** 2 + (q[2] - side * 0.3) ** 2 < 0.04 ? code(EYE, 2) : code(EYE)) }));
+    }
+
     /* --- anchors --- */
-    const eyeN = onBallH(0.5, 0.8), eyeF = onBallH(-0.5, 0.8);
+    const eyeN = onBallH(0.44, 0.7), eyeF = onBallH(-0.44, 0.7);
     const lipMid = onBallH(0, faceLip(0));
     const snoutTip = V3.add(snoutPrim.c, M3.v(snoutPrim.L, [1, 0.1, 0]));
     const anchors = {
@@ -20542,12 +20558,12 @@ const Spheal = (() => {
       anchors,
       pose: P,
       bends: bf,
-      stamps: [
+      stamps: open ? [] : [
         { at: eyeN, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
         { at: eyeF, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
       ],
       dots: [1, -1].map((sd) => ({ at: onEll(snoutPrim, V3.norm([0.62, 0.55, sd * 0.42])), mat: LIP, tone: 1, onlyMat: BODY, minFacing: 0.45 })),
-      pri: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 1, 7: 1, 10: 2, 11: 2 },
+      pri: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 1, 7: 1, 10: 2, 11: 2, 12: 2, 13: 2 },
       glossy: GLOSSY,
       baseMat: BODY,
       shadowSteps: 18,
@@ -28475,7 +28491,7 @@ const Creature = (() => {
      tailTwist   rad        tail twist (cheated by side)   bodyDip    0..2  walk bob (units)
      legF, legB  rad        front / back leg swing (+z leg +, -z leg -)
      legSplay    rad        legs out to the sides          gill       rad   cheek gill fan
-     mouth       0..1       open amount (0.6)              eyes       'open'|'happy'|'blink'|'sleep'
+     mouth       0..1       open amount (0.6)              eyes       'open'|'happy'|'blink'|'sleep'|'x'
      noNostrils  bool       hide nostril dots              side       -1..1 ≈3·cos(yaw), passed by the game
    Cosmetics (rewards for the photographer). Real 3D parts on the head/body frames;
    none are built unless a field is set, so the plain look is untouched:
@@ -29327,6 +29343,7 @@ const Mudkip = (() => {
     sleep: ['k.k', '.k.'],
     sleepN: ['k.', '.k'],
     sleepF: ['k'],
+    x: ['k.k', '.k.', 'k.k'], xN: ['k.k', '.k.', 'k.k'], xF: ['k', 'k'],
   };
   const EYES_L = {
     open: ['.kk.', 'kwwk', 'kwkk', 'kkbk', '.kk.'],
@@ -29341,6 +29358,7 @@ const Mudkip = (() => {
     sleep: ['k..k', '.kk.'],
     sleepN: ['k.k', '.k.'],
     sleepF: ['k.', '.k'],
+    x: ['k..k', '.kk.', '.kk.', 'k..k'], xN: ['k.k', '.k.', 'k.k'], xF: ['k.', '.k', 'k.'],
   };
   // HD (double-resolution) eyes: round and glossy, like the official art
   const EYES_XL = {
@@ -29356,6 +29374,7 @@ const Mudkip = (() => {
     sleep: ['k...k', 'kk.kk', '.kkk.'],
     sleepN: ['k..k', 'kkkk', '.kk.'],
     sleepF: ['k.k', '.k.'],
+    x: ['kk.kk', '.kkk.', '.kkk.', 'kk.kk'], xN: ['k..k', '.kk.', '.kk.', 'k..k'], xF: ['k.k', '.k.', 'k.k'],
   };
   const EYES = EYES_S;
 
@@ -48192,8 +48211,8 @@ const Spheal = (() => {
   const { ell, plate, chain, T, R, F, onEll, sph, code } = Creature;
 
   // material ids
-  const BODY = 1, BELLY = 2, SPOT = 3, FANG = 4, MOUTH = 5, TONGUE = 6, FLIP = 7, LIP = 8, EARIN = 9;
-  const MAT = { BODY, BELLY, SPOT, FANG, MOUTH, TONGUE, FLIP, LIP, EARIN };
+  const BODY = 1, BELLY = 2, SPOT = 3, FANG = 4, MOUTH = 5, TONGUE = 6, FLIP = 7, LIP = 8, EARIN = 9, EYE = 10;
+  const MAT = { BODY, BELLY, SPOT, FANG, MOUTH, TONGUE, FLIP, LIP, EARIN, EYE };
 
   const PAL = Creature.palette({
     [BODY]:   { r: ['#4b5eb0', '#6782cf', '#86a1e4', '#a9c1f4', '#c8dafc'], od: '#27357a', ol: '#4a60b4', ln: '#5068b8' },
@@ -48204,6 +48223,7 @@ const Spheal = (() => {
     [SPOT]:   { r: ['#a9bae2', '#cad7f3', '#eef3ff', '#ffffff', '#ffffff'], od: '#4a5eae', ol: '#7189cc', ln: '#8ea3d8' },
     [FANG]:   { r: ['#aab6cf', '#cfd8ea', '#f4f7fc', '#ffffff', '#ffffff'], od: '#465476', ol: '#66769c', ln: '#76849f' },
     [MOUTH]:  { r: ['#561828', '#742336', '#943244', '#b24756', '#cc646e'], od: '#380c18', ol: '#561424', ln: '#561424' },
+    [EYE]:    { r: ['#0e1224', '#161b2e', '#1e2540', '#2a3458', '#3a4a7a'], od: '#080a14', ol: '#101426', ln: '#101426' },
     [TONGUE]: { r: ['#bc4c62', '#d8687a', '#ee8a94', '#ffadb0', '#ffcfcc'], od: '#6e1428', ol: '#8e2038', ln: '#b04450' },
   });
   const GLOSSY = { [BODY]: 1, [BELLY]: 1, [FLIP]: 0, [SPOT]: 0 };
@@ -48261,17 +48281,17 @@ const Spheal = (() => {
 
   /* ---------- eye stamps (k = pupil, w = shine, b = glint) ---------- */
   const EYES = {
-    open: ['.kk.', 'kwkk', 'kkbk', '.kk.'],
-    openN: ['.k.', 'kwk', 'kbk', '.k.'],
-    openF: ['kk', 'wk', 'kk'],
-    happy: ['.kk.', 'k..k'],
-    happyN: ['.k.', 'k.k'],
+    open: ['.kkkk.', 'kwwkkk', 'kwwkkk', 'kkkkbk', 'kkkbbk', '.kkkk.'],
+    openN: ['.kkk.', 'kwwkk', 'kwkkk', 'kkkbk', '.kkk.'],
+    openF: ['.kk', 'wkk', 'kkb', '.kk'],
+    happy: ['.kkkk.', 'kk..kk', 'k....k'],
+    happyN: ['.kkk.', 'kk.kk', 'k...k'],
     happyF: ['kk', 'k.'],
-    blink: ['kkkk', '.kk.'],
-    blinkN: ['kkk', '.k.'],
+    blink: ['kkkkkk', '.kkkk.'],
+    blinkN: ['kkkkk', '.kkk.'],
     blinkF: ['kk'],
-    closed: ['k..k', '.kk.'],
-    closedN: ['k.k', '.k.'],
+    closed: ['k....k', '.kkkk.'],
+    closedN: ['k...k', '.kkk.'],
     closedF: ['k.', '.k'],
     dizzy: ['.kkkkk.', 'k.....k', 'k.kkk.k', 'k.k.k.k', 'k..kk.k', '.k....k', '..kkkk.'],
     dizzyN: ['.kkkk.', 'k....k', 'k.kk.k', 'k.k.kk', '.k....', '..kkk.'],
@@ -48438,8 +48458,20 @@ const Spheal = (() => {
     };
     prims.push(flipper(1, bf.n), flipper(-1, bf.f), ...tail(bf.t));
 
+    /* --- eyes: big round glossy black eyes (geometry, so they scale with the sprite) with a large white shine --- */
+    const open = !P.eyes || P.eyes === 'open';
+    if (open) for (const side of [1, -1]) {
+      const d = sph(side * 0.44, 0.7);
+      const n = V3.norm([d[0] / BR[0], d[1] / BR[1], d[2] / BR[2]]);
+      const tu = V3.norm(V3.cross([0, 1, 0], n)), tv = V3.cross(n, tu);
+      const f = chain(head, T(d[0] * BR[0] - n[0] * 1.2, d[1] * BR[1] - n[1] * 1.2, d[2] * BR[2] - n[2] * 1.2), F(M3.cols(n, tv, tu), [0, 0, 0]));
+      // local s: x = out of the face, y = up, z = sideways; shine up and toward the camera side
+      prims.push(ell(f, [3.6, 10, 8.4], { part: side > 0 ? 12 : 13, grp: side > 0 ? 12 : 13,
+        mat: (q) => ((q[1] - 0.3) ** 2 + (q[2] + side * 0.22) ** 2 < 0.13 ? code(SPOT, 2) : (q[1] + 0.52) ** 2 + (q[2] - side * 0.3) ** 2 < 0.04 ? code(EYE, 2) : code(EYE)) }));
+    }
+
     /* --- anchors --- */
-    const eyeN = onBallH(0.5, 0.8), eyeF = onBallH(-0.5, 0.8);
+    const eyeN = onBallH(0.44, 0.7), eyeF = onBallH(-0.44, 0.7);
     const lipMid = onBallH(0, faceLip(0));
     const snoutTip = V3.add(snoutPrim.c, M3.v(snoutPrim.L, [1, 0.1, 0]));
     const anchors = {
@@ -48456,12 +48488,12 @@ const Spheal = (() => {
       anchors,
       pose: P,
       bends: bf,
-      stamps: [
+      stamps: open ? [] : [
         { at: eyeN, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
         { at: eyeF, set: EYES, colors: EYEC, kind, near: 0.62, far: 0.3 },
       ],
       dots: [1, -1].map((sd) => ({ at: onEll(snoutPrim, V3.norm([0.62, 0.55, sd * 0.42])), mat: LIP, tone: 1, onlyMat: BODY, minFacing: 0.45 })),
-      pri: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 1, 7: 1, 10: 2, 11: 2 },
+      pri: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 1, 6: 1, 7: 1, 10: 2, 11: 2, 12: 2, 13: 2 },
       glossy: GLOSSY,
       baseMat: BODY,
       shadowSteps: 18,
@@ -64494,7 +64526,7 @@ const Dex = (() => {
     const arrow = (dir, ax) => {
       const en = dir < 0 ? H.pg > 0 : H.pg < pages - 1, c = en ? P.rim : P.scrD, id = 'pgarr' + dir;
       const hv = D.hoverId === id;
-      for (let k = 0; k < 4; k++) UI.vline(fb, ax + (dir < 0 ? k : -k), iy + 1 - (3 - k) , iy + 1 + (3 - k) - 1, hv && en ? P.red : c);
+      for (let k = 0; k < 4; k++) UI.vline(fb, ax + (dir < 0 ? -k : k), iy + 1 - (3 - k), iy + 1 + (3 - k) - 1, hv && en ? P.red : c);
       btn(id, ax - 10, iy - 8, 20, 18, () => flipHome(dir));
     };
     arrow(-1, bx0 - 12); arrow(1, bx0 + tw + 11);
@@ -69578,9 +69610,9 @@ const BeachAI = (() => {
     *overEdge(tx) {
       const d = tx > this.x ? 1 : -1;
       const it = typeof Items !== 'undefined' && Items.list.find((q) => q.claim === this && !q.eaten && Math.abs(q.x - tx) < 30);
-      yield* this.faceTo(d, false);
       let e = 0;
       if (it) {
+        yield* this.faceTo(d, false);
         // a mighty sniff: the berry flies up into its mouth
         const x0 = it.x, y0 = it.y; it.state = 'held';
         while (e < 0.7) { const dt = yield; e += dt; const k = Math.min(1, e / 0.7); const [mx, my] = this.at('mouth'); it.x = lerp(x0, mx, k * k); it.y = lerp(y0, my, k * k) - Math.sin(k * Math.PI) * 18; this.o.mouth = 0.4 + k * 0.6; this.o.headPitch = 0.25; this.setAct('eat', 0.6); }
@@ -69589,9 +69621,9 @@ const BeachAI = (() => {
         return;
       }
       Game.sfx('grr', this.x, 0.8);
-      while (e < 0.55) {
-        const dt = yield; e += dt;
-        const wind = Math.min(1, e / 0.3), blast = e > 0.3 ? Math.sin(Math.min(1, (e - 0.3) / 0.25) * Math.PI) : 0;
+      while (e < 0.4) {
+        const dt = yield; e += dt; this.turn(this.face(d, false), dt, 12);
+        const wind = Math.min(1, e / 0.2), blast = e > 0.2 ? Math.sin(Math.min(1, (e - 0.2) / 0.2) * Math.PI) : 0;
         this.o.headPitch = 0.1 - 0.2 * wind * (1 - blast) + 0.45 * blast; this.o.mouth = 0.2 + blast * 0.8; this.o.flipper = blast; this.o.squash = -0.06 * wind + 0.1 * blast;
         this.setAct('battle', 0.6 + blast * 0.4);
         if (blast > 0.2 && Math.random() < dt * 40) { const [mx, my] = this.at('mouth'); FX.add({ type: 'spark', x: mx + d * rnd(0, 20), y: my + rnd(-3, 5), vx: d * rnd(90, 160), vy: rnd(-10, 25), size: 1 + (Math.random() * 2 | 0), life: 0.4, c: 0xffffffff, c2: hex('#bfefff'), layer: 3 }); }
@@ -78323,6 +78355,361 @@ const Arcade = (() => {
   return Object.assign(A, { open, openMenu, challenge, leave, update, drive, freeMove, key, down, drawWorld, drawUI, GAMES });
 })();
 
+/* ==== src/snap/cardart.js ==== */
+/* ------------------------------------------------------------------
+   CardArt — Slay-the-Spire style faces for the Cards battle:
+    · a frame coloured by type (attack red, skill blue, power gold,
+      silly purple) with an art window shaped by type (attack: pointed
+      shield, skill: plain, power: oval), rarity trim (stone / silver /
+      teal / gold), a cost orb, a name ribbon, a type plaque and the
+      rules text (keywords in gold, upgraded numbers in green)
+    · real illustrated art: the actual Mudkip model (with the player's
+      cosmetics) posed doing the move, rendered on the spot and painted
+      over with pixel effects (water, bubbles, ice, rocks, sun, rain...)
+   Faces are cached per card, size and look.
+   CardArt.face(card, w, h) → {w,h,d}; CardArt.back(w, h); CardArt.blit(...)
+------------------------------------------------------------------- */
+const CardArt = (() => {
+  const { clamp, lerp, hex, mix } = U;
+  const INK = 0xff1b2240, WHITE = 0xffffffff;
+  const buf = (w, h) => ({ w, h, d: new Uint32Array(w * h) });
+  const put = (b, x, y, c) => { x |= 0; y |= 0; if (x >= 0 && y >= 0 && x < b.w && y < b.h) b.d[y * b.w + x] = c; };
+  const get = (b, x, y) => (x >= 0 && y >= 0 && x < b.w && y < b.h ? b.d[y * b.w + x] : 0);
+  const bl = (b, x, y, c, a) => { x |= 0; y |= 0; if (x < 0 || y < 0 || x >= b.w || y >= b.h || a <= 0) return; const i = y * b.w + x; b.d[i] = b.d[i] ? mix(b.d[i], c, Math.min(1, a)) : c; };
+  const dith = (x, y) => PX.bayer4(x, y);
+
+  /* ---------- frame palettes ---------- */
+  const KIND = {
+    atk: { base: hex('#b8352c'), light: hex('#ec6a52'), dark: hex('#6c161a'), band: hex('#861f20'), art: hex('#3a0c10'), txt: hex('#2a0a0e'), lab: 'ATTACK' },
+    skill: { base: hex('#2f67c0'), light: hex('#6aa2f0'), dark: hex('#15336e'), band: hex('#1c478a'), art: hex('#0c1e44'), txt: hex('#0c1a3a'), lab: 'SKILL' },
+    power: { base: hex('#c89a22'), light: hex('#f8d864'), dark: hex('#6e4c0a'), band: hex('#946412'), art: hex('#3a2606'), txt: hex('#2a1c04'), lab: 'POWER' },
+    silly: { base: hex('#8c3cc2'), light: hex('#c880f0'), dark: hex('#42146a'), band: hex('#5e2288'), art: hex('#220a38'), txt: hex('#1c0830'), lab: 'SILLY' },
+    item: { base: hex('#3a9a58'), light: hex('#7ad890'), dark: hex('#185a2c'), band: hex('#227040'), art: hex('#0c2a16'), txt: hex('#0a2012'), lab: 'TREAT' },
+  };
+  // rarity trim: 0 starter (stone), 1 common (silver), 2 uncommon (teal), 3 rare (gold)
+  const TRIM = [hex('#9a8a78'), hex('#d8e0ec'), hex('#6ae8e0'), hex('#ffd84a')];
+  const GOLD = hex('#ffd070'), GREEN = hex('#8aff8a');
+
+  /* ---------- painting helpers (all on a {w,h,d} buffer) ---------- */
+  function grad(b, y0, y1, c0, c1, x0 = 0, x1 = b.w) {
+    for (let y = y0; y < y1; y++) {
+      const k = (y - y0) / Math.max(1, y1 - y0 - 1);
+      for (let x = x0; x < x1; x++) { const q = k * 6, s = Math.floor(q), f = q - s; put(b, x, y, mix(c0, c1, (s + (f > dith(x, y) ? 1 : 0)) / 6)); }
+    }
+  }
+  function rgrad(b, cx, cy, R, c0, c1) { // radial glow: c0 at the centre fading to whatever is there
+    for (let y = Math.floor(cy - R); y <= cy + R; y++) for (let x = Math.floor(cx - R); x <= cx + R; x++) {
+      const d = Math.hypot(x - cx, y - cy) / R; if (d > 1) continue;
+      const k = 1 - d; if (k * k > dith(x, y) * 0.9) bl(b, x, y, d < 0.35 ? c0 : c1, 0.35 + k * 0.6);
+    }
+  }
+  const disc = (b, x, y, r, c) => UI.disc(b, Math.round(x), Math.round(y), r, c);
+  function ring(b, x, y, r, c, th = 1) { UI.ring(b, Math.round(x), Math.round(y), r, c, th); }
+  const line = (b, x0, y0, x1, y1, c) => UI.line(b, x0, y0, x1, y1, c);
+  function thick(b, x0, y0, x1, y1, r, c) { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0)); for (let i = 0; i <= n; i++) disc(b, lerp(x0, x1, i / n), lerp(y0, y1, i / n), r, c); }
+  function star4(b, x, y, r, c, core = WHITE) { for (let i = -r; i <= r; i++) { put(b, x + i, y, c); put(b, x, y + i, c); } for (let i = -Math.floor(r / 2); i <= Math.floor(r / 2); i++) { put(b, x + i, y + i, c); put(b, x + i, y - i, c); } put(b, x, y, core); }
+  function burst(b, x, y, r0, r1, n, c, ph = 0) { for (let k = 0; k < n; k++) { const a = ph + (k / n) * Math.PI * 2, rr = k % 2 ? r1 * 0.7 : r1; line(b, Math.round(x + Math.cos(a) * r0), Math.round(y + Math.sin(a) * r0), Math.round(x + Math.cos(a) * rr), Math.round(y + Math.sin(a) * rr), c); } }
+  function spiky(b, x, y, r, c, ol) { // comic impact star
+    const pts = 14;
+    for (let yy = -r - 1; yy <= r + 1; yy++) for (let xx = -r - 1; xx <= r + 1; xx++) {
+      const a = Math.atan2(yy, xx), k = ((a / (Math.PI * 2)) * pts + pts) % 1, R = r * (0.55 + 0.45 * Math.abs(k - 0.5) * 2), d = Math.hypot(xx, yy);
+      if (d <= R - 1) put(b, x + xx, y + yy, c); else if (d <= R) put(b, x + xx, y + yy, ol);
+    }
+  }
+  function bubble(b, x, y, r) { if (r <= 1) { put(b, x, y, hex('#e8fbff')); return; } ring(b, x, y, r, hex('#e8fbff')); bl(b, x, y, hex('#9adcff'), 0.25); put(b, x - Math.ceil(r / 2), y - Math.ceil(r / 2), WHITE); }
+  function cloud(b, x, y, w, c, c2) { const n = Math.max(2, Math.round(w / 6)); for (let i = 0; i < n; i++) { const cx = x + (i / (n - 1) - 0.5) * w, r = Math.round(w / n * (i % 2 ? 0.9 : 1.2)); disc(b, cx, y - (i % 2 ? 1 : 2), r, c); } if (c2) for (let i = 0; i < w; i++) put(b, x - w / 2 + i, y + Math.round(w / n * 0.8), c2); }
+  function drop(b, x, y, c) { put(b, x, y, c); put(b, x, y + 1, c); put(b, x, y - 1, mix(c, WHITE, 0.5)); }
+  function rock(b, x, y, r, c, seed = 1) {
+    for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) {
+      const a = Math.atan2(yy, xx), R = r * (0.78 + 0.22 * Math.sin(a * 3 + seed) * Math.cos(a * 2 - seed)), d = Math.hypot(xx, yy);
+      if (d > R) continue;
+      put(b, x + xx, y + yy, d > R - 1 ? INK : xx + yy < -r * 0.3 ? U.tweak(c, 0, 1, 0.12) : xx + yy > r * 0.5 ? U.tweak(c, 0, 1, -0.12) : c);
+    }
+  }
+  function speed(b, x0, x1, y, c, gap = 0) { for (let x = x0; x <= x1; x++) if (!gap || (x % gap) < gap - 2) put(b, x, y, c); }
+  function ground(b, y, c, c2) { for (let yy = y; yy < b.h; yy++) for (let x = 0; x < b.w; x++) put(b, x, yy, yy === y ? U.tweak(c, 0, 1, 0.1) : (dith(x, yy) < 0.25 && c2 ? c2 : c)); }
+
+  /* ---------- Mudkip, rendered from the real model ---------- */
+  let noon = null;
+  const pal = () => { if (!noon) { try { noon = Times.compile('noon').gradePal(Mudkip.PAL, 'mudkip-card'); } catch (e) { noon = { pal: Mudkip.PAL, light: undefined }; } } return noon; };
+  const lookOf = () => { try { return Save.look(); } catch (e) { return {}; } };
+  const lookKey = () => JSON.stringify(lookOf());
+  // draw Mudkip with its feet at (fx, fy); returns the anchor points in buffer coords
+  function kip(b, pose, fx, fy, sc, o = {}) {
+    const yaw = o.yaw ?? 0.62;
+    const W = Math.ceil(112 * sc) + 6, H = Math.ceil(112 * sc) + 6, ox = Math.floor(W / 2), oy = Math.floor(H * 0.86);
+    const P = Object.assign({}, o.plain ? {} : lookOf(), pose, { side: clamp(3 * Math.cos(yaw), -1, 1) });
+    let r;
+    try { const g = pal(); r = Mudkip.render(Mudkip.build(P), { yaw, pitch: o.pitch ?? 0.14, scale: sc, W, H, ox, oy, pal: g.pal, light: g.light }); } catch (e) { return {}; }
+    const s = r.buf, X0 = Math.round(fx - ox), Y0 = Math.round(fy - oy);
+    const rot = o.rot || 0, ca = Math.cos(rot), sa = Math.sin(rot), pcx = ox, pcy = oy - 28 * sc;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let sx = x, sy = y;
+      if (rot) { const dx = x - pcx, dy = y - pcy; sx = Math.round(pcx + dx * ca + dy * sa); sy = Math.round(pcy - dx * sa + dy * ca); }
+      if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
+      let c = s.d[sy * W + sx]; if (!c) continue;
+      const X = X0 + x, Y = Y0 + y;
+      if (o.clipY !== undefined && Y > o.clipY) continue;
+      if (o.tint !== undefined) c = mix(c, o.tint, o.tintK ?? 0.5);
+      if (o.alpha !== undefined) bl(b, X, Y, c, o.alpha); else put(b, X, Y, c);
+    }
+    const an = {};
+    for (const k in r.anchors) { const a = r.anchors[k]; an[k] = [a[0] + X0, a[1] + Y0]; }
+    return an;
+  }
+
+  /* ---------- the illustrations ---------- */
+  // each painter gets (b, W, H, s) where s = Mudkip scale for this size
+  const SAND = hex('#f0d49a'), SAND2 = hex('#d8b474');
+  const ART = {
+    tackle(b, W, H, s) {
+      grad(b, 0, H, hex('#7ac8f8'), hex('#fff0c8'));
+      cloud(b, W * 0.2, H * 0.22, W * 0.3, hex('#ffffff'));
+      const gy = Math.round(H * 0.8); ground(b, gy, SAND, SAND2);
+      for (let k = 0; k < 6; k++) speed(b, 2, Math.round(W * 0.28) - k * 3, Math.round(H * 0.38 + k * H * 0.08), 0xccffffff);
+      const an = kip(b, { lean: 0.28, headPitch: 0.34, legF: -0.95, legB: 0.95, eyes: 'open', mouth: 0.15, tailLift: 0.45, finSway: -0.3, squash: -0.06 }, W * 0.42, gy + 1, s);
+      const hx = Math.round(W * 0.82), hy = Math.round(H * 0.5);
+      spiky(b, hx, hy, Math.round(H * 0.24), hex('#ffe050'), hex('#e06a1a'));
+      spiky(b, hx, hy, Math.round(H * 0.13), WHITE, hex('#ffe050'));
+      for (let k = 0; k < 3; k++) disc(b, W * 0.3 - k * 5, gy - 1 - (k % 2), 2 - (k > 1 ? 1 : 0), hex('#fff4d8'));
+      void an;
+    },
+    block(b, W, H, s) {
+      grad(b, 0, H, hex('#1a3a7a'), hex('#4a8ae0'));
+      for (let y = 0; y < H; y += 6) for (let x = (y / 6) % 2 ? 3 : 0; x < W; x += 6) put(b, x, y, hex('#6aa8f0'));
+      const gy = Math.round(H * 0.84); ground(b, gy, hex('#6a7aa0'), hex('#56668a'));
+      kip(b, { bodyDip: 1.6, headPitch: 0.28, squash: 0.08, eyes: 'blink', mouth: 0.1, legSplay: 0.3, finSway: -0.1 }, W * 0.36, gy + 1, s);
+      // the shield: a glassy arc in front
+      const cx = Math.round(W * 0.62), cy = Math.round(H * 0.52), R = Math.round(H * 0.4);
+      for (let y = -R; y <= R; y++) for (let x = 0; x <= R * 0.5; x++) {
+        const ex = x / (R * 0.5), ey = y / R, d = ex * ex + ey * ey; if (d > 1) continue;
+        bl(b, cx + x, cy + y, hex('#a8e0ff'), d > 0.72 ? 0.9 : 0.35);
+      }
+      for (let y = -R; y <= R; y++) { const x = Math.round(Math.sqrt(Math.max(0, 1 - (y / R) ** 2)) * R * 0.5); put(b, cx + x, cy + y, WHITE); put(b, cx + x - 1, cy + y, hex('#c8f0ff')); }
+      star4(b, cx + Math.round(R * 0.3), cy - Math.round(R * 0.55), 2, WHITE); star4(b, cx + 2, cy + Math.round(R * 0.5), 1, WHITE);
+    },
+    splash(b, W, H, s) {
+      grad(b, 0, Math.round(H * 0.7), hex('#ff9a6a'), hex('#ffd8a0'));
+      disc(b, W * 0.78, H * 0.42, Math.round(H * 0.16), hex('#fff0b0'));
+      const sea = Math.round(H * 0.7); grad(b, sea, H, hex('#3a8ad8'), hex('#1a4a98'));
+      for (let x = 0; x < W; x += 3) put(b, x, sea, hex('#bfe8ff'));
+      kip(b, { eyes: 'happy', mouth: 1, legF: -0.7, legB: 0.8, tailLift: 0.6, headPitch: -0.2, squash: -0.1 }, W * 0.45, sea - Math.round(H * 0.18), s, { rot: -0.25 });
+      for (let k = 0; k < 9; k++) { const a = Math.PI + (k / 8) * Math.PI, r = H * 0.32; drop(b, Math.round(W * 0.45 + Math.cos(a) * r * 0.9), Math.round(sea + Math.sin(a) * r * 0.55), hex('#8ad0ff')); }
+      star4(b, Math.round(W * 0.18), Math.round(H * 0.2), 2, hex('#ffe070')); star4(b, Math.round(W * 0.7), Math.round(H * 0.14), 1, WHITE); star4(b, Math.round(W * 0.3), Math.round(H * 0.5), 1, hex('#ff8ad8'));
+    },
+    bubble(b, W, H, s) {
+      grad(b, 0, H, hex('#3aa8e8'), hex('#0e3a88'));
+      for (let k = 0; k < 3; k++) for (let y = 0; y < H; y++) { const x = Math.round(W * (0.15 + k * 0.3) + y * 0.4); if (dith(x, y) < 0.35) bl(b, x, y, WHITE, 0.25); }
+      const gy = Math.round(H * 0.88); ground(b, gy, hex('#d8c08a'), hex('#b8a070'));
+      const an = kip(b, { mouth: 1, headPitch: -0.12, eyes: 'happy', finSway: 0.1, tailWag: 0.3 }, W * 0.3, gy + 1, s);
+      const m = an.mouth || [W * 0.4, H * 0.5];
+      for (let k = 0; k < 7; k++) { const t = k / 6; bubble(b, Math.round(m[0] + 3 + t * W * 0.55), Math.round(m[1] - 2 - Math.sin(t * 2.6) * H * 0.28), Math.round(1 + t * H * 0.1)); }
+    },
+    growl(b, W, H, s) {
+      grad(b, 0, H, hex('#8a3ac8'), hex('#ff7ab0'));
+      const gy = Math.round(H * 0.86); ground(b, gy, hex('#5a2a7a'), hex('#4a1a6a'));
+      const an = kip(b, { mouth: 1, headPitch: -0.38, eyes: 'blink', legF: 0.35, squash: -0.1, finSway: -0.25, tailLift: 0.3 }, W * 0.3, gy + 1, s);
+      const m = an.mouth || [W * 0.4, H * 0.45];
+      for (let k = 1; k <= 4; k++) { const R = k * H * 0.12; for (let a = -0.9; a <= 0.5; a += 0.03) put(b, Math.round(m[0] + Math.cos(a) * R), Math.round(m[1] + Math.sin(a) * R), k % 2 ? WHITE : hex('#ffe070')); }
+      Font.draw(b, '!!', Math.round(W * 0.84), Math.round(H * 0.18), hex('#ffe070'), { font: 'small', outline: INK, align: 'center' });
+    },
+    dig(b, W, H, s) {
+      grad(b, 0, Math.round(H * 0.45), hex('#8ad0f8'), hex('#d8f0ff'));
+      const gy = Math.round(H * 0.6);
+      for (let y = gy; y < H; y++) for (let x = 0; x < W; x++) put(b, x, y, dith(x, y) < 0.2 ? hex('#6a3a1a') : y === gy ? hex('#a8703a') : hex('#8a5428'));
+      kip(b, { eyes: 'happy', mouth: 1, headPitch: 0.1, legF: -0.8 }, W * 0.45, gy + Math.round(H * 0.22), s, { clipY: gy });
+      for (let x = -8; x <= 8; x++) { const h = Math.round(3 * (1 - (x / 9) ** 2)); for (let y = 0; y < h; y++) put(b, Math.round(W * 0.45) + x + (x > 0 ? 6 : -6), gy - y, y === h - 1 ? hex('#b07a40') : hex('#8a5428')); }
+      for (let k = 0; k < 7; k++) { const a = -Math.PI * (0.15 + k * 0.1); rock(b, Math.round(W * 0.45 + Math.cos(a) * H * 0.35 * (k % 2 ? 1 : 0.7)), Math.round(gy - 4 + Math.sin(a) * H * 0.4 * (k % 2 ? 0.7 : 1)), 1 + (k % 3 === 0 ? 1 : 0), hex('#8a5428'), k); }
+    },
+    smash(b, W, H, s) {
+      grad(b, 0, H, hex('#f8a060'), hex('#ffe0a0'));
+      for (let x = 0; x < W; x++) { const h = Math.round(H * 0.25 + Math.sin(x * 0.2) * 3 + Math.sin(x * 0.07) * 4); for (let y = H - h; y < H; y++) put(b, x, y - Math.round(H * 0.15), hex('#c8704a')); }
+      const gy = Math.round(H * 0.86); ground(b, gy, hex('#a86a3a'), hex('#8a5428'));
+      kip(b, { lean: 0.3, headPitch: 0.5, legB: 0.95, legF: -0.3, eyes: 'blink', mouth: 0.2, finSway: -0.3 }, W * 0.34, gy + 1, s);
+      const rx = Math.round(W * 0.74), ry = gy - Math.round(H * 0.2), R = Math.round(H * 0.24);
+      rock(b, rx, ry, R, hex('#9a9aa8'), 3);
+      line(b, rx - R + 2, ry - 2, rx, ry + 1, INK); line(b, rx, ry + 1, rx + 3, ry - R + 3, INK); line(b, rx, ry + 1, rx + 2, ry + R - 2, INK);
+      for (let k = 0; k < 4; k++) rock(b, rx + Math.round((k - 1.5) * R * 0.8), ry - R - 2 - (k % 2) * 3, 1 + (k % 2), hex('#b8b8c4'), k);
+      spiky(b, rx - R - 1, ry, Math.round(H * 0.14), WHITE, hex('#ffb040'));
+    },
+    ice(b, W, H, s) {
+      grad(b, 0, H, hex('#a8e8ff'), hex('#3a8ac8'));
+      for (let k = 0; k < 10; k++) put(b, (k * 37) % W, (k * 23) % Math.round(H * 0.7), WHITE);
+      const gy = Math.round(H * 0.86); ground(b, gy, hex('#e0f8ff'), hex('#b8e0f0'));
+      const an = kip(b, { mouth: 1, headPitch: -0.06, eyes: 'open', finSway: -0.1, lean: -0.05 }, W * 0.26, gy + 1, s);
+      const m = an.mouth || [W * 0.36, H * 0.5], x1 = W - 3;
+      thick(b, m[0] + 1, m[1], x1, m[1] - 2, 2, hex('#6ad8ff')); thick(b, m[0] + 1, m[1], x1, m[1] - 2, 1, hex('#e8fbff'));
+      for (let x = Math.round(m[0]) + 5; x < x1; x += 5) { star4(b, x, Math.round(m[1] - 1 + ((x / 5) % 2 ? -3 : 3)), 1, WHITE); }
+      // an ice block forming at the end
+      const bx = Math.round(W * 0.86), by = Math.round(m[1]) - 5;
+      UI.rect(b, bx - 5, by - 3, 10, 12, hex('#c8f4ff')); UI.rect(b, bx - 5, by - 3, 10, 1, WHITE); UI.rect(b, bx - 5, by - 3, 1, 12, WHITE); UI.rect(b, bx + 4, by - 3, 1, 12, hex('#6ab8e0'));
+    },
+    flash(b, W, H, s) {
+      grad(b, 0, H, hex('#fff8c0'), hex('#ffc84a'));
+      burst(b, Math.round(W * 0.5), Math.round(H * 0.45), 4, Math.max(W, H), 22, WHITE, 0.1);
+      rgrad(b, W * 0.5, H * 0.45, H * 0.55, WHITE, hex('#fff4b0'));
+      const gy = Math.round(H * 0.88); ground(b, gy, hex('#f0d890'), hex('#e0c070'));
+      kip(b, { eyes: 'happy', mouth: 1, headPitch: -0.15, squash: -0.08, tailLift: 0.4 }, W * 0.5, gy + 1, s, { yaw: 0.2 });
+      star4(b, Math.round(W * 0.2), Math.round(H * 0.25), 3, WHITE, hex('#fff070')); star4(b, Math.round(W * 0.8), Math.round(H * 0.3), 2, WHITE);
+    },
+    rain(b, W, H, s) {
+      grad(b, 0, H, hex('#4a5a7a'), hex('#8aa0c0'));
+      cloud(b, W * 0.5, H * 0.14, W * 0.8, hex('#6a7890'), hex('#4a566e'));
+      cloud(b, W * 0.5, H * 0.1, W * 0.55, hex('#8a98b0'));
+      for (let k = 0; k < 26; k++) { const x = (k * 29 + 5) % W, y = Math.round(H * 0.3) + ((k * 17) % Math.round(H * 0.55)); put(b, x, y, hex('#bfe0ff')); put(b, x - 1, y + 1, hex('#8ac0f0')); }
+      const gy = Math.round(H * 0.86); ground(b, gy, hex('#5a7a5a'), hex('#4a6a4a'));
+      for (let k = 0; k < 3; k++) { const px0 = Math.round(W * (0.2 + k * 0.3)); for (let x = -3; x <= 3; x++) put(b, px0 + x, gy + 2, hex('#8ac0f0')); }
+      kip(b, { eyes: 'happy', mouth: 1, legF: -0.85, legB: 0.4, headRoll: 0.25, tailWag: 0.5, headPitch: -0.2 }, W * 0.5, gy, s, { rot: 0.18 });
+    },
+    sunny(b, W, H, s) {
+      grad(b, 0, H, hex('#ffb040'), hex('#fff0a0'));
+      const sx = Math.round(W * 0.76), sy = Math.round(H * 0.28), R = Math.round(H * 0.18);
+      burst(b, sx, sy, R + 2, R + Math.round(H * 0.2), 12, hex('#fff4a0'), 0.2);
+      disc(b, sx, sy, R, hex('#ffe050')); disc(b, sx - 1, sy - 1, R - 2, hex('#fff49a'));
+      const gy = Math.round(H * 0.84); ground(b, gy, SAND, SAND2);
+      kip(b, { eyes: 'happy', mouth: 0.8, headPitch: -0.22, glasses: 'star', lean: -0.08, legF: 0.25, tailWag: 0.2 }, W * 0.34, gy + 1, s);
+    },
+    quick(b, W, H, s) {
+      grad(b, 0, H, hex('#e8f0ff'), hex('#a8b8e0'));
+      for (let k = 0; k < 9; k++) speed(b, 0, W, Math.round(H * 0.12 + k * H * 0.09), k % 2 ? 0xffffffff : hex('#c8d4f0'), 7 + k);
+      const gy = Math.round(H * 0.86); ground(b, gy, hex('#8a98b8'), hex('#7a88a8'));
+      const P = { lean: 0.32, headPitch: 0.3, legF: -1, legB: 1, eyes: 'blink', mouth: 0.3, finSway: -0.35, tailLift: 0.5 };
+      kip(b, P, W * 0.3, gy + 1, s, { alpha: 0.22, tint: WHITE, tintK: 0.6 });
+      kip(b, P, W * 0.46, gy + 1, s, { alpha: 0.45, tint: WHITE, tintK: 0.35 });
+      kip(b, P, W * 0.64, gy + 1, s);
+    },
+    whirl(b, W, H, s) {
+      grad(b, 0, H, hex('#2a6ac8'), hex('#0a1a58'));
+      const cx = W * 0.5, cy = H * 0.55;
+      for (let a = 0; a < 26; a += 0.05) { const r = a * H * 0.024, x = Math.round(cx + Math.cos(a) * r * 1.4), y = Math.round(cy + Math.sin(a) * r * 0.7); put(b, x, y, a % 6.28 < 3 ? hex('#8ad0ff') : WHITE); }
+      kip(b, { eyes: 'happy', mouth: 1, legF: -0.7, legB: 0.7, tailWag: 0.6, headRoll: 0.3 }, cx, cy + Math.round(H * 0.28), s, { rot: 0.55 });
+      for (let k = 0; k < 6; k++) drop(b, Math.round(cx + Math.cos(k) * W * 0.4), Math.round(cy + Math.sin(k * 2) * H * 0.3), hex('#bfe8ff'));
+    },
+    generic(b, W, H, s) {
+      grad(b, 0, H, hex('#4ad0c0'), hex('#1a5a7a'));
+      const gy = Math.round(H * 0.86); ground(b, gy, hex('#2a7a6a'), hex('#1a6a5a'));
+      kip(b, { eyes: 'happy', mouth: 0.8, headPitch: -0.2 }, W * 0.34, gy + 1, s);
+      const dx = Math.round(W * 0.72), dy = Math.round(H * 0.42), R = Math.round(H * 0.22);
+      disc(b, dx, dy, R, INK); disc(b, dx, dy, R - 1, hex('#c8d0e0')); disc(b, dx, dy, Math.round(R * 0.6), hex('#8a98b8')); disc(b, dx, dy, 2, INK);
+      star4(b, dx - R + 2, dy - R + 2, 2, WHITE);
+    },
+    berry(b, W, H) {
+      grad(b, 0, H, hex('#8ae0a0'), hex('#2a8a4a'));
+      burst(b, Math.round(W / 2), Math.round(H / 2), 3, W, 16, hex('#b0f0c0'));
+      const cx = Math.round(W / 2), cy = Math.round(H * 0.55), R = Math.round(H * 0.3);
+      disc(b, cx, cy, R + 1, INK); disc(b, cx, cy, R, hex('#3a6ae0')); disc(b, cx - 2, cy - 2, R - 3, hex('#5a8aff')); disc(b, cx - Math.round(R * 0.4), cy - Math.round(R * 0.4), 2, WHITE);
+      UI.rect(b, cx - 1, cy - R - 4, 2, 4, hex('#3a2a1a')); disc(b, cx + 4, cy - R - 3, 2, hex('#4ac050'));
+    },
+  };
+
+  /* ---------- the frame ---------- */
+  // art window shape per type (x, y in 0..aw-1 / 0..ah-1)
+  function inArt(kind, x, y, aw, ah) {
+    if (kind === 'atk') { const tip = Math.min(5, Math.round(ah * 0.16)); if (y >= ah - tip) { const k = (y - (ah - tip) + 1) / tip; return Math.abs(x - (aw - 1) / 2) <= (aw / 2) * (1 - k * 0.9); } return true; }
+    if (kind === 'power') { const u = (x - (aw - 1) / 2) / (aw / 2), v = (y - (ah - 1) / 2) / (ah / 2); return u * u * 0.55 + v * v * v * v * 0.0 + v * v <= 1.02 && (u * u + v * v * 0.6 <= 1.05); }
+    if (kind === 'silly') { if (y >= ah - 3) return (y - (ah - 3)) < 2 + Math.round(Math.sin(x * 0.8)); return true; }
+    return !((x === 0 || x === aw - 1) && (y === 0 || y === ah - 1));
+  }
+  const cache = new Map();
+  function face(c, w, h) {
+    const key = c.key + '|' + w + 'x' + h + '|' + (c.art === 'berry' ? '' : lookKey());
+    let b = cache.get(key); if (b) return b;
+    if (cache.size > 160) cache.clear();
+    b = buf(w, h);
+    const K = KIND[c.kind] || KIND.skill, trim = TRIM[clamp(c.r | 0, 0, 3)];
+    // silhouette, trim, body with bevel
+    UI.rrect(b, 0, 0, w, h, 5, INK);
+    UI.rrect(b, 1, 1, w - 2, h - 2, 4, trim);
+    UI.rrect(b, 2, 2, w - 4, h - 4, 3, K.base);
+    for (let y = 3; y < h - 3; y++) for (let x = 3; x < w - 3; x++) if (((x + y * 3) & 7) === 0) put(b, x, y, U.tweak(K.base, 0, 1, 0.035));
+    UI.hline(b, 4, w - 5, 2, K.light); UI.vline(b, 2, 4, h - 5, K.light);
+    UI.hline(b, 4, w - 5, h - 3, K.dark); UI.vline(b, w - 3, 4, h - 5, K.dark);
+    if (c.r >= 3) for (const [x, y] of [[3, h - 4], [w - 4, h - 4], [w - 4, 3]]) put(b, x, y, WHITE);
+    // art window
+    const ax = 5, ay = 15, aw = w - 10, ah = Math.round(h * 0.4);
+    const art = buf(aw, ah);
+    const s = clamp(ah * 0.0098, 0.22, 0.6);
+    try { (ART[c.art] || ART.generic)(art, aw, ah, s); } catch (e) { console.error(e); }
+    if (c.up) for (const [x, y] of [[3, 3], [aw - 4, 4], [aw - 6, ah - 5]]) star4(art, x, y, 1, hex('#fff6a0'));
+    const A = (x, y) => x >= 0 && y >= 0 && x < aw && y < ah && inArt(c.kind, x, y, aw, ah);
+    for (let y = -1; y <= ah; y++) for (let x = -1; x <= aw; x++) {
+      if (A(x, y)) { put(b, ax + x, ay + y, art.d[y * aw + x]); continue; }
+      if (A(x - 1, y) || A(x + 1, y) || A(x, y - 1) || A(x, y + 1)) put(b, ax + x, ay + y, INK);
+      else if (A(x - 2, y) || A(x + 2, y) || A(x, y - 2) || A(x, y + 2)) put(b, ax + x, ay + y, K.dark);
+    }
+    // inner glint along the art's top edge
+    for (let x = 1; x < aw - 1; x++) if (A(x, 0)) bl(b, ax + x, ay, WHITE, 0.35);
+    // name ribbon with notched tails
+    const ry = 3, rh = 10, rx0 = 9, rx1 = w - 4;
+    for (let y = 0; y < rh; y++) for (let x = rx0; x <= rx1; x++) {
+      const edge = x === rx0 || x === rx1 || y === 0 || y === rh - 1;
+      const notch = x > rx1 - 3 && Math.abs(y - (rh - 1) / 2) < (x - (rx1 - 3)) * 1.3 - 0.5;
+      if (notch) continue;
+      put(b, x, ry + y, edge ? INK : y === 1 ? U.tweak(K.band, 0, 1, 0.12) : K.band);
+    }
+    let nm = c.name;
+    const maxN = rx1 - rx0 - 8;
+    if (Font.measure(nm, 'small') > maxN && c.short) nm = c.short;
+    Font.draw(b, nm, Math.round((rx0 + 4 + rx1 - 3) / 2), ry + 3, c.up ? GREEN : WHITE, { font: 'small', align: 'center', outline: INK });
+    // cost orb
+    const ox = 7, oy = 7;
+    UI.disc(b, ox, oy, 7, INK); UI.disc(b, ox, oy, 6, c.cost === 0 ? hex('#8ab8d8') : hex('#e87a1a'));
+    UI.disc(b, ox - 1, oy - 1, 4, c.cost === 0 ? hex('#b8e0f8') : hex('#ffa83a')); UI.put(b, ox - 3, oy - 3, WHITE); UI.put(b, ox - 2, oy - 4, WHITE);
+    Font.draw(b, String(c.cost), ox + 1, oy - 2, c.costUp ? GREEN : WHITE, { font: 'body', align: 'center', outline: INK });
+    // type plaque straddling the bottom of the art
+    const lab = K.lab, lw = Font.measure(lab, 'small') + 6, lx = Math.round(w / 2 - lw / 2), ly = ay + ah - 3;
+    UI.rrect(b, lx, ly, lw, 8, 2, INK); UI.rrect(b, lx + 1, ly + 1, lw - 2, 6, 1, U.tweak(K.dark, 0, 1, 0.05));
+    Font.draw(b, lab, Math.round(w / 2), ly + 2, U.mix(K.light, WHITE, 0.4), { font: 'small', align: 'center' });
+    // rules text
+    const ty = ly + 10, th = h - 4 - ty;
+    UI.rrect(b, 4, ty - 1, w - 8, th, 2, U.mix(K.dark, INK, 0.35));
+    const lines = Font.wrap(c.desc, 'small', w - 11);
+    const lh = 8, n = Math.min(lines.length, Math.max(1, Math.floor((th + 1) / lh)));
+    const y0 = Math.round(ty + (th - n * lh) / 2) + 1;
+    for (let i = 0; i < n; i++) Font.draw(b, lines[i], Math.round(w / 2), y0 + i * lh, WHITE, { font: 'small', align: 'center' });
+    // TM badge + "once" mark
+    if (c.tm) { const t = c.tm, tw = Font.measure(t, 'small') + 4; UI.rect(b, ax + aw - tw - 1, ay + 1, tw, 7, 0xcc10182a); Font.draw(b, t, ax + aw - tw / 2 - 1, ay + 2, GOLD, { font: 'small', align: 'center' }); }
+    if (c.exhaust) { UI.rect(b, ax + 1, ay + 1, Font.measure('ONCE', 'small') + 4, 7, 0xcc10182a); Font.draw(b, 'ONCE', ax + 3, ay + 2, hex('#ffb0a0'), { font: 'small' }); }
+    // rarity gem on the bottom rim
+    if (c.r >= 1) { const gx = Math.round(w / 2), gy = h - 2; UI.disc(b, gx, gy, 2, INK); UI.put(b, gx, gy, trim); UI.put(b, gx - 1, gy, trim); UI.put(b, gx, gy - 1, WHITE); }
+    cache.set(key, b);
+    return b;
+  }
+  // the card back (draw pile)
+  function back(w, h) {
+    const key = 'back|' + w + 'x' + h; let b = cache.get(key); if (b) return b;
+    b = buf(w, h);
+    UI.rrect(b, 0, 0, w, h, Math.min(5, Math.floor(w / 4)), INK);
+    UI.rrect(b, 1, 1, w - 2, h - 2, Math.min(4, Math.floor(w / 4) - 1), hex('#d8e0ec'));
+    UI.rrect(b, 2, 2, w - 4, h - 4, Math.min(3, Math.floor(w / 4) - 1), hex('#2a4a8a'));
+    for (let y = 3; y < h - 3; y++) for (let x = 3; x < w - 3; x++) if ((x + y) % 4 === 0) put(b, x, y, hex('#34589e'));
+    const cx = Math.floor(w / 2), cy = Math.floor(h / 2), R = Math.max(2, Math.floor(Math.min(w, h) * 0.26));
+    UI.disc(b, cx, cy, R + 1, INK); UI.disc(b, cx, cy, R, hex('#f28a2a')); UI.disc(b, cx, cy, Math.max(1, R - 2), hex('#56bcf0')); if (R > 3) UI.disc(b, cx, cy, 1, WHITE);
+    cache.set(key, b);
+    return b;
+  }
+  // blit a face into the UI: scaled (nearest), optionally dimmed / faded / white-flashed
+  function blit(fb, src, x, y, w, h, o = {}) {
+    x = Math.round(x); y = Math.round(y); w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+    const a = o.alpha ?? 1, dim = o.dim || 0, fl = o.flash || 0;
+    if (a <= 0.01) return;
+    const sw = src.w, sh = src.h, fx = sw / w, fy = sh / h;
+    const y0 = Math.max(0, -y), y1 = Math.min(h, fb.h - y), x0 = Math.max(0, -x), x1 = Math.min(w, fb.w - x);
+    for (let yy = y0; yy < y1; yy++) {
+      const sy = Math.min(sh - 1, Math.floor(yy * fy)), row = (y + yy) * fb.w, srow = sy * sw;
+      for (let xx = x0; xx < x1; xx++) {
+        let c = src.d[srow + Math.min(sw - 1, Math.floor(xx * fx))]; if (!c) continue;
+        if (dim) c = mix(c, 0xff20242e, dim);
+        if (fl) c = mix(c, WHITE, fl);
+        const i = row + x + xx;
+        if (a >= 0.99) fb.d[i] = c;
+        else fb.d[i] = fb.d[i] ? mix(fb.d[i], c, a) : (((Math.round(a * 255) << 24) | (c & 0xffffff)) >>> 0);
+      }
+    }
+  }
+  return { face, back, blit, KIND, TRIM, ART, kip, cache };
+})();
+
 /* ==== src/snap/cards.js ==== */
 /* ------------------------------------------------------------------
    Cards — "Mudkip Spire": a goofy Slay-the-Spire style card battle
@@ -79390,6 +79777,191 @@ const Cards = (() => {
   return Object.assign(C, { CARDS, FOES, STARTER, def, describe, start, play, endTurn, takeReward, flee, close, update, key, down, hover, drawUI, drawWorld, store, battleDeck, tmMoves, foeDef, canPlay, maxHP, rollRewards });
 })();
 
+/* ==== src/snap/arena.js ==== */
+/* ------------------------------------------------------------------
+   Arena — the cinematic stage for Cards boss battles: a screen-shatter
+   transition, letterbox, spotlights, a dedicated backdrop per area
+   (stormy rock arena on the beach, abyss ring at sea, moonlit dojo in
+   the forest, lava ring in the volcano, a stadium elsewhere), a boss
+   title card with a zoom on its face, dramatic music, comic faces
+   (anger veins, sweat, shock lines, smug sparkles, dizzy stars) and an
+   iris-out exit. While it covers the screen, the world's own layers
+   (props, water, foreground, weather) are skipped.
+------------------------------------------------------------------- */
+const Arena = (() => {
+  const { clamp, lerp, hex, mix } = U;
+  const INK = 0xff1b2240, WHITE = 0xffffffff;
+  const A = { on: false, cover: false, G: null, hidden: [] };
+  const THEMES = {
+    beach: { name: 'STORM ROCK ARENA', sky: ['#1a1c3a', '#4a4a6a'], floor: '#6a6a78', edge: '#8a8a98', rain: 1, bolt: 1, sea: '#1a2a4a' },
+    abyss: { name: 'THE ABYSS RING', sky: ['#020a2a', '#0a3a7a'], floor: '#2a3a5a', edge: '#4a6a8a', bubbles: 1, water: 1 },
+    forest: { name: 'MOONLIT DOJO', sky: ['#0a0a28', '#2a2a5a'], floor: '#7a5230', edge: '#a8784a', moon: 1, trees: 1 },
+    volcano: { name: 'LAVA RING', sky: ['#1a0404', '#6a1a0a'], floor: '#2a1a1a', edge: '#4a2a22', lava: 1, embers: 1 },
+    other: { name: 'CHAMPION STADIUM', sky: ['#0a0a1a', '#2a1a4a'], floor: '#4a4a5a', edge: '#6a6a7a', crowd: 1 },
+  };
+  const ease = (k) => U.ease.outCubic(clamp(k, 0, 1));
+  function begin(G) {
+    const M = Game.mudkip, F = G.foe;
+    const th = M.mode === 'swim' || F.mode === 'swim' ? 'abyss' : THEMES[Game.areaId] ? Game.areaId : 'other';
+    G.ar = { th: THEMES[th], id: th, t: 0, floor: M.mode === 'swim' ? Math.max(M.y, F.y) + 30 : M.y, dark: 1, spotF: 0, spotM: 0, bars: 0.16, title: -1, shatter: 0, out: -1, bolt: 0 };
+    try { const f = Game.hdFrame ? Game.hdFrame(Game.cx, Game.cy) : null; const src = f || Game.fb(); G.ar.snap = { w: src.w, h: src.h, d: new Uint32Array(src.d) }; } catch (e) { G.ar.snap = null; }
+    G.ar.shards = [];
+    for (let i = 0; i < 26; i++) G.ar.shards.push({ x: Math.random(), y: Math.random(), vx: (Math.random() - 0.5) * 2, vy: -Math.random() * 1.5, r: (Math.random() - 0.5) * 6 });
+    A.on = true; A.G = G; A.cover = true;
+    A.hidden = []; for (const m of Game.mons) if (m !== M && m !== F && m.visible) { m.visible = false; A.hidden.push(m); }
+    try { Game.sfx('lensCrack', null, 1); Game.sfx('thud', null, 1); } catch (e) { /* */ }
+    try { Music.play('legend'); } catch (e) { /* */ }
+  }
+  function stop() { for (const m of A.hidden) if (m.alive) m.visible = true; A.hidden = []; A.on = false; A.cover = false; A.G = null; if (Game.cine) Game.cine.zk = 1; }
+  function skip(G) { G.ar.skip = true; }
+  function* wait(T, G) { let e = 0; while (e < T && !G.ar.skip) e += yield; }
+  function* intro(G) {
+    const R = G.ar, F = G.foe;
+    yield* wait(0.9, G); R.shatter = 1;
+    const h = F.headPt();
+    G.cam = { x: F.x, y: (h[1] + F.y) / 2, zoom: 2.2, speed: 12 };
+    R.spotF = 1; Game.sfx('stamp', null, 1);
+    yield* wait(0.4, G);
+    R.title = 0; Game.sfx('roar', F.x, 0.8);
+    G.them.face = { kind: 'anger', t: 0, life: 1.8 };
+    yield* wait(1.2, G);
+    G.bubbles.push({ who: 'them', text: (G.fd.lines && G.fd.lines.intro ? U.pick(G.fd.lines.intro) : 'Hmph!'), t: 0, life: 1.4, shout: true });
+    G.zoom = { who: 'them', t: 1, T: 1.4, z: 2.2 };
+    yield* wait(1.3, G);
+    G.zoom = null; G.cam = null; R.spotM = 1; R.title = -1; R.shatter = 1;
+    Game.sfx('stamp', null, 0.8);
+    R.fight = 0; yield* wait(0.7, G); R.fight = -1;
+    R.spotF = R.spotM = 1; G.bubbles.length = 0; R.skip = false;
+  }
+  function update(dt, G) {
+    const R = G.ar; R.t += dt;
+    if (R.shatter > 0 && R.shatter < 99) R.shatter += dt;
+    if (R.title >= 0) R.title += dt; if (R.fight >= 0) R.fight += dt;
+    R.dark = lerp(R.dark, G.step === 'intro' && !G.ar.spotM ? 0.75 : 0.35, dt * 3);
+    R.bars = lerp(R.bars, G.step === 'intro' || G.step === 'ko' ? 0.16 : 0.075, dt * 3);
+    if (R.th.bolt && Math.random() < dt * 0.25) { R.bolt = 0.25; try { Game.sfx('zap', null, 0.3); } catch (e) { /* */ } }
+    R.bolt = Math.max(0, R.bolt - dt);
+    if (G.over && R.out < 0) R.out = 0;
+    if (R.out >= 0) { R.out += dt; if (R.out > 0.5 && A.cover) { A.cover = false; for (const m of A.hidden) if (m.alive) m.visible = true; A.hidden = []; Game.camFocus = null; } }
+  }
+  const outDone = (G) => G.ar.out > 1.0;
+  const barH = (G, H) => Math.round(H * G.ar.bars);
+  /* ---------- world: the backdrop (before the Pokémon) ---------- */
+  function drawBack(fb, cx, cy, t, G) {
+    if (!A.cover) return;
+    const R = G.ar, T = R.th, W = fb.w, H = fb.h, d = fb.d;
+    const s0 = hex(T.sky[0]), s1 = hex(T.sky[1]), fy = Math.round(R.floor - cy), par = cx * 0.2;
+    for (let y = 0; y < H; y++) { const c = mix(s0, s1, clamp(y / Math.max(1, fy), 0, 1)); d.fill(R.bolt > 0.15 ? mix(c, WHITE, 0.4) : c, y * W, y * W + W); }
+    if (T.moon) UI.disc(fb, Math.round(W * 0.75 - par * 0.2), Math.round(fy * 0.35), 16, hex('#f0f0d0'));
+    if (T.trees) for (let x = -20; x < W + 20; x += 14) { const X = Math.round(((x - par) % (W + 40) + W + 40) % (W + 40) - 20), h = 40 + ((x * 7) % 30); for (let k = 0; k < h; k++) UI.hline(fb, X - Math.round(k * 0.18), X + Math.round(k * 0.18), fy - h + k, hex('#0a1418')); }
+    if (T.sea) for (let y = fy - 30; y < fy; y++) { UI.hline(fb, 0, W, y, mix(hex(T.sea), s1, 0.3)); if ((y + ((t * 8) | 0)) % 7 === 0) for (let x = 0; x < W; x += 9) UI.put(fb, (x + y * 3) % W, y, hex('#c8d8f0')); }
+    if (T.lava) { for (let x = 0; x < W; x++) { const h = 30 + Math.round(Math.sin((x + par) * 0.03) * 10); UI.vline(fb, x, fy - h, fy, hex('#2a0a08')); } const vx = Math.round(W * 0.6 - par * 0.3); for (let k = 0; k < 60; k++) UI.hline(fb, vx - k, vx + k, fy - 60 + k, hex('#1a0606')); UI.disc(fb, vx, fy - 62, 4, hex('#ff6a1a')); }
+    if (T.crowd) for (let x = 0; x < W; x += 5) { const bob = Math.round(Math.sin(t * 6 + x) * 1); UI.disc(fb, x, fy - 30 + bob + (x % 3), 3, hex('#1a1030')); }
+    // the floor: a stone ring with a front lip
+    const fl = hex(T.floor), ed = hex(T.edge);
+    for (let y = Math.max(0, fy - 10); y < H; y++) { const top = y < fy + 2; for (let x = 0; x < W; x++) d[y * W + x] = top ? ed : y < fy + 16 ? (PX.bayer4(x + cx, y) < 0.15 ? mix(fl, INK, 0.3) : fl) : mix(fl, INK, 0.5); }
+    for (let x = 0; x < W; x += 1) if (((x + cx) & 31) === 0) UI.vline(fb, x, fy - 9, fy + 15, mix(fl, INK, 0.4));
+    if (T.lava) for (let y = fy + 16; y < Math.min(H, fy + 26); y++) for (let x = 0; x < W; x++) d[y * W + x] = mix(hex('#ff5a0a'), hex('#ffd04a'), (Math.sin((x + cx) * 0.2 + t * 3 + y) + 1) / 2);
+    if (T.water) for (let y = fy + 16; y < H; y++) UI.hline(fb, 0, W, y, hex('#0a2a5a'));
+    // pedestal under a foe standing higher (Walrein on its rock)
+    const F = G.foe, py = Math.round(F.y - cy);
+    if (F.mode !== 'swim' && py < fy - 8) { const px = Math.round(F.x - cx); for (let y = py; y < fy; y++) UI.hline(fb, px - 24, px + 24, y, y === py ? ed : fl); }
+    try { const occ = Game.occ(); occ && occ.fill(0); } catch (e) { /* */ }
+    for (const m of [Game.mudkip, F]) Critters.shadow(fb, cx, cy, m.x, m.mode === 'swim' ? R.floor : m.y + 1, m.width() * 0.4, 3, 0.9);
+  }
+  /* ---------- world: spotlights, darkness, weather (after the Pokémon) ---------- */
+  function drawFront(fb, cx, cy, t, G) {
+    if (!A.cover) return;
+    const R = G.ar, T = R.th, W = fb.w, H = fb.h, d = fb.d;
+    const spots = [];
+    if (R.spotF) spots.push(G.foe.x - cx); if (R.spotM) spots.push(Game.mudkip.x - cx);
+    const dk = R.dark;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let lit = 0; for (const sx of spots) { const w = 18 + y * 0.28; const k = 1 - Math.abs(x - sx) / w; if (k > lit) lit = k; }
+      const i = y * W + x; const k = dk * (1 - clamp(lit * 1.6, 0, 1));
+      if (k > 0.01) d[i] = mix(d[i], 0xff05030a, k); else if (lit > 0.3) d[i] = mix(d[i], hex('#fff0d0'), 0.08);
+    }
+    if (T.rain || G.you.st.rain) for (let k = 0; k < 90; k++) { const x = (k * 53 + Math.floor(t * 300)) % W, y = (k * 29 + Math.floor(t * 500)) % H; UI.line(fb, x, y, x - 2, y + 5, 0xffa8c0e0); }
+    if (T.embers || T.bubbles) for (let k = 0; k < 30; k++) { const x = (k * 71) % W, y = H - ((k * 37 + t * (T.embers ? 40 : 25)) % H); UI.put(fb, Math.round(x + Math.sin(t + k) * 3), Math.round(y), T.embers ? hex('#ffa03a') : hex('#c8f0ff')); }
+    if (R.bolt > 0.12) { let x = Math.round(W * 0.3 + (R.t * 97 % 1) * W * 0.4), y = 0; while (y < R.floor - cy - 40) { const nx = x + Math.round((Math.random() - 0.5) * 10); UI.line(fb, x, y, nx, y + 8, WHITE); x = nx; y += 8; } }
+    if (G.you.st.sun) for (let y = 0; y < H; y++) for (let x = 0; x < W; x += 2) if (((x + y) & 15) === 0) d[y * W + x] = mix(d[y * W + x], hex('#ffe070'), 0.3);
+  }
+  /* ---------- UI ---------- */
+  function drawUnder(fb, t, G) {
+    const W = fb.w, H = fb.h, bh = barH(G, H);
+    UI.rect(fb, 0, 0, W, bh, 0xff05060c); UI.rect(fb, 0, H - bh, W, bh, 0xff05060c);
+    if (G.step === 'intro' && G.ar.shatter > 0.5) Font.draw(fb, G.ar.th.name, W / 2, H - bh + Math.round(bh / 2) - 3, hex('#c8c0e0'), { font: 'small', align: 'center' });
+  }
+  function drawFaces(fb, t, G, head) {
+    for (const [u, m] of [[G.you, Game.mudkip], [G.them, G.foe]]) {
+      const [hx, hy] = head(m), f = u.face, X = Math.round(hx), Y = Math.round(hy);
+      if (u.dizzyT > 0 || u.ko) for (let s = 0; s < 3; s++) { const an = t * 5 + s * 2.09; const x = Math.round(hx + Math.cos(an) * 12), y = Math.round(hy - 2 + Math.sin(an) * 4); UI.put(fb, x, y, WHITE); UI.put(fb, x - 1, y, hex('#ffe040')); UI.put(fb, x + 1, y, hex('#ffe040')); UI.put(fb, x, y - 1, hex('#ffe040')); UI.put(fb, x, y + 1, hex('#ffe040')); }
+      if (!f) continue;
+      const p = 1 + Math.round(Math.abs(Math.sin(f.t * 10)));
+      if (f.kind === 'anger') { const ax = X + 10, ay = Y - 6; for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { UI.rect(fb, ax + dx * (p + 1) - 1, ay + dy * (p + 1) - 1, 3, 3, INK); UI.rect(fb, ax + dx * (p + 1), ay + dy * (p + 1), 1 + (dx > 0 ? 1 : 0), 1, hex('#ff3a3a')); } Font.draw(fb, '#', ax, ay - 3, hex('#ff3a3a'), { font: 'small', align: 'center', outline: INK }); }
+      else if (f.kind === 'shock') { Font.draw(fb, '!!', X, Y - 16 - p, hex('#ffe040'), { font: 'body', align: 'center', outline: INK }); for (let k = -1; k <= 1; k++) UI.vline(fb, X + k * 4, Y + 2, Y + 7, hex('#6a8aff')); }
+      else if (f.kind === 'smug' || f.kind === 'laugh') { Font.draw(fb, f.kind === 'laugh' ? 'HA HA' : 'heh~', X + 14, Y - 8 - p, WHITE, { font: 'small', outline: INK }); UI.put(fb, X - 10, Y - 6, WHITE); UI.put(fb, X - 11, Y - 6, hex('#ffe070')); UI.put(fb, X - 9, Y - 6, hex('#ffe070')); }
+      else if (f.kind === 'hurt') { UI.disc(fb, X + 9, Y - 2 + p, 2, hex('#8ac8ff')); }
+    }
+  }
+  function drawOver(fb, t, G) {
+    const R = G.ar, W = fb.w, H = fb.h;
+    // zoom-in focus lines
+    if (G.zoom) for (let k = 0; k < 40; k++) { const a = k * 0.157 + t * 0.5, r0 = Math.max(W, H) * (0.42 + ((k * 7) % 5) * 0.02); UI.line(fb, Math.round(W / 2 + Math.cos(a) * r0), Math.round(H / 2 + Math.sin(a) * r0), Math.round(W / 2 + Math.cos(a) * W), Math.round(H / 2 + Math.sin(a) * W), 0xccffffff); }
+    // title card
+    if (R.title >= 0) {
+      const k = ease(R.title / 0.3), y = Math.round(H * 0.62), bw = Math.round(W * k);
+      UI.rect(fb, 0, y - 2, bw, 34, INK); UI.rect(fb, 0, y, bw, 30, hex('#b82a2a')); UI.rect(fb, 0, y + 30, bw, 2, hex('#ffd070'));
+      const sc = W >= 420 ? 2 : 1;
+      Font.draw(fb, (U.clamp ? '' : '') + (DexData.S[G.foe.dex] || { name: '?' }).name.toUpperCase(), Math.round(W * 0.08 + (1 - k) * -80), y + 4, hex('#ffe070'), { font: 'title', outline: INK, sc });
+      Font.draw(fb, '- ' + (G.fd.title || 'Challenger') + ' -', Math.round(W * 0.08 + (1 - k) * -120), y + 22, WHITE, { font: 'small', outline: INK });
+    }
+    if (R.fight >= 0) { const k = ease(R.fight / 0.2); Font.draw(fb, 'BATTLE!', W / 2, Math.round(H * 0.4), hex('#ffe070'), { font: 'title', align: 'center', outline: INK, sc: k > 0.5 ? 2 : 1 }); }
+    // screen shatter (the frozen world breaks away)
+    const S = R.snap, st = G.step === 'intro' ? R.shatter : 99;
+    if (S && st < 1.4) {
+      const sx = S.w / W, sy = S.h / H, k = st;
+      if (k < 0.01) { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) fb.d[y * W + x] = S.d[Math.floor(y * sy) * S.w + Math.floor(x * sx)]; }
+      else {
+        const n = 6, cw = W / n, chh = H / 4;
+        for (let j = 0; j < 4; j++) for (let i = 0; i < n; i++) {
+          const q = G.ar.shards[(j * n + i) % G.ar.shards.length], dx = (q.vx * 120 + (i - n / 2) * 20) * k, dy = (q.vy * 60 + 260 * k) * k, a = q.r * k * 0.3, ca = Math.cos(a), sa = Math.sin(a);
+          const x0 = i * cw, y0 = j * chh, mx = x0 + cw / 2, my = y0 + chh / 2;
+          for (let y = 0; y < chh; y++) for (let x = 0; x < cw; x++) {
+            const ux = x - cw / 2, uy = y - chh / 2, X = Math.round(mx + dx + ux * ca - uy * sa), Y = Math.round(my + dy + ux * sa + uy * ca);
+            if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
+            const c = S.d[Math.min(S.h - 1, Math.floor((y0 + y) * sy)) * S.w + Math.min(S.w - 1, Math.floor((x0 + x) * sx))];
+            fb.d[Y * W + X] = (x === 0 || y === 0) ? WHITE : c;
+          }
+        }
+      }
+    } else if (G.step === 'intro' && R.shatter === 0 && S) { for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) fb.d[y * W + x] = S.d[Math.floor(y * S.h / H) * S.w + Math.floor(x * S.w / W)]; for (let k = 0; k < 10; k++) UI.line(fb, W / 2, H / 2, Math.round(W / 2 + Math.cos(k * 0.63) * W), Math.round(H / 2 + Math.sin(k * 0.63) * W), WHITE); }
+    // iris out / in
+    if (R.out >= 0) {
+      const k = R.out < 0.5 ? 1 - R.out / 0.5 : (R.out - 0.5) / 0.5, rr = Math.hypot(W, H) * 0.6 * k;
+      const [cx, cy] = Talk.toUI(Game.mudkip.x, Game.mudkip.y - 10);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (Math.hypot(x - cx, y - cy) > rr) fb.d[y * W + x] = 0xff000000;
+    }
+  }
+  function sadTrombone() {
+    try {
+      const ac = Sound.ctx(); if (!ac || !Sound.on) return; const out = Sound.sfxBus ? Sound.sfxBus() : ac.destination, t0 = ac.currentTime + 0.05;
+      [[311, 0.35], [293, 0.35], [277, 0.35], [262, 1.1]].forEach(([f, d], i) => { const o = ac.createOscillator(), g = ac.createGain(), t = t0 + i * 0.4; o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t); if (i === 3) for (let k = 0; k < 8; k++) o.frequency.setValueAtTime(f * (k % 2 ? 0.97 : 1), t + k * 0.12); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(out); o.start(t); o.stop(t + d + 0.05); });
+    } catch (e) { /* no audio */ }
+  }
+  // while the arena covers the screen, skip the world's own layers drawn over/around it
+  const skipWhen = (obj, names) => { if (!obj) return; for (const n of names) { const f = obj[n]; if (typeof f !== 'function') continue; obj[n] = function () { if (A.cover) return; return f.apply(this, arguments); }; } };
+  skipWhen(Stage, ['drawLate', 'drawWater', 'drawFore', 'drawGlows']);
+  { const f = Stage.drawProps; Stage.drawProps = function (fb, cx, cy, t, front) { if (A.cover && front) return; return f.apply(this, arguments); }; }
+  skipWhen(typeof Weather !== 'undefined' ? Weather : null, ['draw']);
+  skipWhen(typeof Seasons !== 'undefined' ? Seasons : null, ['draw']);
+  skipWhen(typeof Harvest !== 'undefined' ? Harvest : null, ['draw', 'drawUnder', 'drawFore']);
+  skipWhen(typeof Items !== 'undefined' ? Items : null, ['draw']);
+  skipWhen(typeof Shaders !== 'undefined' ? Shaders : null, ['apply']);
+  U.on && U.on('area', () => stop());
+  return Object.assign(A, { THEMES, begin, stop, skip, intro, update, outDone, barH, drawBack, drawFront, drawUnder, drawFaces, drawOver, sadTrombone });
+})();
+
 /* ==== src/snap/territory.js ==== */
 /* ------------------------------------------------------------------
    Territory — grumpy Pokémon guard a patch of their area. Walk into a
@@ -79496,7 +80068,7 @@ const Territory = (() => {
   }
   function battle(m) {
     if (typeof Cards === 'undefined') return false;
-    return Cards.start(m, { onEnd: (win, G) => ended(m, win, G) });
+    return Cards.start(m, { arena: true, onEnd: (win, G) => ended(m, win, G) });
   }
   function xp(n, why, key) {
     try {
@@ -81686,7 +82258,7 @@ const Progress = (() => {
         const a = Math.atan2(y, x) + rot, w = Math.cos(a * 6);
         if (w < 0.55) continue;
         const kk = (1 - d / R) * 0.9 * al * (w - 0.55) / 0.45 + 0.08;
-        if (kk > U.bayer4(x & 3, y & 3) + 0.05) UI.blend(fb, c.X + x, c.Y + y, RAY, 0.55);
+        if (kk > 0.1) { const X = c.X + x, Y = c.Y + y; if (X < 0 || Y < 0 || X >= W || Y >= H) continue; const i = Y * W + X, v = fb.d[i], al = Math.min(0.7, kk * 0.8); fb.d[i] = v ? U.mix(v, RAY, al) : (((Math.round(al * 255) << 24) | (RAY & 0xffffff)) >>> 0); }
       }
     }
     // shockwave rings when the badge flips
@@ -81926,6 +82498,278 @@ const Progress = (() => {
   }
 
   return Object.assign(P, { badgeSpr, has, hudOk, level, gain, award, FEATS, XP, openLog, closeLog, logBadge, icon, toastTop, dexPage, objective, status, tracked, entries, onScan });
+})();
+
+/* ==== src/snap/rotom.js ==== */
+/* ------------------------------------------------------------------
+   Rotom — the Rotom Dex companion that flies around Mudkip. A small
+   toon-shaded red device (lightning antenna, big eyes on a black
+   bridge, cyan face with a toothy grin, floating hands, pointed tail)
+   drawn crisp on the UI canvas. It bobs, orbits, looks at Pokémon,
+   peeks at unregistered species (marking them "seen" in the Dex),
+   points at the tracked quest, and chatters in speech bubbles.
+   Poke it (tap / click, or O) for jokes and hints. Reactions: Flash
+   ("OUCH! MY EYES!" + spin), Water Gun (soaked), Growl (startled),
+   Rain Dance / rain (sulks under a leaf), Sunny Day, new Pokédex
+   entries and level-ups (cheers). It zips out of frame in camera mode
+   and hides inside the device while the Dex is open.
+   Hooks in by wrapping Talk.update / drawBubbles / down / key.
+------------------------------------------------------------------- */
+const Rotom = (() => {
+  const { clamp, lerp, hex, mix, pick, rnd } = U;
+  const R = { x: 0, y: 0, vx: 0, vy: 0, on: false, st: 'follow', stT: 0, yaw: 0, spin: 0, lx: 0, ly: 0, mood: 'norm', moodT: 0, blinkT: 0, nextBlink: 2, talkT: 0,
+    chatT: 12, pokes: [], wet: 0, drips: [], sparks: [], sulk: 0, tgt: null, hop: 0, peeked: {}, cd: {}, seenN: -1, lv: null, rain: false, hide: 0, box: null, pointAt: null, pointT: 40, orbitT: 25, outT: 0 };
+  const C = { b: hex('#e03a3c'), l: hex('#ff7466'), ll: hex('#ffb6a6'), d: hex('#a41c2a'), dd: hex('#6c0f1e'), ink: hex('#2a0710'), scr: hex('#a7b3ef'), face: hex('#b2effe'), faceD: hex('#3692b8'), eye: hex('#0e0c1c'), mouth: hex('#2c0f30'), grey: hex('#b9c0cd'), greyD: hex('#737b90'), gold: hex('#ffd23a'), leaf: hex('#4ab860'), leafD: hex('#2a7a3a') };
+  const cfg = () => Save.data.rotom || (Save.data.rotom = { off: false, chat: 1 });
+  const nm = (k) => (DexData.S[k] ? DexData.S[k].name : k);
+
+  /* ---------- voice ---------- */
+  function voice(kind = 'chat', vol = 0.5) {
+    if (!Sound.on || !Sound.ctx || !Sound.ctx()) return;
+    try {
+      const ac = Sound.ctx(), g = ac.createGain(); g.gain.value = vol * 0.12; g.connect(Sound.sfxBus());
+      const t0 = ac.currentTime + 0.01;
+      const tone = (f0, f1, t, d, type = 'square') => { const o = ac.createOscillator(), e = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + d); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(1, t + 0.005); e.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(e).connect(g); o.start(t); o.stop(t + d + 0.02); };
+      if (kind === 'ouch') { tone(1800, 300, t0, 0.35, 'sawtooth'); tone(900, 200, t0 + 0.05, 0.3); }
+      else if (kind === 'happy') [880, 1175, 1480, 1760].forEach((f, i) => tone(f, f * 1.05, t0 + i * 0.06, 0.07));
+      else if (kind === 'sad') { tone(700, 350, t0, 0.3, 'triangle'); }
+      else { const n = 3 + ((Math.random() * 3) | 0); for (let i = 0; i < n; i++) { const f = 900 + Math.random() * 900; tone(f, f * (Math.random() < 0.5 ? 1.3 : 0.8), t0 + i * 0.065, 0.045); } }
+    } catch (e) { /* audio */ }
+  }
+
+  /* ---------- lines ---------- */
+  const JOKES = [
+    'Why did the Magnemite get a job? For the current-cy! Bzzt!',
+    'I\'d tell you an Electric-type joke... but it\'s too shocking!',
+    'Why was Spheal top of the class? It was on a roll!',
+    'What does Corphish call its friends with? A shell phone! Like me!',
+    'Why did Kecleon cross the road? Nobody knows. Nobody saw it.',
+    'I asked Slakoth for a joke. Still waiting... zzz.',
+    'Why can\'t Wailord keep secrets? It always spouts off!',
+    'My battery is at 100%... of cuteness! Bzzt!',
+    'What\'s Mudkip\'s favourite music? Anything on the right wave-length!',
+    'Knock knock! Who\'s there? Rotom. Rotom who? Rotom-ato! ...Bzzt, sorry.',
+  ];
+  function hint() {
+    const A = Game.areaId, miss = DexData.ORDER.filter((k) => !Save.data.seen[k] && (DexData.S[k].area || []).includes(A));
+    const r = Math.random();
+    if (typeof Progress !== 'undefined' && Progress.tracked && r < 0.35) { const q = Progress.tracked(); if (q) return 'Quest "' + q.title + '": ' + Progress.objective(q) + '!'; }
+    if (miss.length && r < 0.75) { const k = pick(miss), b = Object.values(DexData.S[k].beh)[0]; return 'Not everyone here is registered! Hint: ' + (b ? b.hint : 'keep exploring!'); }
+    const sec = (typeof Dex !== 'undefined' && Dex.SECRETS || []).filter((s) => !Save.found(s[0]));
+    if (sec.length && r < 0.9) return 'Secret hint: ' + pick(sec)[2];
+    return pick(['Hold the shutter to catch the perfect moment!', 'Growl makes Pokémon look at the camera!', 'Rare behaviours give more stars!', 'Scan (4) finds hidden things!']);
+  }
+  const AREA = { beach: 'Smell that sea breeze! Rotom\'s sensors say... salty!', forest: 'It rains a LOT here. Rotom is not a fan.', canopy: 'So high up! Don\'t look down. Rotom already did.', falls: 'Crystals everywhere! Rotom\'s reflection is SO cute.', volcano: 'Hot hot hot! Rotom\'s circuits are sweating!', shoal: 'Brrr! The cold drains Rotom\'s battery!', stage: 'Music! Rotom knows 3,000 ringtones!' };
+
+  function say(text, life) {
+    if (!text || typeof Talk === 'undefined') return;
+    Talk.bubbles = Talk.bubbles.filter((b) => !b.rotom);
+    Talk.bubble(() => [R.x, R.y - 14], text, { life: life || clamp(1.8 + text.length / 18, 2, 5) });
+    const b = Talk.bubbles[Talk.bubbles.length - 1]; if (b) b.rotom = true;
+    R.talkT = Math.min(2, 0.4 + text.length / 30); R.chatT = [60, 30, 16][cfg().chat ?? 1] * rnd(0.8, 1.4);
+    voice('chat', 0.4);
+  }
+  const react = (st, dur, m, line, mdur) => { R.st = st; R.stT = dur; R.mood = m; R.moodT = mdur || dur; if (line) say(line); };
+
+  /* ---------- per frame ---------- */
+  function visible() { return !cfg().off && Game.mudkip && Game.area && (Game.mode === 'explore' || Game.mode === 'camera') && !(typeof Arcade !== 'undefined' && Arcade.live); }
+  function update(dt) {
+    const mk = Game.mudkip; if (!mk || !Game.area) return;
+    const t = Game.rt;
+    if (!R.on) { R.on = true; R.x = mk.x - 30; R.y = mk.y - 50; }
+    if (Game.mode === 'dex') { R.hide = 1; R.x = mk.x; R.y = mk.y - 40; return; }
+    if (R.hide && Game.mode === 'explore') { R.hide = 0; R.x = mk.x - mk.dirX() * 20; R.y = mk.headPt()[1] - 16; R.hop = 1; burst(6); }
+    R.stT -= dt; R.moodT -= dt; R.talkT -= dt; R.wet = Math.max(0, R.wet - dt * 0.25); R.spin *= Math.exp(-dt * 2);
+    if (R.moodT <= 0) R.mood = R.sulk > 0.5 ? 'sad' : 'norm';
+    R.nextBlink -= dt; if (R.nextBlink <= 0) { R.blinkT = 0.13; R.nextBlink = rnd(1.8, 4.5); } R.blinkT -= dt;
+    events(dt, mk);
+    const d = mk.dirX(), [hx, hy] = mk.headPt();
+    let tx = mk.x - d * 22, ty = hy - 16 + Math.sin(t * 2.4) * 2.5, look = null;
+    // underwater: wait at the surface
+    const surf = World.waterAt(mk.x) !== null ? WorldRender.surfaceAt(mk.x, Game.t) : null;
+    if (Game.mode === 'camera') { tx = Game.cam.x + Game.VW * 0.5; ty = Game.cam.y - 60; if (R.st !== 'duck') { R.st = 'duck'; if (!R.cd.duck || t - R.cd.duck > 40) { R.cd.duck = t; say('I\'ll stay out of your shot!', 1.2); } } }
+    else {
+      if (R.st === 'duck') R.st = 'follow';
+      if (R.st === 'peek' && R.tgt && R.tgt.alive && R.stT > 0) { const [px, py] = R.tgt.headPt(); tx = px - Math.sign(px - mk.x || 1) * 16; ty = py - 12 + Math.sin(t * 5) * 1.5; look = [px, py]; }
+      else if (R.st === 'point' && R.pointAt && R.stT > 0) { tx = mk.x + Math.sign(R.pointAt[0] - mk.x) * 34; ty = hy - 22; look = R.pointAt; }
+      else if (R.st === 'orbit' && R.stT > 0) { const a = t * 3; tx = mk.x + Math.cos(a) * 28; ty = hy - 10 + Math.sin(a) * 14; }
+      else if (R.st === 'startle' && R.stT > 0) { ty -= 22; }
+      else if (R.stT <= 0 && ['peek', 'point', 'orbit', 'startle', 'ouch', 'soak', 'cheer', 'poke'].includes(R.st)) R.st = 'follow';
+      if (R.sulk > 0.5) ty += 8;
+      if (surf !== null && mk.inWater && hy > surf) { ty = Math.min(ty, surf - 14); if (!R.cd.sea || t - R.cd.sea > 90) { R.cd.sea = t; say('Rotom waits up here! Not waterproof!'); } }
+      idle(dt, mk, t);
+    }
+    // spring follow
+    const k = R.st === 'duck' ? 7 : 4.5;
+    R.vx += ((tx - R.x) * k * k - R.vx * 2 * k) * dt; R.vy += ((ty - R.y) * k * k - R.vy * 2 * k) * dt;
+    R.x += R.vx * dt; R.y += R.vy * dt;
+    if (Math.abs(R.x - mk.x) > 400 || Math.abs(R.y - mk.y) > 300) { R.x = tx; R.y = ty; R.vx = R.vy = 0; }
+    R.hop = Math.max(0, R.hop - dt * 3);
+    // eyes: the target, else the nearest Pokémon, else Mudkip
+    if (!look) { let best = null, bd = 150; for (const m of Mons.all) { if (m === mk || !m.alive || !m.visible || !DexData.S[m.dex]) continue; const dd = Math.hypot(m.x - R.x, m.y - R.y); if (dd < bd) { bd = dd; best = m; } } look = best ? best.headPt() : [hx, hy]; }
+    const lx = clamp((look[0] - R.x) / 40, -1, 1), ly = clamp((look[1] - R.y) / 40, -1, 1);
+    R.lx += (lx - R.lx) * Math.min(1, dt * 8); R.ly += (ly - R.ly) * Math.min(1, dt * 8);
+    R.yaw += (clamp(R.vx / 120, -0.6, 0.6) + lx * 0.25 - R.yaw) * Math.min(1, dt * 6);
+    for (const p of R.drips) { p.t += dt; p.vy += 300 * dt; p.x += p.vx * dt; p.y += p.vy * dt; } R.drips = R.drips.filter((p) => p.t < 0.7);
+    for (const p of R.sparks) p.t += dt; R.sparks = R.sparks.filter((p) => p.t < p.life);
+    if (R.wet > 0.2 && Math.random() < dt * 12) R.drips.push({ x: R.x + rnd(-6, 6), y: R.y + 6, vx: rnd(-8, 8), vy: 10, t: 0 });
+    if (R.wet > 0.3 && Math.random() < dt * 4) burst(1);
+  }
+  function burst(n) { for (let i = 0; i < n; i++) R.sparks.push({ a: rnd(0, Math.PI * 2), r: rnd(8, 16), t: 0, life: rnd(0.15, 0.35), seed: Math.random() * 999 }); }
+  function idle(dt, mk, t) {
+    if (R.st !== 'follow' || Talk.dlg) return;
+    // peek at unregistered species nearby (and mark them seen in the Dex)
+    for (const m of Mons.all) {
+      if (m === mk || !m.alive || !m.visible || m.hidden || (m.hideK || 0) > 0.5 || !DexData.S[m.dex] || String(m.kind).startsWith('bg-')) continue;
+      if (Math.abs(m.x - Game.cam.x - Game.VW / 2) > Game.VW * 0.5 || Math.hypot(m.x - mk.x, m.y - mk.y) > 170) continue;
+      const sp = Save.data.rspot || (Save.data.rspot = {});
+      if (!sp[m.dex]) { sp[m.dex] = Date.now(); Save.save(); }
+      if (!Save.data.seen[m.dex] && !R.peeked[m.dex]) { R.peeked[m.dex] = 1; R.tgt = m; react('peek', 3.5, 'wow', pick(['Who\'s THAT Pokémon?! Snap it!', 'Ooh! ' + nm(m.dex) + '! No data yet! Bzzt!', 'New Pokémon! Photo! Photo!'])); return; }
+    }
+    R.pointT -= dt; R.orbitT -= dt;
+    if (R.pointT <= 0 && typeof Progress !== 'undefined' && Progress.tracked) {
+      R.pointT = rnd(50, 80); const q = Progress.tracked();
+      if (q && q.area === Game.areaId) { const g = Talk.giverOf(q), tg = q.photo ? Mons.all.find((m) => m.dex === q.photo.sp && m.alive) : g; if (tg && Math.abs(tg.x - mk.x) > 60) { R.pointAt = [tg.x, tg.y - 20]; react('point', 3.5, 'happy', 'Quest! ' + Progress.objective(q) + ' That way!'); return; } }
+    }
+    if (R.orbitT <= 0 && (mk.idleT || 0) > 1) { R.orbitT = rnd(25, 45); react('orbit', 2.6, 'happy'); return; }
+    R.chatT -= dt;
+    if (R.chatT <= 0) {
+      const h = Game.hour(), r = Math.random();
+      if ((mk.idleT || 0) > 12 && r < 0.3) say('Nap time? Rotom can hum a lullaby... bzz-bzz-bzzz...');
+      else if (h === 'night' && r < 0.3) say('It\'s dark... good thing Rotom glows! Bzzt!');
+      else if (r < 0.55 && AREA[Game.areaId]) say(AREA[Game.areaId]);
+      else if (r < 0.8) say(hint());
+      else say(pick(JOKES));
+    }
+  }
+  function events(dt, mk) {
+    const t = Game.rt;
+    // moves (Moves.cd changes when a move is used)
+    const cdv = Moves.cd || {};
+    for (const id in cdv) {
+      if (R.cd['m' + id] === cdv[id]) continue;
+      const first = R.cd['m' + id] === undefined; R.cd['m' + id] = cdv[id]; if (first && !R.seeded) continue;
+      if (Game.mode !== 'explore') continue;
+      const ahead = (R.x - mk.x) * mk.dirX() > -4;
+      if (id === 'flash') setTimeout(() => { react('ouch', 2.2, 'x', 'OUCH! MY EYES!!'); R.spin = 30; voice('ouch'); burst(8); }, 380);
+      else if (id === 'water' && (ahead || Math.random() < 0.3) && (!R.cd.soak || t - R.cd.soak > 12)) { R.cd.soak = t; setTimeout(() => { R.wet = 1; react('soak', 2.2, 'x', pick(['Bzzt-zzt! NOT waterproof!', 'Pfff! Water and circuits DON\'T mix!', 'Hey! I just polished my screen!'])); voice('sad'); }, 250); }
+      else if (id === 'growl') setTimeout(() => { R.vy -= 160; react('startle', 1.4, 'wow', pick(['EEK! Warn me first!', 'Bzzt! My speakers!', 'WAAH! So loud!'])); }, 200);
+      else if (id === 'rain') say('Noooo, not RAIN DANCE! Rotom\'s circuits!');
+      else if (id === 'sunny') { react('cheer', 1.6, 'happy', 'Sunshine! Rotom is solar-charging!'); R.spin = 14; }
+      else if (id === 'scan') say(pick(['Scanning... bzzzzt!', 'Rotom radar, ON!']));
+      else if (id === 'sing' && Math.random() < 0.5) say('♪ Bzzt-bzzt, bzzt-bzzt ♪');
+      else if (id === 'quick' && Math.random() < 0.4) say('Wait for meee!');
+    }
+    R.seeded = true;
+    // new Pokédex entries / level ups
+    const n = Object.keys(Save.data.seen).length;
+    if (R.seenN >= 0 && n > R.seenN) { const k = Object.keys(Save.data.seen).sort((a, b) => Save.data.seen[b] - Save.data.seen[a])[0]; setTimeout(() => { react('cheer', 2.4, 'happy', 'New Pokédex data! ' + nm(k) + ' registered! Bzzt-bzzt!'); R.spin = 22; voice('happy'); burst(10); }, 1800); }
+    R.seenN = n;
+    const lv = typeof Progress !== 'undefined' ? Progress.lvUp : null;
+    if (lv && lv !== R.lv) setTimeout(() => { react('cheer', 2.4, 'happy', 'Level ' + lv.lv + '! You\'re amazing! Kiiih!'); R.spin = 22; voice('happy'); burst(10); }, 900);
+    R.lv = lv;
+    // rain → sulk
+    const wet = Weather.W.rain > 0.35;
+    R.sulk += ((wet ? 1 : 0) - R.sulk) * Math.min(1, dt * 1.5);
+    if (wet && !R.rain && Game.mode === 'explore') say(pick(['Ugh, rain... Rotom hates rain.', 'Rain?! Rotom\'s getting the umbrella.']));
+    R.rain = wet;
+  }
+
+  /* ---------- poke ---------- */
+  function poke() {
+    const t = Game.rt;
+    R.pokes = R.pokes.filter((x) => t - x < 5); R.pokes.push(t);
+    R.hop = 1; R.vy -= 60; burst(3); Game.sfx('blip');
+    if (R.pokes.length >= 4) { R.pokes.length = 0; react('poke', 1.6, 'x', 'Bzzt! STOP poking! ...Fine. ' + hint()); R.spin = 18; return; }
+    react('poke', 1.2, Math.random() < 0.5 ? 'happy' : 'wow');
+    say(Math.random() < 0.5 ? pick(JOKES) : pick(['Hi hi! ', 'Bzzt? ', 'Zzt! ']) + hint(), 4.5);
+  }
+
+  /* ---------- drawing ---------- */
+  function ell(fb, cx, cy, rx, ry, c) { for (let y = -ry; y <= ry; y++) { const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y / (ry + 0.3)) ** 2))); UI.hline(fb, Math.round(cx - hw), Math.round(cx + hw), Math.round(cy + y), c); } }
+  function draw(fb, t) {
+    if (!visible() || R.hide) { R.box = null; return; }
+    const [ux, uy] = Talk.toUI(R.x, R.y - R.hop * 4);
+    const k = clamp(Game.zoom / Game.US, 1, 2.4), H = Math.round(15 * k), W = Math.round(H * 0.8);
+    const X = Math.round(ux), Y = Math.round(uy);
+    if (X < -40 || X > fb.w + 40 || Y < -50 || Y > fb.h + 50) { R.box = null; return; }
+    R.box = { x: X - W, y: Y - H, w: W * 2, h: H * 2 };
+    const night = Game.hour() === 'night' || Game.hour() === 'dusk';
+    if (night) for (let y = -H * 1.4; y <= H * 1.4; y++) for (let x = -H * 1.4; x <= H * 1.4; x++) { const d = Math.hypot(x, y) / (H * 1.4); if (d < 1) UI.blend(fb, X + x, Y + y, hex('#bff4ff'), 0.18 * (1 - d)); }
+    // turntable yaw (spins), front width shrinks, a side band shows
+    const yaw = R.yaw + (R.spin > 0.5 ? (t * R.spin) % (Math.PI * 2) : 0);
+    const cs = Math.cos(yaw), sn = Math.sin(yaw), front = cs > 0;
+    const fw = Math.max(2, Math.round(W * Math.abs(cs))), sw = Math.round(H * 0.28 * Math.abs(sn)), tw = fw + sw;
+    const x0 = X - (tw >> 1), y0 = Y - (H >> 1) + (R.sulk > 0.5 ? 1 : 0);
+    const shake = R.wet > 0.4 || R.st === 'startle' && R.stT > 0 ? Math.round(Math.sin(t * 50)) : 0;
+    const bx = x0 + shake, fx0 = bx + (sn > 0 ? sw : 0), sx0 = sn > 0 ? bx : bx + fw;
+    const body = R.wet > 0.2 ? mix(C.b, hex('#5a6ad8'), R.wet * 0.3) : C.b;
+    // antenna bolt
+    const ax = fx0 + Math.round(fw * 0.38), at = y0 - Math.round(H * 0.45);
+    const pts = [[ax, y0 + 1], [ax - Math.round(H * 0.14), y0 - Math.round(H * 0.2)], [ax + Math.round(H * 0.1), y0 - Math.round(H * 0.24)], [ax - 1, at]];
+    const sparkT = R.sparks.length > 0;
+    for (const pass of [0, 1]) for (let i = 0; i < 3; i++) { const [a, b] = [pts[i], pts[i + 1]]; const n = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) + 1; for (let s = 0; s <= n; s++) { const px = Math.round(lerp(a[0], b[0], s / n)), py = Math.round(lerp(a[1], b[1], s / n)), r = pass ? (i === 2 ? 0 : 1) : (i === 2 ? 1 : 2); for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) if (Math.abs(xx) + Math.abs(yy) <= r) UI.put(fb, px + xx, py + yy, pass ? (i === 2 && sparkT ? C.gold : xx < 0 ? C.l : body) : C.ink); } }
+    // tail tip
+    for (let j = 0; j <= Math.round(H * 0.28); j++) { const hw = Math.round((W * 0.2) * (1 - j / (H * 0.28))); UI.hline(fb, X - hw - 1 + shake, X + hw + 1 + shake, y0 + H - 2 + j, C.ink); if (hw > 0) UI.hline(fb, X - hw + shake, X + hw + shake, y0 + H - 2 + j, j < 2 ? body : C.d); }
+    // body silhouette + shading
+    UI.rrect(fb, bx - 1, y0 - 1, tw + 2, H + 2, Math.round(H * 0.3), C.ink);
+    const r = Math.round(H * 0.28);
+    for (let j = 0; j < H; j++) { let ins = 0; if (j < r) ins = r - Math.round(Math.sqrt(r * r - (r - j - 0.5) ** 2)); else if (j >= H - r) ins = r - Math.round(Math.sqrt(r * r - (j - (H - r) + 0.5) ** 2)); for (let i = ins; i < tw - ins; i++) { const inSide = sw && (i + bx >= sx0 && i + bx < sx0 + sw); let c = inSide ? (sn > 0 ? C.l : C.d) : body; if (!inSide) { if (j < 2) c = C.ll; else if (j > H - 3) c = C.d; else if (i === ins) c = C.l; } UI.put(fb, bx + i, y0 + j, c); } }
+    if (front && fw > 6) face(fb, fx0, y0, fw, H, t);
+    else if (!front) { for (let i = 0; i < 3; i++) UI.hline(fb, fx0 + 3, fx0 + fw - 4, y0 + Math.round(H * 0.3) + i * 3, C.dd); }
+    // floating hands
+    const hr = Math.max(2, Math.round(H * 0.12));
+    const hand = (hx, hy) => { UI.disc(fb, hx, hy, hr + 1, C.ink); UI.disc(fb, hx, hy, hr, body); UI.put(fb, hx - 1, hy - 1, C.ll); };
+    const wav = Math.round(Math.sin(t * 6) * 2);
+    if (R.st === 'ouch' && R.stT < 1.2) { hand(fx0 + Math.round(fw * 0.3), y0 + Math.round(H * 0.28)); hand(fx0 + Math.round(fw * 0.7), y0 + Math.round(H * 0.28)); }
+    else {
+      let lhx = bx - hr - 2, lhy = Y + wav, rhx = bx + tw + hr + 1, rhy = Y - wav;
+      if (R.st === 'point' && R.pointAt) { const dir = Math.sign(R.pointAt[0] - R.x) || 1; if (dir > 0) { rhx += 4; rhy = Y - 4; } else { lhx -= 4; lhy = Y - 4; } }
+      if (R.st === 'cheer' || R.st === 'poke') { lhy = y0 - 1 + wav; rhy = y0 - 1 - wav; }
+      hand(lhx, lhy); hand(rhx, rhy);
+      // leaf umbrella in the rain
+      if (R.sulk > 0.5) { UI.vline(fb, rhx, rhy - H, rhy - hr, C.leafD); const ur = Math.round(W * 0.75); for (let y = 0; y <= Math.round(ur * 0.5); y++) { const hw = Math.round(ur * Math.sqrt(1 - (y / (ur * 0.5 + 0.5)) ** 2)); UI.hline(fb, rhx - hw, rhx + hw, rhy - H - y, y === 0 ? C.leafD : C.leaf); } }
+    }
+    // electric sparks, drips
+    for (const p of R.sparks) { const rn = U.rng(Math.floor(p.seed)); let x = X + Math.cos(p.a) * p.r * k * 0.7, y = Y + Math.sin(p.a) * p.r * k * 0.7; for (let s = 0; s < 3; s++) { const nx = x + (rn() - 0.5) * 6, ny = y + (rn() - 0.5) * 6; UI.line(fb, Math.round(x), Math.round(y), Math.round(nx), Math.round(ny), s % 2 ? C.gold : 0xffffffff); x = nx; y = ny; } }
+    for (const p of R.drips) { const [dx, dy] = Talk.toUI(p.x, p.y); UI.put(fb, Math.round(dx), Math.round(dy), hex('#8ac8ff')); UI.put(fb, Math.round(dx), Math.round(dy) - 1, 0xffffffff); }
+  }
+  function face(fb, fx, y0, fw, H, t) {
+    // screen, cyan face, eyes on a black bridge, grin
+    const sx = fx + Math.round(fw * 0.12), sw = fw - Math.round(fw * 0.24), sy = y0 + Math.round(H * 0.12), sh = Math.round(H * 0.5);
+    UI.rrect(fb, sx - 1, sy - 1, sw + 2, sh + 2, 2, C.ink); UI.rrect(fb, sx, sy, sw, sh, 1, C.scr);
+    const cx = sx + (sw >> 1), rx = Math.round(sw * 0.42), ry = Math.round(sh * 0.62), ey = sy + Math.round(sh * 0.3);
+    for (let y = 0; y <= ry; y++) { const hw = Math.floor(rx * Math.sqrt(Math.max(0, 1 - (y / (ry + 0.5)) ** 2))); UI.hline(fb, cx - hw, cx + hw, ey + y, y === ry || hw < 1 ? C.faceD : C.face); }
+    const ex = Math.max(2, Math.round(sw * 0.24)), erx = Math.max(1, Math.round(sw * 0.15)), ery = Math.max(2, Math.round(sh * 0.22));
+    UI.rect(fb, cx - ex, ey - (ery >> 1), ex * 2, ery, C.eye);
+    const m = R.mood, blink = R.blinkT > 0;
+    for (const sd of [-1, 1]) {
+      const ecx = cx + sd * ex; ell(fb, ecx, ey, erx + 1, ery + 1, C.eye);
+      if (blink || (m === 'happy')) { ell(fb, ecx, ey, erx, ery, 0xffffffff); ell(fb, ecx, ey + Math.max(1, ery >> 1) + 1, erx + 1, ery, C.eye); if (blink) UI.hline(fb, ecx - erx, ecx + erx, ey, hex('#3a3858')); continue; }
+      ell(fb, ecx, ey, erx, ery, 0xffffffff);
+      if (m === 'x') { for (let q = -erx; q <= erx; q++) { UI.put(fb, ecx + q, ey + q, C.eye); UI.put(fb, ecx + q, ey - q, C.eye); } continue; }
+      const pr = m === 'wow' ? 0 : Math.max(0, erx - 1), px = ecx + Math.round(R.lx * Math.max(0, erx - pr - 0.4)), py = ey + Math.round(R.ly * Math.max(0, ery - 1));
+      ell(fb, px, py, pr, Math.max(1, ery - 1), C.eye); UI.put(fb, px - (pr > 0 ? 1 : 0), py - 1, 0xffffffff);
+      if (m === 'sad') UI.hline(fb, ecx - erx - 1, ecx + erx + 1, ey - ery, C.eye);
+    }
+    const my = ey + Math.round(ry * 0.62), mw = Math.max(2, Math.round(rx * 0.55)), open = R.talkT > 0 ? Math.abs(Math.sin(t * 16)) : m === 'happy' ? 1 : 0.5;
+    if (m === 'sad') UI.hline(fb, cx - mw + 1, cx + mw - 1, my + 1, C.eye);
+    else if (m === 'wow') UI.rect(fb, cx - 1, my, 2, 2, C.mouth);
+    else { const mh = Math.max(1, Math.round((H / 12) * (0.6 + open))); for (let x = -mw; x <= mw; x++) { const yb = my + Math.round(mh * Math.sqrt(1 - (x / (mw + 0.5)) ** 2)); UI.vline(fb, cx + x, my, yb, C.mouth); if ((x + mw) % 2 === 0 && Math.abs(x) < mw) UI.put(fb, cx + x, my, 0xffffffff); } }
+  }
+
+  /* ---------- hooks ---------- */
+  { const u0 = Talk.update; Talk.update = function (dt) { const r = u0.apply(this, arguments); try { update(dt); } catch (e) { console.error(e); } return r; }; }
+  { const d0 = Talk.drawBubbles; Talk.drawBubbles = function (fb, t) { try { draw(fb, t); } catch (e) { console.error(e); } return d0.apply(this, arguments); }; }
+  { const d0 = Talk.down; Talk.down = function (ux, uy) {
+    const B = R.box;
+    if (B && Game.mode === 'explore' && !Talk.dlg && ux >= B.x - 4 && uy >= B.y - 6 && ux < B.x + B.w + 4 && uy < B.y + B.h + 4 && !(HUD.btns || []).some((b) => ux >= b.x && uy >= b.y && ux < b.x + b.w && uy < b.y + b.h) && !(typeof Pad !== 'undefined' && Pad.touch && ux < Game.UW * 0.42 && uy > Game.UH * 0.38)) { poke(); return true; }
+    return d0.apply(this, arguments); }; }
+  { const k0 = Talk.key; Talk.key = function (k, e) { if (k === 'o' && Game.mode === 'explore' && !Talk.dlg && visible()) { poke(); return true; } return k0.apply(this, arguments); }; }
+  U.on && U.on('area', (id) => { R.on = false; R.peeked = {}; setTimeout(() => { if (visible() && Math.random() < 0.7) say(AREA[id] || 'New place! Research time! Bzzt!'); }, 2500); });
+  U.on && U.on('photo', (res) => { if (res && res.species && res.medal >= 3 && Math.random() < 0.5) setTimeout(() => say(pick(['Great shot! Bzzt!', 'Wow, what a photo!'])), 2600); });
+
+  return Object.assign(R, { voice, joke: () => pick(JOKES), hint, poke, say, update, draw });
 })();
 
 /* ==== src/snap/main.js ==== */

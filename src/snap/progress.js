@@ -627,7 +627,7 @@ const Progress = (() => {
         const a = Math.atan2(y, x) + rot, w = Math.cos(a * 6);
         if (w < 0.55) continue;
         const kk = (1 - d / R) * 0.9 * al * (w - 0.55) / 0.45 + 0.08;
-        if (kk > U.bayer4(x & 3, y & 3) + 0.05) UI.blend(fb, c.X + x, c.Y + y, RAY, 0.55);
+        if (kk > 0.1) { const X = c.X + x, Y = c.Y + y; if (X < 0 || Y < 0 || X >= W || Y >= H) continue; const i = Y * W + X, v = fb.d[i], al = Math.min(0.7, kk * 0.8); fb.d[i] = v ? U.mix(v, RAY, al) : (((Math.round(al * 255) << 24) | (RAY & 0xffffff)) >>> 0); }
       }
     }
     // shockwave rings when the badge flips
