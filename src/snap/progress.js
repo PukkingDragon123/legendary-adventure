@@ -778,6 +778,7 @@ const Progress = (() => {
       return;
     }
     line('Objective', objective(q));
+    if (typeof Bosses !== 'undefined' && Bosses.recLv) { const rl = Bosses.recLv(q.area), pk = typeof Punks !== 'undefined' ? Punks.tally(q.area) : null; line(areaName(q.area), 'Recommended Lv ' + rl + (level() < rl ? ' (you are Lv ' + level() + ')' : ' {check}') + (pk ? '  ·  Road fights ' + pk.won + '/' + pk.n : ''), level() < rl ? 0xffc03030 : INK); }
     if (e.s !== 'done') { const s = st(q); const hint = s ? (q.wait && q.wait[0] ? q.wait[0].replace(/\{have\}/g, s.n || 0).replace(/\{left\}/g, Math.max(0, (q.n || 1) - (s.n || 0))) : '') : q.intro[q.intro.length - 1]; if (hint) line('Hint', String(hint).replace(/\{[a-z]+\}/g, '')); }
     line('Reward', rewardLabel(q.reward) + ' + ' + (100 + (q.xp || 0)) + ' XP' + (q.unlock ? ' + a flight to ' + areaName(q.unlock) : ''));
     const dl = dexOf(q);

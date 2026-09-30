@@ -52,6 +52,12 @@ const Bosses = (() => {
     breloom: { area: 'forest', tm: 'quick', ready: 'Hup! Hup! You beat Vigoroth? Then step into MY ring!' },
   };
   const ORDER = ['beach', 'forest', 'canopy', 'falls', 'volcano', 'shoal'];
+  // level gaps: each area's recommended level (its boss fights at this level; rivals a bit above)
+  const REC = { beach: 3, forest: 5, canopy: 7, falls: 9, volcano: 11, shoal: 13, stage: 9 };
+  const recLv = (area) => REC[area] || 1;
+  const kipLv = () => (typeof Progress !== 'undefined' && Progress.level ? Progress.level() : 1);
+  // the level a territorial Pokémon fights at (null: not a boss / rival)
+  function levelOf(area, dex) { const I = info(area, dex); return I ? recLv(area) + (I.rival ? 2 : 0) : null; }
   const nm = (sp) => (DexData.S[sp] ? DexData.S[sp].name : sp);
   const areaName = (a) => (DexData.AREAS[a] ? DexData.AREAS[a].name : a);
   const tamedKey = (area, dex) => area + ':' + dex;
@@ -148,7 +154,7 @@ const Bosses = (() => {
     const k = M.closing ? 1 - M.closing / 0.4 : Math.min(1, M.anim * 1.6);
     const W = fb.w, H = fb.h, cw = Math.min(214, W - 16), ch = 80, cx = 8, cy = H - ch - 8 + Math.round((1 - k) * 90);
     const B = AREA[id], done = beaten(id) || ALL, pre = B.needs && qd(B.needs);
-    let lab = done ? '{check} BOSS BEATEN: ' + nm(B.dex).toUpperCase() : 'BOSS: ' + nm(B.dex).toUpperCase() + (awake(id, B.dex) ? '  · ready to battle!' : pre ? '  · first: ' + pre.title : '');
+    let lab = 'Lv ' + recLv(id) + '  ' + (done ? '{check} BOSS BEATEN: ' + nm(B.dex).toUpperCase() : 'BOSS: ' + nm(B.dex).toUpperCase() + (awake(id, B.dex) ? '  · ready to battle!' : pre ? '  · first: ' + pre.title : ''));
     while (lab.length > 8 && Font.measure(lab, 'small') > cw - 12) lab = lab.slice(0, -1);
     const w = Math.min(cw, Font.measure(lab, 'small') + 10), x = cx + cw - w, y = cy - 11;
     UI.rrect(fb, x, y, w, 12, 3, 0xff1b2240);
@@ -257,5 +263,5 @@ const Bosses = (() => {
   if (typeof Moves !== 'undefined') { const u0 = Moves.update; Moves.update = (dt) => { u0(dt); try { update(dt); } catch (e) { console.error(e); } }; }
   install();
   U.on && U.on('area', () => { S.smokeT = 0; });
-  return { AREA, RIVAL, ORDER, info, awake, beaten, questDone, tmOf, nextText, lockNote, install, ALL };
+  return { AREA, RIVAL, ORDER, REC, recLv, levelOf, info, awake, beaten, questDone, tmOf, nextText, lockNote, install, ALL };
 })();

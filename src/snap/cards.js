@@ -36,7 +36,7 @@ const Cards = (() => {
   const INK = 0xff1b2240, WHITE = 0xffffffff, GOLD = '#ffd070', GRN = '#8aff8a';
   const C = { live: false, g: null, bars: 0, btns: [], sel: -1, hov: -1, deckView: false, t: 0, lastDraw: 0 };
   const mk = () => Game.mudkip;
-  const nameOf = (m) => (m && DexData.S[m.dex] ? DexData.S[m.dex].name : 'Pokémon');
+  const nameOf = (m) => (m && m.punk ? m.punk.name : m && DexData.S[m.dex] ? DexData.S[m.dex].name : 'Pokémon');
   const sfx = (n, x, v = 1) => { try { Game.sfx(n, x, v); } catch (e) { /* no audio */ } };
   const ease = (k) => (U.ease && U.ease.outCubic ? U.ease.outCubic(clamp(k, 0, 1)) : k);
 

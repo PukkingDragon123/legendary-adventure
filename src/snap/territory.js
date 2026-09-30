@@ -35,6 +35,7 @@ const Territory = (() => {
   const keyOf = (m) => (Game.areaId || '?') + ':' + m.dex;
   const tamed = (m) => !!(typeof Cards !== 'undefined' && Cards.store().tamed[keyOf(m)]);
   const bossInfo = (m) => (typeof Bosses !== 'undefined' ? Bosses.info(Game.areaId, m.dex) : null);
+  const lvOf = (m) => (typeof Bosses !== 'undefined' && Bosses.levelOf ? Bosses.levelOf(Game.areaId, m.dex) : null);
   const awake = (m) => typeof Bosses === 'undefined' || Bosses.awake(Game.areaId, m.dex);
   // 'tamed' | 'awake' (challenges you) | 'asleep' (a calm resident until its quest is done)
   const stateOf = (m) => (tamed(m) ? 'tamed' : awake(m) ? 'awake' : 'asleep');
@@ -144,12 +145,17 @@ const Territory = (() => {
       lines.push({ text: nameOf(m) + ' blocks the way! It will not let you near, and it swats at your camera.' });
       if (tm) lines.push({ text: '(Win and it will teach you ' + (known ? 'the secret of ' : '') + tmName(tm) + '!)' });
     }
-    lines.push({ text: 'Challenge it to a card battle?', choices: ['Card battle!', 'Back off'] });
+    const lv = lvOf(m), kl = typeof Progress !== 'undefined' && Progress.level ? Progress.level() : 1;
+    if (lv && lv > kl) {
+      lines.push({ text: lv - kl >= 2 ? (I && I.boss ? 'Hah! A Lv ' + kl + '? Come back at Lv ' + lv + '. You will just embarrass yourself.' : 'Come back at Lv ' + lv + ', tiny!') : 'Lv ' + kl + '? Barely worth my time...' });
+      lines.push({ text: '(' + nameOf(m) + ' is Lv ' + lv + '. You are Lv ' + kl + ': it will hit much harder and last longer. Beat road punks and fill your Pokédex to level up!)' });
+    }
+    lines.push({ text: 'Challenge it to a card battle?', choices: [lv && lv - kl >= 2 ? 'Fight anyway!' : 'Card battle!', 'Back off'] });
     Talk.open(lines, { who: m, name: nameOf(m), title: I && I.boss ? 'BOSS BATTLE' : 'Territory', done: (i) => { if (i === 0) battle(m); else T.cool = 5; } });
   }
   function battle(m, o = {}) {
     if (typeof Cards === 'undefined') return false;
-    return Cards.start(m, { arena: true, rematch: tamed(m), prize: (G) => prize(m, G), onEnd: (win, G) => ended(m, win, G), boss: bossInfo(m) });
+    return Cards.start(m, { arena: true, lv: lvOf(m), rematch: tamed(m), prize: (G) => prize(m, G), onEnd: (win, G) => ended(m, win, G), boss: bossInfo(m) });
   }
   function xp(n, why, key) {
     try {

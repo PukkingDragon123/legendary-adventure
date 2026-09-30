@@ -603,6 +603,7 @@ const WorldMap = (() => {
       if (by + 12 < py - 8) UI.line(fb, px, by + 12, px, py - 8, 0xaa1b2240);
       UI.rrect(fb, bx, by, tw, 12, 3, sel ? S.accent : 0xff1b2240);
       Font.draw(fb, lbl, bx + tw / 2, by + 3, 0xffffffff, { font: 'small', align: 'center' });
+      if (typeof Bosses !== 'undefined' && Bosses.REC && Bosses.REC[id]) { const rl = Bosses.REC[id], lt = 'Lv' + rl, lw2 = Font.measure(lt, 'small') + 4, under = typeof Progress !== 'undefined' && Progress.level && Progress.level() < rl; UI.rrect(fb, bx + tw - 2, by - 5, lw2, 9, 2, under ? 0xff2a2ad0 : 0xff4a8a2a); Font.draw(fb, lt, bx + tw - 2 + lw2 / 2, by - 4, 0xffffffff, { font: 'small', align: 'center' }); }
       if (here) Font.draw(fb, 'you are here', px, py + 11, 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 });
       HUD.btn('pin-' + id, Math.min(bx, px - 10), by - 2, Math.max(tw, 20), py + 10 - by, () => { if (!M.travel) select(id); });
     }
