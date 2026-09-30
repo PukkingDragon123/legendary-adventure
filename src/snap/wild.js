@@ -257,10 +257,11 @@ const Wild = (() => {
   /* ===================== spawns in the existing places ===================== */
   const wrap = (id, fn) => { const A = Areas[id]; if (!A) return; const s0 = A.spawn; A.spawn = (a, G) => { s0(a, G); try { fn(a, G); } catch (e) { console.error(e); } }; };
   wrap('beach', (A, G) => {
-    E.add(G, 'marshtomp', 760, { range: 240 });
-    E.add(G, 'swampert', 1060, { range: 200 });
-    E.add(G, 'wynaut', 640, { range: 180 }); E.add(G, 'wynaut', 700, { range: 180 });
-    E.add(G, 'crawdaunt', 1100, { range: 260 });
+    // spread out along the whole cove: the start stays calm, the rest of the coast has its own residents
+    E.add(G, 'marshtomp', 4100, { minX: 3990, maxX: 4230 });
+    E.add(G, 'swampert', 5780, { range: 120 });
+    E.add(G, 'wynaut', 6560, { range: 120 }); E.add(G, 'wynaut', 6620, { range: 120 });
+    E.add(G, 'crawdaunt', 7900, { range: 180 });
     E.add(G, 'vibrava', 4620, { range: 200 }); E.add(G, 'vibrava', 4880, { range: 160 });
     E.add(G, 'flygon', 5060, { range: 220 });
     const h = Game.hour();

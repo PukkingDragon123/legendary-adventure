@@ -23,7 +23,8 @@ const Pad = (() => {
     if (touch) P.touch = true;
     const L = P.L; if (!L || Game.mode !== 'explore') return false;
     // floating stick: a finger landing anywhere in the lower-left zone becomes the stick's centre
-    if (P.touch && !P.stick && ux < (P.UW || 400) * 0.42 && uy > (P.UH || 240) * 0.38 && !inC(ux, uy, L.bx, L.by, L.bR + 8) && !inC(ux, uy, L.ax, L.ay, L.aR + 8)) { P.stick = { pid, x0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sx : ux, y0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sy : uy }; stickMove(ux, uy); return true; }
+    // a new finger in the stick zone always takes the stick over (a lost touch-end can never leave it stuck)
+    if (P.touch && ux < (P.UW || 400) * 0.42 && uy > (P.UH || 240) * 0.38 && !inC(ux, uy, L.bx, L.by, L.bR + 8) && !inC(ux, uy, L.ax, L.ay, L.aR + 8)) { P.stick = { pid, t: performance.now(), x0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sx : ux, y0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sy : uy }; stickMove(ux, uy); return true; }
     if (inC(ux, uy, L.ax, L.ay, L.aR + 6)) { P.a = { pid }; P.jumpHeld = true; Game.mudkip && Game.mudkip.jumpPress(); P.hint = 0; return true; }
     if (inC(ux, uy, L.bx, L.by, L.bR + 6)) { P.b = { pid, t: 0 }; Moves.press(); return true; }
     return false;
@@ -32,11 +33,14 @@ const Pad = (() => {
     const S = P.stick; if (!S) return;
     const R = P.L.R, dx = (ux - S.x0) / R, dy = (uy - S.y0) / R, d = Math.hypot(dx, dy);
     // drag past the rim and the stick follows the finger (no dead stick after a long swipe)
-    if (d > 1.4) { S.x0 += (dx / d) * (d - 1.4) * R; S.y0 += (dy / d) * (d - 1.4) * R; }
-    const k = d > 1 ? 1 / d : 1;
-    P.dx = dx * k; P.dy = dy * k;
+    if (d > 1.05) { S.x0 += (dx / d) * (d - 1.05) * R; S.y0 += (dy / d) * (d - 1.05) * R; }
+    // quick reversal: pull back a little from the furthest point and the stick flips right away
+    if (P.dx > 0.5) { S.ex = Math.max(S.ex ?? ux, ux); if (ux < S.ex - R * 0.45) { S.x0 = ux + R * 0.55; S.ex = ux; } }
+    else if (P.dx < -0.5) { S.ex = Math.min(S.ex ?? ux, ux); if (ux > S.ex + R * 0.45) { S.x0 = ux - R * 0.55; S.ex = ux; } }
+    else S.ex = ux;
+    { const dx2 = (ux - S.x0) / R, dy2 = (uy - S.y0) / R, d2 = Math.hypot(dx2, dy2), k = d2 > 1 ? 1 / d2 : 1; P.dx = dx2 * k; P.dy = dy2 * k; }
   }
-  function move(ux, uy, pid) { if (P.stick && P.stick.pid === pid) stickMove(ux, uy); }
+  function move(ux, uy, pid) { if (P.stick && P.stick.pid === pid) { P.stick.t = performance.now(); stickMove(ux, uy); } }
   function up(pid) {
     if (P.stick && P.stick.pid === pid) { P.stick = null; P.dx = 0; P.dy = 0; }
     if (P.a && P.a.pid === pid) { P.a = null; P.jumpHeld = false; }
@@ -50,7 +54,7 @@ const Pad = (() => {
     if (Game.mode !== 'explore' || (typeof Talk !== 'undefined' && Talk.busy())) { mk.keyDir = 0; mk.keyY = 0; mk.running = false; mk.jumpHeld = false; return; }
     if (typeof Arcade !== 'undefined' && Arcade.live && Arcade.drive(mk, dt)) return;
     const K = P.keys;
-    const sx = Math.abs(P.dx) > 0.2 ? Math.sign(P.dx) : 0, sy = Math.abs(P.dy) > 0.6 && Math.abs(P.dy) > Math.abs(P.dx) ? Math.sign(P.dy) : 0;
+    const sx = Math.abs(P.dx) > 0.16 ? Math.sign(P.dx) : 0, sy = Math.abs(P.dy) > 0.6 && Math.abs(P.dy) > Math.abs(P.dx) ? Math.sign(P.dy) : 0;
     const swim = mk.mode === 'swim';
     mk.keyDir = K.dx || sx;
     mk.keyY = K.dy || (swim ? (Math.abs(P.dy) > 0.25 ? P.dy : 0) : sy > 0 ? 1 : 0);
@@ -94,6 +98,16 @@ const Pad = (() => {
   }
   // keyboard state from main.js
   function setKeys(o) { Object.assign(P.keys, o); if (o.jump || o.dx) P.hint = Math.min(P.hint, 0.35); }
+  // safety net: when no finger is on the screen any more, let go of everything
+  function allUp() { if (P.stick) { P.stick = null; P.dx = 0; P.dy = 0; } if (P.a) { P.a = null; P.jumpHeld = false; } if (P.b) { P.b = null; Moves.release(); } }
+  if (typeof window !== 'undefined') {
+    let nT = 0;
+    const onEnd = (e) => { nT = e.touches ? e.touches.length : 0; if (nT === 0) setTimeout(() => { if (nT === 0) allUp(); }, 80); };
+    window.addEventListener('touchstart', (e) => { nT = e.touches.length; }, { passive: true, capture: true });
+    window.addEventListener('touchend', onEnd, { passive: true, capture: true });
+    window.addEventListener('touchcancel', onEnd, { passive: true, capture: true });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) allUp(); });
+  }
   function reset() { P.stick = null; P.a = null; P.b = null; P.dx = 0; P.dy = 0; P.jumpHeld = false; Object.assign(P.keys, { dx: 0, dy: 0, run: false, jump: false, sneak: false }); }
   return Object.assign(P, { down, move, up, owns, apply, draw, setKeys, layout, reset });
 })();

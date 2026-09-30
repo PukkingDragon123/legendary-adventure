@@ -668,7 +668,7 @@ const BeachAI = (() => {
     facing() { return 0.3; }
   }
   class KyogreM extends Swimmer {
-    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 10580, y: 1060, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 10300, x1: 10720, y0: 900, y1: 1110 } }); this.swimTop = 20; }
+    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 12340, y: 1060, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 12060, x1: 12480, y0: 900, y1: 1110 } }); this.swimTop = 20; }
     senses() {}
     animate(dt, t) { const P = { fin: Math.sin(t * 1.2) * 0.5, tail: Math.sin(t * 1.4 + 1) * 0.5, mouth: 0.1, eyes: 'open', glow: 0.6 + 0.4 * Math.sin(t * 2), headPitch: -0.1, roll: 0 }; Object.assign(P, this.o); this.pose = P; }
     brain() { return this.life(); }
@@ -692,10 +692,10 @@ const BeachAI = (() => {
     S.events = {}; S.heartOn = false; S.swell = 0;
     AI.floes.length = 0;
     const add = (m) => { if (m && m.sp) G.addMon(m); return m; };
-    if (sp('Spheal')) for (const x of [470, 620, 880]) add(new SphealM(x));
+    if (sp('Spheal')) for (const x of [470, 880]) add(new SphealM(x));
     if (sp('Sealeo')) add(new SealeoM(1010));
     if (sp('Walrein')) add(new WalreinM(A));
-    if (sp('Corphish')) { add(new CorphishM(380)); add(new CorphishM(960)); add(new CorphishM(1760, { under: true, minX: 1500, maxX: 2200 })); }
+    if (sp('Corphish')) { add(new CorphishM(330)); add(new CorphishM(4400, { minX: 4280, maxX: 4640 })); add(new CorphishM(1760, { under: true, minX: 1500, maxX: 2200 })); }
     if (sp('Luvdisc')) for (let i = 0; i < 6; i++) add(new LuvdiscM(1200 + i * 80, SEA + 50 + (i % 3) * 30, i));
     if (sp('Pelipper')) add(new PelipperM(A));
     if (sp('Mantine')) { const m = add(new MantineM()); if (sp('Remoraid')) add(new RemoraidM(m)); }
@@ -736,7 +736,7 @@ const BeachAI = (() => {
     // Wailord breach request: a song at the end of the dock at dusk
     Secrets.update(A, dt, t, G);
   }
-  function drawFarSea(fb, cx, cy, t, hz, seaS) { if (S.wailord && S.wailord.alive) { S.wailord.draw(fb, cx, cy, null); const c = S.wailord.cpx; S.wailord.ccol = c && c[0] >= 0 && c[1] >= 0 && c[0] < fb.w && c[1] < fb.h ? fb.d[c[1] * fb.w + c[0]] : null; } }
+  function drawFarSea(fb, cx, cy, t, hz, seaS) { if (typeof BackMons !== 'undefined') BackMons.drawSea(fb, cx, cy); if (S.wailord && S.wailord.alive) { S.wailord.draw(fb, cx, cy, null); const c = S.wailord.cpx; S.wailord.ccol = c && c[0] >= 0 && c[1] >= 0 && c[0] < fb.w && c[1] < fb.h ? fb.d[c[1] * fb.w + c[0]] : null; } }
   // after the near backdrop is drawn: is the far giant still visible?
   function checkFar(fb) { const w = S.wailord; if (!w || !w.cpx) return; const c = w.cpx; w.occluded = !(c[0] >= 0 && c[1] >= 0 && c[0] < fb.w && c[1] < fb.h) || fb.d[c[1] * fb.w + c[0]] !== w.ccol; }
   function drawUnderBackdrop(fb, cx, cy, t, C) {
@@ -836,7 +836,7 @@ const BeachAI = (() => {
     update(A, dt, t, G) {
       const m = G.mudkip;
       // Kyogre: the Blue Orb in the trench at night
-      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 10100 && m.y > 900 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(10580, 980, { dur: 1.6, hold: 4, zoom: 1.1 }); }
+      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 11860 && m.y > 900 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(12340, 980, { dur: 1.6, hold: 4, zoom: 1.1 }); }
     },
     song(x) {
       const m = Game.mudkip;

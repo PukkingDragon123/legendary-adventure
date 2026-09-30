@@ -283,6 +283,47 @@ const Boardwalk = (() => {
       for (let i = 0; i < 5; i++) { UI.put(fb, X + i, Y + Math.min(i, 3), 0xff3a3ad4); UI.put(fb, X + 9 - i, Y + Math.min(i, 3), 0xff3a3ad4); }
     }
   }
+
+  /* ---------------- the Kelp Forest (past the boardwalk, before the deep blue) ---------------- */
+  const KF = { x0: 9150, x1: 10780 };
+  const kb0 = B.build;
+  B.build = (A) => {
+    kb0(A);
+    const M = A.M, r = rng(4242), SEA = World.SEA;
+    // towering kelp in three depths: back (dim), middle (swaying), and huge blades right in front of the camera
+    for (let x = KF.x0 - 150; x < KF.x1 + 60; x += 9 + r() * 16) {
+      const g = gy(x), depth = g - SEA; if (depth < 90) continue;
+      const len = Math.min(depth - 18, 110 + r() * 170);
+      A.put(Props.kelp(M, len, Math.floor(x * 7)), x, r() < 0.5 ? -5 : -2, { fps: 1.6 + r() * 1.4, phase: r() * 5, sink: 2 });
+      if (r() < 0.25) A.put(Paint.rock(M, 14 + r() * 26, 8 + r() * 14, Math.floor(x), { ramp: M.rockU, moss: M.algae, cracks: 2 }), x + 6, 2, { sink: 4 });
+      if (r() < 0.14) A.put(Props.anemone(M, 7 + r() * 5, Math.floor(x * 3)), x + 4, 3, { fps: 2.2, phase: r() * 3, sink: 2 });
+      if (r() < 0.08) A.put(Props.coral(M, pick(['fan', 'branch', 'tube']), 24 + r() * 20, Math.floor(x)), x - 8, 1, { sink: 2 });
+    }
+    for (let x = KF.x0; x < KF.x1; x += 70 + r() * 110) {
+      const s = Props.kelp(M, 220 + r() * 120, Math.floor(x * 11), 1)[0];
+      A.foreItem(s, x, gy(x) + 50 + r() * 30, { p: 1.35, sway: 2, tint: 0xff1a3a10, dark: 0.3 });
+    }
+    // sunbeams through the canopy, and a sunken treasure crate for the curious
+    A.glows.push({ x: (KF.x0 + KF.x1) / 2, y: SEA + 120, r: 160, c: hex('#9af0c0'), a: 0.12, always: true });
+    A.put(Props.crate(M), 10180, 1, { sink: 3 });
+    A.addHot({ x0: 10160, x1: 10200, y0: gy(10180) - 16, y1: gy(10180), x: 10180, reach: 40, tap() { if (Save.discover('beach.kelpcrate')) { Save.addPoints(250); Save.addItem('pearl', 2); HUD.toast('A sunken crate in the Kelp Forest! +2 Pearls', { life: 2.6 }); FX.sparkles(10180, gy(10180) - 8, 14, 20); } else HUD.toast('The old crate is empty now. Kelp sways all around.', { life: 2 }); } });
+    A.addHot({ x0: KF.x0, x1: KF.x0 + 60, y0: SEA, y1: gy(KF.x0), x: KF.x0 + 30, reach: 80, tap() { if (Save.discover('beach.kelpforest')) { Save.addPoints(200); HUD.toast('Discovered the Kelp Forest!', { life: 2.4, col: 0xff7ae0a0 }); } } });
+  };
+  const ks0 = B.spawn;
+  B.spawn = (A, G) => {
+    ks0(A, G);
+    const C = (typeof SeaAI !== 'undefined' && SeaAI.classes) || {}, SEA = World.SEA;
+    const box = { x0: KF.x0, x1: KF.x1, y0: SEA + 30, y1: 760 };
+    const add = (m) => { if (m && m.sp) { m.box = Object.assign({}, box); m.home = m.x; G.addMon(m); } return m; };
+    try {
+      if (C.WailmerM) { add(new C.WailmerM(9500)); add(new C.WailmerM(10300)); }
+      if (C.TentacoolM) for (const [x, y] of [[9300, SEA + 60], [9800, SEA + 90], [10500, SEA + 50]]) add(new C.TentacoolM(x, y));
+      if (C.ChinchouM) for (const [x, y] of [[9650, 720], [10050, 740], [10600, 730]]) add(new C.ChinchouM(x, y));
+      if (C.ClamperlM) for (const x of [9420, 10380]) { const m = new C.ClamperlM(x); if (m.sp) G.addMon(m); }
+      const L = BeachAI.classes.LuvdiscM; if (L) for (let i = 0; i < 4; i++) add(new L(9900 + i * 40, SEA + 80 + (i % 2) * 30, i + 6));
+    } catch (e) { console.error(e); }
+  };
+  S.KF = KF;
   Object.assign(S, { update, drawUI, barMenu, challenge, RING, BAR, X0, X1 });
   return S;
 })();

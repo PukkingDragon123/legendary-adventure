@@ -687,6 +687,10 @@ const Game = (() => {
     if ((k === ' ' || k === 'Enter') && G.mode === 'camera' && Photo.shutterUp) Photo.shutterUp();
     keysMove();
   });
+  // lost pointer-ups (finger slid off the screen edge, a system gesture): once no finger is down, forget them all
+  { let nT = 0; const te = (e) => { nT = e.touches.length; if (!nT) setTimeout(() => { if (!nT && ptrs.size) { ptrs.clear(); drag = null; pinch = null; } }, 120); };
+    window.addEventListener('touchstart', (e) => { nT = e.touches.length; }, { passive: true, capture: true });
+    window.addEventListener('touchend', te, { passive: true, capture: true }); window.addEventListener('touchcancel', te, { passive: true, capture: true }); }
   window.addEventListener('blur', () => { keysDown.clear(); keysMove(); if (typeof Pad !== 'undefined') Pad.reset(); if (Photo.shutterUp) Photo.shutterUp(true); });
   function keysMove() {
     const mk = G.mudkip; if (!mk) return;

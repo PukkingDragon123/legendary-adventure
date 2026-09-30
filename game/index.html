@@ -60851,7 +60851,8 @@ const Pad = (() => {
     if (touch) P.touch = true;
     const L = P.L; if (!L || Game.mode !== 'explore') return false;
     // floating stick: a finger landing anywhere in the lower-left zone becomes the stick's centre
-    if (P.touch && !P.stick && ux < (P.UW || 400) * 0.42 && uy > (P.UH || 240) * 0.38 && !inC(ux, uy, L.bx, L.by, L.bR + 8) && !inC(ux, uy, L.ax, L.ay, L.aR + 8)) { P.stick = { pid, x0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sx : ux, y0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sy : uy }; stickMove(ux, uy); return true; }
+    // a new finger in the stick zone always takes the stick over (a lost touch-end can never leave it stuck)
+    if (P.touch && ux < (P.UW || 400) * 0.42 && uy > (P.UH || 240) * 0.38 && !inC(ux, uy, L.bx, L.by, L.bR + 8) && !inC(ux, uy, L.ax, L.ay, L.aR + 8)) { P.stick = { pid, t: performance.now(), x0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sx : ux, y0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sy : uy }; stickMove(ux, uy); return true; }
     if (inC(ux, uy, L.ax, L.ay, L.aR + 6)) { P.a = { pid }; P.jumpHeld = true; Game.mudkip && Game.mudkip.jumpPress(); P.hint = 0; return true; }
     if (inC(ux, uy, L.bx, L.by, L.bR + 6)) { P.b = { pid, t: 0 }; Moves.press(); return true; }
     return false;
@@ -60860,11 +60861,14 @@ const Pad = (() => {
     const S = P.stick; if (!S) return;
     const R = P.L.R, dx = (ux - S.x0) / R, dy = (uy - S.y0) / R, d = Math.hypot(dx, dy);
     // drag past the rim and the stick follows the finger (no dead stick after a long swipe)
-    if (d > 1.4) { S.x0 += (dx / d) * (d - 1.4) * R; S.y0 += (dy / d) * (d - 1.4) * R; }
-    const k = d > 1 ? 1 / d : 1;
-    P.dx = dx * k; P.dy = dy * k;
+    if (d > 1.05) { S.x0 += (dx / d) * (d - 1.05) * R; S.y0 += (dy / d) * (d - 1.05) * R; }
+    // quick reversal: pull back a little from the furthest point and the stick flips right away
+    if (P.dx > 0.5) { S.ex = Math.max(S.ex ?? ux, ux); if (ux < S.ex - R * 0.45) { S.x0 = ux + R * 0.55; S.ex = ux; } }
+    else if (P.dx < -0.5) { S.ex = Math.min(S.ex ?? ux, ux); if (ux > S.ex + R * 0.45) { S.x0 = ux - R * 0.55; S.ex = ux; } }
+    else S.ex = ux;
+    { const dx2 = (ux - S.x0) / R, dy2 = (uy - S.y0) / R, d2 = Math.hypot(dx2, dy2), k = d2 > 1 ? 1 / d2 : 1; P.dx = dx2 * k; P.dy = dy2 * k; }
   }
-  function move(ux, uy, pid) { if (P.stick && P.stick.pid === pid) stickMove(ux, uy); }
+  function move(ux, uy, pid) { if (P.stick && P.stick.pid === pid) { P.stick.t = performance.now(); stickMove(ux, uy); } }
   function up(pid) {
     if (P.stick && P.stick.pid === pid) { P.stick = null; P.dx = 0; P.dy = 0; }
     if (P.a && P.a.pid === pid) { P.a = null; P.jumpHeld = false; }
@@ -60878,7 +60882,7 @@ const Pad = (() => {
     if (Game.mode !== 'explore' || (typeof Talk !== 'undefined' && Talk.busy())) { mk.keyDir = 0; mk.keyY = 0; mk.running = false; mk.jumpHeld = false; return; }
     if (typeof Arcade !== 'undefined' && Arcade.live && Arcade.drive(mk, dt)) return;
     const K = P.keys;
-    const sx = Math.abs(P.dx) > 0.2 ? Math.sign(P.dx) : 0, sy = Math.abs(P.dy) > 0.6 && Math.abs(P.dy) > Math.abs(P.dx) ? Math.sign(P.dy) : 0;
+    const sx = Math.abs(P.dx) > 0.16 ? Math.sign(P.dx) : 0, sy = Math.abs(P.dy) > 0.6 && Math.abs(P.dy) > Math.abs(P.dx) ? Math.sign(P.dy) : 0;
     const swim = mk.mode === 'swim';
     mk.keyDir = K.dx || sx;
     mk.keyY = K.dy || (swim ? (Math.abs(P.dy) > 0.25 ? P.dy : 0) : sy > 0 ? 1 : 0);
@@ -60922,6 +60926,16 @@ const Pad = (() => {
   }
   // keyboard state from main.js
   function setKeys(o) { Object.assign(P.keys, o); if (o.jump || o.dx) P.hint = Math.min(P.hint, 0.35); }
+  // safety net: when no finger is on the screen any more, let go of everything
+  function allUp() { if (P.stick) { P.stick = null; P.dx = 0; P.dy = 0; } if (P.a) { P.a = null; P.jumpHeld = false; } if (P.b) { P.b = null; Moves.release(); } }
+  if (typeof window !== 'undefined') {
+    let nT = 0;
+    const onEnd = (e) => { nT = e.touches ? e.touches.length : 0; if (nT === 0) setTimeout(() => { if (nT === 0) allUp(); }, 80); };
+    window.addEventListener('touchstart', (e) => { nT = e.touches.length; }, { passive: true, capture: true });
+    window.addEventListener('touchend', onEnd, { passive: true, capture: true });
+    window.addEventListener('touchcancel', onEnd, { passive: true, capture: true });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) allUp(); });
+  }
   function reset() { P.stick = null; P.a = null; P.b = null; P.dx = 0; P.dy = 0; P.jumpHeld = false; Object.assign(P.keys, { dx: 0, dy: 0, run: false, jump: false, sneak: false }); }
   return Object.assign(P, { down, move, up, owns, apply, draw, setKeys, layout, reset });
 })();
@@ -68366,7 +68380,7 @@ const BeachAI = (() => {
     facing() { return 0.3; }
   }
   class KyogreM extends Swimmer {
-    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 10580, y: 1060, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 10300, x1: 10720, y0: 900, y1: 1110 } }); this.swimTop = 20; }
+    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 12340, y: 1060, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 12060, x1: 12480, y0: 900, y1: 1110 } }); this.swimTop = 20; }
     senses() {}
     animate(dt, t) { const P = { fin: Math.sin(t * 1.2) * 0.5, tail: Math.sin(t * 1.4 + 1) * 0.5, mouth: 0.1, eyes: 'open', glow: 0.6 + 0.4 * Math.sin(t * 2), headPitch: -0.1, roll: 0 }; Object.assign(P, this.o); this.pose = P; }
     brain() { return this.life(); }
@@ -68390,10 +68404,10 @@ const BeachAI = (() => {
     S.events = {}; S.heartOn = false; S.swell = 0;
     AI.floes.length = 0;
     const add = (m) => { if (m && m.sp) G.addMon(m); return m; };
-    if (sp('Spheal')) for (const x of [470, 620, 880]) add(new SphealM(x));
+    if (sp('Spheal')) for (const x of [470, 880]) add(new SphealM(x));
     if (sp('Sealeo')) add(new SealeoM(1010));
     if (sp('Walrein')) add(new WalreinM(A));
-    if (sp('Corphish')) { add(new CorphishM(380)); add(new CorphishM(960)); add(new CorphishM(1760, { under: true, minX: 1500, maxX: 2200 })); }
+    if (sp('Corphish')) { add(new CorphishM(330)); add(new CorphishM(4400, { minX: 4280, maxX: 4640 })); add(new CorphishM(1760, { under: true, minX: 1500, maxX: 2200 })); }
     if (sp('Luvdisc')) for (let i = 0; i < 6; i++) add(new LuvdiscM(1200 + i * 80, SEA + 50 + (i % 3) * 30, i));
     if (sp('Pelipper')) add(new PelipperM(A));
     if (sp('Mantine')) { const m = add(new MantineM()); if (sp('Remoraid')) add(new RemoraidM(m)); }
@@ -68434,7 +68448,7 @@ const BeachAI = (() => {
     // Wailord breach request: a song at the end of the dock at dusk
     Secrets.update(A, dt, t, G);
   }
-  function drawFarSea(fb, cx, cy, t, hz, seaS) { if (S.wailord && S.wailord.alive) { S.wailord.draw(fb, cx, cy, null); const c = S.wailord.cpx; S.wailord.ccol = c && c[0] >= 0 && c[1] >= 0 && c[0] < fb.w && c[1] < fb.h ? fb.d[c[1] * fb.w + c[0]] : null; } }
+  function drawFarSea(fb, cx, cy, t, hz, seaS) { if (typeof BackMons !== 'undefined') BackMons.drawSea(fb, cx, cy); if (S.wailord && S.wailord.alive) { S.wailord.draw(fb, cx, cy, null); const c = S.wailord.cpx; S.wailord.ccol = c && c[0] >= 0 && c[1] >= 0 && c[0] < fb.w && c[1] < fb.h ? fb.d[c[1] * fb.w + c[0]] : null; } }
   // after the near backdrop is drawn: is the far giant still visible?
   function checkFar(fb) { const w = S.wailord; if (!w || !w.cpx) return; const c = w.cpx; w.occluded = !(c[0] >= 0 && c[1] >= 0 && c[0] < fb.w && c[1] < fb.h) || fb.d[c[1] * fb.w + c[0]] !== w.ccol; }
   function drawUnderBackdrop(fb, cx, cy, t, C) {
@@ -68534,7 +68548,7 @@ const BeachAI = (() => {
     update(A, dt, t, G) {
       const m = G.mudkip;
       // Kyogre: the Blue Orb in the trench at night
-      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 10100 && m.y > 900 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(10580, 980, { dur: 1.6, hold: 4, zoom: 1.1 }); }
+      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 11860 && m.y > 900 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(12340, 980, { dur: 1.6, hold: 4, zoom: 1.1 }); }
     },
     song(x) {
       const m = Game.mudkip;
@@ -72403,11 +72417,11 @@ Areas.beach = (() => {
   const DOCK = { x0: 870, x1: 1880, y: 496 };
   const def = {
     id: 'beach', name: 'Coral Cove', sub: 'Route 109 Seashore', music: 'crossing', seed: 11,
-    W: 10800, H: 1300, sea: SEA, refY: SEA, h0: 96, cy0: 290, ph: 0.06, skyH: 360, sunH: 150, band: 12, waves: 1.6,
+    W: 12600, H: 1300, sea: SEA, refY: SEA, h0: 96, cy0: 290, ph: 0.06, skyH: 360, sunH: 150, band: 12, waves: 1.6,
     camY: [-40, 1300],
     start: 300,
-    ground: [[0, 452], [90, 452], [170, 462], [240, 478], [320, 488], [460, 492], [640, 494], [800, 497], [900, 502], [1000, 509], [1100, 520], [1200, 535], [1300, 555], [1400, 580], [1500, 608], [1600, 638], [1700, 666], [1800, 690], [1900, 708], [2000, 714], [2150, 724], [2300, 740], [2450, 764], [2600, 800], [2750, 848], [2880, 900], [2980, 935], [3060, 940], [3160, 928], [3280, 896], [3400, 850], [3520, 792], [3640, 726], [3760, 656], [3860, 594], [3940, 544], [4000, 506], [4060, 486], [4200, 480], [4260, 470], [4320, 456], [4400, 444], [4520, 440], [4640, 441], [4680, 450], [4710, 464], [4750, 470], [4790, 464], [4820, 450], [4860, 441], [4960, 440], [4990, 452], [5020, 476], [5080, 482], [5140, 478], [5170, 456], [5200, 442], [5360, 436], [5500, 430], [5600, 432], [5700, 430], [5850, 428], [6100, 430], [6400, 432], [6700, 430], [7000, 428], [7300, 430], [7600, 432], [7900, 430], [8150, 434], [8280, 448], [8360, 476], [8440, 506], [8520, 532], [8660, 566], [8840, 604], [9060, 650], [9300, 706], [9560, 772], [9820, 846], [10060, 926], [10280, 1006], [10460, 1080], [10600, 1140], [10720, 1180], [10800, 1190]],
-    water: [{ x0: 0, x1: 4020, level: SEA, kind: 'sea' }, { x0: 8400, x1: 10800, level: SEA, kind: 'sea' }, { x0: 4985, x1: 5180, level: 456, kind: 'pool' }],
+    ground: [[0, 452], [90, 452], [170, 462], [240, 478], [320, 488], [460, 492], [640, 494], [800, 497], [900, 502], [1000, 509], [1100, 520], [1200, 535], [1300, 555], [1400, 580], [1500, 608], [1600, 638], [1700, 666], [1800, 690], [1900, 708], [2000, 714], [2150, 724], [2300, 740], [2450, 764], [2600, 800], [2750, 848], [2880, 900], [2980, 935], [3060, 940], [3160, 928], [3280, 896], [3400, 850], [3520, 792], [3640, 726], [3760, 656], [3860, 594], [3940, 544], [4000, 506], [4060, 486], [4200, 480], [4260, 470], [4320, 456], [4400, 444], [4520, 440], [4640, 441], [4680, 450], [4710, 464], [4750, 470], [4790, 464], [4820, 450], [4860, 441], [4960, 440], [4990, 452], [5020, 476], [5080, 482], [5140, 478], [5170, 456], [5200, 442], [5360, 436], [5500, 430], [5600, 432], [5700, 430], [5850, 428], [6100, 430], [6400, 432], [6700, 430], [7000, 428], [7300, 430], [7600, 432], [7900, 430], [8150, 434], [8280, 448], [8360, 476], [8440, 506], [8520, 532], [8660, 570], [8840, 622], [9000, 684], [9150, 736], [9300, 764], [9500, 772], [9700, 792], [9900, 780], [10100, 800], [10300, 788], [10500, 806], [10700, 798], [10850, 830], [11000, 884], [11200, 952], [11420, 1020], [11640, 1080], [11860, 1130], [12060, 1165], [12300, 1185], [12600, 1190]],
+    water: [{ x0: 0, x1: 4020, level: SEA, kind: 'sea' }, { x0: 8400, x1: 12600, level: SEA, kind: 'sea' }, { x0: 4985, x1: 5180, level: 456, kind: 'pool' }],
     plats: [{ x0: DOCK.x0, x1: DOCK.x1, y: DOCK.y, kind: 'dock', ladders: [1400, 1872] }],
     mats: {
       ink: ['#161828', '#221e36'],
@@ -75719,10 +75733,11 @@ const Wild = (() => {
   /* ===================== spawns in the existing places ===================== */
   const wrap = (id, fn) => { const A = Areas[id]; if (!A) return; const s0 = A.spawn; A.spawn = (a, G) => { s0(a, G); try { fn(a, G); } catch (e) { console.error(e); } }; };
   wrap('beach', (A, G) => {
-    E.add(G, 'marshtomp', 760, { range: 240 });
-    E.add(G, 'swampert', 1060, { range: 200 });
-    E.add(G, 'wynaut', 640, { range: 180 }); E.add(G, 'wynaut', 700, { range: 180 });
-    E.add(G, 'crawdaunt', 1100, { range: 260 });
+    // spread out along the whole cove: the start stays calm, the rest of the coast has its own residents
+    E.add(G, 'marshtomp', 4100, { minX: 3990, maxX: 4230 });
+    E.add(G, 'swampert', 5780, { range: 120 });
+    E.add(G, 'wynaut', 6560, { range: 120 }); E.add(G, 'wynaut', 6620, { range: 120 });
+    E.add(G, 'crawdaunt', 7900, { range: 180 });
     E.add(G, 'vibrava', 4620, { range: 200 }); E.add(G, 'vibrava', 4880, { range: 160 });
     E.add(G, 'flygon', 5060, { range: 220 });
     const h = Game.hour();
@@ -76666,8 +76681,158 @@ const Boardwalk = (() => {
       for (let i = 0; i < 5; i++) { UI.put(fb, X + i, Y + Math.min(i, 3), 0xff3a3ad4); UI.put(fb, X + 9 - i, Y + Math.min(i, 3), 0xff3a3ad4); }
     }
   }
+
+  /* ---------------- the Kelp Forest (past the boardwalk, before the deep blue) ---------------- */
+  const KF = { x0: 9150, x1: 10780 };
+  const kb0 = B.build;
+  B.build = (A) => {
+    kb0(A);
+    const M = A.M, r = rng(4242), SEA = World.SEA;
+    // towering kelp in three depths: back (dim), middle (swaying), and huge blades right in front of the camera
+    for (let x = KF.x0 - 150; x < KF.x1 + 60; x += 9 + r() * 16) {
+      const g = gy(x), depth = g - SEA; if (depth < 90) continue;
+      const len = Math.min(depth - 18, 110 + r() * 170);
+      A.put(Props.kelp(M, len, Math.floor(x * 7)), x, r() < 0.5 ? -5 : -2, { fps: 1.6 + r() * 1.4, phase: r() * 5, sink: 2 });
+      if (r() < 0.25) A.put(Paint.rock(M, 14 + r() * 26, 8 + r() * 14, Math.floor(x), { ramp: M.rockU, moss: M.algae, cracks: 2 }), x + 6, 2, { sink: 4 });
+      if (r() < 0.14) A.put(Props.anemone(M, 7 + r() * 5, Math.floor(x * 3)), x + 4, 3, { fps: 2.2, phase: r() * 3, sink: 2 });
+      if (r() < 0.08) A.put(Props.coral(M, pick(['fan', 'branch', 'tube']), 24 + r() * 20, Math.floor(x)), x - 8, 1, { sink: 2 });
+    }
+    for (let x = KF.x0; x < KF.x1; x += 70 + r() * 110) {
+      const s = Props.kelp(M, 220 + r() * 120, Math.floor(x * 11), 1)[0];
+      A.foreItem(s, x, gy(x) + 50 + r() * 30, { p: 1.35, sway: 2, tint: 0xff1a3a10, dark: 0.3 });
+    }
+    // sunbeams through the canopy, and a sunken treasure crate for the curious
+    A.glows.push({ x: (KF.x0 + KF.x1) / 2, y: SEA + 120, r: 160, c: hex('#9af0c0'), a: 0.12, always: true });
+    A.put(Props.crate(M), 10180, 1, { sink: 3 });
+    A.addHot({ x0: 10160, x1: 10200, y0: gy(10180) - 16, y1: gy(10180), x: 10180, reach: 40, tap() { if (Save.discover('beach.kelpcrate')) { Save.addPoints(250); Save.addItem('pearl', 2); HUD.toast('A sunken crate in the Kelp Forest! +2 Pearls', { life: 2.6 }); FX.sparkles(10180, gy(10180) - 8, 14, 20); } else HUD.toast('The old crate is empty now. Kelp sways all around.', { life: 2 }); } });
+    A.addHot({ x0: KF.x0, x1: KF.x0 + 60, y0: SEA, y1: gy(KF.x0), x: KF.x0 + 30, reach: 80, tap() { if (Save.discover('beach.kelpforest')) { Save.addPoints(200); HUD.toast('Discovered the Kelp Forest!', { life: 2.4, col: 0xff7ae0a0 }); } } });
+  };
+  const ks0 = B.spawn;
+  B.spawn = (A, G) => {
+    ks0(A, G);
+    const C = (typeof SeaAI !== 'undefined' && SeaAI.classes) || {}, SEA = World.SEA;
+    const box = { x0: KF.x0, x1: KF.x1, y0: SEA + 30, y1: 760 };
+    const add = (m) => { if (m && m.sp) { m.box = Object.assign({}, box); m.home = m.x; G.addMon(m); } return m; };
+    try {
+      if (C.WailmerM) { add(new C.WailmerM(9500)); add(new C.WailmerM(10300)); }
+      if (C.TentacoolM) for (const [x, y] of [[9300, SEA + 60], [9800, SEA + 90], [10500, SEA + 50]]) add(new C.TentacoolM(x, y));
+      if (C.ChinchouM) for (const [x, y] of [[9650, 720], [10050, 740], [10600, 730]]) add(new C.ChinchouM(x, y));
+      if (C.ClamperlM) for (const x of [9420, 10380]) { const m = new C.ClamperlM(x); if (m.sp) G.addMon(m); }
+      const L = BeachAI.classes.LuvdiscM; if (L) for (let i = 0; i < 4; i++) add(new L(9900 + i * 40, SEA + 80 + (i % 2) * 30, i + 6));
+    } catch (e) { console.error(e); }
+  };
+  S.KF = KF;
   Object.assign(S, { update, drawUI, barMenu, challenge, RING, BAR, X0, X1 });
   return S;
+})();
+
+/* ==== src/snap/backmons.js ==== */
+/* ------------------------------------------------------------------
+   BackMons — Pokémon living in the background, far behind the lane:
+   Wingull, Pelipper and Swellow flocks gliding across the sky, Mantine
+   leaping out of the far sea, Wailmer spouting on the horizon, Swablu
+   drifting over the treetops. They sit at a parallax depth (slower
+   than the lane), take the haze of the distance, and can be
+   photographed like anyone else.
+------------------------------------------------------------------- */
+const BackMons = (() => {
+  const { rnd, pick, clamp } = U;
+  const spc = (name) => { try { return (0, eval)(name); } catch (e) { return null; } };
+  class BackMon extends Mons.Mon {
+    constructor(o) {
+      super(o.S, { kind: 'bg-' + o.dex, dex: o.dex, x: o.wx, y: 200, yaw: o.dir > 0 ? 0.45 : Math.PI - 0.45, z: 0, scale: o.scale, qPose: 0.12, persona: 'calm', mode: 'bg' });
+      Object.assign(this, { bgMode: o.mode, p: o.p, wx: o.wx, vdir: o.dir, alt: o.alt || 0, spd: o.spd || 20, poseFn: o.pose, jumpT: rnd(2, 8), jump: 0, jumpLen: o.jumpLen || 1.3, ph: Math.random() * 6, doesJump: !!o.jump, spout: 0, spoutT: rnd(4, 12), doesSpout: !!o.spout });
+      this.layer = o.mode === 'sea' ? 'sea' : 'far'; this.bg = true; this.always = true; this.noHD = true; this.noShadow = true; this.noJuice = true; this.senseR = 0;
+    }
+    senses() {}
+    physics() {}
+    hear() {}
+    brain() { const me = this; return (function* () { for (;;) { const dt = yield; me.tick(dt || 0.016); } })(); }
+    tick(dt) {
+      this.wx += this.vdir * this.spd * dt;
+      // stay around the camera: loop round when far off either side (in layer space)
+      const cx = Game.cam ? Game.cam.x : 0, VW = Game.VW || 400, sx = (this.wx - cx) * this.p;
+      if (sx > VW + 120) this.wx -= (VW + 240) / this.p; else if (sx < -120) this.wx += (VW + 240) / this.p;
+      if (this.doesJump) { this.jumpT -= dt; if (this.jumpT <= 0) { this.jump += dt / this.jumpLen; if (this.jump >= 1) { this.jump = 0; this.jumpT = rnd(4, 11); } } }
+      if (this.doesSpout) { this.spoutT -= dt; if (this.spoutT <= 0) { this.spout = Math.min(1, this.spout + dt); if (this.spoutT < -3) { this.spoutT = rnd(6, 14); this.spout = 0; } } }
+    }
+    animate(dt, t) { this.pose = Object.assign({ eyes: 'open' }, this.poseFn(t + this.ph, this)); }
+    screenPos(cx, cy, t) {
+      const hz = Stage.horizonS(cy), sx = Math.round((this.wx - cx) * this.p);
+      if (this.bgMode === 'sea') { const seaS = World.SEA - cy; return [sx, Math.round(hz + (seaS - hz) * this.p)]; }
+      return [sx, Math.round(hz - this.alt + Math.sin(t * 0.8 + this.ph) * 3)];
+    }
+    draw(fb, cx, cy) {
+      const s = this.spr; if (!s) return;
+      const t = Game.t, [sx, sy] = this.screenPos(cx, cy, t);
+      const j = this.jump > 0 ? Math.sin(this.jump * Math.PI) : 0, lift = Math.round(j * s.h * 1.3);
+      const X = sx - Math.round(s.w / 2), Y = (this.bgMode === 'sea' ? sy - Math.round(s.h * 0.55) : sy - s.h) - lift;
+      this.x = sx + cx; this.y = Y + s.h + cy;
+      const W = fb.w, H = fb.h, d = fb.d, idb = Stage.S.idOn ? Stage.S.idb : null;
+      const haze = Pal.LOOK[Stage.S.hour].hazeC, hk = clamp(0.5 - this.p * 0.6, 0.12, 0.45);
+      for (let yy = 0; yy < s.h; yy++) {
+        const ty = Y + yy; if (ty < 0 || ty >= H) continue;
+        if (this.bgMode === 'sea' && ty > sy + 1) continue; // under the surface
+        for (let xx = 0; xx < s.w; xx++) {
+          const c = s.d[yy * s.w + (this.flip ? s.w - 1 - xx : xx)]; if (!c) continue;
+          const tx = X + xx; if (tx < 0 || tx >= W) continue;
+          d[ty * W + tx] = U.mix(c, haze, hk); if (idb && this.layer === 'far') idb[ty * W + tx] = this.pid || 0;
+        }
+      }
+      if (this.bgMode === 'sea') {
+        // a ring of foam where it breaks the surface, splashes when it leaps
+        const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < W && y < H) d[y * W + x] = c; };
+        for (let k = -Math.round(s.w * 0.4); k <= Math.round(s.w * 0.4); k++) if ((k + Math.floor(t * 6)) % 3) put(sx + k, sy + 1, 0xfff4f8ff);
+        if (j > 0 && (this.jump < 0.15 || this.jump > 0.85)) for (let k = 0; k < 10; k++) put(sx + Math.round(Math.sin(k * 2.7) * s.w * 0.5), sy - Math.round(Math.abs(Math.sin(k * 1.9)) * 6), 0xffffffff);
+        if (this.spout > 0.05) for (let k = 0; k < 14 * this.spout; k++) put(sx + Math.round(Math.sin(k * 2.3) * k * 0.3), Y - Math.round(k * this.spout), U.screen(0xffe0e8f0, 0xffffffff, 0.5));
+      }
+    }
+    hit(wx, wy) { const s = this.spr; if (!s) return false; return Math.abs(wx - this.x) < s.w / 2 && wy < this.y && wy > this.y - s.h; }
+    bounds() { const s = this.spr; if (!s) return { x0: 0, y0: 0, x1: 0, y1: 0 }; return { x0: this.x - s.w / 2, y0: this.y - s.h, x1: this.x + s.w / 2, y1: this.y }; }
+    center() { const b = this.bounds(); return [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2]; }
+    headPt() { return [this.x, this.y - (this.spr ? this.spr.h : 10)]; }
+    at() { return this.headPt(); }
+    facing() { return 0.3; }
+  }
+  // how each background Pokémon moves (pose from time)
+  const KIND = {
+    wingull: { sp: 'Wingull', mode: 'sky', scale: 0.12, spd: 26, pose: (t) => ({ flap: Math.sin(t * 5) * 0.6, spread: 1 }) },
+    pelipper: { sp: 'Pelipper', mode: 'sky', scale: 0.09, spd: 18, pose: (t) => ({ flap: Math.sin(t * 3) * 0.7, spread: 1, feet: 0 }) },
+    swellow: { sp: 'Swellow', mode: 'sky', scale: 0.09, spd: 40, pose: (t) => ({ perch: 0, flap: t * 9, spread: 0.9 }) },
+    taillow: { sp: 'Taillow', mode: 'sky', scale: 0.12, spd: 34, pose: (t) => ({ flap: Math.sin(t * 8) * 0.8, spread: 1 }) },
+    swablu: { sp: 'Swablu', mode: 'sky', scale: 0.13, spd: 12, pose: (t) => ({ flap: Math.sin(t * 3), bob: Math.sin(t) }) },
+    altaria: { sp: 'Altaria', mode: 'sky', scale: 0.1, spd: 10, pose: (t) => ({ flap: Math.sin(t * 1.6) * 0.6 }) },
+    tropius: { sp: 'Tropius', mode: 'sky', scale: 0.08, spd: 12, pose: (t) => ({ flap: Math.sin(t * 2) * 0.8 }) },
+    mantine: { sp: 'Mantine', mode: 'sea', scale: 0.12, spd: 14, jump: true, pose: (t, m) => ({ flap: Math.sin(t * 2.5) * (m.jump > 0 ? 1 : 0.3), pitch: m.jump > 0 ? (0.5 - m.jump) * 1.2 : 0 }) },
+    wailmer: { sp: 'Wailmer', mode: 'sea', scale: 0.11, spd: 8, spout: true, pose: (t, m) => ({ swim: t * 1.5, blow: m.spout }) },
+    luvdisc: { sp: 'Luvdisc', mode: 'sea', scale: 0.1, spd: 20, jump: true, jumpLen: 0.9, pose: (t) => ({ wiggle: Math.sin(t * 8) }) },
+  };
+  function add(G, dex, wx, o = {}) {
+    const K = KIND[dex], S = K && spc(K.sp); if (!S) return null;
+    const m = new BackMon(Object.assign({ S, dex, wx, dir: o.dir ?? (Math.random() < 0.5 ? 1 : -1), p: o.p ?? (K.mode === 'sea' ? 0.22 : 0.4), alt: o.alt ?? rnd(18, 46), spd: K.spd * rnd(0.8, 1.2), scale: K.scale * (o.k || 1), mode: K.mode, pose: K.pose, jump: K.jump, jumpLen: K.jumpLen, spout: K.spout }, o));
+    if (!m.sp) return null;
+    G.addMon(m); return m;
+  }
+  // a little flock: a few birds in a loose V, all going the same way
+  function flock(G, dex, wx, n, o = {}) { const dir = o.dir ?? (Math.random() < 0.5 ? 1 : -1), alt = o.alt ?? rnd(22, 46); for (let i = 0; i < n; i++) add(G, dex, wx - dir * i * 18, Object.assign({}, o, { dir, alt: alt - Math.abs(i - (n - 1) / 2) * 6 + rnd(-2, 2), k: rnd(0.9, 1.05) })); }
+  const SPAWN = {
+    beach(G) {
+      flock(G, 'wingull', 600, 3); flock(G, 'wingull', 4200, 2, { p: 0.3 }); add(G, 'pelipper', 2400, { alt: 35 }); flock(G, 'swellow', 7000, 2);
+      add(G, 'mantine', 1800); add(G, 'mantine', 5200, { p: 0.18 }); add(G, 'wailmer', 3200, { p: 0.16 }); add(G, 'wailmer', 8800, { p: 0.2 });
+      add(G, 'luvdisc', 2600, { p: 0.28 }); add(G, 'luvdisc', 6400, { p: 0.26 });
+    },
+    forest(G) { flock(G, 'swellow', 900, 2, { p: 0.35, alt: 40 }); flock(G, 'taillow', 3000, 3, { p: 0.4 }); add(G, 'tropius', 4200, { p: 0.3, alt: 35 }); },
+    canopy(G) { add(G, 'swablu', 800, { alt: 30 }); add(G, 'swablu', 2000, { alt: 45 }); add(G, 'altaria', 3000, { p: 0.3, alt: 50 }); flock(G, 'wingull', 1500, 2, { p: 0.3 }); },
+    stage(G) { flock(G, 'swablu', 900, 3, { p: 0.35, alt: 40 }); },
+    volcano(G) { add(G, 'swablu', 1200, { p: 0.3, alt: 55 }); add(G, 'altaria', 2600, { p: 0.25, alt: 60 }); },
+  };
+  for (const id of Object.keys(SPAWN)) {
+    const A = Areas[id]; if (!A) continue;
+    const s0 = A.spawn;
+    A.spawn = (a, G) => { if (s0) s0(a, G); try { SPAWN[id](G); } catch (e) { console.error(e); } };
+  }
+  function drawSea(fb, cx, cy) { for (const m of Mons.all) if (m.bg && m.bgMode === 'sea' && m.alive && m.visible) m.draw(fb, cx, cy); }
+  return { BackMon, add, flock, drawSea, KIND };
 })();
 
 /* ==== src/snap/accs.js ==== */
@@ -77505,6 +77670,10 @@ const Game = (() => {
     if ((k === ' ' || k === 'Enter') && G.mode === 'camera' && Photo.shutterUp) Photo.shutterUp();
     keysMove();
   });
+  // lost pointer-ups (finger slid off the screen edge, a system gesture): once no finger is down, forget them all
+  { let nT = 0; const te = (e) => { nT = e.touches.length; if (!nT) setTimeout(() => { if (!nT && ptrs.size) { ptrs.clear(); drag = null; pinch = null; } }, 120); };
+    window.addEventListener('touchstart', (e) => { nT = e.touches.length; }, { passive: true, capture: true });
+    window.addEventListener('touchend', te, { passive: true, capture: true }); window.addEventListener('touchcancel', te, { passive: true, capture: true }); }
   window.addEventListener('blur', () => { keysDown.clear(); keysMove(); if (typeof Pad !== 'undefined') Pad.reset(); if (Photo.shutterUp) Photo.shutterUp(true); });
   function keysMove() {
     const mk = G.mudkip; if (!mk) return;
