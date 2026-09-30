@@ -8,10 +8,17 @@
     · NEW cards come only from TMs: every TM move Mudkip learns out in
       the world (Moves.has) joins the deck as its card (Bubble, Dig,
       Ice Beam, Rain Dance...), so TMs work in battle and outside
-    · win → pick one: upgrade a card (TM cards first), remove a card,
-      an extra copy of a TM card, or an Oran Berry (+Max HP)
-    · the foe shows its INTENT; statuses: Muddy (deals less), Dazed
-      (takes more), Soaked (+1 per hit), Frozen (skips a turn)
+    · before a boss battle: a walk-in cinematic (arena.js: letterbox,
+      tracking shots, the crowd, name plates, a VS slam)
+    · win → "TM LEARNED!": the boss teaches its signature TM (bosses.js),
+      whose card joins the deck by itself; a TM you know already is
+      mastered instead (card upgraded / an extra copy); rematches pay
+      points and XP only
+    · clear turn flow: HP panels at the top (fighting-game style), a
+      YOUR TURN / FOE TURN banner, the foe's INTENT on its panel and over
+      its head, auto end turn when nothing is playable
+    · statuses: Muddy (deals less), Dazed (takes more), Soaked (+1 per
+      hit), Frozen (skips a turn), Hail (the foe takes damage each turn)
     · juice: real card art (cardart.js), smooth hover/lift, cards fly
       from the draw pile and to the discard pile, the played card
       flies in to the centre then at its target; squash & stretch,
@@ -51,15 +58,26 @@ const Cards = (() => {
     sunny: { tm: 'sunny', short: 'Sunny', name: 'Sunny Day', cost: 1, kind: 'power', r: 3, power: { sun: 2 }, anim: 'power', art: 'sunny', up: { power: { sun: 3 } } },
     quick: { tm: 'quick', short: 'Quick', name: 'Quick Attack', cost: 0, kind: 'atk', r: 2, dmg: 4, draw: 1, anim: 'dash', art: 'quick', up: { dmg: 6 } },
     whirl: { tm: 'whirl', short: 'Whirl', name: 'Whirlpool', cost: 2, kind: 'atk', r: 3, dmg: 3, hits: 3, fx: { weak: 1 }, anim: 'whirl', art: 'whirl', up: { hits: 4 } },
+    // boss TMs: each area boss teaches its signature move (bosses.js)
+    crabhammer: { tm: 'crabhammer', short: 'C.Hammer', name: 'Crabhammer', cost: 2, kind: 'atk', r: 3, dmg: 13, pierce: 1, anim: 'slam', art: 'crabhammer', up: { dmg: 17 } },
+    fury: { tm: 'fury', short: 'Fury', name: 'Fury Swipes', cost: 1, kind: 'atk', r: 2, dmg: 2, hits: 4, anim: 'fury', art: 'fury', up: { hits: 5 } },
+    aerial: { tm: 'aerial', short: 'A.Ace', name: 'Aerial Ace', cost: 1, kind: 'atk', r: 2, dmg: 7, ace: 1, anim: 'swoop', art: 'aerial', up: { dmg: 10 } },
+    dragonrage: { tm: 'dragonrage', short: 'D.Rage', name: 'Dragon Rage', cost: 2, kind: 'atk', r: 3, fixed: 15, anim: 'shot', shot: '#b070ff', art: 'dragonrage', up: { cost: 1 } },
+    smoke: { tm: 'smoke', short: 'Smoke', name: 'Smokescreen', cost: 1, kind: 'skill', r: 2, blk: 6, fx: { weak: 2 }, anim: 'smoke', art: 'smoke', up: { blk: 9 } },
+    hail: { tm: 'hail', name: 'Hail', cost: 1, kind: 'power', r: 3, power: { hail: 3 }, anim: 'power', art: 'hail', up: { power: { hail: 4 } } },
     // reward-only
     oran: { name: 'Oran Berry', short: 'Oran', cost: 0, kind: 'item', r: 1, art: 'berry', flav: '+4 Max HP for good. Yum!' },
   };
+  // a played card: flies to the centre (c), hangs (h), then shoots at its target (e) — seconds
+  const FLY = { c: 0.14, h: 0.24, end: 0.42 };
   const STARTER = ['tackle', 'tackle', 'tackle', 'tackle', 'tackle', 'block', 'block', 'block', 'block', 'splash'];
   const KW = {
     weak: ['MUDDY', 'deals 25% less damage.'], vuln: ['DAZED', 'takes 50% more damage.'], soak: ['SOAKED', 'takes +1 from every hit.'],
     stun: ['FREEZE', 'the foe skips its next turn.'], str: ['POWER', '+1 damage per hit.'], blk: ['BLOCK', 'stops damage until your next turn.'],
     rain: ['RAIN', 'your attacks hit harder.'], sun: ['SUN', 'heal at the start of each turn.'], exhaust: ['ONCE', 'used up for this fight.'], pierce: ['BREAKS BLOCK', 'shatters the foe\'s Block first.'],
+    ace: ['ACE', 'never blocked: goes straight through BLOCK.'], fixed: ['FIXED', 'always exactly this much: ignores BLOCK, POWER and statuses.'], hail: ['HAIL', 'the foe takes damage at the start of each of your turns.'],
   };
+  const cardOf = (id) => (CARDS[id] && CARDS[id].tm ? id : 'tm:' + id);
   // a TM move added by another file (no card of its own yet): a generic TM attack
   function tmCard(id) {
     const d = typeof Moves !== 'undefined' && Moves.DEF ? Moves.DEF[id] : null;
@@ -87,6 +105,8 @@ const Cards = (() => {
     const K = (w) => '[' + GOLD + ']' + w + '[]';
     const p = [];
     if (c.dmg) p.push('Deal ' + N(c.dmg, 'dmg') + (c.hits > 1 ? ' x' + N(c.hits, 'hits') : '') + '.');
+    if (c.fixed) p.push('Deal exactly ' + N(c.fixed, 'fixed') + '. ' + K('FIXED') + '.');
+    if (c.ace) p.push(K('ACE') + ': ignores BLOCK.');
     if (c.pierce) p.push('Breaks ' + K('BLOCK') + '.');
     if (c.blk) p.push('Gain ' + N(c.blk, 'blk') + ' ' + K('BLOCK') + '.');
     if (c.fx) for (const k in c.fx) p.push(k === 'stun' ? K('FREEZE') + ' it.' : K(KW[k][0]) + ' ' + N(c.fx[k], 'fx') + '.');
@@ -95,12 +115,13 @@ const Cards = (() => {
     if (c.draw) p.push('Draw ' + N(c.draw, 'draw') + '.');
     if (c.power && c.power.rain) p.push(K('RAIN') + ': attacks +' + N(c.power.rain, 'power') + ' dmg.');
     if (c.power && c.power.sun) p.push(K('SUN') + ': heal ' + N(c.power.sun, 'power') + ' a turn.');
+    if (c.power && c.power.hail) p.push(K('HAIL') + ': foe takes ' + N(c.power.hail, 'power') + ' a turn.');
     if (c.flav) p.push(c.upF.flav ? '[' + GRN + ']' + c.flav + '[]' : c.flav);
     return p.join(' ');
   }
   const keywords = (c) => {
     const out = [];
-    if (c.blk) out.push('blk'); if (c.pierce) out.push('pierce');
+    if (c.blk) out.push('blk'); if (c.pierce) out.push('pierce'); if (c.ace) out.push('ace'); if (c.fixed) out.push('fixed');
     if (c.fx) for (const k in c.fx) out.push(k);
     if (c.buff && c.buff.str) out.push('str');
     if (c.power) for (const k in c.power) out.push(k);
@@ -127,9 +148,18 @@ const Cards = (() => {
     breloom: { hp: 42, tier: 2, title: 'Mushroom Kickboxer', moves: [{ n: 'Mach Punch', a: 7 }, { n: 'Spore', d: 1, w: 1 }, { n: 'Mega Drain', a: 5, b: 5 }, { n: 'Bulk Up', s: 2, b: 4 }],
       eyes: { anger: 'open', smug: 'happy', shock: 'open', dizzy: 'closed', ko: 'closed' },
       lines: { intro: ['Hup! Hup! Put \'em up!', '*shadowboxes*'], attack: ['MACH PUNCH!', 'One-two! ONE-TWO!'], hurt: ['A clean hit?!', 'Oof! Nice jab!'], smug: ['Nice form. NOT.', 'Ha! Weak!'], low: ['Ding ding! Round over?', '*wobbles*'], win: ['Champion! Hup!'], ko: ['*TKO*', 'Ref... count...'] } },
-    torkoal: { hp: 48, tier: 2, title: 'Smog Grump', moves: [{ n: 'Smog', w: 2, a: 3 }, { n: 'Iron Defense', b: 12 }, { n: 'Flame Wheel', a: 9 }, { n: 'Smokescreen', d: 1, b: 4 }],
+    torkoal: { hp: 60, tier: 3, title: 'Smog Grump', moves: [{ n: 'Smog', w: 2, a: 4 }, { n: 'Iron Defense', b: 12 }, { n: 'Flame Wheel', a: 10 }, { n: 'Smokescreen', d: 1, b: 5 }, { n: 'Heat Wave', a: 5, h: 2 }],
       eyes: { anger: 'open', smug: 'happy', shock: 'open', dizzy: 'closed', ko: 'closed' },
       lines: { intro: ['*PUFF* Hot spring\'s full!', '*cough cough*'], attack: ['*PUFF PUFF* BURN!', 'FLAME WHEEL!'], hurt: ['*cough* My shell!', 'Hot hot HOT!'], smug: ['*puffs a smug ring*', 'Pfft.'], low: ['*wheeze*', 'Out of coal...'], win: ['*content puff*'], ko: ['*sad little puff*', '...cough.'] } },
+    swellow: { hp: 50, tier: 2, title: 'Ace of the Skies', moves: [{ n: 'Wing Attack', a: 8 }, { n: 'Double Team', b: 8, s: 1 }, { n: 'Quick Attack', a: 4, h: 2 }, { n: 'Feather Dance', w: 2 }, { n: 'Brave Bird', a: 12 }],
+      eyes: { anger: 'open', smug: 'happy', shock: 'open', dizzy: 'closed', ko: 'closed' },
+      lines: { intro: ['SWELLOW! My sky, my rules!', 'Too slow, mud-fish!'], attack: ['AERIAL ACE!', 'Swoooop!'], hurt: ['My feathers!', 'SWEL?!'], smug: ['*preens*', 'Cute splash.'], low: ['I... need a perch...', 'Feathers... ruffled...'], win: ['Swellooow! Fastest in Hoenn!'], ko: ['*tumbles out of the sky*', 'Grounded...'] } },
+    bagon: { hp: 56, tier: 3, title: 'Hard-Headed Dragon', moves: [{ n: 'Headbutt', a: 10 }, { n: 'Dragon Breath', a: 6, v: 1 }, { n: 'Focus Energy', s: 2 }, { n: 'Protect', b: 12 }, { n: 'Bite', a: 5, h: 2 }],
+      eyes: { anger: 'angry', smug: 'happy', shock: 'open', dizzy: 'closed', ko: 'closed' },
+      lines: { intro: ['One day I will FLY!', 'Bagon! BAGON! Headbutt!'], attack: ['HEADBUTT!!', 'Dragon POWER!'], hurt: ['Ow! My brain!', 'Not the head! ...wait, yes the head!'], smug: ['Hard head. Harder heart.', 'Pfft!'], low: ['Seeing... stars...', 'Wings... please...'], win: ['I am a DRAGON!'], ko: ['*bonk* ...zzz', 'I saw wings...'] } },
+    sealeo: { hp: 66, tier: 3, title: 'Star of the Ice Show', moves: [{ n: 'Ice Ball', a: 5, h: 2 }, { n: 'Aurora Beam', a: 9, w: 1 }, { n: 'Encore', d: 1, b: 6 }, { n: 'Body Slam', a: 13 }, { n: 'Rest', b: 10, s: 1 }],
+      eyes: { anger: 'open', smug: 'happy', shock: 'open', dizzy: 'closed', ko: 'closed' },
+      lines: { intro: ['Sea-leo! It\'s SHOWTIME!', 'Look at me! LOOK AT ME!'], attack: ['ICE BALL!', 'Ta-daaa! BODY SLAM!'], hurt: ['My flippers!', 'The show must go on!'], smug: ['*claps for itself*', 'Encore? No.'], low: ['Intermission! INTERMISSION!', 'The crowd... is leaving...'], win: ['*takes a bow*'], ko: ['*bows... and flops*', 'Standing... ovation...'] } },
     slaking: { hp: 70, tier: 3, title: 'The Laziest King', moves: [{ n: 'Yawn', d: 1 }, { n: 'Slack Off', b: 10 }, { n: 'Giga Impact', a: 20 }, { n: 'Truant...', b: 2 }],
       eyes: { anger: 'open', smug: 'closed', shock: 'open', dizzy: 'closed', ko: 'closed' }, lines: { intro: ['...', '*yaaawn*'] } },
     groudon: { hp: 90, tier: 3, title: 'Lord of the Land', moves: [{ n: 'Precipice', a: 14 }, { n: 'Bulk Up', s: 3, b: 8 }, { n: 'Stomp', a: 6, h: 2 }, { n: 'Glare', v: 2, w: 1 }],
@@ -175,22 +205,28 @@ const Cards = (() => {
     if (!M || !foe || !foe.alive || C.live || Game.mode !== 'explore') return false;
     if (typeof Arcade !== 'undefined' && Arcade.live) return false;
     const fd = foeDef(foe), side = foe.x >= M.x ? 1 : -1;
-    const dx = Math.abs(foe.x - M.x), land = foe.mode === 'land' && !foe.plat && Math.abs(foe.y - World.groundAt(foe.x)) < 6;
-    const fx = land && (dx > 130 || dx < 96) ? M.x + side * 112 : foe.x;
+    const arena = o.arena !== false && typeof Arena !== 'undefined';
+    // boss battles open with a walk-in: both fighters walk up to their marks (Arena.plan picks safe ground)
+    const plan = arena && o.walk !== false && Arena.plan ? Arena.plan(M, foe, side) : null;
+    let mx = M.x, fx;
+    if (plan) { mx = plan.mx; fx = plan.fx; }
+    else { const dx = Math.abs(foe.x - M.x), land = foe.mode === 'land' && !foe.plat && Math.abs(foe.y - World.groundAt(foe.x)) < 6; fx = land && (dx > 130 || dx < 96) ? M.x + side * 112 : foe.x; }
     const G = C.g = {
-      foe, fd, side, o, t: 0, step: 'intro', turn: 0, energy: 0, maxE: 3,
+      foe, fd, side, o, t: 0, step: plan ? 'walk' : 'intro', turn: 0, energy: 0, maxE: 3,
       you: unit(maxHP()), them: unit(fd.hp), draw: shuffle(battleDeck()), hand: [], disc: [], exh: [], fly: [], parts: [], bubbles: [],
-      mx: M.x, fx0: foe.x, fx, intent: null, mi: (Math.random() * fd.moves.length) | 0, seq: null, pops: [], impact: null, reward: null, over: 0, msg: '',
-      handK: 0, zoom: null, cam: null, lineTurn: -1, saidLow: false, dealt: 0, taken: 0, flashT: 0,
+      mx, fx0: plan ? fx : foe.x, fx, intent: null, mi: (Math.random() * fd.moves.length) | 0, seq: null, pops: [], impact: null, prize: null, over: 0, msg: '',
+      handK: 0, zoom: null, cam: null, lineTurn: -1, saidLow: false, dealt: 0, taken: 0, flashT: 0, banner: null, autoT: 0, prizeT: 0, crowd: [],
+      wk: plan ? { mx: plan.mx0, fx: plan.fx0, mv: 0, fv: 0 } : null,
     };
-    C.live = true; C.sel = -1; C.hov = -1; C.deckView = false; C.t = 0;
+    C.live = true; C.sel = -1; C.hov = -1; C.deckView = false; C.t = 0; C.zk = null;
+    if (HUD.toasts) HUD.toasts.length = 0; // a clean screen for the show
     if (typeof Arcade !== 'undefined') Arcade.live = true; // borrow the cutscene hooks (see bottom)
     if (typeof Pad !== 'undefined') Pad.reset && Pad.reset();
     M.stop && M.stop(); Game.pin = null;
     foe.doTask(foeBrain(foe), 9); foe.arcade = true;
     M.doTask(kipBrain(M), 9);
-    C.arena = o.arena !== false && typeof Arena !== 'undefined';
-    if (C.arena) Arena.begin(G);
+    C.arena = arena;
+    if (C.arena) Arena.begin(G, plan);
     else { sfx('chime', null, 0.7); if (typeof Music !== 'undefined' && Music.play) { try { Music.play('festival'); } catch (e) { /* */ } } }
     C.song = true;
     G.seq = introSeq(G);
@@ -202,7 +238,13 @@ const Cards = (() => {
       const dt = yield, M = mk(), G = C.g;
       if (M) m.turn(m.face(M.x > m.x ? 1 : -1, false), dt || 0.016, 8);
       const beh = DexData.S[m.dex] && DexData.S[m.dex].beh;
-      m.setAct(beh && beh.battle && G && G.them.st.stun <= 0 ? 'battle' : 'idle', 0.3);
+      const W = G && G.wk;
+      if (W) {
+        // the walk-in: stride up to the mark (a flier swoops down and lands first)
+        m.moving = W.fv;
+        if (m.mode === 'fly') { const gy = World.groundAt(m.x); m.y += (gy - m.y) * Math.min(1, (dt || 0.016) * 3.2); m.o.flap = Math.sin(G.t * 16); if (gy - m.y < 3) { m.mode = 'land'; m.perched = true; m.air = 0; m.vair = 0; } }
+        m.setAct(W.fv > 4 ? (m.walkAct ? m.walkAct() : 'walk') : 'idle', 0.3);
+      } else m.setAct(beh && beh.battle && G && G.them.st.stun <= 0 ? 'battle' : 'idle', 0.3);
       if (!G) continue;
       const f = G.them.face, E = G.fd.eyes || {};
       const k = G.them.ko ? 'ko' : f ? f.kind : G.them.dizzyT > 0 ? 'dizzy' : null;
@@ -218,6 +260,9 @@ const Cards = (() => {
     for (;;) {
       yield; const G = C.g; if (!G) continue;
       const o = M.o, f = G.you.face;
+      // the walk-in: a determined little stride
+      if (G.wk) { M.moving = G.wk.mv; M.vx = M.mode === 'land' ? G.side * G.wk.mv : 0; if (M.task) M.task.keepV = G.wk.mv > 1; if (!f) { o.eyes = G.wk.mv > 1 ? 'open' : 'blink'; o.mouth = 0.15; o.headPitch = 0.08; } continue; }
+      if (M.task && M.task.keepV) { M.task.keepV = false; M.vx = 0; }
       if (G.you.ko) { o.squash = 0.3; o.bodyDip = 3; o.legSplay = 1.1; o.eyes = 'x'; o.mouth = 0.9; o.headPitch = 0.22; o.tailWag = Math.sin(G.t * 23) * (Math.sin(G.t * 1.3) > 0.6 ? 0.4 : 0); o.finSway = -0.2; continue; }
       if (G.you.win) { o.eyes = 'happy'; o.mouth = 1; o.tailWag = Math.sin(G.t * 16) * 0.5; o.headPitch = -0.15; continue; }
       if (!f) { if (G.you.dizzyT > 0) { o.eyes = 'blink'; o.mouth = 0.3; } continue; }
@@ -230,6 +275,7 @@ const Cards = (() => {
   const setFace = (G, who, kind, life = 1.2) => { U2(G, who).face = { kind, t: 0, life }; };
   function* wait(T) { let e = 0; while (e < T) e += yield; }
   function* introSeq(G) {
+    if (G.step === 'walk') { yield* Arena.walk(G); G.wk = null; G.step = 'intro'; }
     if (C.arena) yield* Arena.intro(G);
     else { G.handK = 0; yield* wait(0.8); bubble(G, 'them', lineOf(G, 'intro'), 1.8); setFace(G, 'them', 'anger', 1.4); yield* wait(0.6); }
     newTurn(G);
@@ -239,7 +285,9 @@ const Cards = (() => {
     G.intent = mv[G.mi];
   }
   function newTurn(G) {
-    G.turn++; G.step = 'you'; G.energy = G.maxE; G.you.blk = 0;
+    G.turn++; G.step = 'you'; G.energy = G.maxE; G.you.blk = 0; G.autoT = 0;
+    G.banner = { text: 'YOUR TURN', sub: 'TURN ' + G.turn + '  ·  ' + G.maxE + ' ENERGY', col: '#2f6fd8', t: 0 };
+    sfx('select', null, 0.6);
     const Y = G.you;
     if (Y.st.sun > 0) heal(G, 'you', Y.st.sun);
     const n = 5 - (Y.st.dizzy > 0 ? 1 : 0); if (Y.st.dizzy > 0) Y.st.dizzy--;
@@ -272,11 +320,13 @@ const Cards = (() => {
     if (A.st.weak > 0) dmg = Math.floor(dmg * 0.75);
     if (D.st.vuln > 0) dmg = Math.floor(dmg * 1.5);
     if (D.st.soak > 0) dmg += 1;
+    if (o.fixed) dmg = o.fixed; // exactly this much, whatever the statuses say
     dmg = Math.max(0, dmg);
     let through = dmg;
     if (o.pierce && D.blk > 0) { pop(G, to, 'CRACK!', hex('#ffd070')); D.blk = 0; }
-    if (D.blk > 0) { const b = Math.min(D.blk, dmg); D.blk -= b; through = dmg - b; if (b) pop(G, to, 'blocked ' + b, hex('#9ac8ff')); }
-    D.hp = Math.max(0, D.hp - through); D.flash = 0.25;
+    if ((o.ace || o.fixed) && D.blk > 0) pop(G, to, o.ace ? 'ACE!' : 'FIXED!', hex('#c8a0ff'));
+    else if (D.blk > 0) { const b = Math.min(D.blk, dmg); D.blk -= b; through = dmg - b; if (b) pop(G, to, 'blocked ' + b, hex('#9ac8ff')); }
+    D.hp = Math.max(0, D.hp - through); D.flash = 0.3; D.hit = through;
     if (through > 0) pop(G, to, '-' + through, through >= 10 ? hex('#ffe040') : WHITE, through >= 10);
     if (from === 'you') G.dealt += through; else G.taken += through;
     return through;
@@ -287,10 +337,15 @@ const Cards = (() => {
     const m = actor(G, who); if (!m) return;
     const h = m.headPt();
     G.impact = { t: 0, x: m.x, y: (h[1] + m.y) / 2, word, big: !!big };
-    Game.shake && Game.shake(big ? 5 : 2.5);
-    G.hitstop = big ? 0.12 : 0.06;
-    if (big && C.arena) G.kick = 0.22; // a tiny camera punch on big hits
+    Game.shake && Game.shake(big ? 6 : 3);
+    G.hitstop = big ? 0.15 : 0.07;
+    if (C.arena) G.kick = big ? 0.3 : 0.14; // a camera punch on every hit
     sfx(big ? 'thud' : 'bonk', m.x, 1);
+    if (big) sfx('crack', m.x, 0.5);
+    // a comic burst on the body and a spray of sparks in the world
+    const cy = (h[1] + m.y) / 2;
+    if (FX.bonk) FX.bonk(m.x - (who === 'them' ? G.side : -G.side) * 6, cy, big ? 13 : 9);
+    if (FX.add) for (let k = 0; k < (big ? 10 : 5); k++) { const a = rnd(0, Math.PI * 2), v = rnd(50, big ? 150 : 100); FX.add({ type: 'spark', x: m.x, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, g: 200, size: 1 + (k % 2), life: rnd(0.25, 0.45), c: WHITE, c2: hex(big ? '#ffd040' : '#ffe8a0'), layer: 4 }); }
   }
   // a camera punch-in on whoever is speaking, with a big comic bubble (the battle waits)
   function* line(G, who, text, face, T = 1.25, o = {}) {
@@ -323,23 +378,26 @@ const Cards = (() => {
     const Y = G.you, T = G.them, M = mk(), F = G.foe, o = Y.off;
     const s = G.side;
     const hits = c.hits || 1;
-    yield* wait(0.32); // the card flies in first
+    yield* wait(0.24); // the card flies in first
     const anim = c.anim || 'hop';
-    if (c.dmg) {
+    if (c.dmg || c.fixed) {
       let total = 0;
       for (let k = 0; k < hits; k++) {
         if (anim === 'shot') yield* shotAnim(G, c.shot || '#5ab4ff', k === hits - 1);
         else if (anim === 'whirl') yield* whirlAnim(G, k);
         else if (anim === 'dash') yield* lungeAnim(G, 'you', 2);
-        else yield* lungeAnim(G, 'you', hits > 2 ? 0.6 : 1);
-        const d = dealDamage(G, 'you', 'them', c.dmg, { pierce: c.pierce });
+        else if (anim === 'fury') yield* lungeAnim(G, 'you', 2.6);
+        else if (anim === 'slam') yield* slamAnim(G);
+        else if (anim === 'swoop') yield* swoopAnim(G);
+        else yield* lungeAnim(G, 'you', hits > 2 ? 1.4 : 1);
+        const d = dealDamage(G, 'you', 'them', c.dmg || 0, { pierce: c.pierce, ace: c.ace, fixed: c.fixed });
         total += d;
-        impact(G, 'them', d >= 12 ? pick(['KA-BONK!', 'WHAM!!', 'SPLOOSH!']) : d > 0 ? pick(['bonk!', 'boop!', 'thwack!', 'pow!']) : 'tink', d >= 12);
+        impact(G, 'them', d >= 12 ? pick(['KA-BONK!', 'WHAM!!', 'SPLOOSH!', 'KA-POW!']) : d > 0 ? pick(['bonk!', 'boop!', 'thwack!', 'pow!']) : 'tink', d >= 12);
         squash(T, 1.5, 0.55);
         if (d > 0) T.dizzyT = Math.max(T.dizzyT, d >= 9 ? 0.9 : 0.4);
-        yield* wait(0.1);
-        yield* recoil(G, 'them');
-        if (T.hp <= 0) break;
+        if (T.hp <= 0) { finisher(G); yield* wait(0.1); break; }
+        yield* wait(hits > 2 ? 0.04 : 0.08);
+        yield* recoil(G, 'them', hits > 2 ? 0.13 : 0.2);
       }
       if (T.hp > 0) {
         if (total === 0) { setFace(G, 'them', 'smug', 1.4); bubble(G, 'them', pick(['Heh.', '*yawn*', 'Tickles.']), 1.2); }
@@ -369,22 +427,56 @@ const Cards = (() => {
     } else if (anim === 'dig') {
       sfx('dust', M.x, 0.8); for (let e = 0; e < 0.4;) { e += yield; o.y = e * 20; o.sy = 1 - e; } yield* wait(0.2); for (let e = 0; e < 0.25;) { e += yield; o.y = 8 - e * 32; o.sy = 1.2; } o.y = 0;
     } else if (anim === 'guard') {
-      sfx('clink', M.x, 0.5); for (let e = 0; e < 0.22;) { e += yield; const k = e / 0.22; o.sy = 1 - 0.18 * k; o.sx = 1 + 0.14 * k; }
-      yield* wait(0.08);
+      sfx('clink', M.x, 0.5); for (let e = 0; e < 0.2;) { e += yield; const k = e / 0.2; o.sy = 1 - 0.18 * k; o.sx = 1 + 0.14 * k; }
+      yield* wait(0.06);
+    } else if (anim === 'smoke') {
+      sfx('steam', M.x, 0.8);
+      if (FX.add) for (let k = 0; k < 14; k++) FX.add({ type: 'dust', x: M.x + rnd(-20, 20), y: M.y - rnd(0, 24), vx: rnd(-30, 30), vy: -rnd(4, 18), r: rnd(4, 8), life: rnd(0.8, 1.3), c: hex('#b8b8c8'), c2: hex('#e8e8f0'), layer: 4 });
+      for (let e = 0; e < 0.3;) { e += yield; o.sy = 0.9; o.sx = 1.1; }
+      setFace(G, 'them', 'shock', 0.8); F.emote && F.emote('sweat', 1);
     } else yield* hopAnim(o, 6, 0.22);
     if (c.blk) { Y.blk += c.blk; pop(G, 'you', '+' + c.blk + ' block', hex('#9ac8ff')); sfx('clink', M.x, 0.7); G.shieldT = 0.6; }
     if (c.heal) heal(G, 'you', c.heal);
     if (c.buff) applyFx(G, 'you', c.buff);
-    if (c.power) { for (const k in c.power) Y.st[k] = (Y.st[k] || 0) + c.power[k]; pop(G, 'you', c.power.rain ? 'It\'s raining!' : 'Sunshine!', hex(GOLD)); }
+    if (c.power) { for (const k in c.power) Y.st[k] = (Y.st[k] || 0) + c.power[k]; pop(G, 'you', c.power.rain ? 'It\'s raining!' : c.power.hail ? 'Hailstorm!' : 'Sunshine!', hex(GOLD)); if (c.power.hail) sfx('icering', M.x, 0.8); }
     if (c.fx && T.hp > 0) applyFx(G, 'them', c.fx);
     if (c.fx && c.fx.stun && T.hp > 0) setFace(G, 'them', 'shock', 1);
     if (c.style) { Y.st.style += c.style; pop(G, 'you', 'Style +' + c.style + ' (' + Y.st.style + ')', hex('#e0b0ff')); }
     if (c.draw) drawCards(G, c.draw);
     o.x = 0; o.y = 0; o.sx = 1; o.sy = 1; o.rot = 0;
-    yield* wait(0.12);
+    yield* wait(0.08);
     if (T.hp <= 0) { yield* winSeq(G); return; }
   }
+  // the knockout blow: a long freeze frame, a flash and a big camera punch
+  function finisher(G) {
+    G.hitstop = 0.42; G.kick = 0.45; G.flashT = Math.max(G.flashT, 0.22); G.koFlash = 0.6;
+    Game.shake && Game.shake(8);
+    sfx('thud', G.foe.x, 1); sfx('crack', G.foe.x, 0.8);
+  }
   function squash(u, sx, sy) { u.off.sx = sx; u.off.sy = sy; }
+  // Crabhammer: a leap up and over, then a slam that shakes the arena
+  function* slamAnim(G) {
+    const o = G.you.off, M = mk(), gap = Math.max(10, Math.abs(G.fx - G.mx) - 30);
+    for (let e = 0; e < 0.12;) { e += yield; o.sy = 0.72; o.sx = 1.28; o.y = 0; }
+    sfx('whoosh', null, 0.8);
+    for (let e = 0; e < 0.26;) { e += yield; const k = Math.min(1, e / 0.26); o.x = gap * 0.75 * k; o.y = -Math.sin(k * Math.PI * 0.5) * 36; o.sx = 0.86; o.sy = 1.2; o.rot = -0.35 * k; }
+    for (let e = 0; e < 0.07;) { e += yield; const k = Math.min(1, e / 0.07); o.x = lerp(gap * 0.75, gap, k); o.y = lerp(-36, 0, k * k); o.rot = lerp(-0.35, 0.25, k); o.sx = 0.8; o.sy = 1.3; }
+    o.y = 0; o.rot = 0; o.sx = 1.45; o.sy = 0.62;
+    const F = G.foe, gy = Math.max(F.y, M.y);
+    if (FX.add) { FX.add({ type: 'ring', x: F.x, y: gy - 1, r0: 4, r1: 70, flat: 0.28, life: 0.45, c: WHITE, thick: 1, c2: hex('#ffb08a'), layer: 4 }); FX.poof && FX.poof(F.x, gy - 2, hex('#e8d8b8'), hex('#c8b890'), 8, 6); }
+  }
+  // Aerial Ace: an arcing swoop straight through the foe's guard
+  function* swoopAnim(G) {
+    const o = G.you.off, M = mk(), gap = Math.max(10, Math.abs(G.fx - G.mx) - 26);
+    for (let e = 0; e < 0.1;) { e += yield; o.sy = 0.8; o.sx = 1.2; }
+    sfx('whoosh', null, 0.9);
+    for (let e = 0; e < 0.2;) {
+      e += yield; const k = Math.min(1, e / 0.2);
+      o.x = gap * k; o.y = -Math.sin(k * Math.PI) * 24; o.rot = -0.5 * Math.sin(k * Math.PI); o.sx = 1.3; o.sy = 0.78;
+      if (FX.add) FX.add({ type: 'spark', x: M.x, y: M.y - 10, size: 1 + ((e * 60) | 0) % 2, life: 0.3, c: WHITE, c2: hex('#8ab0ff'), layer: 4 });
+    }
+    o.y = 0; o.rot = 0; o.sx = 0.75; o.sy = 1.3;
+  }
   function* hopAnim(o, h, T) { for (let e = 0; e < T;) { e += yield; const k = Math.min(1, e / T); o.y = -Math.sin(k * Math.PI) * h; o.sy = k < 0.15 ? 0.8 : k > 0.85 ? 0.85 : 1.12; o.sx = 2 - o.sy; } o.y = 0; o.sx = o.sy = 1; }
   function* lungeAnim(G, who, sp = 1) {
     const u = U2(G, who), o = u.off;
@@ -394,10 +486,10 @@ const Cards = (() => {
     for (let e = 0; e < 0.09 / sp;) { e += yield; const k = Math.min(1, e / (0.09 / sp)); o.x = lerp(-7, gap, U.ease.inCubic ? U.ease.inCubic(k) : k); o.sx = 1.45; o.sy = 0.72; o.y = -Math.sin(k * Math.PI) * 5; }
     o.sx = 0.75; o.sy = 1.3; o.y = 0;
   }
-  function* recoil(G, who) {
+  function* recoil(G, who, T = 0.22) {
     const other = who === 'you' ? G.them : G.you, u = U2(G, who);
-    const o = other.off;
-    for (let e = 0; e < 0.22;) { e += yield; const k = e / 0.22; o.x = lerp(o.x, 0, k); o.sx = lerp(o.sx, 1, k); o.sy = lerp(o.sy, 1, k); u.off.x = -10 * Math.sin(k * Math.PI); u.off.rot = -0.25 * Math.sin(k * Math.PI); }
+    const o = other.off, kb = (u.hit || 0) >= 10 ? 16 : 10;
+    for (let e = 0; e < T;) { e += yield; const k = Math.min(1, e / T); o.x = lerp(o.x, 0, k); o.sx = lerp(o.sx, 1, k); o.sy = lerp(o.sy, 1, k); u.off.x = -kb * Math.sin(k * Math.PI); u.off.rot = -0.25 * Math.sin(k * Math.PI); }
     o.x = 0; o.sx = o.sy = 1; u.off.x = 0; u.off.rot = 0;
   }
   function* whirlAnim(G, k) {
@@ -425,32 +517,33 @@ const Cards = (() => {
     const G = C.g; if (!G || G.step !== 'you' || G.seq) return;
     G.hand.forEach((h, i) => G.fly.push({ id: h.id, kind: 'disc', t: -i * 0.05, x: h.x, y: h.y, w: h.w || 60 }));
     G.disc.push(...G.hand.map((h) => h.id)); G.hand = []; C.sel = -1; C.hov = -1;
-    G.step = 'them';
+    G.step = 'them'; G.autoT = 0;
+    G.banner = { text: 'FOE TURN', sub: nameOf(G.foe).toUpperCase() + ': ' + String((G.intent || {}).n || '...').toUpperCase(), col: '#c8323a', t: 0 };
     G.seq = foeSeq(G);
     sfx('select');
   }
   function* foeSeq(G) {
     const T = G.them, Y = G.you, F = G.foe, mv = G.intent || G.fd.moves[0];
-    yield* wait(0.45);
+    yield* wait(0.5);
     T.blk = 0;
-    if (T.st.stun > 0) { T.st.stun--; pop(G, 'them', 'Frozen solid!', hex('#c8f4ff')); sfx('freeze', F.x, 0.8); setFace(G, 'them', 'shock', 1); yield* wait(0.9); }
+    if (T.st.stun > 0) { T.st.stun--; pop(G, 'them', 'Frozen solid!', hex('#c8f4ff')); sfx('freeze', F.x, 0.8); setFace(G, 'them', 'shock', 1); yield* wait(0.8); }
     else {
       // a big attack gets a dramatic zoom-in first
-      if (mv.a && mv.a * (mv.h || 1) >= 8 && canLine(G) && Math.random() < 0.55) { G.lineTurn = G.turn; yield* line(G, 'them', lineOf(G, 'attack'), 'anger', 1.15); }
+      if (mv.a && mv.a * (mv.h || 1) >= 8 && canLine(G) && Math.random() < 0.4) { G.lineTurn = G.turn; yield* line(G, 'them', lineOf(G, 'attack'), 'anger', 1.0); }
       else bubble(G, 'them', mv.n + '!', 1.1);
-      yield* wait(0.3);
+      yield* wait(0.2);
       if (mv.b) { T.blk += mv.b; pop(G, 'them', '+' + mv.b + ' block', hex('#9ac8ff')); sfx('clink', F.x, 0.7); squash(T, 1.2, 0.85); G.foeShieldT = 0.6; yield* wait(0.3); T.off.sx = T.off.sy = 1; }
       if (mv.s) { applyFx(G, 'them', { str: mv.s }); setFace(G, 'them', 'anger', 1); yield* hopAnim(T.off, 8, 0.3); }
       if (mv.a) {
         let total = 0;
         for (let k = 0; k < (mv.h || 1); k++) {
-          yield* lungeAnim(G, 'them', (mv.h || 1) > 2 ? 0.7 : 1);
+          yield* lungeAnim(G, 'them', (mv.h || 1) > 1 ? 1.5 : 1);
           const d = dealDamage(G, 'them', 'you', mv.a);
           total += d;
           impact(G, 'you', d >= 10 ? pick(['OOF!!', 'KA-POW!', 'YOWCH!']) : d > 0 ? pick(['bonk!', 'ow!', 'smack!']) : 'blocked!', d >= 10);
           squash(Y, 1.5, 0.55); if (d > 0) { Y.dizzyT = Math.max(Y.dizzyT || 0, d >= 8 ? 1.3 : 0.6); setFace(G, 'you', 'hurt', 0.7); }
-          yield* wait(0.1);
-          yield* recoil(G, 'you');
+          yield* wait(0.08);
+          yield* recoil(G, 'you', (mv.h || 1) > 1 ? 0.15 : 0.22);
           if (Y.hp <= 0) break;
         }
         if (Y.hp > 0) {
@@ -465,105 +558,94 @@ const Cards = (() => {
     }
     // statuses wear off at the end of the round
     for (const u of [T, Y]) { if (u.st.weak > 0) u.st.weak--; if (u.st.vuln > 0) u.st.vuln--; if (u.st.soak > 0) u.st.soak--; }
-    yield* wait(0.3);
+    yield* wait(0.2);
     if (Y.hp <= 0) { yield* loseSeq(G); return; }
+    // Hail pelts the foe as your turn begins
+    if (Y.st.hail > 0 && T.hp > 0) {
+      G.hailT = 0.7; sfx('icering', F.x, 0.7);
+      yield* wait(0.25);
+      dealDamage(G, 'you', 'them', 0, { fixed: Y.st.hail }); pop(G, 'them', 'Hail!', hex('#c8f0ff'));
+      squash(T, 1.2, 0.85); setFace(G, 'them', 'hurt', 0.6); sfx('crunch', F.x, 0.8);
+      yield* wait(0.35);
+      if (T.hp <= 0) { finisher(G); yield* wait(0.1); yield* winSeq(G); return; }
+    }
     newTurn(G);
   }
 
   /* ---------- the end ---------- */
   function* winSeq(G) {
     const F = G.foe, T = G.them, M = mk();
-    G.step = 'ko'; G.intent = null;
+    G.step = 'ko'; G.intent = null; G.banner = null;
     T.dizzyT = 0;
     // shock face zoom, a spin, and a flop onto its back
-    if (C.arena) { G.zoom = { who: 'them', t: 0, T: 1.2, z: 2.1 }; }
+    if (C.arena) { G.zoom = { who: 'them', t: 0, T: 1.0, z: 2.1 }; }
     setFace(G, 'them', 'shock', 1);
-    bubble(G, 'them', pick(['IMPOSSIBLE?!', 'B-but... HOW?!', 'NOOOO!']), 1, { shout: true });
+    bubble(G, 'them', pick(['IMPOSSIBLE?!', 'B-but... HOW?!', 'NOOOO!']), 0.9, { shout: true });
     sfx('boing', F.x, 0.8);
-    yield* wait(0.8);
+    yield* wait(0.6);
     const dir = -G.side;
-    for (let e = 0; e < 0.8;) { e += yield; const k = Math.min(1, e / 0.8); T.off.rot = dir * k * Math.PI * 4; T.off.y = -Math.sin(k * Math.PI) * 22; T.off.sx = 1 - 0.1 * Math.sin(k * 20); }
+    for (let e = 0; e < 0.7;) { e += yield; const k = Math.min(1, e / 0.7); T.off.rot = dir * k * Math.PI * 4; T.off.y = -Math.sin(k * Math.PI) * 24; T.off.sx = 1 - 0.1 * Math.sin(k * 20); }
     T.ko = true; T.off.y = 0; T.off.rot = dir * -Math.PI / 2; T.off.sx = 1.1; T.off.sy = 0.9;
-    sfx('thud', F.x, 1); Game.shake && Game.shake(6); G.kick = 0.35;
+    sfx('thud', F.x, 1); Game.shake && Game.shake(7); G.kick = 0.4;
     G.koT = 0; T.dizzyT = 99; T.face = null;
-    FX.burst && FX.burst(F.x, F.y - 4, 12, hex('#fff4d8'), WHITE);
+    if (FX.bonk) FX.bonk(F.x, F.y - 6, 14);
+    if (FX.poof) FX.poof(F.x, F.y - 2, hex('#fff4d8'), WHITE, 10, 6);
     for (let e = 0; e < 0.25;) { e += yield; T.off.y = -Math.sin(Math.min(1, e / 0.25) * Math.PI) * 6; }
     T.off.y = 0;
-    yield* wait(0.5);
-    bubble(G, 'them', lineOf(G, 'ko'), 1.8);
-    yield* wait(0.9);
+    yield* wait(0.3);
+    bubble(G, 'them', lineOf(G, 'ko'), 1.5);
+    yield* wait(0.7);
     G.zoom = null;
     G.you.win = true; M && M.emote && M.emote('star', 1.4);
     sfx('reward');
-    yield* wait(0.9);
+    yield* wait(0.5);
     const s = store(); s.wins = (s.wins || 0) + 1; Save.save();
-    G.reward = { opts: rollRewards(G), t: 0 };
-    G.step = 'reward'; C.sel = 0;
+    // the prize: its signature TM (first win), a mastered TM, or points for a rematch (territory.js decides)
+    let P = null;
+    try { P = G.o.prize ? G.o.prize(G) : null; } catch (e) { console.error(e); }
+    G.prize = P || { kind: 'win', who: nameOf(F) };
+    G.prizeT = 0; G.step = 'prize'; C.sel = 0;
+    sfx('unlock'); if (G.prize.kind === 'tm') sfx('chime', null, 0.8);
+    try { if (typeof Cries !== 'undefined') Cries.mudkip(); } catch (e) { /* */ }
+    for (let k = 0; k < 46; k++) G.parts.push({ x: rnd(0, Game.UW || 400), y: rnd(-40, -4), vx: rnd(-30, 30), vy: rnd(20, 70), g: 60, t: 0, life: rnd(1.6, 3), r: 1 + (k % 2), c: hex(['#ffd23a', '#5ab8ff', '#ff5a8a', '#8aff8a', '#ffffff'][k % 5]) });
   }
   function* loseSeq(G) {
     const Y = G.you, M = mk();
-    G.step = 'ko'; G.intent = null;
+    G.step = 'ko'; G.intent = null; G.banner = null;
     Y.ko = true; Y.dizzyT = 99; Y.face = null;
     sfx('thud', M.x, 1); Game.shake && Game.shake(4);
     for (let e = 0; e < 0.3;) { e += yield; const k = Math.min(1, e / 0.3); Y.off.y = -Math.sin(k * Math.PI) * 10; Y.off.sx = lerp(1, 1.35, k); Y.off.sy = lerp(1, 0.66, k); }
     Y.off.y = 0; sfx('mud', M.x, 0.9);
-    if (C.arena) G.zoom = { who: 'you', t: 0, T: 1.6, z: 2.2 };
-    yield* wait(1.2);
+    if (C.arena) G.zoom = { who: 'you', t: 0, T: 1.4, z: 2.2 };
+    yield* wait(1.0);
     G.zoom = null;
-    if (C.arena) { yield* line(G, 'them', lineOf(G, 'win'), 'laugh', 1.4); }
+    if (C.arena) { yield* line(G, 'them', lineOf(G, 'win'), 'laugh', 1.2); }
     else { bubble(G, 'them', lineOf(G, 'win'), 1.6); setFace(G, 'them', 'laugh', 1.6); yield* wait(1.2); }
     const s = store(); s.losses = (s.losses || 0) + 1; Save.save();
     if (typeof Arena !== 'undefined' && Arena.sadTrombone) Arena.sadTrombone();
     G.step = 'lost'; G.lostT = 0; G.gag = pick(['Mudkip is a pancake now.', 'It\'s not fainted. It\'s resting its eyes.', 'Mudkip has become one with the floor.', 'Achievement unlocked: FLAT MUDKIP', 'Mudkip would like a do-over.', '10/10 belly flop. 0/10 battle.']);
   }
-  // the reward choices: TM upgrades, removals, TM copies — no random new moves
-  function rollRewards(G) {
-    const s = store(), deck = battleDeck(), tms = tmMoves(), opts = [];
-    const tmUp = tms.filter((id) => !(s.tm[id] && s.tm[id].up));
-    if (tmUp.length) { const id = pick(tmUp); opts.push({ t: 'up', id, to: id + '+', lab: 'UPGRADE TM', tm: true }); }
-    const st = ['tackle', 'block', 'splash'].filter((id) => s.deck.includes(id));
-    if (st.length) { const id = pick(st.filter((i) => i !== 'splash').length && Math.random() < 0.85 ? st.filter((i) => i !== 'splash') : st); opts.push({ t: 'up', id, to: id + '+', lab: 'UPGRADE' }); }
-    if (deck.length > 8) { const rm = s.deck.includes('splash') ? 'splash' : s.deck.includes('tackle') ? 'tackle' : s.deck.includes('block') ? 'block' : s.deck[0]; if (rm) opts.push({ t: 'rm', id: rm, lab: 'REMOVE' }); }
-    const cp = tms.filter((id) => !((s.tm[id] || {}).n >= 1));
-    if (cp.length) { const id = pick(cp); opts.push({ t: 'tm', id: (s.tm[id] || {}).up ? id + '+' : id, tmId: id, lab: 'TM COPY' }); }
-    if (opts.length < 3) opts.push({ t: 'hp', id: 'oran', lab: 'MAX HP' });
-    if (opts.length < 3 && s.deck.includes('block') && !opts.some((o) => o.id === 'block')) opts.push({ t: 'up', id: 'block', to: 'block+', lab: 'UPGRADE' });
-    return opts.slice(0, 3);
-  }
-  function takeReward(i) {
-    const G = C.g; if (!G || G.step !== 'reward') return;
-    const R = G.reward.opts[i], s = store();
-    if (R) {
-      if (R.t === 'up') {
-        if (R.tm) { (s.tm[R.id] = s.tm[R.id] || {}).up = 1; }
-        else { const k = s.deck.indexOf(R.id); if (k >= 0) s.deck[k] = R.to; }
-        HUD.toast(def(R.id).name + ' upgraded to ' + def(R.to).name + '!', { life: 2.4, col: hex(GRN) });
-      } else if (R.t === 'rm') { const k = s.deck.indexOf(R.id); if (k >= 0) s.deck.splice(k, 1); HUD.toast(def(R.id).name + ' removed from your deck.', { life: 2.4 }); }
-      else if (R.t === 'tm') { (s.tm[R.tmId] = s.tm[R.tmId] || {}).n = 1; HUD.toast('An extra ' + def(R.id).name + ' card joins your deck!', { life: 2.4 }); }
-      else if (R.t === 'hp') { s.hp = (s.hp || 0) + 4; HUD.toast('Oran Berry! Max HP +4 (now ' + maxHP() + ').', { life: 2.4, col: hex('#6aff8a') }); }
-      Save.save(); sfx('reward');
-    }
-    finish(true);
-  }
   function finish(win) {
     const G = C.g; if (!G || G.over) return;
     G.over = 0.01; G.win = win; G.step = 'done';
     C.sel = -1;
+    if (win) sfx('select');
     const cb = G.o && G.o.onEnd;
     try { if (cb) cb(win, G); } catch (e) { console.error(e); }
   }
   function flee() {
     const G = C.g; if (!G) { close(); return; }
-    if (G.step === 'reward') { takeReward(-1); return; }
+    if (G.step === 'prize') { if (G.prizeT > 0.6) finish(true); return; }
     if (G.step === 'lost') { finish(false); return; }
     if (G.over) return;
-    if (G.step === 'intro') { if (C.arena) Arena.skip(G); return; }
+    if (G.step === 'intro' || G.step === 'walk') { if (C.arena) Arena.skip(G); return; }
     HUD.toast('Mudkip ran away!', { life: 1.8 });
     G.fled = true; finish(false);
   }
   function close() {
     const G = C.g, M = mk();
     C.live = false; C.g = null; C.deckView = false;
+    if (C.flushToasts) C.flushToasts();
     if (typeof Arcade !== 'undefined') Arcade.live = false;
     Game.camFocus = null;
     if (typeof Arena !== 'undefined') Arena.stop();
@@ -580,17 +662,22 @@ const Cards = (() => {
     const G = C.g, M = mk(), F = G && G.foe;
     if (!G || !M || !F || !F.alive || Game.mode !== 'explore') { close(); return; }
     G.t += dt;
+    if (typeof Talk !== 'undefined' && Talk.bubbles && Talk.bubbles.length) Talk.bubbles.length = 0;
     if (G.hitstop > 0) { G.hitstop -= dt; } else if (G.seq) { const r = G.seq.next(dt); if (r.done) G.seq = null; }
     if (G.impact) { G.impact.t += dt; if (G.impact.t > 0.45) G.impact = null; }
     for (let i = G.pops.length - 1; i >= 0; i--) { const p = G.pops[i]; p.t += dt; if (p.t > 1.3) G.pops.splice(i, 1); }
     for (let i = G.bubbles.length - 1; i >= 0; i--) { const b = G.bubbles[i]; b.t += dt; if (b.t > b.life) G.bubbles.splice(i, 1); }
     for (let i = G.parts.length - 1; i >= 0; i--) { const p = G.parts[i]; p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.g || 0) * dt; if (p.t > p.life) G.parts.splice(i, 1); }
-    for (let i = G.fly.length - 1; i >= 0; i--) { const f = G.fly[i]; f.t += dt; if (f.t > (f.kind === 'play' ? 0.62 : 0.4)) { if (f.kind === 'play') flyBurst(G, f); G.fly.splice(i, 1); } }
+    for (let i = G.fly.length - 1; i >= 0; i--) { const f = G.fly[i]; f.t += dt; if (f.t > (f.kind === 'play' ? FLY.end : 0.4)) { if (f.kind === 'play') flyBurst(G, f); G.fly.splice(i, 1); } }
     for (const h of G.hand) { if (h.delay > 0) h.delay -= dt; else h.t += dt; if (h.shake) h.shake = Math.max(0, h.shake - dt); }
     G.shieldT = Math.max(0, (G.shieldT || 0) - dt); G.foeShieldT = Math.max(0, (G.foeShieldT || 0) - dt); G.flashT = Math.max(0, G.flashT - dt); G.kick = Math.max(0, (G.kick || 0) - dt);
     if (G.zoom) G.zoom.t += dt;
-    if (G.reward) G.reward.t += dt;
+    if (G.step === 'prize') G.prizeT += dt;
     if (G.step === 'lost') G.lostT += dt;
+    if (G.banner) { G.banner.t += dt; if (G.banner.t > 1) G.banner = null; }
+    G.hailT = Math.max(0, (G.hailT || 0) - dt); G.koFlash = Math.max(0, (G.koFlash || 0) - dt);
+    // nothing left to play: the turn ends by itself after a beat (the END TURN button fills up)
+    if (G.step === 'you' && !G.seq && !C.deckView && G.handK > 0.9 && !G.hand.some((h, i) => canPlay(G, i))) { G.autoT += dt; if (G.autoT > 1.4) endTurn(); } else G.autoT = 0;
     for (const u of [G.you, G.them]) {
       u.flash = Math.max(0, u.flash - dt); if (u.dizzyT < 50) u.dizzyT = Math.max(0, (u.dizzyT || 0) - dt);
       if (u.face) { u.face.t += dt; if (u.face.t > u.face.life) u.face = null; }
@@ -602,8 +689,8 @@ const Cards = (() => {
     G.handK = clamp(G.handK + (showHand ? dt : -dt) * 4, 0, 1);
     // pose the actors (after their own update, before drawing)
     const intro = clamp(G.t / 0.7, 0, 1);
-    const fxBase = lerp(G.fx0, G.fx, ease(intro));
-    pose(M, G.you, G.mx, G.side, G);
+    const fxBase = G.wk ? G.wk.fx : lerp(G.fx0, G.fx, ease(intro));
+    pose(M, G.you, G.wk ? G.wk.mx : G.mx, G.side, G);
     pose(F, G.them, fxBase, -G.side, G);
     if (C.arena) Arena.update(dt, G);
     if (G.over) { G.over += dt; if (!C.arena ? G.over > 1.2 : Arena.outDone(G)) close(); }
@@ -621,8 +708,10 @@ const Cards = (() => {
       x = lerp(midX, m.x, k); y = lerp(y, (h[1] + m.y) / 2 - 4, k); zf = lerp(zf, Z.z, k); sp = 10;
     }
     if (G.cam) { x = G.cam.x; y = G.cam.y; zf = G.cam.zoom; sp = G.cam.speed || 8; }
-    if (G.kick > 0) zf *= 1 + Math.sin((G.kick / 0.35) * Math.PI) * 0.05;
+    if (G.kick > 0) zf *= 1 + Math.sin(Math.min(1, G.kick / 0.35) * Math.PI) * 0.06;
     Game.camFocus = { x, y, zoom: zf, speed: sp };
+    // a hard cut (the walk-in's shots): jump there instead of gliding
+    if (G.cam && G.cam.cut) { G.cam.cut = false; Game.cam.x = x - Game.VW * 0.5; Game.cam.y = y - Game.VH * 0.55; if (Game.clampCam) Game.clampCam(); C.zk = zf; if (Game.cine) Game.cine.zk = zf; }
     // drive the director's zoom ourselves: a snappy punch rather than the slow default drift
     if (Game.cine) { const c = Game.cine; C.zk = C.zk || c.zk || 1; C.zk += (zf - C.zk) * Math.min(1, dt * (Z || G.cam ? 9 : 4)); c.zk = C.zk; }
   }
@@ -654,19 +743,11 @@ const Cards = (() => {
     if (!C.live) return false;
     const G = C.g; if (!G) return true;
     if (C.deckView) { if (k === 'Escape' || k === 'd' || k === ' ' || k === 'Enter' || k === 'Tab') C.deckView = false; return true; }
-    if (G.step === 'intro') { if (k === ' ' || k === 'Enter' || k === 'Escape') flee(); return true; }
+    if (G.step === 'intro' || G.step === 'walk') { if (k === ' ' || k === 'Enter' || k === 'Escape') flee(); return true; }
     if (G.step === 'lost') { if (G.lostT > 0.8 && (k === ' ' || k === 'Enter' || k === 'Escape')) finish(false); return true; }
+    if (G.step === 'prize') { if (G.prizeT > 0.6 && (k === ' ' || k === 'Enter' || k === 'Escape' || k === 'e')) finish(true); return true; }
     if (k === 'Escape') { flee(); return true; }
     if (k === 'd' || k === 'Tab') { if (G.step === 'you' || G.step === 'them') { C.deckView = true; sfx('page'); } return true; }
-    if (G.step === 'reward') {
-      const n = G.reward.opts.length;
-      if (/^[1-9]$/.test(k) && +k <= n) takeReward(+k - 1);
-      else if (k === 'ArrowLeft' || k === 'a') C.sel = (C.sel + n) % (n + 1);
-      else if (k === 'ArrowRight' || k === 's' || k === 'ArrowDown') C.sel = (C.sel + 1) % (n + 1);
-      else if (k === ' ' || k === 'Enter') takeReward(C.sel >= n ? -1 : C.sel);
-      else if (k === 'k') takeReward(-1);
-      return true;
-    }
     if (G.step !== 'you') return true;
     if (/^[1-9]$/.test(k)) { play(+k - 1); return true; }
     const n = G.hand.length;
@@ -681,8 +762,9 @@ const Cards = (() => {
     for (let i = C.btns.length - 1; i >= 0; i--) { const b = C.btns[i]; if (ux >= b.x && ux < b.x + b.w && uy >= b.y && uy < b.y + b.h) { b.fn(); return true; } }
     const G = C.g;
     if (C.deckView) C.deckView = false;
-    else if (G && G.step === 'intro') flee();
+    else if (G && (G.step === 'intro' || G.step === 'walk')) flee();
     else if (G && G.step === 'lost' && G.lostT > 0.8) finish(false);
+    else if (G && G.step === 'prize' && G.prizeT > 0.6) finish(true);
     else if (G && G.step === 'you') C.sel = -1;
     return true;
   }
@@ -712,43 +794,83 @@ const Cards = (() => {
   const txt = (fb, s, x, y, c, o = {}) => Font.draw(fb, s, Math.round(x), Math.round(y), c, Object.assign({ font: 'small', outline: INK }, o));
   const head = (m) => Talk.toUI(m.x, m.headPt()[1]);
   const feetUI = (m) => Talk.toUI(m.x, m.y);
-  function bar(fb, x, y, w, u, isYou) {
-    const h = 7;
-    UI.rrect(fb, x - 2, y - 2, w + 4, h + 4, 3, INK);
-    UI.rect(fb, x, y, w, h, 0xff30222a);
-    const k = clamp(u.shownHp / u.max, 0, 1), k2 = clamp(u.hp / u.max, 0, 1);
-    UI.rect(fb, x, y, Math.round(w * k), h, hex('#ffe0a0'));
-    UI.rect(fb, x, y, Math.round(w * k2), h, k2 < 0.3 ? hex('#ff4a4a') : isYou ? hex('#4ac860') : hex('#e04a3a'));
-    UI.rect(fb, x, y, Math.round(w * k2), 2, 0x55ffffff);
-    if (u.blk > 0) UI.rect(fb, x, y + h - 2, w, 2, hex('#6ab0ff'));
-    txt(fb, u.hp + '/' + u.max, x + w / 2, y + 1, WHITE, { align: 'center' });
-    if (u.blk > 0) { const bx = x - 14; shieldIcon(fb, bx, y - 3, hex('#5a9aff')); txt(fb, String(u.blk), bx + 5, y - 1, WHITE, { align: 'center' }); }
-    // statuses
-    let sx = x;
-    const S = u.st, list = [['weak', 'MUD', '#c09060'], ['vuln', 'DAZE', '#ff8a5a'], ['stun', 'ICE', '#c8f4ff'], ['soak', 'WET', '#5ab4ff'], ['str', 'POW', '#ffd040'], ['rain', 'RAIN', '#8ac8ff'], ['sun', 'SUN', '#ffd040'], ['dizzy', 'DIZ', '#ffb0ff'], ['style', 'STY', '#e0b0ff']];
-    for (const [k3, lab, col] of list) if (S[k3] > 0) { const s = lab + ' ' + S[k3], w2 = Font.measure(s, 'small') + 4; if (sx + w2 > x + w + 30) break; UI.rrect(fb, sx, y + h + 3, w2, 9, 2, INK); UI.rrect(fb, sx + 1, y + h + 4, w2 - 2, 7, 1, U.mix(hex(col), INK, 0.55)); txt(fb, s, sx + 2, y + h + 5, hex(col), { outline: undefined }); sx += w2 + 1; }
+  // fighting-game HP panels at the top of the screen, on each fighter's side
+  const STS = [['weak', 'MUD', '#c09060'], ['vuln', 'DAZE', '#ff8a5a'], ['stun', 'ICE', '#c8f4ff'], ['soak', 'WET', '#5ab4ff'], ['str', 'POW', '#ffd040'], ['rain', 'RAIN', '#8ac8ff'], ['sun', 'SUN', '#ffd040'], ['hail', 'HAIL', '#c8f0ff'], ['dizzy', 'DIZ', '#ffb0ff'], ['style', 'STY', '#e0b0ff']];
+  function panel(fb, t, G, who, x, y, w, right) {
+    const u = who === 'you' ? G.you : G.them, isYou = who === 'you';
+    const sh = u.flash > 0 ? Math.round(Math.sin(t * 90) * 2.5 * Math.min(1, u.flash * 4)) : 0;
+    x += sh;
+    const h = 23, fill = isYou ? hex('#173463') : hex('#5a1620');
+    UI.rrect(fb, x - 1, y - 1, w + 2, h + 2, 5, INK);
+    UI.rrect(fb, x, y, w, h, 4, fill);
+    UI.rect(fb, x + 3, y + 1, w - 6, 1, U.mix(fill, WHITE, 0.25));
+    // name + tag
+    const name = isYou ? 'MUDKIP' : nameOf(G.foe).toUpperCase();
+    const B = G.o && G.o.boss, tag = isYou ? 'Lv ' + (typeof Progress !== 'undefined' && Progress.level ? Progress.level() : 1) : C.arena ? (B && B.boss ? 'BOSS' : 'RIVAL') : '';
+    const nw = Font.measure(name, 'small'), nx = right ? x + w - 5 - nw : x + 5;
+    txt(fb, name, nx, y + 3, WHITE);
+    if (tag) { const tw = Font.measure(tag, 'small') + 5, tx = right ? nx - tw - 3 : nx + nw + 3; UI.rrect(fb, tx, y + 2, tw, 8, 2, isYou ? hex('#3a78e8') : B && B.boss ? hex('#e8a020') : hex('#8a3a5a')); txt(fb, tag, tx + tw / 2, y + 3, WHITE, { align: 'center', outline: undefined }); }
+    // HP bar: the damage chunk lingers (gold) before it drains; the bar empties toward the middle of the screen
+    const bx = x + 4, by = y + 12, bw = w - 8, bh = 7;
+    UI.rect(fb, bx - 1, by - 1, bw + 2, bh + 2, INK);
+    UI.rect(fb, bx, by, bw, bh, 0xff30222a);
+    const k = clamp(u.shownHp / u.max, 0, 1), k2 = clamp(u.hp / u.max, 0, 1), L1 = Math.round(bw * Math.max(k, k2)), L2 = Math.round(bw * k2);
+    const at = (L) => (right ? bx + bw - L : bx);
+    UI.rect(fb, at(L1), by, L1, bh, u.flash > 0.15 ? WHITE : hex('#ffd070'));
+    const col = k2 < 0.3 ? (((t * 6) | 0) % 2 ? hex('#ff4a4a') : hex('#ff7a5a')) : isYou ? hex('#4ac860') : hex('#e8503a');
+    UI.rect(fb, at(L2), by, L2, bh, col);
+    UI.rect(fb, at(L2), by, L2, 2, 0x55ffffff);
+    for (let q = 1; q < 10; q++) UI.rect(fb, bx + Math.round(bw * q / 10), by + bh - 2, 1, 2, 0x40000000);
+    if (u.blk > 0) UI.rect(fb, bx, by + bh - 2, bw, 2, hex('#6ab0ff'));
+    txt(fb, u.hp + '/' + u.max, bx + bw / 2, by, WHITE, { align: 'center' });
+    // block badge on the inner end
+    if (u.blk > 0) { const sx = right ? x - 14 : x + w + 3; shieldIcon(fb, sx, y + 9, hex('#5a9aff')); txt(fb, String(u.blk), sx + 5, y + 11, WHITE, { align: 'center' }); }
+    // the foe's next move: a tab hanging under the inner end of its panel
+    let limit = right ? x : x + w;
+    if (!isYou && G.intent && (G.step === 'you' || G.step === 'them')) {
+      const mv = G.intent, I = intentText(G), lab = 'NEXT: ' + mv.n.toUpperCase() + '  ' + (I.ic === 'atk' ? I.txt + ' DMG' : I.long || I.txt);
+      const w2 = Math.min(w - 8, Font.measure(lab, 'small') + 10), ix = right ? x + 3 : x + w - 3 - w2, iy = y + h + 1;
+      const col = I.ic === 'z' ? hex('#3a6a8a') : I.ic === 'atk' ? (I.d >= 9 && ((t * 4) | 0) % 2 ? hex('#e84a2a') : hex('#b8302a')) : I.ic === 'blk' ? hex('#2a5aa8') : hex('#7a4a9a');
+      UI.rrect(fb, ix - 1, iy - 1, w2 + 2, 11, 3, INK); UI.rrect(fb, ix, iy, w2, 9, 2, col);
+      txt(fb, lab, ix + w2 / 2, iy + 2, WHITE, { align: 'center', outline: undefined, maxW: w2 - 4 });
+      limit = right ? ix + w2 + 3 : ix - 3;
+    }
+    // statuses under the panel, from the outer end
+    let cx = right ? x + w : x, row = 0;
+    for (const [k3, lab, sc] of STS) {
+      if (!(u.st[k3] > 0)) continue;
+      const s = lab + ' ' + u.st[k3], w3 = Font.measure(s, 'small') + 5;
+      if (row === 0 && (right ? cx - w3 < limit : cx + w3 > limit)) { row = 1; cx = right ? x + w : x; }
+      const X = right ? cx - w3 : cx, Y = y + h + 2 + row * 11;
+      UI.rrect(fb, X, Y, w3, 9, 2, INK); UI.rrect(fb, X + 1, Y + 1, w3 - 2, 7, 1, U.mix(hex(sc), INK, 0.55));
+      txt(fb, s, X + 2, Y + 2, hex(sc), { outline: undefined });
+      cx += right ? -(w3 + 1) : w3 + 1;
+    }
+  }
+  function intentText(G) {
+    const mv = G.intent, T = G.them, Y = G.you;
+    if (T.st.stun > 0) return { txt: 'FROZEN', ic: 'z' };
+    if (mv.a) { let d = mv.a + (T.st.str || 0); if (T.st.weak > 0) d = Math.floor(d * 0.75); if (Y.st.vuln > 0) d = Math.floor(d * 1.5); return { txt: d + (mv.h > 1 ? 'x' + mv.h : ''), ic: 'atk', d: d * (mv.h || 1) }; }
+    if (mv.b) return { txt: String(mv.b), ic: 'blk', long: 'BLOCK ' + mv.b };
+    if (mv.s) return { txt: 'BUFF', ic: 'buff', long: 'POWER +' + mv.s };
+    return { txt: mv.w ? 'MUD' : mv.v ? 'DAZE' : 'DIZZY', ic: 'deb', long: mv.w ? 'MUDDY ' + mv.w : mv.v ? 'DAZE ' + mv.v : 'DIZZY' };
   }
   function shieldIcon(fb, x, y, c) { UI.rect(fb, x, y, 10, 7, INK); UI.rect(fb, x + 1, y + 7, 8, 2, INK); UI.rect(fb, x + 3, y + 9, 4, 2, INK); UI.rect(fb, x + 1, y + 1, 8, 6, c); UI.rect(fb, x + 2, y + 7, 6, 1, c); UI.rect(fb, x + 4, y + 8, 2, 2, c); UI.rect(fb, x + 2, y + 2, 2, 3, 0x88ffffff); }
   function swordIcon(fb, x, y, c) { for (let i = 0; i < 8; i++) { UI.rect(fb, x + i, y + 8 - i - 1, 3, 3, INK); } for (let i = 0; i < 7; i++) UI.put(fb, x + 1 + i, y + 8 - i, c), UI.put(fb, x + 2 + i, y + 8 - i, c); UI.rect(fb, x, y + 6, 4, 2, hex('#a06a3a')); }
   function star(fb, x, y, c) { x = Math.round(x); y = Math.round(y); UI.put(fb, x, y, WHITE); UI.put(fb, x - 1, y, c); UI.put(fb, x + 1, y, c); UI.put(fb, x, y - 1, c); UI.put(fb, x, y + 1, c); UI.put(fb, x - 2, y, INK); UI.put(fb, x + 2, y, INK); UI.put(fb, x, y - 2, INK); UI.put(fb, x, y + 2, INK); }
   function intentBox(fb, G, x, y, t) {
-    const mv = G.intent; if (!mv || G.step === 'ko' || G.step === 'reward' || G.step === 'done' || G.step === 'lost' || G.step === 'intro') return;
+    const mv = G.intent; if (!mv || (G.step !== 'you' && G.step !== 'them')) return;
     const bob = Math.round(Math.sin(t * 4) * 1.5);
-    let s = '', ic = null;
-    if (mv.a) { const T = G.them, Y = G.you; let d = mv.a + (T.st.str || 0); if (T.st.weak > 0) d = Math.floor(d * 0.75); if (Y.st.vuln > 0) d = Math.floor(d * 1.5); s = d + (mv.h > 1 ? 'x' + mv.h : ''); ic = 'atk'; }
-    else if (mv.b) { s = String(mv.b); ic = 'blk'; }
-    else { s = mv.s ? 'BUFF' : 'HEX'; ic = mv.s ? 'buff' : 'deb'; }
-    if (G.them.st.stun > 0) { s = 'FROZEN'; ic = 'z'; }
+    const I = intentText(G), s = I.txt, ic = I.ic;
     const w = Font.measure(s, 'small') + 19, X = Math.round(x - w / 2), Y = y + bob;
-    const hot = ic === 'atk' && mv.a * (mv.h || 1) >= 9;
-    UI.panel(fb, X, Y, w, 14, { r: 4, ol: hot && ((t * 4) | 0) % 2 ? hex('#ffe070') : INK, fill: ic === 'atk' ? hex('#a82a2a') : ic === 'blk' ? hex('#2a4a8a') : hex('#5a3a7a') });
+    const hot = ic === 'atk' && I.d >= 9;
+    UI.panel(fb, X, Y, w, 14, { r: 4, ol: hot && ((t * 4) | 0) % 2 ? hex('#ffe070') : INK, fill: ic === 'atk' ? hex('#a82a2a') : ic === 'blk' ? hex('#2a4a8a') : ic === 'z' ? hex('#3a6a8a') : hex('#5a3a7a') });
     if (ic === 'atk') swordIcon(fb, X + 3, Y + 2, hex('#e8e8f0'));
     else if (ic === 'blk') shieldIcon(fb, X + 3, Y + 2, hex('#8ac0ff'));
     else if (ic === 'buff') txt(fb, '+', X + 6, Y + 4, hex('#ffd040'));
     else if (ic === 'z') txt(fb, '*', X + 6, Y + 4, hex('#c8f4ff'));
     else txt(fb, '!', X + 6, Y + 4, hex('#ff8aff'));
     txt(fb, s, X + 16, Y + 4, WHITE);
-    txt(fb, mv.n, x, Y - 8, hex('#ffe8b0'), { align: 'center' });
   }
   function btn(fb, x, y, w, h, label, col, fn, o = {}) {
     UI.rrect(fb, x, y + 2, w, h, 5, 0xff0a0e1a);
@@ -779,6 +901,8 @@ const Cards = (() => {
     const G = C.g;
     if (!C.live || !G) return;
     const M = mk(), F = G.foe, D = dims(W, H);
+    // the walk-in cinematic has its own overlay (letterbox, name plates, VS)
+    if (G.step === 'walk' && C.arena) { Arena.drawWalk(fb, t, G); drawBubbles(fb, t, G, M, F); Arena.drawWalkOver(fb, t, G); C.btns.push({ x: 0, y: 0, w: W, h: H, fn: () => flee() }); return; }
     const bh = C.arena ? Arena.barH(G, H) : Math.round(Math.min(H * 0.08, 22) * ease(C.bars));
     if (C.arena) Arena.drawUnder(fb, t, G);
     else if (bh > 0) { UI.rect(fb, 0, 0, W, bh, 0xff05060c); UI.rect(fb, 0, H - bh, W, bh, 0xff05060c); }
@@ -786,50 +910,52 @@ const Cards = (() => {
     // impact frame: a white flash + burst lines
     if (G.impact && G.impact.t < 0.3) {
       const I = G.impact, [ix, iy] = Talk.toUI(I.x, I.y), k = I.t / 0.3;
-      if (I.t < 0.06 && I.big) UI.rectA(fb, 0, 0, W, H, WHITE, 0.45);
-      const R0 = 10 + k * 30, R1 = R0 + (I.big ? 26 : 14);
-      for (let a = 0; a < 12; a++) { const an = a / 12 * 6.283 + (a % 2) * 0.2; UI.line(fb, Math.round(ix + Math.cos(an) * R0), Math.round(iy + Math.sin(an) * R0), Math.round(ix + Math.cos(an) * R1), Math.round(iy + Math.sin(an) * R1), a % 2 ? hex('#ffe070') : WHITE); }
-      Font.draw(fb, I.word, Math.round(ix), Math.round(iy - 22 - k * 8), I.big ? hex('#ffe040') : WHITE, { font: I.big ? 'title' : 'body', align: 'center', outline: INK });
+      if (I.t < 0.07 && I.big) UI.rectA(fb, 0, 0, W, H, WHITE, 0.5);
+      const R0 = 10 + k * 30, R1 = R0 + (I.big ? 30 : 16);
+      for (let a = 0; a < 14; a++) { const an = a / 14 * 6.283 + (a % 2) * 0.2; UI.line(fb, Math.round(ix + Math.cos(an) * R0), Math.round(iy + Math.sin(an) * R0), Math.round(ix + Math.cos(an) * R1), Math.round(iy + Math.sin(an) * R1), a % 2 ? hex('#ffe070') : WHITE); }
+      const pop = I.t < 0.08 ? 1.6 - I.t / 0.08 * 0.6 : 1;
+      Font.draw(fb, I.word, Math.round(ix), Math.round(iy - 22 - k * 8), I.big ? hex('#ffe040') : WHITE, { font: I.big ? 'title' : 'body', align: 'center', outline: INK, sc: I.big && pop > 1.3 ? 2 : 1 });
     }
     if (G.flashT > 0) UI.rectA(fb, 0, 0, W, H, WHITE, Math.min(0.85, G.flashT * 2));
-    // HP bars under the feet, intent over the foe
-    const bw = clamp(Math.round(W * 0.15), 56, 96);
-    if (battle && !G.zoom) {
-      const [mx, my] = feetUI(M), [fx, fy] = feetUI(F);
-      const yb = (v) => Math.round(clamp(v + 5, bh + 30, H - 46));
-      bar(fb, Math.round(mx - bw / 2), yb(my), bw, G.you, true);
-      bar(fb, Math.round(fx - bw / 2), yb(fy), bw, G.them, false);
-      const [hx, hy] = head(F);
-      intentBox(fb, G, fx, Math.round(clamp(hy - 22, bh + 12, H - 80)), t);
-    }
+    if (G.koFlash > 0 && G.koFlash < 0.5) { const k = G.koFlash / 0.5; Font.draw(fb, 'K.O.!', W / 2, Math.round(H * 0.3), ((t * 16) | 0) % 2 ? hex('#ffe040') : WHITE, { font: 'title', align: 'center', outline: INK, sc: k > 0.5 ? 3 : 2 }); }
+    // the intent, compact, over the foe's head
+    if (battle && !G.zoom) { const [hx, hy] = head(F), [fx] = feetUI(F); intentBox(fb, G, fx, Math.round(clamp(hy - 20, bh + 52, H - 80)), t); }
     // faces: anger veins, sweat, shock lines, smug sparkles, dizzy stars
     if (C.arena) Arena.drawFaces(fb, t, G, head);
     else for (const [u, m] of [[G.you, M], [G.them, F]]) if (u.dizzyT > 0) { const [hx, hy] = head(m); for (let s = 0; s < 3; s++) { const an = t * 5 + s * 2.09; star(fb, hx + Math.cos(an) * 10, hy - 4 + Math.sin(an) * 3, [hex('#ffe040'), hex('#ff8aff'), hex('#8affff')][s]); } }
     // shield sparkle
     if (G.shieldT > 0) { const [hx, hy] = head(M); UI.ring(fb, Math.round(hx), Math.round(hy + 12), Math.round(14 + (0.6 - G.shieldT) * 10), hex('#9ac8ff')); }
     if (G.foeShieldT > 0) { const [hx, hy] = head(F); UI.ring(fb, Math.round(hx), Math.round(hy + 12), Math.round(14 + (0.6 - G.foeShieldT) * 10), hex('#9ac8ff')); }
-    // damage numbers
+    // damage numbers: pop big, then float up
     for (const p of G.pops) {
-      const [ux, uy0] = Talk.toUI(p.x, p.y), uy = clamp(uy0, bh + 44, H - 50), k = p.t / 1.3, jump = p.t < 0.15 ? p.t / 0.15 : 1;
-      const yy = uy - 8 - jump * 10 - k * 12;
+      const [ux, uy0] = Talk.toUI(p.x, p.y), uy = clamp(uy0, bh + 50, H - 50), k = p.t / 1.3, jump = p.t < 0.15 ? p.t / 0.15 : 1;
+      const yy = uy - 8 - jump * 12 - k * 12;
       if (k > 0.8 && ((t * 20) | 0) % 2) continue;
-      Font.draw(fb, p.txt, Math.round(ux), Math.round(yy), p.col, { font: p.big ? 'title' : 'body', align: 'center', outline: INK });
+      const big = p.big || /^-\d/.test(p.txt);
+      Font.draw(fb, p.txt, Math.round(ux), Math.round(yy), p.col, { font: big ? 'title' : 'body', align: 'center', outline: INK, sc: p.big && p.t < 0.12 ? 2 : 1 });
     }
     drawBubbles(fb, t, G, M, F);
-    // title + flee / deck buttons in the top bar
-    if (battle) {
+    // top: title, flee / deck buttons, and the two HP panels
+    if (battle || G.step === 'prize') {
       const ty = Math.max(3, Math.round(bh / 2 - 4));
-      Font.draw(fb, (G.step === 'reward' ? 'VICTORY! ' : (C.arena ? 'BOSS: ' : 'vs. ')) + nameOf(F).toUpperCase(), W / 2, ty, hex('#ffe070'), { font: 'body', align: 'center', outline: INK });
-      if (G.step !== 'reward' && G.step !== 'ko') {
+      Font.draw(fb, (G.step === 'prize' ? 'VICTORY! ' : (C.arena ? (G.o.boss && G.o.boss.boss ? 'BOSS: ' : 'VS ') : 'vs. ')) + nameOf(F).toUpperCase(), W / 2, ty, hex('#ffe070'), { font: 'body', align: 'center', outline: INK });
+      if (battle && G.step !== 'ko') {
         const lb = 'FLEE', lw = Font.measure(lb, 'small') + 12; btn(fb, 5, Math.max(3, ty - 3), lw, 13, lb, '#46505e', flee);
         const dl = 'DECK ' + (G.draw.length + G.disc.length + G.hand.length), dw = Font.measure(dl, 'small') + 12;
         btn(fb, W - dw - 5, Math.max(3, ty - 3), dw, 13, dl, '#46505e', () => { C.deckView = !C.deckView; sfx('page'); });
       }
+      if (battle && !G.zoom) {
+        const pw = clamp(Math.round(W * 0.35), 124, 230), py = bh + 4, youLeft = G.side === 1;
+        panel(fb, t, G, 'you', youLeft ? 6 : W - 6 - pw, py, pw, !youLeft);
+        panel(fb, t, G, 'them', youLeft ? W - 6 - pw : 6, py, pw, youLeft);
+        if (Math.abs(W - 12 - pw * 2) > 30) Font.draw(fb, 'VS', W / 2, py + 8, hex('#ffe070'), { font: 'title', align: 'center', outline: INK });
+      }
     }
     if (C.deckView) { drawDeck(fb, t); return; }
-    if (G.step === 'reward') { drawReward(fb, t); if (C.arena) Arena.drawOver(fb, t, G); return; }
+    if (G.step === 'prize') { if (C.arena) Arena.drawOver(fb, t, G); drawPrize(fb, t, G); return; }
     if (G.step === 'lost') { if (C.arena) Arena.drawOver(fb, t, G); drawLost(fb, t, G); return; }
     drawHand(fb, t, G, D, dtd);
+    drawBanner(fb, t, G);
     if (C.arena) Arena.drawOver(fb, t, G);
     if (G.over && !C.arena) {
       const w = 180, h = 40, x = Math.round(W / 2 - w / 2), y = Math.round(H * 0.3);
@@ -837,6 +963,19 @@ const Cards = (() => {
       Font.draw(fb, G.win ? 'YOU WIN!' : G.fled ? 'GOT AWAY!' : 'MUDKIP FAINTED...', W / 2, y + 7, G.win ? hex('#ffe070') : WHITE, { font: 'title', align: 'center', outline: INK });
       txt(fb, G.msg || '', W / 2, y + 26, WHITE, { align: 'center' });
     }
+  }
+  // YOUR TURN / FOE TURN: a ribbon sweeps across the middle of the screen
+  function drawBanner(fb, t, G) {
+    const B = G.banner; if (!B || G.zoom) return;
+    const W = fb.w, H = fb.h, k = B.t, inK = ease(Math.min(1, k / 0.16)), outK = k > 0.72 ? ease((k - 0.72) / 0.26) : 0;
+    const h = H >= 250 ? 34 : 26, y = Math.round(H * 0.4 - h / 2), x = Math.round((1 - inK) * -W + outK * W);
+    const c = hex(B.col);
+    UI.rect(fb, x, y - 2, W, h + 4, INK);
+    UI.rect(fb, x, y, W, h, c);
+    UI.rect(fb, x, y, W, 2, U.mix(c, WHITE, 0.4)); UI.rect(fb, x, y + h - 3, W, 2, U.mix(c, INK, 0.4));
+    for (let s = 0; s < 6; s++) { const sx = x + Math.round(((s * 97 + k * 400) % (W + 60)) - 30); UI.rect(fb, sx, y + 4 + (s % 3) * 6, 18, 1, 0x55ffffff); }
+    Font.draw(fb, B.text, Math.round(W / 2 + x), y + 3, WHITE, { font: 'title', align: 'center', outline: INK, sc: H >= 250 ? 2 : 1 });
+    if (B.sub) Font.draw(fb, B.sub, Math.round(W / 2 + x), y + h - 10, hex('#ffe8b0'), { font: 'small', align: 'center', outline: INK });
   }
   // comic speech bubbles (big shouty ones during zoom-ins)
   function drawBubbles(fb, t, G, M, F) {
@@ -925,13 +1064,14 @@ const Cards = (() => {
       }
       const cxw = W / 2 - D.bw * 0.6, cyw = H * 0.42 - D.bh * 0.6;
       let x, y, w, a = 1, fl = 0;
-      if (f.t < 0.2) { const q = ease(f.t / 0.2); x = lerp(f.x, cxw, q); y = lerp(f.y, cyw, q); w = lerp(f.w, D.bw * 1.2, q); }
-      else if (f.t < 0.36) { x = cxw; y = cyw - (f.t - 0.2) * 12; w = D.bw * 1.2; fl = Math.max(0, 1 - (f.t - 0.2) * 12) * 0.5; }
+      const dur = FLY.end - FLY.h;
+      if (f.t < FLY.c) { const q = ease(f.t / FLY.c); x = lerp(f.x, cxw, q); y = lerp(f.y, cyw, q); w = lerp(f.w, D.bw * 1.2, q); }
+      else if (f.t < FLY.h) { x = cxw; y = cyw - (f.t - FLY.c) * 12; w = D.bw * 1.2; fl = Math.max(0, 1 - (f.t - FLY.c) * 14) * 0.5; }
       else {
-        const q = U.ease.inCubic((f.t - 0.36) / 0.26), [tx, ty] = targetUI(G, f.tgt, W, H);
+        const q = U.ease.inCubic(Math.min(1, (f.t - FLY.h) / dur)), [tx, ty] = targetUI(G, f.tgt, W, H);
         x = lerp(cxw, tx, q); y = lerp(cyw, ty, q); w = lerp(D.bw * 1.2, 10, q); a = 1 - q * 0.3; fl = q * 0.7;
       }
-      if (f.kind === 'play' && f.t > 0.36) for (let k = 1; k <= 3; k++) { const q = U.ease.inCubic(Math.max(0, (f.t - 0.36 - k * 0.025) / 0.26)), [tx, ty] = targetUI(G, f.tgt, W, H); UI.disc(fb, Math.round(lerp(cxw + D.bw * 0.6, tx + 5, q)), Math.round(lerp(cyw + D.bh * 0.6, ty + 7, q)), Math.max(1, 4 - k), k === 1 ? WHITE : hex('#8affff')); }
+      if (f.kind === 'play' && f.t > FLY.h) for (let k = 1; k <= 3; k++) { const q = U.ease.inCubic(clamp((f.t - FLY.h - k * 0.02) / dur, 0, 1)), [tx, ty] = targetUI(G, f.tgt, W, H); UI.disc(fb, Math.round(lerp(cxw + D.bw * 0.6, tx + 5, q)), Math.round(lerp(cyw + D.bh * 0.6, ty + 7, q)), Math.max(1, 4 - k), k === 1 ? WHITE : hex('#8affff')); }
       drawCard(fb, f.id, x, y, w, D, { alpha: a, flash: fl });
     }
     // UI sparks
@@ -945,7 +1085,8 @@ const Cards = (() => {
     const noMoves = my && !G.hand.some((h, i) => canPlay(G, i));
     const ew = 66, eh = 22;
     btn(fb, W - ew - 6, H - 60 + off, ew, eh, my ? 'END TURN' : G.step === 'them' ? 'FOE TURN' : '...', my ? (noMoves ? '#3ab860' : '#2a8a4a') : '#46505e', endTurn, { dim: !my, on: noMoves && ((t * 3) | 0) % 2 === 0 });
-    if (G.step === 'you' && G.turn === 1 && !G.seq && G.handK > 0.9) txt(fb, typeof Pad !== 'undefined' && Pad.touch ? 'TAP A CARD, TAP AGAIN TO PLAY' : 'CLICK A CARD TO PLAY  (1-9 / ARROWS + SPACE, E ENDS TURN)', W / 2, Math.round(H * 0.1) + 6, 0xffd8e0f0, { align: 'center' });
+    if (my && G.autoT > 0.1) { const q = clamp(G.autoT / 1.4, 0, 1); UI.rect(fb, W - ew - 4, H - 60 + off + eh - 3, Math.round((ew - 4) * q), 2, hex('#ffe070')); txt(fb, 'no moves left', W - ew / 2 - 6, H - 70 + off, hex('#ffe070'), { align: 'center' }); }
+    if (G.step === 'you' && G.turn === 1 && !G.seq && G.handK > 0.9) txt(fb, typeof Pad !== 'undefined' && Pad.touch ? 'TAP A CARD, TAP AGAIN TO PLAY' : 'CLICK A CARD TO PLAY IT  ·  E ENDS THE TURN', W / 2, Math.round(H * 0.075) + 42, 0xffd8e0f0, { align: 'center' });
   }
   function targetUI(G, tgt, W, H) {
     if (tgt === 'up') return [W / 2 - 5, -20];
@@ -971,35 +1112,83 @@ const Cards = (() => {
       ty += h + 2;
     }
   }
-  function drawReward(fb, t) {
-    const G = C.g, W = fb.w, H = fb.h, R = G.reward, D = dims(W, H);
-    const k = ease(R.t / 0.5);
-    UI.rectA(fb, 0, 0, W, H, 0xff05060c, 0.55 * k);
-    const ty = Math.round(H * 0.12);
-    Font.draw(fb, 'VICTORY!', W / 2, ty - Math.round((1 - k) * 20), hex('#ffe070'), { font: 'title', align: 'center', outline: INK, sc: W >= 420 && H >= 250 ? 2 : 1 });
-    Font.draw(fb, 'Choose a reward', W / 2, ty + (H >= 250 ? 26 : 16), WHITE, { font: 'small', align: 'center', outline: INK });
-    const n = R.opts.length, cw = D.bw, ch = D.bh, gap = Math.max(10, Math.round(W * 0.04));
-    const x0 = Math.round(W / 2 - (cw * n + gap * (n - 1)) / 2), y0 = ty + (H >= 250 ? 42 : 30);
-    R.opts.forEach((o, i) => {
-      const sel = C.sel === i, x = x0 + i * (cw + gap), y = y0 - (sel ? 4 : 0) + Math.round(Math.sin(t * 3 + i) * 1.5) + Math.round((1 - ease((R.t - i * 0.08) / 0.25)) * H);
-      drawCard(fb, o.t === 'up' ? o.to : o.id, x, y, cw, D, { glow: sel ? hex('#ffe070') : 0, dim: 0 });
-      // label ribbon
-      const lab = o.lab, lw = Font.measure(lab, 'small') + 10, lx = Math.round(x + cw / 2 - lw / 2), ly = y - 12;
-      const lc = o.t === 'rm' ? '#c83a3a' : o.t === 'hp' ? '#3a9a58' : o.t === 'tm' ? '#2a8ab8' : '#c8901a';
-      UI.rrect(fb, lx, ly, lw, 10, 3, INK); UI.rrect(fb, lx + 1, ly + 1, lw - 2, 8, 2, hex(lc)); txt(fb, lab, x + cw / 2, ly + 2, WHITE, { align: 'center', outline: undefined });
-      if (o.t === 'rm') { // a big red stamp
-        const sx = x + cw / 2, sy = y + ch * 0.42;
-        for (let d = -2; d <= 2; d++) { UI.line(fb, Math.round(sx - cw * 0.3), Math.round(sy - cw * 0.3) + d, Math.round(sx + cw * 0.3), Math.round(sy + cw * 0.3) + d, hex('#e83a3a')); UI.line(fb, Math.round(sx + cw * 0.3), Math.round(sy - cw * 0.3) + d, Math.round(sx - cw * 0.3), Math.round(sy + cw * 0.3) + d, hex('#e83a3a')); }
+  // the prize screen: "TM LEARNED!" with a spinning TM disc and the new card flipping in
+  const PRZ = {
+    tm: ['TM LEARNED!', (P) => P.who + ' taught you its signature move!', 'New card in your deck! Use it out in the world too: hold B.'],
+    master: ['TM MASTERED!', (P) => P.who + ' showed you the secret of ' + tmName(P.tm) + '!', 'Your card is upgraded (green numbers).'],
+    copy: ['EXTRA TM CARD!', (P) => P.who + ' drilled you on ' + tmName(P.tm) + '.', 'Another copy joins your deck!'],
+    rematch: ['REMATCH WON!', (P) => P.who + ' tips its hat to you.', 'No TM this time: points and XP.'],
+    win: ['VICTORY!', (P) => P.who + ' gives up!', ''],
+  };
+  const tmName = (id) => { const d = typeof Moves !== 'undefined' && Moves.DEF[id]; return d ? d.name : 'its move'; };
+  function tmDisc(fb, cx, cy, R, col, t) {
+    // rays, then a coin-flip spinning disc (a TM)
+    for (let a = 0; a < 16; a++) { const an = a / 16 * Math.PI * 2 + t * 0.8, r1 = R + 10 + Math.sin(t * 5 + a) * 4; for (let j = R + 3; j < r1; j++) UI.put(fb, Math.round(cx + Math.cos(an) * j), Math.round(cy + Math.sin(an) * j), a % 2 ? hex('#fff0a0') : WHITE); }
+    const sq = Math.abs(Math.cos(t * 2.4)), rx = Math.max(2, Math.round(R * sq)), front = Math.cos(t * 2.4) > 0;
+    for (let y = -R - 1; y <= R + 1; y++) for (let x = -rx - 1; x <= rx + 1; x++) {
+      const d = (x * x) / ((rx + 0.5) * (rx + 0.5)) + (y * y) / ((R + 0.5) * (R + 0.5)); if (d > 1.08) continue;
+      const X = Math.round(cx + x), Y = Math.round(cy + y);
+      let c = d > 0.86 ? INK : d > 0.72 ? U.mix(col, INK, 0.35) : col;
+      if (d < 0.12) c = INK; else if (d < 0.2) c = hex('#e8ecf8');
+      if (front && d > 0.25 && d < 0.6 && x < 0 && y < 0 && (x + y) % 3 === 0) c = U.mix(c, WHITE, 0.6);
+      UI.put(fb, X, Y, c);
+    }
+  }
+  function drawPrize(fb, t, G) {
+    const W = fb.w, H = fb.h, P = G.prize, T0 = G.prizeT, k = ease(T0 / 0.45), D = dims(W, H);
+    const kind = PRZ[P.kind] ? P.kind : 'win', L = PRZ[kind];
+    UI.rectA(fb, 0, 0, W, H, 0xff05060c, 0.66 * k);
+    // confetti
+    for (const p of G.parts) { const q = p.t / p.life; if (q > 0.8 && ((t * 24) | 0) % 2) continue; UI.rect(fb, Math.round(p.x), Math.round(p.y), p.r + 1, p.r, p.c); }
+    // the title, letters bouncing in
+    const sc = H >= 180 ? 2 : 1, title = L[0], tw = Font.measure(title, 'title', sc);
+    let x = W / 2 - tw / 2; const ty = Math.round(H * 0.04) + 2 - Math.round((1 - k) * 30);
+    for (let i = 0; i < title.length; i++) {
+      const ch = title[i], d = clamp((T0 - i * 0.035) / 0.25, 0, 1), hop = Math.round((1 - U.ease.outBack(d)) * -18 + Math.sin(t * 7 + i * 0.6) * 1.5);
+      if (d > 0) Font.draw(fb, ch, Math.round(x), ty + hop, (i + ((t * 6) | 0)) % 4 === 0 ? WHITE : hex('#ffd23a'), { font: 'title', outline: INK, sc });
+      x += Font.measure(ch, 'title', sc);
+    }
+    const y1 = ty + (sc > 1 ? 24 : 14);
+    Font.draw(fb, L[1](P), W / 2, y1, WHITE, { font: 'body', align: 'center', outline: INK, maxW: W - 20 });
+    // middle: TM disc + name on the left, the card on the right (or the trophy for a rematch)
+    const top = y1 + 12, bottom = H - 38, mid = (top + bottom) / 2;
+    const card = P.card ? (kind === 'master' ? P.card + '+' : (store().tm[P.card] || {}).up ? P.card + '+' : P.card) : null;
+    if (card && P.tm) {
+      const d = typeof Moves !== 'undefined' ? Moves.DEF[P.tm] : null, col = d ? d.col : hex('#5ab4ff');
+      const ch = Math.min(D.bh, bottom - top), cw = Math.round(ch / 1.38), gap = Math.max(16, Math.round(W * 0.05));
+      const leftW = Math.min(170, Math.round(W * 0.4)), totW = leftW + gap + cw, x0 = Math.round(W / 2 - totW / 2);
+      const R = Math.round(clamp(ch * 0.2, 12, 34)), dcx = x0 + Math.round(leftW / 2), dcy = Math.round(top + R + 8);
+      const pop = U.ease.outBack(clamp((T0 - 0.2) / 0.4, 0, 1));
+      if (pop > 0.05) tmDisc(fb, dcx, dcy, Math.max(2, Math.round(R * pop)), col, t);
+      Font.draw(fb, (d && d.tm ? d.tm + '  ' : '') + (d ? d.name.toUpperCase() : ''), dcx, dcy + R + 9, hex('#ffe070'), { font: 'title', align: 'center', outline: INK });
+      const desc = d ? d.desc || '' : '', dl = Math.max(1, Math.min(3, Math.floor((bottom - (dcy + R + 23)) / 9)));
+      Font.wrap(desc, 'small', leftW).slice(0, dl).forEach((l, i) => Font.draw(fb, l, dcx, dcy + R + 23 + i * 9, 0xffd8e0f0, { font: 'small', align: 'center', outline: INK }));
+      // the card flips in with a glow
+      const fk = clamp((T0 - 0.45) / 0.3, 0, 1), cx = x0 + leftW + gap, cy = Math.round(mid - ch / 2);
+      if (fk > 0) {
+        const fw = Math.max(1, Math.round(cw * Math.abs(Math.cos((1 - fk) * Math.PI / 2))));
+        const glow = ((t * 3) | 0) % 2 ? hex('#ffe070') : hex('#ffb040');
+        UI.rrect(fb, cx - 3 + Math.round((cw - fw) / 2), cy - 3, fw + 6, ch + 6, 7, glow);
+        CardArt.blit(fb, CardArt.face(def(card), cw, ch), cx + (cw - fw) / 2, cy, fw, ch, { flash: fk < 1 ? 1 - fk : 0 });
+        if (fk >= 1) { const nx = cx + cw - 6, ny = cy - 4; UI.rrect(fb, nx - 12, ny, 24, 10, 3, INK); UI.rrect(fb, nx - 11, ny + 1, 22, 8, 2, hex('#e83a4a')); txt(fb, kind === 'master' ? 'UP!' : 'NEW', nx, ny + 2, WHITE, { align: 'center', outline: undefined }); }
       }
-      if (o.t === 'up') txt(fb, '> ' + (def(o.to).short || def(o.to).name), x + cw / 2, y + ch + 3, hex(GRN), { align: 'center' });
-      else if (o.t === 'rm') txt(fb, 'Thin your deck', x + cw / 2, y + ch + 3, 0xffffc0c0, { align: 'center' });
-      else if (o.t === 'tm') txt(fb, '+1 copy', x + cw / 2, y + ch + 3, hex('#8ad8ff'), { align: 'center' });
-      else txt(fb, 'Max HP ' + maxHP() + ' > ' + (maxHP() + 4), x + cw / 2, y + ch + 3, hex('#8aff8a'), { align: 'center' });
-      C.btns.push({ x, y: y - 12, w: cw, h: ch + 24, fn: () => takeReward(i) });
-    });
-    const sw = 56, sy = Math.min(H - 20, y0 + ch + 16);
-    btn(fb, Math.round(W / 2 - sw / 2), sy, sw, 14, 'SKIP', '#46505e', () => takeReward(-1), { on: C.sel === n });
-    if (!tmMoves().length) txt(fb, 'Learn TMs out in the world: each TM becomes a new card!', W / 2, Math.min(H - 4, sy + 18) - 2, hex(GOLD), { align: 'center' });
+    } else {
+      // a trophy of points
+      const cx = W / 2, cy = Math.round(mid) - 4, pop = U.ease.outBack(clamp((T0 - 0.2) / 0.4, 0, 1)), R = Math.round(20 * pop);
+      if (R > 2) { UI.disc(fb, cx, cy, R + 2, INK); UI.disc(fb, cx, cy, R, hex('#ffd23a')); UI.disc(fb, cx - 3, cy - 3, Math.round(R * 0.6), hex('#fff0a0')); Font.icon(fb, 'star', cx - 3, cy - 3, 1); }
+      Font.draw(fb, '+' + (P.pts || 0) + ' pts', cx, cy + 26, hex('#ffe070'), { font: 'title', align: 'center', outline: INK });
+    }
+    // the footer: rewards, what is next, and the button
+    const fy = H - 36;
+    const rw = (P.pts ? '+' + P.pts + ' pts' : '') + (P.xp ? '   +' + P.xp + ' XP' : '');
+    if (L[2]) Font.draw(fb, L[2], W / 2, fy, 0xffd8e0f0, { font: 'small', align: 'center', outline: INK });
+    if (P.next) Font.draw(fb, '{spark} NEXT: ' + P.next, W / 2, fy + 9, hex('#ffd23a'), { font: 'small', align: 'center', outline: INK });
+    else if (rw) Font.draw(fb, rw, W / 2, fy + 9, hex('#8aff8a'), { font: 'small', align: 'center', outline: INK });
+    if (T0 > 0.6) {
+      const bw = 84, bx = Math.round(W / 2 - bw / 2), by = H - 19;
+      btn(fb, bx, by, bw, 14, kind === 'tm' || kind === 'master' ? 'AWESOME!' : 'OK!', '#2a8a4a', () => finish(true), { on: ((t * 2) | 0) % 2 === 0 });
+      if (P.next && rw) txt(fb, rw, bx + bw + 8, by + 4, hex('#8aff8a'));
+    }
   }
   function drawLost(fb, t, G) {
     const W = fb.w, H = fb.h, k = ease(G.lostT / 0.6);
@@ -1058,8 +1247,10 @@ const Cards = (() => {
     Arcade.drawWorld = (fb, cx, cy, t, back) => (mine() ? drawWorld(fb, cx, cy, t, back) : orig.drawWorld(fb, cx, cy, t, back));
     Arcade.drawUI = (fb, t) => (mine() ? drawUI(fb, t) : orig.drawUI(fb, t));
   }
+  // world toasts wait until the battle is over (a clean screen for the show)
+  if (typeof HUD !== 'undefined' && HUD.toast) { const t0 = HUD.toast; C.held = []; HUD.toast = function (msg, o) { if (C.live) { C.held.push([msg, o]); if (C.held.length > 3) C.held.shift(); return; } return t0.apply(this, arguments); }; C.flushToasts = () => { const h = C.held.splice(0); h.forEach(([m, o], i) => setTimeout(() => t0(m, o), 600 + i * 400)); }; }
   // mouse hover lifts cards (HUD.hover gets the pointer when no button is held)
   if (typeof HUD !== 'undefined' && HUD.hover) { const h0 = HUD.hover; HUD.hover = function (x, y) { if (C.live) { hover(x, y); return; } return h0.apply(this, arguments); }; }
   U.on && U.on('area', () => { if (C.live) close(); C.bars = 0; });
-  return Object.assign(C, { CARDS, FOES, STARTER, def, describe, start, play, endTurn, takeReward, flee, close, update, key, down, hover, drawUI, drawWorld, store, battleDeck, tmMoves, foeDef, canPlay, maxHP, rollRewards });
+  return Object.assign(C, { CARDS, FOES, STARTER, FLY, def, describe, start, play, endTurn, finish, flee, close, update, key, down, hover, drawUI, drawWorld, store, battleDeck, tmMoves, foeDef, canPlay, maxHP, cardOf });
 })();

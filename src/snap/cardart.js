@@ -227,6 +227,82 @@ const CardArt = (() => {
       kip(b, { eyes: 'happy', mouth: 1, legF: -0.7, legB: 0.7, tailWag: 0.6, headRoll: 0.3 }, cx, cy + Math.round(H * 0.28), s, { rot: 0.55 });
       for (let k = 0; k < 6; k++) drop(b, Math.round(cx + Math.cos(k) * W * 0.4), Math.round(cy + Math.sin(k * 2) * H * 0.3), hex('#bfe8ff'));
     },
+    // ---- the boss TMs ----
+    crabhammer(b, W, H, s) {
+      grad(b, 0, H, hex('#3a3a6a'), hex('#f09a5a'));
+      const gy = Math.round(H * 0.84); ground(b, gy, SAND, SAND2);
+      // a giant red pincer looming behind, open toward Mudkip
+      const pcx = W * 0.84, pcy = H * 0.5, RED = hex('#e04a30'), REDD = hex('#a02418'), REDL = hex('#ff9a7a');
+      const fing = (fn, n) => { const pts = []; for (let i = 0; i <= n; i++) pts.push(fn(i / n)); return pts; };
+      const up = fing((q) => [pcx - q * W * 0.3, pcy - H * 0.08 - Math.sin(q * Math.PI * 0.85) * H * 0.3, lerp(H * 0.13, 1.2, q)], 28);
+      const lo = fing((q) => [pcx - q * W * 0.22, pcy + H * 0.08 - Math.sin(q * Math.PI * 0.7) * H * 0.07, lerp(H * 0.09, 1, q)], 20);
+      const palm = [[pcx + W * 0.04, pcy, H * 0.17], [pcx + W * 0.12, pcy + H * 0.1, H * 0.12]];
+      for (const [x, y, r] of [...palm, ...up, ...lo]) disc(b, x, y, Math.round(r) + 1, INK);
+      for (const [x, y, r] of [...palm, ...up, ...lo]) disc(b, x, y, Math.round(r), RED);
+      for (const [x, y, r] of lo) disc(b, x, y + 1, Math.max(0, Math.round(r) - 1), REDD);
+      for (const [x, y, r] of up) if (r > 2) disc(b, x - 1, y - Math.round(r * 0.45), Math.max(0, Math.round(r * 0.35)), REDL);
+      for (let k = 0; k < 5; k++) { const [x, y, r] = up[4 + k * 4]; put(b, Math.round(x), Math.round(y + r), WHITE); }
+      // Mudkip slams down: impact star, cracks and a shockwave
+      const ix = Math.round(W * 0.42), iy = gy - 1;
+      for (let k = 0; k < 3; k++) { const r = 5 + k * 5; for (let a = 0; a < Math.PI; a += 0.08) put(b, Math.round(ix + Math.cos(a) * r * 1.8), Math.round(iy + Math.sin(a) * r * 0.25), k === 0 ? WHITE : hex('#fff0c0')); }
+      line(b, ix, iy, ix - 9, iy + 5, INK); line(b, ix, iy, ix + 11, iy + 4, INK); line(b, ix + 3, iy, ix + 6, iy + 7, INK);
+      spiky(b, ix, iy - 3, Math.round(H * 0.14), hex('#ffe050'), hex('#e06a1a'));
+      kip(b, { lean: 0.35, headPitch: 0.45, legF: -0.2, legB: 0.9, eyes: 'blink', mouth: 0.6, finSway: -0.4, tailLift: 0.6, squash: -0.1 }, W * 0.4, gy - Math.round(H * 0.12), s, { rot: 0.28 });
+      for (let k = 0; k < 4; k++) speed(b, Math.round(W * 0.26) + k * 5, Math.round(W * 0.26) + k * 5 + 1, Math.round(H * 0.1 + k * 3), 0xccffffff);
+      for (let k = 0; k < 5; k++) { const a = -Math.PI * (0.1 + k * 0.2); rock(b, Math.round(ix + Math.cos(a) * H * 0.3), Math.round(iy - 6 + Math.sin(a) * H * 0.22), 1, hex('#d8b474'), k); }
+    },
+    fury(b, W, H, s) {
+      grad(b, 0, H, hex('#5a2a7a'), hex('#e87a5a'));
+      for (let k = 0; k < 7; k++) { const x = (k * 37 + 8) % W, h = Math.round(H * (0.35 + (k % 3) * 0.12)); for (let y = H - h; y < H; y++) put(b, x, y - Math.round(H * 0.12), hex('#3a1a4a')); put(b, x + 1, H - h - Math.round(H * 0.12), hex('#3a1a4a')); }
+      const gy = Math.round(H * 0.86); ground(b, gy, hex('#6a8a3a'), hex('#5a7a2a'));
+      kip(b, { lean: 0.32, headPitch: 0.25, legF: -1, legB: 1, eyes: 'blink', mouth: 0.9, finSway: -0.3, tailLift: 0.4 }, W * 0.3, gy + 1, s);
+      // three big claw slashes, tapered at both ends
+      for (let k = 0; k < 3; k++) {
+        const x0 = W * (0.5 + k * 0.13), y0 = H * 0.12, x1 = x0 + H * 0.3, y1 = H * 0.78;
+        const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0));
+        for (let i = 0; i <= n; i++) { const q = i / n, r = Math.sin(q * Math.PI) * 2.4, x = lerp(x0, x1, q), y = lerp(y0, y1, q) - Math.sin(q * Math.PI) * 4; disc(b, x, y, Math.round(r) + 1, INK); }
+        for (let i = 0; i <= n; i++) { const q = i / n, r = Math.sin(q * Math.PI) * 2.4, x = lerp(x0, x1, q), y = lerp(y0, y1, q) - Math.sin(q * Math.PI) * 4; disc(b, x, y, Math.max(0, Math.round(r) - 0), q < 0.5 ? WHITE : hex('#fff0c0')); }
+      }
+      star4(b, Math.round(W * 0.86), Math.round(H * 0.2), 2, WHITE, hex('#ffe070'));
+    },
+    aerial(b, W, H, s) {
+      grad(b, 0, H, hex('#3a7ae8'), hex('#c8ecff'));
+      cloud(b, W * 0.2, H * 0.72, W * 0.36, WHITE, hex('#d8ecff')); cloud(b, W * 0.8, H * 0.82, W * 0.4, WHITE, hex('#d8ecff'));
+      // a white crescent slash across the sky
+      const cx = W * 0.62, cy = H * 0.62, R = H * 0.5;
+      for (let a = -2.4; a < -0.5; a += 0.02) { const w = Math.sin((a + 2.4) / 1.9 * Math.PI) * 2.2; for (let r = 0; r < w; r++) put(b, Math.round(cx + Math.cos(a) * (R - r)), Math.round(cy + Math.sin(a) * (R - r)), r < 1 ? WHITE : hex('#bfe0ff')); }
+      for (let k = 0; k < 7; k++) speed(b, Math.round(W * 0.02), Math.round(W * 0.3) - k * 3, Math.round(H * 0.3 + k * H * 0.07), 0xccffffff, 6 + k);
+      kip(b, { lean: 0.3, headPitch: -0.1, legF: -1, legB: 1, eyes: 'blink', mouth: 0.3, finSway: -0.5, tailLift: 0.7 }, W * 0.42, H * 0.78, s, { rot: -0.35 });
+      star4(b, Math.round(W * 0.84), Math.round(H * 0.18), 3, WHITE, hex('#8ab0ff'));
+    },
+    dragonrage(b, W, H, s) {
+      grad(b, 0, H, hex('#140a2a'), hex('#4a2a7a'));
+      for (let k = 0; k < 6; k++) { const x = Math.round((k * 29 + 6) % W), h = 5 + (k % 3) * 4; for (let y = 0; y < h; y++) UI.hline(b, x - Math.round((h - y) * 0.4), x + Math.round((h - y) * 0.4), y, hex('#6a4aa8')); put(b, x, h - 2, hex('#c8a0ff')); }
+      const gy = Math.round(H * 0.86); ground(b, gy, hex('#3a2a5a'), hex('#2a1a4a'));
+      const an = kip(b, { headPitch: -0.1, mouth: 1, eyes: 'blink', lean: -0.05, finSway: -0.2, squash: 0.05 }, W * 0.24, gy + 1, s);
+      const m = an.mouth || [W * 0.34, H * 0.5];
+      // a cone of violet dragon fire
+      for (let i = 0; i < 40; i++) { const k = i / 40, x = m[0] + 2 + k * (W - m[0] - 2), r = 1 + k * H * 0.16, y = m[1] + Math.sin(i * 1.7) * r * 0.4; disc(b, x, y, Math.round(r), k > 0.7 ? hex('#6a3ae8') : k > 0.35 ? hex('#a070ff') : hex('#e0c8ff')); }
+      for (let i = 0; i < 16; i++) { const k = i / 16; disc(b, m[0] + 4 + k * (W - m[0]) * 0.8, m[1] + Math.sin(i * 2.3) * 3, Math.max(1, Math.round(k * 3)), WHITE); }
+      for (let k = 0; k < 5; k++) star4(b, Math.round(W * (0.5 + k * 0.1)), Math.round(H * (0.2 + (k % 2) * 0.55)), 1, hex('#ffd0ff'));
+    },
+    smoke(b, W, H, s) {
+      grad(b, 0, H, hex('#5a5a6a'), hex('#c8a07a'));
+      const gy = Math.round(H * 0.86); ground(b, gy, hex('#4a3a3a'), hex('#3a2a2a'));
+      kip(b, { eyes: 'happy', mouth: 0.2, headPitch: 0.1, lean: -0.05 }, W * 0.5, gy + 1, s, { yaw: 0.35 });
+      // puffs of smoke hide everything but the eyes
+      const pf = [[0.2, 0.7, 0.18], [0.4, 0.78, 0.2], [0.62, 0.76, 0.2], [0.82, 0.7, 0.17], [0.3, 0.55, 0.14], [0.72, 0.55, 0.14], [0.52, 0.9, 0.2], [0.12, 0.88, 0.16], [0.9, 0.88, 0.16]];
+      for (const [x, y, r] of pf) { const R = Math.round(H * r); for (let yy = -R; yy <= R; yy++) for (let xx = -R; xx <= R; xx++) { const d = Math.hypot(xx, yy); if (d > R) continue; const X = Math.round(W * x) + xx, Y = Math.round(H * y) + yy; put(b, X, Y, d > R - 1 ? hex('#8a8a98') : xx + yy < -R * 0.4 ? hex('#f0f0f8') : dith(X, Y) < 0.3 ? hex('#c8c8d4') : hex('#dcdce6')); } }
+      for (let k = 0; k < 3; k++) { const x = Math.round(W * (0.3 + k * 0.2)), y = Math.round(H * (0.2 + k * 0.06)); ring(b, x, y, 2 + k, hex('#e8e8f0')); }
+    },
+    hail(b, W, H, s) {
+      grad(b, 0, H, hex('#5a6a8a'), hex('#c8e0f0'));
+      cloud(b, W * 0.5, H * 0.12, W * 0.9, hex('#8a98b0'), hex('#6a7890'));
+      const gy = Math.round(H * 0.84); ground(b, gy, hex('#f0f8ff'), hex('#c8e0f0'));
+      for (let k = 0; k < 18; k++) { const x = (k * 31 + 7) % W, y = Math.round(H * 0.24) + ((k * 23) % Math.round(H * 0.56)), r = 1 + (k % 3 === 0 ? 1 : 0); put(b, x - 2, y - 4, hex('#e8f8ff')); put(b, x - 1, y - 2, hex('#c8e8ff')); disc(b, x, y, r + 1, hex('#5a7aa8')); disc(b, x, y, r, WHITE); put(b, x - 1, y - 1, hex('#e8fbff')); }
+      kip(b, { eyes: 'happy', mouth: 1, headPitch: -0.28, legF: -0.5, tailWag: 0.4 }, W * 0.5, gy + 1, s);
+      for (let k = 0; k < 4; k++) { const x = Math.round(W * (0.15 + k * 0.24)); rock(b, x, gy + 2, 1, hex('#e8f8ff'), k); }
+    },
     generic(b, W, H, s) {
       grad(b, 0, H, hex('#4ad0c0'), hex('#1a5a7a'));
       const gy = Math.round(H * 0.86); ground(b, gy, hex('#2a7a6a'), hex('#1a6a5a'));

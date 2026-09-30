@@ -81,6 +81,7 @@ const Talk = (() => {
   function giverOf(q) { if (q.area !== Game.areaId) return null; return Mons.all.find((m) => m.kind === q.giver && m.alive) || null; }
   function ready(q) {
     const s = qState(q.id); if (!s || s.s !== 'active') return false;
+    if (q.gate && q.gate()) return false; // e.g. a carrier that waits for the area's boss (bosses.js)
     if (q.instant) return true;
     if (q.fetch) return Save.itemN(q.fetch.item) >= q.fetch.n;
     if (q.photo) return !!s.ok;
@@ -120,6 +121,8 @@ const Talk = (() => {
     const fill = (l) => l.replace('{have}', s ? s.n || 0 : 0).replace('{left}', q.fetch ? Math.max(0, q.fetch.n - Save.itemN(q.fetch.item)) : Math.max(0, (q.n || 1) - (s ? s.n || 0 : 0)));
     if (!s && q.instant) return { lines: q.intro, done: () => accept(q) };
     if (!s) return { lines: q.intro.slice(0, -1).concat([{ text: q.intro[q.intro.length - 1], choices: ['Leave it to me!', 'Maybe later'] }]), done: (c) => { if (c === 0) accept(q); else bubble(() => g.headPt(), '...', { who: g }); } };
+    const gt = q.gate && q.gate();
+    if (gt) return { lines: gt.lines.map(fill), done: () => {} };
     if (ready(q)) return { lines: q.done, done: () => finish(q, g) };
     return { lines: q.wait.map(fill), done: () => {} };
   }

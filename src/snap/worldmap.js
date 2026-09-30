@@ -632,7 +632,7 @@ const WorldMap = (() => {
       UI.rect(fb, cx + 3, cyy + 3, 3, ch - 6, un ? S.accent : 0xff8a90a8);
       Font.draw(fb, un ? a.name : '??? (locked)', cx + 10, cyy + 7, 0xff1b2240, { font: 'title' });
       Font.draw(fb, a.sub, cx + 10, cyy + 23, 0xff5a6080, { font: 'small' });
-      Font.draw(fb, un ? a.blurb : (M.sel === 'stage' ? 'Gather Meloetta\'s band to open the stage.' : 'Earn ' + a.need + ' research stamps to open (' + Quests.stamps() + ' so far).'), cx + 10, cyy + 33, 0xff1b2240, { font: 'small', maxW: cw - 18, lh: 9 });
+      Font.draw(fb, un ? a.blurb : ((typeof Bosses !== 'undefined' && Bosses.lockNote(M.sel)) || (M.sel === 'stage' ? 'Gather Meloetta\'s band to open the stage.' : 'Earn ' + a.need + ' research stamps to open (' + Quests.stamps() + ' so far).')), cx + 10, cyy + 33, un ? 0xff1b2240 : hex('#b8242a'), { font: 'small', maxW: cw - 18, lh: 9 });
       const sp = DexData.ORDER.filter((q) => (DexData.S[q].area || []).includes(M.sel)), seen = sp.filter((q) => Save.data.seen[q]).length, pc = completion(M.sel);
       Font.draw(fb, 'Pokémon ' + seen + '/' + sp.length, cx + 10, cyy + ch - 12, 0xff1b2240, { font: 'small' });
       const bw = 40, bxx = cx + 14 + Font.measure('Pokémon ' + seen + '/' + sp.length, 'small'); UI.rrect(fb, bxx, cyy + ch - 12, bw, 6, 2, 0xffd4d8e4); if (pc > 0) UI.rrect(fb, bxx, cyy + ch - 12, Math.max(3, Math.round(bw * pc)), 6, 2, pc >= 1 ? 0xff4ad8ff : 0xff5ad07a);

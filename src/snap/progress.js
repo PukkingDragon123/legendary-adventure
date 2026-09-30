@@ -195,6 +195,7 @@ const Progress = (() => {
     const cnt = ' (' + Math.min(have, n) + '/' + n + ')';
     if (!s) return q.lv > level() ? 'Reach Lv ' + q.lv + ', then talk to ' + g : 'Talk to ' + g + ' in ' + areaName(q.area);
     if (s.s === 'done') return 'Completed!';
+    const gt = q.gate && q.gate(); if (gt && gt.obj) return gt.obj; // waiting for the area's boss (bosses.js)
     if (Talk.ready(q)) return 'Return to ' + g + ' in ' + areaName(q.area);
     if (q.instant) return 'Talk to ' + g;
     if (q.fetch) return 'Bring ' + q.fetch.n + ' ' + (BERRY[q.fetch.item] || q.fetch.item) + ' (' + Math.min(Save.itemN(q.fetch.item), q.fetch.n) + '/' + q.fetch.n + ')';
@@ -271,6 +272,7 @@ const Progress = (() => {
   function target(q) {
     if (!q || q.area !== Game.areaId || !Game.mudkip) return null;
     const s = st(q), g = Talk.giverOf(q), gp = g ? { x: g.x, y: g.y - 30, who: g, label: nm(q.giver) } : null;
+    const gt = s && q.gate && q.gate(); if (gt && gt.target) return gt.target() || gp; // point at the boss
     if (!s || Talk.ready(q) || q.instant) return gp;
     if (q.photo) { const m = nearestMon(q.photo.sp); return m ? { x: m.x, y: m.y - 30, who: m, label: nm(q.photo.sp) } : gp; }
     if (q.progress === 'scan') { const m = nearestMon(q.scan); return m ? { x: m.x, y: m.y - 30, who: m, label: 'Scan ' + nm(q.scan) } : null; }
