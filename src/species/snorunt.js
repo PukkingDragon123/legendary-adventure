@@ -28,11 +28,12 @@ const Snorunt = (() => {
   const { chain, T, R, F, code, sph } = Creature;
 
   // material ids
-  const HOOD = 1, LINING = 2, BLACK = 3, EYE = 4, MOUTH = 5;
-  const MAT = { HOOD, LINING, BLACK, EYE, MOUTH };
+  const HOOD = 1, LINING = 2, BLACK = 3, EYE = 4, MOUTH = 5, TOOTH_W = 6;
+  const MAT = { HOOD, LINING, BLACK, EYE, MOUTH, TOOTH_W };
   const PAL = Creature.palette({
-    [HOOD]:   { r: ['#a86c16', '#d0962a', '#eec244', '#f9dc78', '#fff4c4'], od: '#563406', ol: '#946212', ln: '#86580e' },
-    [LINING]: { r: ['#6e440a', '#8e5c12', '#b07a1c', '#c8922a', '#dcac44'], od: '#3e2604', ol: '#704608', ln: '#603c08' },
+    [HOOD]:   { r: ['#a8844a', '#c8a866', '#e6cc8c', '#f6e2ae', '#fff6dc'], od: '#4e3814', ol: '#8a6a34', ln: '#8a6a34' },
+    [TOOTH_W]: { r: ['#b8bcc4', '#d4d8de', '#eceef2', '#f8f9fb', '#ffffff'], od: '#303038', ol: '#606070', ln: '#1a1a22' },
+    [LINING]: { r: ['#7a3a10', '#9a4e16', '#bc6620', '#d6802e', '#eca048'], od: '#3e1a04', ol: '#6a3008', ln: '#5a2808' },
     [BLACK]:  { r: ['#0b0c13', '#14151f', '#1f212e', '#2d3042', '#43485e'], od: '#050509', ol: '#16182a', ln: '#050508' },
     [EYE]:    { r: ['#3a96c4', '#5ebce6', '#98e2fa', '#d2f6ff', '#ffffff'], od: '#12405c', ol: '#2a6688', ln: '#2a6688' },
     [MOUTH]:  { r: ['#521020', '#741a2e', '#962a40', '#b84458', '#d46a78'], od: '#2a0610', ol: '#521020', ln: '#3a0a18' },
@@ -74,7 +75,7 @@ const Snorunt = (() => {
   const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
 
   /* ---------- hood profile: radius by height (surface of revolution about the hood's y axis) ---------- */
-  const PROF = [[40, 42.6], [45, 43], [50, 42.8], [58, 41.8], [66, 39.9], [74, 37.1], [82, 33.3], [90, 28.5], [98, 22.8], [105, 17.1], [111, 11.6], [116, 6.8], [119.5, 3.4], [121.5, 1.2]];
+  const PROF = [[18, 47], [26, 46.8], [36, 45.6], [46, 43.6], [54, 41.5], [64, 37], [74, 32], [84, 26.8], [94, 21.4], [104, 15.8], [113, 10.4], [121, 5.6], [126, 2.4], [128.5, 0.8]];
   const PR = (() => {
     const out = new Float32Array(260); // r at y = 0..129.5 in 0.5 steps
     const S = Shape2D.catmull(PROF, false, 10);
@@ -89,24 +90,24 @@ const Snorunt = (() => {
   })();
   const rAt = (y) => PR[clamp(Math.round(y * 2), 0, PR.length - 1)];
   const slopeAt = (y) => (rAt(y + 1.5) - rAt(y - 1.5)) / 3; // dr/dy
-  const Y_HEM = 47, Y_TOP = 122;
+  const Y_HEM = 24, Y_TOP = 128;
   // backward bend of the hood's upper part (x offset of the axis by height)
   const bendAt = (y, b) => (y > 70 ? -b * ((y - 70) / 52) ** 2 : 0);
 
   // head layout (hood-local coordinates, before K)
-  const HEAD_C = [0, 66, 0], HEAD_R = [36, 32, 36];
+  const HEAD_C = [2, 63, 0], HEAD_R = [30, 29, 30];
   // face opening: a tunnel along +x through the hood (oval in y-z)
-  const FACE_Y = 69, FACE_H = 22, FACE_W = 27.5;
+  const FACE_Y = 69, FACE_H = 22, FACE_W = 30;
 
   // eyes: tangent frames on the head ellipsoid (unit-sphere space)
-  const EC = sph(0.39, 0.12);
+  const EC = sph(0.3, 0.26);
   const ETY = V3.norm(V3.sub([0, 1, 0], V3.scale(EC, EC[1])));
   const ETX = V3.cross(ETY, EC); // toward the face centre on the near side
   let curScale = 1;
 
   // hem points: azimuths (radians from +x toward +z) and tooth outline (U across, V down the tooth, both -1..1)
-  const TEETH = [Math.PI / 4, -Math.PI / 4, (3 * Math.PI) / 4, (-3 * Math.PI) / 4];
-  const TOOTH = { yc: 40, ru: 24, rv: 14.5, rw: 6, rho: 40, flare: 0.36 };
+  const TEETH = [0.56 * Math.PI, -0.56 * Math.PI, 0.86 * Math.PI, -0.86 * Math.PI];
+  const TOOTH = { yc: 17, ru: 24, rv: 12, rw: 6, rho: 42, flare: 0.3 };
   const toothHW = (V) => { const t = clamp((V + 1) / 1.93, 0, 1); return 0.98 * Math.pow(Math.max(0, 1 - Math.pow(t, 1.7)), 0.62); };
 
   const K = 1; // overall size: ~122 units from the soles to the hood tip
@@ -140,18 +141,18 @@ const Snorunt = (() => {
     }
 
     /* --- round black body under the hood --- */
-    const bodyC = [1, 34, 0];
-    prims.push(shell(body, bodyC, I3, [28, 27, 28], 1, 1, mBLACK));
+    const bodyC = [1, 32, 0];
+    prims.push(shell(body, bodyC, I3, [26, 25, 26], 1, 1, mBLACK));
     anchors.body = pt(body, bodyC);
 
     /* --- little black arm nubs between the hem points --- */
     for (const sd of [1, -1]) {
       const sw = walking ? 0.3 * Math.sin(wk + (sd > 0 ? Math.PI : 0)) : 0;
       const hug = sa;
-      const a = chain(body, T(2 + 6 * hug, 43, sd * (30 - 5 * hug)), R(M3.ry(sd * 0.9 * hug)), R(M3.rz(sw)), R(M3.rx(-sd * (0.95 - 0.4 * hug))), T(0, -6, 0));
+      const a = chain(body, T(27 + 2 * hug, 40 + 2 * sw, sd * (9.5 - 2 * hug)), R(M3.rz(sw)), T(0, -3, 0));
       const id = sd > 0 ? 4 : 5;
-      prims.push(shell(a, [0, 0, 0], I3, [6.5, 9.5, 6], id, id, mBLACK));
-      anchors[sd > 0 ? 'handN' : 'handF'] = pt(a, [0, -9, 0]);
+      prims.push(shell(a, [0, 0, 0], I3, [8, 8.5, 8], id, id, mBLACK));
+      anchors[sd > 0 ? 'handN' : 'handF'] = pt(a, [0, 0, 0]);
     }
 
     /* --- head: black, inside the hood (only the face shows through the opening) --- */
@@ -164,7 +165,7 @@ const Snorunt = (() => {
       const ex = dx * ETX[0] + dy * ETX[1] + dz * ETX[2], ey = dx * ETY[0] + dy * ETY[1] + dz * ETY[2];
       const px = 1 / (curScale * K * HEAD_R[1]); // one pixel in unit-sphere units
       const th = Math.max(0.045, 0.9 * px);
-      const AX = 0.18, AY = 0.25;
+      const AX = 0.11, AY = 0.15;
       const q = (ex / AX) ** 2 + (ey / AY) ** 2;
       if (kind === 'blink') return Math.abs(ey + 0.03) < th && Math.abs(ex) < AX * 0.95 ? code(EYE, 1) : 0;
       if (kind === 'closed' || kind === 'happy') {
@@ -182,26 +183,38 @@ const Snorunt = (() => {
     const headPrim = shell(chain(headF, T(...HEAD_C)), [0, 0, 0], I3, HEAD_R, 6, 6, (s) => {
       const e = eyeMat(s);
       if (e) return e;
-      // mouth: a small oval under the eyes
-      if (mouth > 0.05 && s[0] > 0.6) {
-        const mu = s[2] / 0.13, mv = (s[1] + 0.3) / (0.03 + 0.1 * mouth);
-        if (mu * mu + mv * mv < 1) return code(MOUTH, mv > 0.35 ? -1 : 0);
+      // big toothy grin: a wide white band of teeth under the eyes (opens with `mouth`)
+      if (s[0] > 0.3) {
+        const az = Math.atan2(s[2], s[0]);
+        const mid = -0.12 - 0.06 * (az / 0.62) ** 2, hh = 0.13 + 0.07 * mouth;
+        if (Math.abs(az) < 0.62 && Math.abs(s[1] - mid) < hh * (1 - 0.35 * (az / 0.62) ** 2)) {
+          if (mouth > 0.1 && Math.abs(s[1] - mid) < 0.09 * mouth) return code(MOUTH, -1);
+          const px = 1 / (curScale * K * HEAD_R[1]);
+          const g = (az / 0.62) * 3.5 + 0.5; // tooth gaps
+          if (Math.abs(g - Math.round(g)) * 0.62 / 3.5 < Math.max(0.012, 0.5 * px)) return cBLACK;
+          return code(TOOTH_W, s[1] > mid ? 1 : 0);
+        }
       }
       return cBLACK;
     });
     prims.push(headPrim);
 
     /* --- hood: stacked beads following the profile, open in front for the face --- */
-    const bend = 7 + 2 * rock;
+    const bend = 1 + 2 * rock;
     const hoodF = headF;
-    const inFace = (X, Y, Z) => X > 6 && (Z / FACE_W) ** 2 + ((Y - FACE_Y) / FACE_H) ** 2 < 1;
+    // triangular face opening following the cone (apex up), open down to the hem
+    const faceHW = (Y, m) => (Y > 104 + m ? -1 : Math.min(40, ((104 + m - Y) / 57) * (FACE_W + m)));
+    const inFace = (X, Y, Z) => X > 6 && Math.abs(Z) < faceHW(Y, 0);
     const beadMat = (s, X, Y, Z, prim, Q) => {
       if (Y < Y_HEM || inFace(X, Y, Z)) return 0;
       const bx = bendAt(Y, bend);
       const rx = X - bx, rl = Math.hypot(rx, Z) || 1;
       // rim just inside the face opening: a darker lip
-      const lip = X > 4 && (Z / (FACE_W + 3)) ** 2 + ((Y - FACE_Y) / (FACE_H + 3)) ** 2 < 1;
-      return shadeCode(prim, Q, s, rx / rl, -slopeAt(Y), Z / rl, HOOD, !lip, lip ? -1 : 0);
+      const lip = X > 4 && Math.abs(Z) < faceHW(Y, 4);
+      if (lip) return shadeCode(prim, Q, s, rx / rl, -slopeAt(Y), Z / rl, LINING, false, 0);
+      // straw fringe: fine vertical strands just above the hem
+      const strand = Y < Y_HEM + 9 && Math.abs(((Math.atan2(Z, rx) * 9) / Math.PI) % 1) < 0.22;
+      return shadeCode(prim, Q, s, rx / rl, -slopeAt(Y), Z / rl, HOOD, !strand, strand ? -1 : 0);
     };
     for (let y = Y_HEM + 1; y < Y_TOP; y += 2.6) {
       const r = rAt(y);

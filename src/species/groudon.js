@@ -35,9 +35,9 @@ const Groudon = (() => {
   const RED = 1, GREY = 2, LINE = 3, CLAW = 4, EYE = 5, PUPIL = 6, MOUTH = 7, TONGUE = 8, TOOTH = 9, PLATE = 10;
   const MAT = { RED, GREY, LINE, CLAW, EYE, PUPIL, MOUTH, TONGUE, TOOTH, PLATE };
   const PAL = Creature.palette({
-    [RED]:    { r: ['#6e121e', '#a01e2a', '#d2323a', '#ec5a54', '#ff9a88'], od: '#420812', ol: '#7e141e', ln: '#621019' },
-    [GREY]:   { r: ['#5e5a5e', '#88848a', '#b0acae', '#d4d0cc', '#f2f0ea'], od: '#2e2a30', ol: '#5a565c', ln: '#4a464c' },
-    [PLATE]:  { r: ['#66626a', '#8e8a90', '#b8b4b4', '#dcd8d2', '#f6f4ee'], od: '#2e2a30', ol: '#5a565c', ln: '#4a464c' },
+    [RED]:    { r: ['#6a1410', '#9e2618', '#ca3c22', '#ea643e', '#ffa07c'], od: '#3e0a08', ol: '#7a1a12', ln: '#5e120e' },
+    [GREY]:   { r: ['#4e4442', '#6e6260', '#8e8280', '#b0a6a2', '#d4ccc6'], od: '#2e2a30', ol: '#5a565c', ln: '#4a464c' },
+    [PLATE]:  { r: ['#5e120e', '#8e2216', '#bc361e', '#e05838', '#fa9070'], od: '#300806', ol: '#6a160e', ln: '#200806' },
     [LINE]:   { r: ['#170e12', '#1e1418', '#261a1e', '#302226', '#3c2a30'], od: '#10080c', ol: '#1e1418', ln: '#10080c' },
     [CLAW]:   { r: ['#8e8a88', '#bcb8b4', '#e2e0da', '#f6f4f0', '#ffffff'], od: '#3e3a3a', ol: '#6a6664', ln: '#6a6664' },
     [EYE]:    { r: ['#c8920e', '#e8b41c', '#ffd23a', '#ffe684', '#fff6c8'], od: '#6a3a06', ol: '#8a5a10', ln: '#6a3a06' },
@@ -79,6 +79,45 @@ const Groudon = (() => {
   };
 
   let curScale = 1;
+
+  /* ---------- white spikes: faceted cones (flat plates) ---------- */
+  const PAD = 0.5;
+  function convexShape(pts, m) {
+    let area = 0;
+    for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; area += a[0] * b[1] - b[0] * a[1]; }
+    const P = area < 0 ? pts.slice().reverse() : pts;
+    const n = P.length, EQ = new Float64Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const a = P[i], b = P[(i + 1) % n];
+      const ex = b[0] - a[0], ey = b[1] - a[1], l = Math.hypot(ex, ey) || 1;
+      const nx = -ey / l, ny = ex / l;
+      EQ[i * 3] = nx; EQ[i * 3 + 1] = ny; EQ[i * 3 + 2] = PAD - (nx * a[0] + ny * a[1]);
+    }
+    return { bb: Shape2D.bbox(P, PAD + 0.3), test(u, v) { for (let i = 0; i < n * 3; i += 3) if (EQ[i] * u + EQ[i + 1] * v + EQ[i + 2] < 0) return 0; return m; } };
+  }
+  function tri(a, b, c, part, m) {
+    const e1 = sub(b, a), e2 = sub(c, a), nz = nrm(cross(e1, e2)), u = nrm(e1), v = cross(nz, u);
+    const pts = [a, b, c].map((p) => { const d = sub(p, a); return [dot(d, u), dot(d, v)]; });
+    return { kind: 'plate', part, grp: part, c: a, L: M3.cols(u, v, nz), shape: convexShape(pts, m), thick: 1.4 };
+  }
+  // cone from base centre b along direction d (length l, base radius r), 7 facets + a round base cap
+  function cone(out, b, d, l, r, part, curve = 0) {
+    d = nrm(d);
+    let U = cross(d, [0, 1, 0]); if (len3(U) < 1e-3) U = [1, 0, 0]; U = nrm(U); const V = cross(d, U);
+    const tip = add(b, sc(d, l)), n = 7, ring = [];
+    for (let k = 0; k < n; k++) { const a = (k * 2 * Math.PI) / n; ring.push(add(b, add(sc(U, r * Math.cos(a)), sc(V, r * Math.sin(a))))); }
+    // a slightly curved spike: bend the tip half way
+    const mid = add(b, sc(d, l * 0.5));
+    for (let k = 0; k < n; k++) {
+      const a = ring[k], c = ring[(k + 1) % n];
+      if (curve) {
+        const am = add(add(sc(a, 0.5), sc(mid, 0.5)), [0, 0, 0]), cm = add(sc(c, 0.5), sc(mid, 0.5));
+        out.push(tri(a, c, cm, part, C_CLAW)); out.push(tri(a, cm, am, part, C_CLAW)); out.push(tri(am, cm, add(tip, sc(V, curve)), part, C_CLAW));
+      } else out.push(tri(a, c, tip, part, C_CLAW));
+    }
+    out.push(E(b, M3.mul(M3.cols(U, V, d), M3.diag(r, r, r * 0.3)), part, part, M_CLAW_F));
+    return tip;
+  }
   // half line width in unit-sphere units for an ellipsoid of radius r (at least ~1 px)
   const lw = (r, base) => Math.max(base, 0.62 / (curScale * r));
 
@@ -169,7 +208,7 @@ const Groudon = (() => {
     };
   }
   const JAWR = [70, 26, 46];
-  const jawMat = (s) => (s[1] < -0.2 ? C_GREY : s[1] > 0.55 && s[0] > -0.1 && Math.abs(s[2]) < 0.8 ? C_TONGUE : C_RED);
+  const jawMat = (s) => (s[1] > 0.55 && s[0] > -0.1 && Math.abs(s[2]) < 0.8 ? C_TONGUE : s[1] > 0.25 && Math.abs(s[2]) > 0.55 ? C_RED : C_GREY);
 
   /* ---------- limb decals ---------- */
   // thighs: a black line ring that dips down on the outside (the "knee" chevron)
@@ -186,17 +225,18 @@ const Groudon = (() => {
     return Math.abs(s[0] - 0.42) < w && s[1] > -0.9 ? C_LINE : C_RED;
   };
   const M_RED = () => C_RED, M_CLAW = () => C_CLAW, M_GREY = () => C_GREY;
+  function M_CLAW_F() { return C_CLAW; }
 
   /* ---------- rock plates (flat, chunky; u = along, v = up) ---------- */
   // big shoulder slab: three blunt spikes pointing up and back
   const SHOULDER = bakeShape(Shape2D.poly([[70, 0], [96, 40], [88, 84], [64, 118], [44, 98], [22, 150], [-2, 110], [-30, 142], [-44, 92], [-72, 104], [-70, 52], [-50, 10], [-10, -12], [40, -12]], C_PLATE, 6, (u, v) => (v > 20 + 0.25 * u && (u + v * 0.35) % 42 < 5 ? C_PLATE_D : C_PLATE)));
   const SMALLPL = bakeShape(Shape2D.poly([[34, 0], [40, 30], [16, 62], [0, 40], [-22, 58], [-34, 20], [-20, -6], [10, -8]], C_PLATE, 6));
-  const TAILSP = bakeShape(Shape2D.poly([[20, 0], [8, 24], [-4, 52], [-14, 22], [-22, 0], [0, -6]], C_PLATE, 6));
+  const TAILSP = bakeShape(Shape2D.poly([[26, 0], [18, 30], [-2, 58], [-16, 50], [-10, 24], [-24, 0], [0, -6]], C_PLATE, 6, (u, v) => (v > 44 - 0.4 * u ? C_LINE : C_PLATE)));
 
   const DEFAULT = { walk: 0, roar: 0, glow: 0, sleep: 0, mouth: 0, eyes: 'open', side: 1 };
   // 1 torso, 2 head, 3 jaw, 4 mouth, 5/6 arms, 7/8 legs, 9 tail, 10.. plates
   const SIZE = 0.945;
-  const PRI = { 1: 0, 2: 2, 3: 2, 4: 1, 5: 3, 6: 1, 7: 2, 8: 1, 9: 0, 10: 3, 11: 1, 12: 2, 13: 2 };
+  const PRI = { 1: 0, 2: 2, 3: 2, 4: 1, 5: 3, 6: 1, 7: 2, 8: 1, 9: 0, 10: 3, 11: 1, 12: 2, 13: 3 };
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -211,7 +251,7 @@ const Groudon = (() => {
     const bob = walking ? 6 * Math.abs(Math.cos(wk)) : 0;
     const roll = walking ? 0.045 * Math.sin(wk) : 0;
     const hipY = lerp(212, 92, ssl) - bob;
-    const lean = lerp(-0.26, -0.95, ssl) + 0.2 * ro;
+    const lean = lerp(-0.78, -0.95, ssl) + 0.45 * ro;
     const B = chain(T(lerp(0, 40, ssl), hipY, 0), R(M3.rx(roll)), R(M3.rz(lean)));
 
     /* --- torso --- */
@@ -236,27 +276,31 @@ const Groudon = (() => {
     prims.push(ellF(jawF, JAWR, 3, 3, jawMat));
     if (mo > 0.04) prims.push(ellF(chain(H, T(48, -30, 0)), [58, 22 + 18 * mo, 38], 4, 4, (s) => (s[1] < -0.2 && Math.abs(s[2]) < 0.6 ? C_TONGUE : C_MOUTH)));
     // grey horn-plates at the back of the head
-    for (const sd of [1, -1]) prims.push(seg(inF(H, [-20, 30, sd * 34]), inF(H, [-92, 52, sd * 44]), 13, 10, 2, 2, M_GREY, [0, 1, 0], 0.4));
+    for (const [x, y, l, r] of [[34, 44, 58, 11], [8, 50, 74, 12], [-22, 50, 84, 12], [-50, 42, 80, 11]])
+      for (const sd of [1, -1]) prims.push(seg(inF(H, [x, y - 10, sd * 26]), inF(H, [x - l * 0.55, y + l * 0.62, sd * 32]), r, 9, 2, 2, (q) => (q[1] < -0.2 ? C_LINE : C_RED), [1, 0, 0], 0.3));
     anchors.head = H.t;
     anchors.mouth = inF(H, [96, -34, 0]);
     const eyeP = (sd) => inF(H, [HR[0] * EC[0], HR[1] * EC[1], sd * HR[2] * EC[2]]);
     anchors.eyeN = eyeP(1); anchors.eyeF = eyeP(-1);
 
-    /* --- shoulder plates: big grey slabs rising up and back behind the head --- */
+    /* --- shoulder armour: red domes cut by black lines, a row of white spikes along each side of the back --- */
     let top = [0, -1e9, 0];
+    const armMatS = (s) => {
+      const w = lw(80, 0.03);
+      // plate seams: a ring round the dome and two cross seams
+      if (Math.abs(s[1] - 0.15 + 0.2 * s[0]) < w || Math.abs(s[0] - 0.35) < w * 1.2 || Math.abs(s[0] + 0.3) < w * 1.2) return C_LINE;
+      return C_RED;
+    };
     for (const sd of [1, -1]) {
-      const base = inF(B, [-6, 262, sd * 118]);
-      const U = dirF(B, [1, 0.05, 0]);
-      const Vv = dirF(B, [0.18 * 0, 1, sd * 0.22]);
-      const Vp = nrm(sub(Vv, sc(U, dot(Vv, U))));
-      const W = cross(U, Vp);
-      const k = 1.02;
-      prims.push(PL(base, M3.cols(sc(U, -k), sc(Vp, k), W), sd > 0 ? 10 : 11, sd > 0 ? 10 : 11, SHOULDER, 16));
-      const pk = add(base, add(sc(U, 2), sc(Vp, 150 * k)));
-      if (pk[1] > top[1]) top = pk;
-      // small front plate
-      const b2 = inF(B, [60, 232, sd * 128]);
-      prims.push(PL(b2, M3.cols(sc(U, -0.9), sc(Vp, 0.9), W), sd > 0 ? 10 : 11, sd > 0 ? 10 : 11, SMALLPL, 12));
+      const id = sd > 0 ? 10 : 11;
+      const dF = chain(B, T(10, 262, sd * 92), R(M3.rx(-sd * 0.35)), R(M3.rz(0.1)));
+      prims.push(ellF(dF, [128, 64, 70], id, id, armMatS));
+      // back spikes: four cones pointing up, out and back
+      for (const [x, h, l] of [[74, 292, 92], [20, 316, 120], [-36, 316, 124], [-92, 292, 100]]) {
+        const bp = inF(B, [x, h - 6, sd * 108]);
+        const tip = cone(prims, bp, dirF(B, [-0.45, 0.8, sd * 0.5]), l, 21, id);
+        if (tip[1] > top[1]) top = tip;
+      }
     }
     anchors.top = top;
 
@@ -274,6 +318,7 @@ const Groudon = (() => {
       const wr = add(el, sc(d2, 62));
       prims.push(seg(sh, el, 46, 44, id, id, M_RED));
       prims.push(seg(el, wr, 38, 36, id, id, armMat(38)));
+      cone(prims, add(el, [-8, 0, sd * 26]), [-0.55, -0.2, sd * 0.8], 66, 17, id);
       prims.push(E(wr, M3.diag(34, 32, 34), id, id, M_RED));
       for (const k of [-1, 0, 1]) {
         const cd = nrm(add(d2, [0.2, -0.25, sd * 0.3 * k + sd * 0.05]));
@@ -296,6 +341,7 @@ const Groudon = (() => {
       void thF;
       prims.push(seg(add(hip, [0, 28, 0]), kneeP, THR[1] * 0.78, THR[2], id, id, thighMat, [1, 0, 0], 0.5));
       prims.push(seg(kneeP, add(ft, [0, 30, 0]), 50, 50, id, id, M_RED));
+      cone(prims, add(kneeP, [20, 20, sd * 50]), [0.55, 0.3, sd * 0.8], 72, 18, id);
       const foot = chain(T(ft[0] + 22, ft[1] + 22, ft[2]), R(M3.ry(-sd * 0.12)));
       prims.push(ellF(foot, [66, 26, 52], id, id, M_RED));
       for (const k of [-1, 0, 1]) {
@@ -306,7 +352,7 @@ const Groudon = (() => {
     }
 
     /* --- tail: a thick tapering tube on a spline, dragging on the ground; grey spikes near the tip --- */
-    const ctrl0 = [[-96, 150, 0, 104], [-210, 128, 0, 92], [-360, 76, 0, 68], [-500, 36, 0, 46], [-620, 24, 0, 28], [-700, 22, 0, 14]];
+    const ctrl0 = [[-96, 150, 0, 106], [-210, 120, 0, 94], [-330, 104, 0, 76], [-440, 118, 0, 58], [-520, 150, 0, 42], [-570, 180, 0, 26]];
     const ctrl = ctrl0.map((q, i) => {
       let p = [q[0], q[1], q[2]];
       const t = i / (ctrl0.length - 1);
@@ -362,15 +408,24 @@ const Groudon = (() => {
       prims.push(prim);
       if (j === nBead - 1) tailTip = add(Bq.p, sc(X, r));
     }
-    // grey spikes on top of the tail toward the tip
-    for (const [fr, h] of [[0.62, 0.95], [0.72, 0.85], [0.82, 0.72], [0.9, 0.6]]) {
+    // red fins stacked on top toward the tip, white spikes jutting from the sides
+    for (const [fr, h] of [[0.6, 1.2], [0.7, 1.15], [0.8, 1.05], [0.9, 0.9]]) {
       const i = Math.floor(fr * (dense.length - 1));
       const a = dense[i], b = dense[Math.min(dense.length - 1, i + 1)];
       const X = nrm(sub(b.p, a.p));
       let Y = nrm(sub([0, 1, 0], sc(X, X[1])));
       const Z = cross(X, Y);
       const base = add(a.p, sc(Y, a.r * 0.7));
-      prims.push(PL(base, M3.cols(sc(X, -h * 1.4), sc(Y, h * 1.4), Z), 12, 12, TAILSP, 10));
+      prims.push(PL(base, M3.cols(sc(X, -h * 1.4), sc(Y, h * 1.4), Z), 12, 12, TAILSP, 14));
+    }
+    for (const fr of [0.3, 0.48, 0.66]) {
+      const i = Math.floor(fr * (dense.length - 1));
+      const a = dense[i], b = dense[Math.min(dense.length - 1, i + 1)];
+      const X = nrm(sub(b.p, a.p));
+      for (const sd of [1, -1]) {
+        const Z = nrm(cross(X, [0, 1, 0])), o = sc(Z, -sd);
+        cone(prims, add(a.p, sc(o, a.r * 0.8)), add(add(o, sc(X, 0.55)), [0, -0.15, 0]), 34 + a.r * 0.45, 13, 13);
+      }
     }
     anchors.tail = ctrl[0].p;
     anchors.tailTip = tailTip;

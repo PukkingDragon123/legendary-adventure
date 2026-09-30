@@ -39,10 +39,10 @@ const Rayquaza = (() => {
   const GREEN = 1, RING = 2, RED = 3, EYE = 4, PUPIL = 5, MOUTH = 6, TONGUE = 7, CLAW = 8, DARK = 9, FIN = 10;
   const MAT = { GREEN, RING, RED, EYE, PUPIL, MOUTH, TONGUE, CLAW, DARK, FIN };
   const PAL = Creature.palette({
-    [GREEN]:  { r: ['#12472a', '#1d6a38', '#2c8f48', '#4fb660', '#98e08e'], od: '#0a2a18', ol: '#175a30', ln: '#12482a' },
-    [FIN]:    { r: ['#10402a', '#1a6036', '#288444', '#46aa58', '#8cd684'], od: '#0a2a18', ol: '#175a30', ln: '#12482a' },
+    [GREEN]:  { r: ['#123a2a', '#1c5a3e', '#2c7c52', '#4c9e6c', '#8ccaa0'], od: '#08241a', ol: '#16493a', ln: '#10402c' },
+    [FIN]:    { r: ['#10362a', '#1a543c', '#28744e', '#469668', '#84c29a'], od: '#08241a', ol: '#16493a', ln: '#10402c' },
     [RING]:   { r: ['#b88410', '#dcaa1a', '#f8d030', '#ffe67c', '#fff6c4'], od: '#5e3c06', ol: '#8a6010', ln: '#6e4a08' },
-    [RED]:    { r: ['#7a1020', '#aa1a2a', '#dc2e3a', '#f6605e', '#ffa49a'], od: '#44060e', ol: '#7a121e', ln: '#621019' },
+    [RED]:    { r: ['#7a1a26', '#a42a36', '#c84a50', '#e67272', '#ffa8a0'], od: '#44060e', ol: '#7a121e', ln: '#621019' },
     [EYE]:    { r: ['#c89a10', '#e8bc20', '#ffd83a', '#ffe98a', '#fff6c8'], od: '#6a3a06', ol: '#8a5a10', ln: '#6a3a06' },
     [PUPIL]:  { r: ['#060a08', '#0a100c', '#0e1610', '#141c16', '#1c261e'], od: '#060a08', ol: '#060a08', ln: '#060a08' },
     [MOUTH]:  { r: ['#3a0a16', '#561222', '#741e30', '#922e40', '#b04454'], od: '#24050e', ol: '#3a0a16', ln: '#3a0a16' },
@@ -106,12 +106,12 @@ const Rayquaza = (() => {
 
   /* ---------- plates ---------- */
   // wing fin (u = back along the body, v = outward/up from the root): red tip
-  const WING = bakeShape(Shape2D.poly([[-30, 0], [26, -2], [62, 18], [104, 56], [124, 84], [92, 70], [52, 52], [10, 30], [-24, 14]], C_FIN, 8, (u, v) => ((u - 124) ** 2 + (v - 84) ** 2 < 36 * 36 ? C_RED : C_FIN)));
+  const WING = bakeShape(Shape2D.poly([[-34, 0], [34, 0], [58, 30], [74, 88], [70, 94], [4, 92], [-4, 86], [-26, 30]], C_FIN, 2, (u, v) => (v > 80 || u > 56 + (v - 30) * 0.25 || (v > 30 && u < -24 + (v - 30) * 0.3) ? C_RED : C_FIN)));
   // head horns: long flat blades with a yellow stripe
   const HORN = bakeShape(Shape2D.poly([[-6, -12], [40, -15], [100, -11], [150, -5], [182, 0], [150, 6], [100, 13], [40, 16], [-6, 13]], C_FIN, 8, (u, v) => (u > 12 && u < 160 && Math.abs(v - 1.5) < 4.2 - u * 0.012 ? C_RING : C_FIN)));
   const HORN_S = bakeShape(Shape2D.poly([[-6, -9], [30, -11], [70, -6], [100, 0], [70, 5], [30, 10], [-6, 9]], C_FIN, 8, (u, v) => (u > 8 && u < 84 && Math.abs(v) < 2.8 ? C_RING : C_FIN)));
   // tail fin: a pointed, arrowhead-like blade with a red tip
-  const TAILF = bakeShape(Shape2D.poly([[-10, 0], [30, 26], [70, 34], [110, 22], [150, 0], [110, -22], [70, -34], [30, -26]], C_FIN, 8, (u, v) => (u > 118 ? C_RED : Math.abs(v) < 4 && u > 20 && u < 108 ? C_RING : C_FIN)));
+  const TAILF = bakeShape(Shape2D.poly([[-10, 0], [30, 26], [70, 34], [110, 22], [150, 0], [110, -22], [70, -34], [30, -26]], C_FIN, 8, (u, v) => (u > 118 || Math.abs(v) > 26 - Math.max(0, u - 70) * 0.2 ? C_RED : Math.abs(v) < 4 && u > 20 && u < 108 ? C_RING : C_FIN)));
 
   /* ---------- head decals ---------- */
   const HR = [70, 44, 46];
@@ -225,9 +225,11 @@ const Rayquaza = (() => {
           const k = Math.round((al - RING_FROM) / RING_PER);
           const da = al - (RING_FROM + k * RING_PER);
           const dv = (Math.atan2(s[1], Math.abs(s[2])) - 0.12) * r;
-          const d = Math.hypot(da, dv);
+          const d = Math.hypot(da / 1.7, dv);
           if (k >= 0 && Math.abs(d - rr) < wv) m = RING;
+          else if (k >= 0 && d > rr && Math.abs(dv) < wv * 0.9) m = RING;
         }
+        if (m === GREEN && Math.abs(s[2]) > 0.3 && s[1] < -0.5 && s[1] > -0.5 - Math.max(0.12, wv / r * 1.6)) m = RED;
         return tube(prim, s, m);
       };
       prims.push(prim);
@@ -316,7 +318,7 @@ const Rayquaza = (() => {
     const sway = 0.08 * Math.sin(ph - 0.6);
     for (const sd of [1, -1]) {
       for (const [id, shp, root, dir, k] of [
-        [13, HORN, [-22, 32, sd * 20], [-1, 0.55 + sway + 0.45 * ro, sd * 0.45], 1.05],
+        [13, HORN, [-22, 32, sd * 20], [-1, 0.8 + sway + 0.45 * ro, sd * 0.4], 1.45],
         [15, HORN_S, [-22, -18, sd * 30], [-1, -0.06 + sway + 0.45 * ro, sd * 0.5], 1],
       ]) {
         const U = nrm(add(add(sc(HX, dir[0]), sc(HY, dir[1])), sc(HZ, dir[2])));
@@ -325,7 +327,7 @@ const Rayquaza = (() => {
         const o = inB(hb, root);
         const gid = id + (sd > 0 ? 0 : 1);
         prims.push(PL(o, M3.cols(sc(U, k), sc(V, k), cross(U, V)), gid, gid, shp, 5));
-        if (shp === HORN) { const tp = add(o, sc(U, 180)); if (tp[1] > top[1]) top = tp; }
+        if (shp === HORN) { const tp = add(o, sc(U, 180 * 1.45)); if (tp[1] > top[1]) top = tp; }
       }
     }
     anchors.top = top;
