@@ -10705,18 +10705,19 @@ const Lombre = (() => {
     const fw = [Math.sin(az), 0, (sd ? 1 : -1) * Math.cos(az)];
     const u = (s[0] - q[0]) * fw[0] + (s[2] - q[2]) * fw[2], v = s[1] - q[1];
     const px = 1 / (curScale * HR[1]);
-    const ru = Math.max(0.3, 2.2 * px), rv = Math.max(0.27, 2.0 * px);
+    const ru = Math.max(0.32, 2.4 * px), rv = Math.max(0.32, 2.4 * px);
     if (kind === 'open') {
       // half-lidded: the upper part of the almond is covered by a flat lid, a dark lid line on top
-      const lid = 0.03 * rv, lw = Math.max(0.05, 0.8 * px);
+      const lid = 0.42 * rv, lw = Math.max(0.05, 0.8 * px);
       const a = u / ru, b = (v - lid * 0.5) / rv;
       if (a * a + b * b >= 1 || v > lid + lw) return 0;
       if (v > lid) return C_EYE;
       if (v < -0.62 * rv * Math.sqrt(Math.max(0, 1 - a * a)) - 0.3 * lw && a * a + b * b > 0.72) return C_EYE; // lower rim (only when big)
       // pupil: a black dot just under the lid, toward the beak
-      const pr = Math.max(0.085, 1.05 * px);
-      const pu = (u + 0.5 * ru) / pr, pv = (v - (lid - 0.9 * pr)) / (pr * 1.1);
-      return pu * pu + pv * pv < 1 ? C_EYE : C_EYEW;
+      const pr = Math.max(0.13, 1.4 * px);
+      const pu = (u + 0.28 * ru) / pr, pv = (v - (lid - 1.0 * pr)) / (pr * 1.15);
+      if (pu * pu + pv * pv < 1) { const gu = pu - 0.35, gv = pv - 0.3; return gu * gu + gv * gv < 0.16 && pr * curScale * HR[1] > 2.2 ? C_EYEW : C_EYE; }
+      return C_EYEW;
     }
     const w = Math.max(0.045, 0.72 * px), a = u / (ru * 0.95);
     if (Math.abs(a) > 1) return 0;
@@ -22295,7 +22296,7 @@ const Swampert = (() => {
   const PAL = Creature.palette({
     [BODY]:   { r: ['#4c7cab', '#6a9dca', '#88b8e0', '#a8cdec', '#cfe4f6'], od: '#1a3558', ol: '#36628c', ln: '#44729e' },
     [BELLY]:  { r: ['#9ab0b6', '#bccfd2', '#deebeb', '#eef6f6', '#ffffff'], od: '#2e4c5a', ol: '#62828e', ln: '#86a0a8' },
-    [FIN]:    { r: ['#3a414b', '#4f5763', '#646d7b', '#7a8492', '#949dab'], od: '#131715', ol: '#262c32', ln: '#343a42' },
+    [FIN]:    { r: ['#2c333d', '#3d4551', '#4f5864', '#646e7b', '#7e8896'], od: '#131715', ol: '#262c32', ln: '#343a42' },
     [ORANGE]: { r: ['#b87648', '#d8975f', '#f4bb8b', '#fcd2a8', '#ffe8cc'], od: '#6a3a1a', ol: '#9a5e34', ln: '#b0703e' },
     [MOUTH]:  { r: ['#6e4458', '#8e6076', '#ba91a4', '#cca6b6', '#dcbcc8'], od: '#3e1e2e', ol: '#5e3446', ln: '#5e3446' },
     [TONGUE]: { r: ['#b06882', '#c8849c', '#dea2b4', '#eebccb', '#fad8e0'], od: '#62203a', ol: '#82344e', ln: '#a04c66' },
@@ -22372,13 +22373,13 @@ const Swampert = (() => {
   const chestMat = stripe(0.38), neckMat = (s) => (s[0] > 0.3 && Math.abs(s[2]) < 0.62 ? C_BELLY : C_BODY);
 
   /* ---------- head (head frame: origin at the head centre) ---------- */
-  const HR = [34, 25, 40];
+  const HR = [37, 29, 43];
   const EYE_AZ = 0.46, EYE_V = 0.4;
   const mouthV = (az) => { const k = az / 1.2; return -0.2 + 0.26 * k * k; }; // very wide mouth, corners up
   // orange eyes as scale-aware decals: dark rim, orange iris, black pupil, white glint
   function eyePix(ea, eb, sd, kind) {
     const pu = 1 / (curScale * HR[2]), pv = 1 / (curScale * HR[1]);
-    const ru = Math.max(0.13, 2.2 * pu), rv = Math.max(0.17, 2.4 * pv);
+    const ru = Math.max(0.19, 2.6 * pu), rv = Math.max(0.25, 2.9 * pv);
     const x = ea / ru, y = eb / rv;
     if (Math.abs(x) > 1.2 || Math.abs(y) > 1.3) return 0;
     const lw = Math.max(0.16, (0.8 * pv) / rv);
@@ -22389,7 +22390,7 @@ const Swampert = (() => {
     if (d > 1) return 0;
     const gx = x + 0.3 * sd, gy = y - 0.42, gr = Math.max(0.24, (0.8 * pu) / ru);
     if (gx * gx + gy * gy < gr * gr) return C_SHINE;
-    const qx = (x - 0.08 * sd) / 0.34, qy = y / 0.66;
+    const qx = (x - 0.1 * sd) / 0.42, qy = (y + 0.05) / 0.7;
     if (qx * qx + qy * qy < 1) return C_EYE;
     const rim = Math.max(0.35, 1 - (1.1 * pu) / ru);
     return d < rim * rim ? C_IRIS : C_EYE;
@@ -22404,7 +22405,7 @@ const Swampert = (() => {
       }
       if (a < 1.35) {
         const vm = mouthV(az);
-        const h = mo * 0.6 * Math.max(0, 1 - (az / 1.2) ** 2);
+        const h = mo * 0.95 * Math.max(0, 1 - (az / 1.15) ** 1.6);
         if (h > 0.03 && v < vm && v > vm - h) return v < vm - h * 0.55 && a < 0.8 ? C_TONGUE : C_MOUTH;
         if (h <= 0.03 && a < 1.25) {
           const lw = Math.max(0.03, 0.65 / (curScale * HR[1]));
@@ -22419,12 +22420,14 @@ const Swampert = (() => {
   /* ---------- fins ---------- */
   // head fin (u = sideways/out, v = up; base at the origin): a tall, round-topped blade with ribs from the base
   const HFIN_P = [[-17, -4], [-24, 14], [-28, 36], [-27, 56], [-18, 71], [-2, 78], [15, 75], [26, 60], [30, 38], [25, 14], [15, -4], [0, -8]];
+  const HFS = 1.32; HFIN_P.forEach((q) => { q[0] *= HFS * 1.1; q[1] *= HFS; });
   const HFIN_G = bakeShape(Shape2D.poly(HFIN_P, C_FIN, 8));
-  const HFIN_RIB = [[[-8, 4], [-16, 32], [-17, 58]], [[0, 4], [-1, 40], [-1, 72]], [[8, 4], [15, 34], [18, 62]]].map((pl) => Shape2D.catmull(pl, false, 4));
+  const HFIN_RIB = [[[-8, 4], [-16, 32], [-17, 58]], [[0, 4], [-1, 40], [-1, 72]], [[8, 4], [15, 34], [18, 62]]].map((pl) => pl.map(([u, v]) => [u * HFS * 1.1, v * HFS])).map((pl) => Shape2D.catmull(pl, false, 4));
   // tail fin (tail frame: u back along the tail, v up; origin at the root): a huge sail rising behind the back
   const TFIN_P = [[-10, 4], [-12, 34], [-8, 64], [2, 90], [18, 104], [36, 103], [50, 88], [58, 64], [62, 38], [58, 14], [44, -4], [22, -8], [4, -6]];
+  const TFS = 1.3; TFIN_P.forEach((q) => { q[0] *= TFS; q[1] *= TFS; });
   const TFIN_G = bakeShape(Shape2D.poly(TFIN_P, C_FIN, 8));
-  const TFIN_RIB = [[[0, 8], [0, 50], [12, 94]], [[8, 6], [22, 50], [34, 96]], [[14, 4], [40, 38], [54, 70]]].map((pl) => Shape2D.catmull(pl, false, 4));
+  const TFIN_RIB = [[[0, 8], [0, 50], [12, 94]], [[8, 6], [22, 50], [34, 96]], [[14, 4], [40, 38], [54, 70]]].map((pl) => pl.map(([u, v]) => [u * TFS, v * TFS])).map((pl) => Shape2D.catmull(pl, false, 4));
   // cheek gill: a rounded base with three swept points (u = back/out, v = up)
   const GILL_SPIKES = [{ a: 0.85, len: 26, w: 6.5 }, { a: 0.08, len: 36, w: 7.5 }, { a: -0.62, len: 22, w: 6 }].map((s) => {
     const ca = Math.cos(s.a), sa = Math.sin(s.a), r0 = 3;
@@ -22443,7 +22446,7 @@ const Swampert = (() => {
     },
   });
 
-  const DEFAULT = { walk: 0, crouch: 0, roar: 0, mouth: 0, eyes: 'open', side: 1 };
+  const DEFAULT = { walk: 0, crouch: 0, roar: 0, mouth: 0.55, eyes: 'open', side: 1 };
   // 1 torso + neck + head, 2/3 head fins, 4/5 gills, 6/7 arms, 8/9 legs, 10 tail, 11 tail fin
   const PRI = { 1: 0, 2: 1, 3: 1, 4: 3, 5: 3, 6: 2, 7: 2, 8: 1, 9: 1, 10: 0, 11: -1 };
   const SIZE = 1.06;
@@ -22457,8 +22460,8 @@ const Swampert = (() => {
     const mo = Math.max(clamp(+P.mouth || 0, 0, 1), ro), side = clamp(P.side ?? 1, -1, 1);
     const bob = walking ? 3 * Math.abs(Math.cos(st)) : 0;
     const rock = walking ? 0.05 * Math.sin(st) : 0;
-    const lean = -0.55 + 0.1 * cr + 0.4 * ro;
-    const hipY = 62 - 24 * cr + bob + 4 * ro;
+    const lean = -0.72 + 0.1 * cr + 0.4 * ro;
+    const hipY = 52 - 18 * cr + bob + 4 * ro;
     // torso frame at the hip centre
     const body = chain(T(-6 + 6 * cr, hipY, 0), R(M3.rx(rock)), R(M3.rz(lean)));
 
@@ -22485,12 +22488,12 @@ const Swampert = (() => {
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 2 : 3;
       const base = inF(head, [-4, HR[1] * 0.64, sd * 23]);
-      const fl = 0.3 + 0.2 * ro; // splay outward: the two blades part in a V
+      const fl = 0.72 + 0.2 * ro; // splay outward: the two blades part in a V
       const f = chain({ t: base, L: head.L }, R(M3.rz(0.2)), R(M3.rx(sd * fl)), R(M3.ry(-sd * 0.42)), T(0, 0, sd * 3));
       // fin frame: u = sideways (z of head), v = up, normal = forward
       const F = { t: f.t, L: M3.mul(f.L, M3.cols([0, 0, sd], [0, 1, 0], [sd, 0, 0])) };
       prims.push(finEll(F, HFIN_G, 3.4, id, id, HFIN_RIB));
-      anchors[sd > 0 ? 'finN' : 'finF'] = inF(F, [-2, 78, 0]);
+      anchors[sd > 0 ? 'finN' : 'finF'] = inF(F, [-2, 78 * HFS, 0]);
     }
     anchors.top = [anchors.finN[0], Math.max(anchors.finN[1], anchors.finF[1]) + 2, 0];
 
@@ -22512,7 +22515,7 @@ const Swampert = (() => {
       const sh = inF(body, [6, 70, sd * 36]);
       prims.push(E(sh, M3.mul(body.L, M3.diag(17, 18, 16)), id, id, M_BODY)); // shoulder
       // wrist target: reaching down to the ground (stand), planted wide ahead (crouch), spread high (roar)
-      const wStand = [70 + swing, 22 + bob, sd * 66];
+      const wStand = [92 + swing, 18 + bob, sd * 84];
       const wCrouch = [104, 16, sd * 94];
       const wRoar = [36, 176, sd * 120];
       let wr = [lerp(wStand[0], wCrouch[0], cr), lerp(wStand[1], wCrouch[1], cr), lerp(wStand[2], wCrouch[2], cr)];
@@ -22529,8 +22532,8 @@ const Swampert = (() => {
       const fc = add(sc(add(el, wr), 0.5), sc(FY, -1));
       prims.push(ellAx(fc, FXo, FY, FZ, [16, len3(fd) / 2 + 4, 17], id, id, padMat(-0.62, 0.5, 0.72)));
       // hand: flat paw with three long fingers; lies on the ground ahead
-      const hdir = nrm([lerp(0.75, 1, cr), lerp(-0.62, -0.08, cr) + 0.9 * ro, sd * lerp(0.28, 0.45, cr)]);
-      const pn = nrm([lerp(0.1, 0, cr), lerp(0.6, 1, cr), -sd * lerp(0.7, 0.1, cr)]);
+      const hdir = nrm([lerp(0.92, 1, cr), lerp(-0.2, -0.08, cr) + 0.9 * ro, sd * lerp(0.28, 0.45, cr)]);
+      const pn = nrm([lerp(0.02, 0, cr), lerp(0.95, 1, cr), -sd * lerp(0.2, 0.1, cr)]);
       const [HX, HY, HZ] = frameAlong(hdir, pn);
       const hc = add(wr, sc(HY, 7));
       prims.push(ellAx(hc, HX, HY, HZ, [6.5, 12, 14], id, id, M_BODY));
@@ -22548,7 +22551,7 @@ const Swampert = (() => {
       const fwd = walking ? 16 * Math.sin(ph) : 0;
       const lift = walking ? 9 * Math.max(0, Math.cos(ph)) : 0;
       const hip = inF(body, [-2, 12, sd * 26]);
-      const ank = [-6 + fwd + 4 * cr, 12 + lift, sd * (46 + 12 * cr)];
+      const ank = [-12 + fwd + 4 * cr, 12 + lift, sd * (54 + 10 * cr)];
       const L = 36;
       const kn = joint(hip, ank, L, [1, 0.1, sd * 0.4]);
       const td = sub(kn, hip);
@@ -22568,10 +22571,10 @@ const Swampert = (() => {
     const wag = walking ? 0.12 * Math.sin(st) : 0;
     const tail = chain(body, T(-30, 14, 0), R(M3.ry(Math.PI + wag)), R(M3.rz(-0.35 - 0.2 * cr)));
     prims.push(ellF(chain(tail, T(14, 0, 0)), [24, 14, 14], 10, 10, M_BODY));
-    const tfin = chain(tail, T(0, 6, 0), R(M3.rz(0.3 + 0.25 * cr - 0.15 * ro)), R(M3.ry(-0.45 * side - 0.3)));
+    const tfin = chain(tail, T(0, 6, 0), R(M3.rz(0.3 + 0.25 * cr - 0.15 * ro)), R(M3.ry(-0.2 * side - 0.1)));
     prims.push(finEll(tfin, TFIN_G, 3.6, 11, 11, TFIN_RIB));
     anchors.tail = inF(tail, [4, 0, 0]);
-    anchors.tailTip = inF(tfin, [26, 104, 0]);
+    anchors.tailTip = inF(tfin, [26 * TFS, 104 * TFS, 0]);
 
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
     for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
@@ -39032,18 +39035,19 @@ const Lombre = (() => {
     const fw = [Math.sin(az), 0, (sd ? 1 : -1) * Math.cos(az)];
     const u = (s[0] - q[0]) * fw[0] + (s[2] - q[2]) * fw[2], v = s[1] - q[1];
     const px = 1 / (curScale * HR[1]);
-    const ru = Math.max(0.3, 2.2 * px), rv = Math.max(0.27, 2.0 * px);
+    const ru = Math.max(0.32, 2.4 * px), rv = Math.max(0.32, 2.4 * px);
     if (kind === 'open') {
       // half-lidded: the upper part of the almond is covered by a flat lid, a dark lid line on top
-      const lid = 0.03 * rv, lw = Math.max(0.05, 0.8 * px);
+      const lid = 0.42 * rv, lw = Math.max(0.05, 0.8 * px);
       const a = u / ru, b = (v - lid * 0.5) / rv;
       if (a * a + b * b >= 1 || v > lid + lw) return 0;
       if (v > lid) return C_EYE;
       if (v < -0.62 * rv * Math.sqrt(Math.max(0, 1 - a * a)) - 0.3 * lw && a * a + b * b > 0.72) return C_EYE; // lower rim (only when big)
       // pupil: a black dot just under the lid, toward the beak
-      const pr = Math.max(0.085, 1.05 * px);
-      const pu = (u + 0.5 * ru) / pr, pv = (v - (lid - 0.9 * pr)) / (pr * 1.1);
-      return pu * pu + pv * pv < 1 ? C_EYE : C_EYEW;
+      const pr = Math.max(0.13, 1.4 * px);
+      const pu = (u + 0.28 * ru) / pr, pv = (v - (lid - 1.0 * pr)) / (pr * 1.15);
+      if (pu * pu + pv * pv < 1) { const gu = pu - 0.35, gv = pv - 0.3; return gu * gu + gv * gv < 0.16 && pr * curScale * HR[1] > 2.2 ? C_EYEW : C_EYE; }
+      return C_EYEW;
     }
     const w = Math.max(0.045, 0.72 * px), a = u / (ru * 0.95);
     if (Math.abs(a) > 1) return 0;
@@ -50660,7 +50664,7 @@ const Swampert = (() => {
   const PAL = Creature.palette({
     [BODY]:   { r: ['#4c7cab', '#6a9dca', '#88b8e0', '#a8cdec', '#cfe4f6'], od: '#1a3558', ol: '#36628c', ln: '#44729e' },
     [BELLY]:  { r: ['#9ab0b6', '#bccfd2', '#deebeb', '#eef6f6', '#ffffff'], od: '#2e4c5a', ol: '#62828e', ln: '#86a0a8' },
-    [FIN]:    { r: ['#3a414b', '#4f5763', '#646d7b', '#7a8492', '#949dab'], od: '#131715', ol: '#262c32', ln: '#343a42' },
+    [FIN]:    { r: ['#2c333d', '#3d4551', '#4f5864', '#646e7b', '#7e8896'], od: '#131715', ol: '#262c32', ln: '#343a42' },
     [ORANGE]: { r: ['#b87648', '#d8975f', '#f4bb8b', '#fcd2a8', '#ffe8cc'], od: '#6a3a1a', ol: '#9a5e34', ln: '#b0703e' },
     [MOUTH]:  { r: ['#6e4458', '#8e6076', '#ba91a4', '#cca6b6', '#dcbcc8'], od: '#3e1e2e', ol: '#5e3446', ln: '#5e3446' },
     [TONGUE]: { r: ['#b06882', '#c8849c', '#dea2b4', '#eebccb', '#fad8e0'], od: '#62203a', ol: '#82344e', ln: '#a04c66' },
@@ -50737,13 +50741,13 @@ const Swampert = (() => {
   const chestMat = stripe(0.38), neckMat = (s) => (s[0] > 0.3 && Math.abs(s[2]) < 0.62 ? C_BELLY : C_BODY);
 
   /* ---------- head (head frame: origin at the head centre) ---------- */
-  const HR = [34, 25, 40];
+  const HR = [37, 29, 43];
   const EYE_AZ = 0.46, EYE_V = 0.4;
   const mouthV = (az) => { const k = az / 1.2; return -0.2 + 0.26 * k * k; }; // very wide mouth, corners up
   // orange eyes as scale-aware decals: dark rim, orange iris, black pupil, white glint
   function eyePix(ea, eb, sd, kind) {
     const pu = 1 / (curScale * HR[2]), pv = 1 / (curScale * HR[1]);
-    const ru = Math.max(0.13, 2.2 * pu), rv = Math.max(0.17, 2.4 * pv);
+    const ru = Math.max(0.19, 2.6 * pu), rv = Math.max(0.25, 2.9 * pv);
     const x = ea / ru, y = eb / rv;
     if (Math.abs(x) > 1.2 || Math.abs(y) > 1.3) return 0;
     const lw = Math.max(0.16, (0.8 * pv) / rv);
@@ -50754,7 +50758,7 @@ const Swampert = (() => {
     if (d > 1) return 0;
     const gx = x + 0.3 * sd, gy = y - 0.42, gr = Math.max(0.24, (0.8 * pu) / ru);
     if (gx * gx + gy * gy < gr * gr) return C_SHINE;
-    const qx = (x - 0.08 * sd) / 0.34, qy = y / 0.66;
+    const qx = (x - 0.1 * sd) / 0.42, qy = (y + 0.05) / 0.7;
     if (qx * qx + qy * qy < 1) return C_EYE;
     const rim = Math.max(0.35, 1 - (1.1 * pu) / ru);
     return d < rim * rim ? C_IRIS : C_EYE;
@@ -50769,7 +50773,7 @@ const Swampert = (() => {
       }
       if (a < 1.35) {
         const vm = mouthV(az);
-        const h = mo * 0.6 * Math.max(0, 1 - (az / 1.2) ** 2);
+        const h = mo * 0.95 * Math.max(0, 1 - (az / 1.15) ** 1.6);
         if (h > 0.03 && v < vm && v > vm - h) return v < vm - h * 0.55 && a < 0.8 ? C_TONGUE : C_MOUTH;
         if (h <= 0.03 && a < 1.25) {
           const lw = Math.max(0.03, 0.65 / (curScale * HR[1]));
@@ -50784,12 +50788,14 @@ const Swampert = (() => {
   /* ---------- fins ---------- */
   // head fin (u = sideways/out, v = up; base at the origin): a tall, round-topped blade with ribs from the base
   const HFIN_P = [[-17, -4], [-24, 14], [-28, 36], [-27, 56], [-18, 71], [-2, 78], [15, 75], [26, 60], [30, 38], [25, 14], [15, -4], [0, -8]];
+  const HFS = 1.32; HFIN_P.forEach((q) => { q[0] *= HFS * 1.1; q[1] *= HFS; });
   const HFIN_G = bakeShape(Shape2D.poly(HFIN_P, C_FIN, 8));
-  const HFIN_RIB = [[[-8, 4], [-16, 32], [-17, 58]], [[0, 4], [-1, 40], [-1, 72]], [[8, 4], [15, 34], [18, 62]]].map((pl) => Shape2D.catmull(pl, false, 4));
+  const HFIN_RIB = [[[-8, 4], [-16, 32], [-17, 58]], [[0, 4], [-1, 40], [-1, 72]], [[8, 4], [15, 34], [18, 62]]].map((pl) => pl.map(([u, v]) => [u * HFS * 1.1, v * HFS])).map((pl) => Shape2D.catmull(pl, false, 4));
   // tail fin (tail frame: u back along the tail, v up; origin at the root): a huge sail rising behind the back
   const TFIN_P = [[-10, 4], [-12, 34], [-8, 64], [2, 90], [18, 104], [36, 103], [50, 88], [58, 64], [62, 38], [58, 14], [44, -4], [22, -8], [4, -6]];
+  const TFS = 1.3; TFIN_P.forEach((q) => { q[0] *= TFS; q[1] *= TFS; });
   const TFIN_G = bakeShape(Shape2D.poly(TFIN_P, C_FIN, 8));
-  const TFIN_RIB = [[[0, 8], [0, 50], [12, 94]], [[8, 6], [22, 50], [34, 96]], [[14, 4], [40, 38], [54, 70]]].map((pl) => Shape2D.catmull(pl, false, 4));
+  const TFIN_RIB = [[[0, 8], [0, 50], [12, 94]], [[8, 6], [22, 50], [34, 96]], [[14, 4], [40, 38], [54, 70]]].map((pl) => pl.map(([u, v]) => [u * TFS, v * TFS])).map((pl) => Shape2D.catmull(pl, false, 4));
   // cheek gill: a rounded base with three swept points (u = back/out, v = up)
   const GILL_SPIKES = [{ a: 0.85, len: 26, w: 6.5 }, { a: 0.08, len: 36, w: 7.5 }, { a: -0.62, len: 22, w: 6 }].map((s) => {
     const ca = Math.cos(s.a), sa = Math.sin(s.a), r0 = 3;
@@ -50808,7 +50814,7 @@ const Swampert = (() => {
     },
   });
 
-  const DEFAULT = { walk: 0, crouch: 0, roar: 0, mouth: 0, eyes: 'open', side: 1 };
+  const DEFAULT = { walk: 0, crouch: 0, roar: 0, mouth: 0.55, eyes: 'open', side: 1 };
   // 1 torso + neck + head, 2/3 head fins, 4/5 gills, 6/7 arms, 8/9 legs, 10 tail, 11 tail fin
   const PRI = { 1: 0, 2: 1, 3: 1, 4: 3, 5: 3, 6: 2, 7: 2, 8: 1, 9: 1, 10: 0, 11: -1 };
   const SIZE = 1.06;
@@ -50822,8 +50828,8 @@ const Swampert = (() => {
     const mo = Math.max(clamp(+P.mouth || 0, 0, 1), ro), side = clamp(P.side ?? 1, -1, 1);
     const bob = walking ? 3 * Math.abs(Math.cos(st)) : 0;
     const rock = walking ? 0.05 * Math.sin(st) : 0;
-    const lean = -0.55 + 0.1 * cr + 0.4 * ro;
-    const hipY = 62 - 24 * cr + bob + 4 * ro;
+    const lean = -0.72 + 0.1 * cr + 0.4 * ro;
+    const hipY = 52 - 18 * cr + bob + 4 * ro;
     // torso frame at the hip centre
     const body = chain(T(-6 + 6 * cr, hipY, 0), R(M3.rx(rock)), R(M3.rz(lean)));
 
@@ -50850,12 +50856,12 @@ const Swampert = (() => {
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 2 : 3;
       const base = inF(head, [-4, HR[1] * 0.64, sd * 23]);
-      const fl = 0.3 + 0.2 * ro; // splay outward: the two blades part in a V
+      const fl = 0.72 + 0.2 * ro; // splay outward: the two blades part in a V
       const f = chain({ t: base, L: head.L }, R(M3.rz(0.2)), R(M3.rx(sd * fl)), R(M3.ry(-sd * 0.42)), T(0, 0, sd * 3));
       // fin frame: u = sideways (z of head), v = up, normal = forward
       const F = { t: f.t, L: M3.mul(f.L, M3.cols([0, 0, sd], [0, 1, 0], [sd, 0, 0])) };
       prims.push(finEll(F, HFIN_G, 3.4, id, id, HFIN_RIB));
-      anchors[sd > 0 ? 'finN' : 'finF'] = inF(F, [-2, 78, 0]);
+      anchors[sd > 0 ? 'finN' : 'finF'] = inF(F, [-2, 78 * HFS, 0]);
     }
     anchors.top = [anchors.finN[0], Math.max(anchors.finN[1], anchors.finF[1]) + 2, 0];
 
@@ -50877,7 +50883,7 @@ const Swampert = (() => {
       const sh = inF(body, [6, 70, sd * 36]);
       prims.push(E(sh, M3.mul(body.L, M3.diag(17, 18, 16)), id, id, M_BODY)); // shoulder
       // wrist target: reaching down to the ground (stand), planted wide ahead (crouch), spread high (roar)
-      const wStand = [70 + swing, 22 + bob, sd * 66];
+      const wStand = [92 + swing, 18 + bob, sd * 84];
       const wCrouch = [104, 16, sd * 94];
       const wRoar = [36, 176, sd * 120];
       let wr = [lerp(wStand[0], wCrouch[0], cr), lerp(wStand[1], wCrouch[1], cr), lerp(wStand[2], wCrouch[2], cr)];
@@ -50894,8 +50900,8 @@ const Swampert = (() => {
       const fc = add(sc(add(el, wr), 0.5), sc(FY, -1));
       prims.push(ellAx(fc, FXo, FY, FZ, [16, len3(fd) / 2 + 4, 17], id, id, padMat(-0.62, 0.5, 0.72)));
       // hand: flat paw with three long fingers; lies on the ground ahead
-      const hdir = nrm([lerp(0.75, 1, cr), lerp(-0.62, -0.08, cr) + 0.9 * ro, sd * lerp(0.28, 0.45, cr)]);
-      const pn = nrm([lerp(0.1, 0, cr), lerp(0.6, 1, cr), -sd * lerp(0.7, 0.1, cr)]);
+      const hdir = nrm([lerp(0.92, 1, cr), lerp(-0.2, -0.08, cr) + 0.9 * ro, sd * lerp(0.28, 0.45, cr)]);
+      const pn = nrm([lerp(0.02, 0, cr), lerp(0.95, 1, cr), -sd * lerp(0.2, 0.1, cr)]);
       const [HX, HY, HZ] = frameAlong(hdir, pn);
       const hc = add(wr, sc(HY, 7));
       prims.push(ellAx(hc, HX, HY, HZ, [6.5, 12, 14], id, id, M_BODY));
@@ -50913,7 +50919,7 @@ const Swampert = (() => {
       const fwd = walking ? 16 * Math.sin(ph) : 0;
       const lift = walking ? 9 * Math.max(0, Math.cos(ph)) : 0;
       const hip = inF(body, [-2, 12, sd * 26]);
-      const ank = [-6 + fwd + 4 * cr, 12 + lift, sd * (46 + 12 * cr)];
+      const ank = [-12 + fwd + 4 * cr, 12 + lift, sd * (54 + 10 * cr)];
       const L = 36;
       const kn = joint(hip, ank, L, [1, 0.1, sd * 0.4]);
       const td = sub(kn, hip);
@@ -50933,10 +50939,10 @@ const Swampert = (() => {
     const wag = walking ? 0.12 * Math.sin(st) : 0;
     const tail = chain(body, T(-30, 14, 0), R(M3.ry(Math.PI + wag)), R(M3.rz(-0.35 - 0.2 * cr)));
     prims.push(ellF(chain(tail, T(14, 0, 0)), [24, 14, 14], 10, 10, M_BODY));
-    const tfin = chain(tail, T(0, 6, 0), R(M3.rz(0.3 + 0.25 * cr - 0.15 * ro)), R(M3.ry(-0.45 * side - 0.3)));
+    const tfin = chain(tail, T(0, 6, 0), R(M3.rz(0.3 + 0.25 * cr - 0.15 * ro)), R(M3.ry(-0.2 * side - 0.1)));
     prims.push(finEll(tfin, TFIN_G, 3.6, 11, 11, TFIN_RIB));
     anchors.tail = inF(tail, [4, 0, 0]);
-    anchors.tailTip = inF(tfin, [26, 104, 0]);
+    anchors.tailTip = inF(tfin, [26 * TFS, 104 * TFS, 0]);
 
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
     for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);

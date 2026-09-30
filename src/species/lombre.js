@@ -113,18 +113,19 @@ const Lombre = (() => {
     const fw = [Math.sin(az), 0, (sd ? 1 : -1) * Math.cos(az)];
     const u = (s[0] - q[0]) * fw[0] + (s[2] - q[2]) * fw[2], v = s[1] - q[1];
     const px = 1 / (curScale * HR[1]);
-    const ru = Math.max(0.3, 2.2 * px), rv = Math.max(0.27, 2.0 * px);
+    const ru = Math.max(0.32, 2.4 * px), rv = Math.max(0.32, 2.4 * px);
     if (kind === 'open') {
       // half-lidded: the upper part of the almond is covered by a flat lid, a dark lid line on top
-      const lid = 0.03 * rv, lw = Math.max(0.05, 0.8 * px);
+      const lid = 0.42 * rv, lw = Math.max(0.05, 0.8 * px);
       const a = u / ru, b = (v - lid * 0.5) / rv;
       if (a * a + b * b >= 1 || v > lid + lw) return 0;
       if (v > lid) return C_EYE;
       if (v < -0.62 * rv * Math.sqrt(Math.max(0, 1 - a * a)) - 0.3 * lw && a * a + b * b > 0.72) return C_EYE; // lower rim (only when big)
       // pupil: a black dot just under the lid, toward the beak
-      const pr = Math.max(0.085, 1.05 * px);
-      const pu = (u + 0.5 * ru) / pr, pv = (v - (lid - 0.9 * pr)) / (pr * 1.1);
-      return pu * pu + pv * pv < 1 ? C_EYE : C_EYEW;
+      const pr = Math.max(0.13, 1.4 * px);
+      const pu = (u + 0.28 * ru) / pr, pv = (v - (lid - 1.0 * pr)) / (pr * 1.15);
+      if (pu * pu + pv * pv < 1) { const gu = pu - 0.35, gv = pv - 0.3; return gu * gu + gv * gv < 0.16 && pr * curScale * HR[1] > 2.2 ? C_EYEW : C_EYE; }
+      return C_EYEW;
     }
     const w = Math.max(0.045, 0.72 * px), a = u / (ru * 0.95);
     if (Math.abs(a) > 1) return 0;
