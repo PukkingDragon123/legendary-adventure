@@ -77277,7 +77277,7 @@ const Cards = (() => {
   /* ---------- effects ---------- */
   const U2 = (G, who) => (who === 'you' ? G.you : G.them);
   const actor = (G, who) => (who === 'you' ? mk() : G.foe);
-  function pop(G, who, txt, col, big) { const m = actor(G, who); if (!m) return; const h = m.headPt(); G.pops.push({ x: m.x + rnd(-6, 6), y: h[1] - 4, txt: String(txt), col, t: 0, big: !!big }); }
+  function pop(G, who, txt, col, big) { const m = actor(G, who); if (!m) return; const h = m.headPt(); G.pops.push({ x: m.x + rnd(-8, 8), y: h[1] * 0.6 + m.y * 0.4 + rnd(-3, 3), txt: String(txt), col, t: 0, big: !!big }); }
   function dealDamage(G, from, to, base, o = {}) {
     const A = U2(G, from), D = U2(G, to);
     let dmg = base + (A.st.str || 0);
