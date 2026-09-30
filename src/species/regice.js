@@ -4,16 +4,17 @@
    Creature pipeline (src/creature.js, dev/CREATURE_GUIDE.md).
    Model space: x = forward, y = up, z = near side at yaw 0, ground at y = 0.
 
-   Design (official art): a golem of pale-blue Antarctic ice with a
-   faceted, crystalline surface. A big rounded egg-shaped body that is
-   head and torso in one, topped by a low faceted crest; on the upper
-   front, seven braille dots (2-3-2, a hexagon round a centre dot) that
-   serve as its eyes and light up yellow when it wakes. Heavy rounded
-   shoulders, long thick arms tapering to three blunt ice points, and
-   short stubby legs.
-   Facets: each ellipsoid's surface is split into large planar-looking
-   cells (nearest of a fixed set of directions) with a tone step per cell
-   and a light edge between cells; the ice is glossy.
+   Design (official art): a golem built of pale-blue ice crystals. The
+   body (head and torso in one) is a tall hexagonal crystal prism with a
+   bevelled base and a faceted pyramid top; on its upper front, seven
+   braille dots in a plus (a row of five crossed by a column of three)
+   serve as its eyes and light up yellow when it wakes. Each arm is a big
+   hexagonal crystal hanging from the shoulder, pointed at the top, with
+   four stubby crystal fingers; a thinner crystal juts up and back behind
+   each shoulder. It stands on a wide flat hexagonal ice slab with two
+   downward-pointing crystal spikes for legs.
+   Build: every crystal is a convex hull of hexagonal rings made of flat
+   facet plates (flat-shaded by the renderer); dots are small discs.
 
    Pose params:
      walk    radians  stiff waddle phase: the body rocks side to side with
@@ -31,191 +32,193 @@
             footN, footF.
 ------------------------------------------------------------------- */
 const Regice = (() => {
-  const { chain, T, R, code } = Creature;
+  const { code } = Creature;
 
   // ---- materials
   const ICE = 1, ICED = 2, DOT = 3, DOTD = 4, EDGE = 5;
   const MAT = { ICE, ICED, DOT, DOTD, EDGE };
   const PAL = Creature.palette({
-    [ICE]:  { r: ['#3f7fb2', '#65a6d6', '#98d0ee', '#c8ebfa', '#f2fcff'], od: '#1c4676', ol: '#3a74a6', ln: '#4f8cbe' },
-    [ICED]: { r: ['#356ea0', '#5694c6', '#84bee2', '#b2def4', '#e6f8ff'], od: '#1c4676', ol: '#3a74a6', ln: '#4f8cbe' },
-    [EDGE]: { r: ['#86b8dc', '#aad4ee', '#d4f0fc', '#eefaff', '#ffffff'], od: '#1c4676', ol: '#3a74a6', ln: '#4f8cbe' },
-    [DOT]:  { r: ['#b8820c', '#e2aa1a', '#fad036', '#ffe886', '#fff8d4'], od: '#6a4406', ol: '#8e6210', ln: '#7a520a' },
+    [ICE]:  { r: ['#5a92b4', '#80b9d7', '#a8d5ec', '#cdeaf8', '#f2fbff'], od: '#1f4a6e', ol: '#3c6f96', ln: '#4a7ea6' },
+    [ICED]: { r: ['#5089ac', '#74aed0', '#98cae6', '#bee2f4', '#e6f6fe'], od: '#1f4a6e', ol: '#3c6f96', ln: '#4a7ea6' },
+    [EDGE]: { r: ['#86b8dc', '#aad4ee', '#d4f0fc', '#eefaff', '#ffffff'], od: '#1f4a6e', ol: '#3c6f96', ln: '#4a7ea6' },
+    [DOT]:  { r: ['#b8860e', '#e2b01e', '#f8d23a', '#ffe886', '#fff8d4'], od: '#6a4406', ol: '#8e6210', ln: '#7a520a' },
     [DOTD]: { r: ['#1c2a3a', '#243548', '#2c4056', '#364c64', '#405872'], od: '#101a26', ol: '#1c2a3a', ln: '#1c2a3a' },
   });
-  const GLOSSY = { [ICE]: 1, [ICED]: 1 };
+  const GLOSSY = {};
   const LIT = ['#ffe070', '#fff09a', '#fff8c8', '#ffffee', '#ffffff'].map(PX.hex);
-  const C_ICE = code(ICE), C_EDGE = code(EDGE), C_DOT = code(DOT), C_DOTD = code(DOTD);
-  const FACET_C = [code(ICED, -1), code(ICE, 0), code(ICED, 0), code(ICE, 1), code(ICE, 0), code(ICED, 0)];
+  const C_ICE = code(ICE), C_ICED = code(ICED), C_DOT = code(DOT);
 
   // ---- helpers
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp = (a, b, t) => a + (b - a) * t;
   const add = V3.add, sub = V3.sub, sc = V3.scale, nrm = V3.norm, dot = V3.dot, cross = V3.cross;
   const len3 = (a) => Math.hypot(a[0], a[1], a[2]);
-  const inF = (f, p) => add(f.t, M3.v(f.L, p));
-  const E = (c, L, part, grp, mat) => ({ kind: 'ell', part, grp, c, L, mat });
-  const ellF = (f, r, part, grp, mat) => E(f.t, M3.mul(f.L, M3.diag(r[0], r[1], r[2])), part, grp, mat);
-  function seg(p0, p1, ry, rz, part, grp, mat, up = [1, 0, 0], over = 0.5) {
-    const d = sub(p1, p0), l = len3(d) || 1e-3;
-    const X = sc(d, 1 / l);
-    let Y = sub(up, sc(X, dot(up, X)));
-    if (len3(Y) < 1e-3) Y = cross([0, 0, 1], X);
-    Y = nrm(Y);
-    return E(sc(add(p0, p1), 0.5), M3.mul(M3.cols(X, Y, cross(X, Y)), M3.diag(l / 2 + Math.min(ry, rz) * over, ry, rz)), part, grp, mat);
-  }
 
-  let curScale = 1;
-
-  /* ---------- facets: nearest of a fixed direction set (flattened arrays for speed) ---------- */
-  function facetSet(seed, n) {
-    const D = [];
-    // golden-spiral points, jittered: irregular, crystal-like cells
-    let h = seed;
-    const rnd = () => { h = (h * 16807) % 2147483647; return h / 2147483647; };
+  /* ---------- flat facets (convex polygon plates from 3D vertices) ---------- */
+  const PAD = 0.5;
+  function convexShape(pts, m) {
+    let area = 0;
+    for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; area += a[0] * b[1] - b[0] * a[1]; }
+    const P = area < 0 ? pts.slice().reverse() : pts;
+    const n = P.length, EQ = new Float64Array(n * 3);
     for (let i = 0; i < n; i++) {
-      const y = 1 - (2 * (i + 0.5)) / n, r = Math.sqrt(1 - y * y), a = i * 2.39996 + rnd() * 0.5;
-      D.push(nrm([r * Math.cos(a) + (rnd() - 0.5) * 0.2, y, r * Math.sin(a) + (rnd() - 0.5) * 0.2]));
+      const a = P[i], b = P[(i + 1) % n];
+      const ex = b[0] - a[0], ey = b[1] - a[1], l = Math.hypot(ex, ey) || 1;
+      const nx = -ey / l, ny = ex / l;
+      EQ[i * 3] = nx; EQ[i * 3 + 1] = ny; EQ[i * 3 + 2] = PAD - (nx * a[0] + ny * a[1]);
     }
-    const f = new Float32Array(n * 3);
-    D.forEach((d, i) => { f[i * 3] = d[0]; f[i * 3 + 1] = d[1]; f[i * 3 + 2] = d[2]; });
-    const c = new Int32Array(n);
-    for (let i = 0; i < n; i++) c[i] = FACET_C[Math.floor(rnd() * FACET_C.length)];
-    return { f, c, n };
+    return {
+      bb: Shape2D.bbox(P, PAD + 0.3),
+      test(u, v) {
+        for (let i = 0; i < n * 3; i += 3) if (EQ[i] * u + EQ[i + 1] * v + EQ[i + 2] < 0) return 0;
+        return m;
+      },
+    };
   }
-  const FS = [facetSet(7, 20), facetSet(101, 12), facetSet(4242, 9)];
-  // facet material at unit-sphere point s (edge half-width w in dot units)
-  function facet(F, s, w) {
-    let b1 = -9, b2 = -9, i1 = 0;
-    const f = F.f;
-    for (let i = 0; i < F.n; i++) {
-      const d = f[i * 3] * s[0] + f[i * 3 + 1] * s[1] + f[i * 3 + 2] * s[2];
-      if (d > b1) { b2 = b1; b1 = d; i1 = i; } else if (d > b2) b2 = d;
-    }
-    return b1 - b2 < w ? C_EDGE : F.c[i1];
+  function facet(vs, part, m) {
+    // drop repeated vertices (pointed ends)
+    const q = [];
+    for (const v of vs) if (!q.length || len3(sub(v, q[q.length - 1])) > 1e-3) q.push(v);
+    if (q.length > 2 && len3(sub(q[0], q[q.length - 1])) < 1e-3) q.pop();
+    if (q.length < 3) return null;
+    const o = q[0], e1 = sub(q[1], o), e2 = sub(q[q.length - 1], o);
+    const nz = nrm(cross(e1, e2)), u = nrm(e1), v = cross(nz, u);
+    const pts = q.map((p) => { const d = sub(p, o); return [dot(d, u), dot(d, v)]; });
+    return { kind: 'plate', part, grp: part, c: o, L: M3.cols(u, v, nz), shape: convexShape(pts, m), thick: 1.2 };
   }
-  const facetMat = (F, r) => (s) => facet(F, s, Math.max(0.018, 0.5 / (curScale * r)));
-
-  /* ---------- the dot face (body local sphere) ---------- */
-  const BODY_R = [98, 126, 104];
-  const FACE = nrm([0.86, 0.5, 0]); // face centre direction on the body sphere
-  const FY = nrm(sub([0, 1, 0], sc(FACE, FACE[1])));
-  const FZ = cross(FACE, FY); // toward +z
-  const DX = 0.2, DY = 0.17;
-  // 2-3-2: a hexagon round a centre dot
-  const DOTS = [[-0.5, 1], [0.5, 1], [-1, 0], [0, 0], [1, 0], [-0.5, -1], [0.5, -1]].map(([a, b]) => [a * DX, b * DY]);
-  let dotOn = true;
-  function bodyMat(s) {
-    const df = s[0] * FACE[0] + s[1] * FACE[1] + s[2] * FACE[2];
-    if (df > 0.8) {
-      const d = [s[0] - FACE[0], s[1] - FACE[1], s[2] - FACE[2]];
-      const u = d[0] * FZ[0] + d[1] * FZ[1] + d[2] * FZ[2], v = d[0] * FY[0] + d[1] * FY[1] + d[2] * FY[2];
-      const rr = Math.max(0.058, 1.4 / (curScale * BODY_R[1] * SIZE));
-      for (let i = 0; i < 7; i++) {
-        const du = u - DOTS[i][0], dv = v - DOTS[i][1];
-        if (du * du + dv * dv < rr * rr) return dotOn ? C_DOT : C_DOTD;
+  // a hexagonal ring: centre c, axes U (to the first flat side) and V, radii a (along U) and b (along V)
+  function ring(c, U, V, a, b, n = 6, ph = Math.PI / 6) {
+    const r = [];
+    for (let k = 0; k < n; k++) { const t = ph + (k * 2 * Math.PI) / n; r.push(add(c, add(sc(U, a * Math.cos(t)), sc(V, b * Math.sin(t))))); }
+    return r;
+  }
+  // convex crystal: consecutive rings joined by quads, the end rings capped
+  function hull(out, rings, part, mats) {
+    const n = rings[0].length;
+    for (let j = 0; j + 1 < rings.length; j++)
+      for (let k = 0; k < n; k++) {
+        const f = facet([rings[j][k], rings[j][(k + 1) % n], rings[j + 1][(k + 1) % n], rings[j + 1][k]], part, mats[(k + j) % mats.length]);
+        if (f) out.push(f);
       }
-      // smooth ice around the face so the dots read cleanly
-      if (Math.abs(u) < DX * 1.35 && Math.abs(v) < DY * 1.5) return C_ICE;
-    }
-    return facet(FS[0], s, Math.max(0.018, 0.5 / (curScale * BODY_R[1])));
+    for (const r of [rings[0], rings[rings.length - 1]]) { const f = facet(r, part, C_ICE); if (f) out.push(f); }
+  }
+  // a crystal along axis d from p (profile: [t, radius] pairs)
+  function crystal(out, p, d, prof, part, mats, up = [0, 1, 0], squash = 1, ph) {
+    d = nrm(d);
+    let U = sub(up, sc(d, dot(up, d)));
+    if (len3(U) < 1e-3) U = cross(d, [0, 0, 1]);
+    U = nrm(U); const V = cross(d, U);
+    hull(out, prof.map(([t, r]) => ring(add(p, sc(d, t)), U, V, r * squash, r, 6, ph)), part, mats);
+  }
+  function disc(c, n, r, part, m) {
+    let U = cross(n, [0, 1, 0]);
+    if (len3(U) < 1e-3) U = [1, 0, 0];
+    U = nrm(U); const V = cross(n, U);
+    const pts = []; for (let k = 0; k < 10; k++) { const t = (k * Math.PI) / 5; pts.push([r * Math.cos(t), r * Math.sin(t)]); }
+    return { kind: 'plate', part, grp: part, c, L: M3.cols(U, V, n), shape: convexShape(pts, m), thick: 1.2 };
   }
 
+  const MI = [C_ICE, C_ICED];            // alternate side tones: reads as separate crystal faces
   const DEFAULT = { walk: 0, glow: 0, awake: 1, arms: 0, eyes: 'open', mouth: 0, side: 1 };
-  // 1 body, 2 crest, 3/4 shoulders+arms, 5/6 legs
-  const SIZE = 0.95;
-  const PRI = { 1: 0, 2: 1, 3: 2, 4: 1, 5: 1, 6: 1 };
+  // 1 body, 2 slab, 3/4 arms, 5/6 legs, 7/8 back crystals, 9 dots
+  const PRI = { 1: 1, 2: 0, 3: 2, 4: 1, 5: 0, 6: 0, 7: 0, 8: 0, 9: 3 };
+
+  // body profile (y, radius along x (front/back), radius along z)
+  const BODY = [[92, 50, 56], [112, 62, 68], [246, 64, 70], [272, 52, 58], [304, 14, 16], [310, 4, 5]];
+  const FRONT = 63.2; // distance of the flat front face from the axis (y 112..246)
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [], anchors = {};
     const wk = +P.walk || 0, walking = wk !== 0;
-    const am = clamp(+P.arms || 0, 0, 1);
-    const sam = am * am * (3 - 2 * am);
-    const roll = walking ? 0.09 * Math.sin(wk) : 0;
-    const twist = walking ? 0.05 * Math.sin(wk) : 0;
+    const am = clamp(+P.arms || 0, 0, 1), sam = am * am * (3 - 2 * am);
+    const roll = walking ? 0.08 * Math.sin(wk) : 0;
     const bob = walking ? 3 * Math.abs(Math.sin(wk)) : 0;
-    // body frame: pivots about the planted foot side while waddling
-    const B = chain(T(0, bob, 0), R(M3.ry(twist)), T(0, 0, -Math.sign(roll) * 0), R(M3.rx(roll)));
+    const BL = M3.mul(M3.ry(walking ? 0.05 * Math.sin(wk) : 0), M3.rx(roll));
+    const Bp = (p) => add([0, bob, 0], M3.v(BL, p));
+    const Bd = (d) => M3.v(BL, d);
+    const X = Bd([1, 0, 0]), Y = Bd([0, 1, 0]), Z = Bd([0, 0, 1]);
 
-    /* --- body: one big faceted egg, the dot face on the upper front --- */
-    const bf = chain(B, T(0, 184, 0), R(M3.rz(-0.06)));
-    const bodyPrim = ellF(bf, BODY_R, 1, 1, bodyMat);
-    prims.push(bodyPrim);
-    anchors.body = inF(bf, [0, 0, 0]);
-    // lower body bulge (slightly wider hips)
-    prims.push(ellF(chain(B, T(-4, 104, 0)), [86, 58, 96], 1, 1, facetMat(FS[1], 70)));
-    // crest: a low faceted ridge over the top, front to back
-    const cf = chain(bf, T(-6, 110, 0), R(M3.rz(0.1)));
-    prims.push(ellF(cf, [70, 26, 42], 2, 2, facetMat(FS[2], 36)));
-    anchors.top = inF(cf, [0, 26, 0]);
-    anchors.head = inF(bf, [BODY_R[0] * FACE[0], BODY_R[1] * FACE[1], 0]);
-    anchors.mouth = anchors.head;
-    const dotP = (u) => inF(bf, [BODY_R[0] * (FACE[0] + FZ[0] * u), BODY_R[1] * (FACE[1] + FZ[1] * u), BODY_R[2] * (FACE[2] + FZ[2] * u)]);
-    anchors.eyeN = dotP(DX); anchors.eyeF = dotP(-DX);
+    /* --- body: a tall hexagonal crystal with a flat face to the front --- */
+    hull(prims, BODY.map(([y, a, b]) => ring(Bp([0, y, 0]), X, Z, a / Math.cos(Math.PI / 6), b / Math.cos(Math.PI / 6), 6, Math.PI / 6)), 1, [C_ICE, C_ICED, C_ICED, C_ICE, C_ICED, C_ICED]);
+    anchors.body = Bp([0, 180, 0]);
+    anchors.top = Bp([0, 310, 0]);
 
-    /* --- shoulders and arms --- */
-    for (const sd of [1, -1]) {
-      const id = sd > 0 ? 3 : 4;
-      const ph = wk + (sd > 0 ? Math.PI : 0);
-      const sw = walking ? 0.07 * Math.sin(ph) : 0;
-      const sh = inF(B, [0, 212, sd * 98]);
-      prims.push(ellF(chain(T(...sh), R(M3.rx(sd * 0.2))), [50, 52, 46], id, id, facetMat(FS[2], 48)));
-      // arm direction: hanging slightly out and forward → raised forward/up
-      const ang = lerp(0.12 + sw, 1.75, sam); // angle from straight down toward forward
-      const out = lerp(0.3, 0.12, sam);
-      const d = nrm([Math.sin(ang), -Math.cos(ang), sd * out]);
-      const el = add(sh, sc(d, 88));
-      const hand = add(el, sc(d, 62));
-      prims.push(seg(add(sh, sc(d, 10)), el, 42, 40, id, id, facetMat(FS[1], 40)));
-      prims.push(seg(el, hand, 34, 32, id, id, facetMat(FS[0], 34)));
-      // three blunt ice points
-      const X = nrm(cross(d, [0, 0, 1])), Z = nrm(cross(X, d));
-      for (const [a, b] of [[0.9, 0], [-0.5, 0.8], [-0.5, -0.8]]) {
-        const o = add(hand, add(sc(X, a * 16), sc(Z, b * 16)));
-        prims.push(seg(o, add(o, add(sc(d, 36), add(sc(X, a * 6), sc(Z, b * 6)))), 13, 13, id, id, facetMat(FS[2], 14), X, 0.35));
+    /* --- braille: a plus of seven dots on the upper front face --- */
+    const DY = 224, DS = 16, DR = 6.6;
+    const dots = [[-2, 0], [-1, 0], [0, 0], [1, 0], [2, 0], [0, 1], [0, -1]];
+    for (const [u, v] of dots) {
+      // the outer dots of the row wrap onto the angled side faces
+      const au = Math.abs(u);
+      let c, n;
+      if (au < 2) { c = [FRONT + 0.8, DY + v * DS, u * DS]; n = [1, 0, 0]; }
+      else {
+        const th = Math.sign(u) * Math.PI / 3, e = [FRONT, DY, Math.sign(u) * 38.5];
+        n = [Math.cos(th), 0, Math.sin(th)];
+        const along = [-Math.sin(th), 0, Math.cos(th)];
+        c = add(add(e, sc(along, 10)), sc(n, 0.8));
       }
-      anchors[sd > 0 ? 'handN' : 'handF'] = add(hand, sc(d, 40));
+      prims.push(disc(Bp(c), Bd(n), DR, 9, C_DOT));
     }
+    anchors.head = Bp([FRONT, DY, 0]);
+    anchors.mouth = anchors.head;
+    anchors.eyeN = Bp([FRONT, DY, DS]); anchors.eyeF = Bp([FRONT, DY, -DS]);
 
-    /* --- legs: short and stubby; lift in turn when waddling --- */
+    /* --- slab and spike legs --- */
+    hull(prims, [[44, 70, 96], [58, 74, 102], [80, 70, 96]].map(([y, a, b]) => ring(Bp([0, y, 0]), X, Z, a, b, 6, 0)), 2, MI);
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 5 : 6;
       const ph = wk + (sd > 0 ? 0 : Math.PI);
-      const lift = walking ? 10 * Math.max(0, Math.sin(ph)) : 0;
-      const fwd = walking ? 8 * Math.cos(ph) : 0;
-      const hip = inF(B, [0, 70, sd * 54]);
-      const ank = [8 + fwd, 18 + lift, sd * 60];
-      prims.push(seg(hip, ank, 38, 36, id, id, facetMat(FS[1], 38), [1, 0, 0], 0.4));
-      prims.push(ellF(T(ank[0] + 8, ank[1] - 4, ank[2]), [40, 16, 34], id, id, facetMat(FS[2], 30)));
-      anchors[sd > 0 ? 'footN' : 'footF'] = [ank[0] + 8, ank[1] - 20, ank[2]];
+      const lift = walking ? 6 * Math.max(0, Math.sin(ph)) : 0;
+      const base = Bp([4, 50 + lift, sd * 56]);
+      crystal(prims, base, Bd([0.05, -1, sd * 0.1]), [[0, 22], [20, 20], [50 + lift * 0.3, 0]], id, MI, [1, 0, 0]);
+      anchors[sd > 0 ? 'footN' : 'footF'] = add(base, Bd([2, -50, sd * 5]));
     }
-    for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
-    for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
-    return { prims, stamps: [], dots: [], anchors, pose: P, headPrim: bodyPrim, pri: PRI, glossy: GLOSSY, baseMat: ICE, shadowSteps: 0 };
+
+    /* --- arms: big crystals from the shoulders, four stubby fingers --- */
+    for (const sd of [1, -1]) {
+      const id = sd > 0 ? 3 : 4;
+      const ph = wk + (sd > 0 ? Math.PI : 0);
+      const sw = walking ? 0.08 * Math.sin(ph) : 0;
+      const sh = Bp([4, 238, sd * 88]);
+      const ang = lerp(0.12 + sw, 1.6, sam);
+      const out = lerp(0.55, 0.18, sam);
+      const d = nrm(Bd([Math.sin(ang), -Math.cos(ang), sd * out]));
+      crystal(prims, sh, d, [[-34, 0], [-6, 36], [118, 38], [138, 26]], id, [C_ICED, C_ICE], Bd([0, 0, sd]), 0.92);
+      const wr = add(sh, sc(d, 136));
+      let Uh = nrm(sub(Bd([0, 0, sd]), sc(d, dot(Bd([0, 0, sd]), d)))); const Vh = cross(d, Uh);
+      // fingers: three along the bottom, a thumb to the front
+      const fing = [[0.55, -0.55, 1], [0.95, 0.05, 1], [0.5, 0.65, 0.9], [-0.45, 1, 0.8]];
+      for (const [a, b, l] of fing) {
+        const o = add(wr, add(sc(Uh, a * 18), sc(Vh, b * 18 * sd)));
+        const fd = nrm(add(sc(d, 1), add(sc(Uh, a * 0.5), sc(Vh, b * 0.45 * sd))));
+        crystal(prims, o, fd, [[-6, 12], [22 * l, 12], [33 * l, 5]], id, MI, Uh);
+      }
+      anchors[sd > 0 ? 'handN' : 'handF'] = add(wr, sc(d, 34));
+      // back crystal behind the shoulder, pointing up and out
+      crystal(prims, Bp([-34, 232, sd * 58]), Bd([-0.35, 0.75, sd * 0.62]), [[0, 20], [62, 20], [84, 0]], sd > 0 ? 7 : 8, MI, Bd([1, 0, 0]));
+    }
+    return { prims, stamps: [], dots: [], anchors, pose: P, pri: PRI, glossy: GLOSSY, baseMat: ICE, shadowSteps: 12, shadowDepth: 40 };
   }
 
   function render(model, opt) {
-    curScale = opt.scale || 1;
     const P = model.pose;
     const aw = clamp(P.awake ?? 1, 0, 1);
     const dim = P.eyes === 'closed' ? 1 : P.eyes === 'blink' ? 0.7 : 0;
     const on = aw * (1 - dim);
-    dotOn = true;
     let pal = opt.pal || PAL;
     // dots: dormant dark → active yellow → glowing white-yellow
     const g = clamp(P.glow || 0, 0, 1) * on;
     const D = pal[DOT], K = pal[DOTD];
     const ramp = (i) => PX.mix(PX.mix(K.r[i], D.r[i], on), LIT[i], g);
-    const dotPal = { r: [0, 1, 2, 3, 4].map((i) => ramp(Math.min(4, i + (g > 0.5 ? 1 : 0)))), od: PX.mix(K.od, D.od, on), ol: PX.mix(K.ol, PX.mix(D.ol, LIT[0], g), on), ln: PX.mix(K.ln, D.ln, on) };
+    const dotPal = { r: [0, 1, 2, 3, 4].map((i) => ramp(Math.min(4, i + 1 + (g > 0.5 ? 1 : 0)))), od: PX.mix(K.od, D.od, on), ol: PX.mix(K.ol, PX.mix(D.ol, LIT[0], g), on), ln: PX.mix(K.ln, D.ln, on) };
     pal = Object.assign({}, pal, { [DOT]: dotPal });
     if (aw < 1) {
-      // dormant: the ice is a little duller
       const dull = (e) => ({ r: e.r.map((c) => PX.mix(c, e.r[0], (1 - aw) * 0.25)), od: e.od, ol: e.ol, ln: e.ln });
       pal = Object.assign({}, pal, { [ICE]: dull(pal[ICE]), [ICED]: dull(pal[ICED]), [EDGE]: dull(pal[EDGE]) });
     }
     return Creature.render(model, Object.assign({}, opt, { pal }));
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.8, bw: 480, bh: 360, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.8, bw: 480, bh: 380, oy: 0.9 } };
 })();

@@ -113,7 +113,7 @@ const Swampert = (() => {
   const upMat = (s) => (s[1] < -0.02 ? 0 : bellyAt(TR[0] * s[0], EQ + TR_UP * s[1], TR[2] * s[2]) ? C_BELLY : C_BODY);
 
   /* ---------- head (head frame: origin at the head centre) ---------- */
-  const HR = [48, 34, 54];
+  const HR = [52, 35, 60];
   const EYE_AZ = 0.5, EYE_V = 0.46;
   const mouthV = (az) => { const k = az / 1.25; return -0.12 + 0.2 * k * k; }; // very wide mouth, corners up
   // small orange eyes as scale-aware decals: dark rim, orange iris, black pupil, white glint
@@ -167,12 +167,12 @@ const Swampert = (() => {
   const TFIN_G = bakeShape(Shape2D.poly(TFIN_P, C_FIN, 8));
   const TFIN_RIB = [[[2, 8], [4, 48], [12, 84]], [[6, 6], [20, 50], [36, 94]], [[10, 4], [36, 40], [58, 80]], [[14, 2], [44, 20], [66, 44]]].map((pl) => Shape2D.catmull(pl, false, 4));
   // cheek gill: a fan with three swept points (u = back/out, v = up)
-  const GILL_SPIKES = [{ a: 0.7, len: 30, w: 8 }, { a: 0.05, len: 36, w: 8.5 }, { a: -0.6, len: 24, w: 7 }].map((s) => {
+  const GILL_SPIKES = [{ a: 0.75, len: 40, w: 9 }, { a: 0.05, len: 50, w: 10 }, { a: -0.65, len: 34, w: 8.5 }].map((s) => {
     const ca = Math.cos(s.a), sa = Math.sin(s.a), r0 = 4;
     return { tip: [ca * s.len, sa * s.len], b1: [ca * r0 - sa * s.w, sa * r0 + ca * s.w], b2: [ca * r0 + sa * s.w, sa * r0 - ca * s.w], root: [ca * r0, sa * r0], dir: [ca, sa] };
   });
   const GILL_G = bakeShape({
-    bb: [-12, -20, 38, 26],
+    bb: [-14, -34, 54, 38],
     test(u, v) {
       for (const s of GILL_SPIKES) {
         if (Shape2D.inTri(u, v, s.tip, s.b1, s.b2)) {
@@ -198,8 +198,8 @@ const Swampert = (() => {
     const mo = Math.max(clamp(+P.mouth || 0, 0, 1), ro), side = clamp(P.side ?? 1, -1, 1);
     const bob = walking ? 3 * Math.abs(Math.cos(st)) : 0;
     const rock = walking ? 0.05 * Math.sin(st) : 0;
-    const lean = -0.36 - 0.5 * cr + 0.34 * ro;
-    const hipY = 62 - 20 * cr + bob + 4 * ro;
+    const lean = -0.62 - 0.3 * cr + 0.34 * ro;
+    const hipY = 50 - 12 * cr + bob + 4 * ro;
     // torso frame at the hip centre
     const body = chain(T(-6 + 8 * cr, hipY, 0), R(M3.rx(rock)), R(M3.rz(lean)));
 
@@ -227,7 +227,7 @@ const Swampert = (() => {
       const id = sd > 0 ? 2 : 3;
       const base = onHead(sd * 1.0, 0.6).p;
       const fl = 0.22 + 0.2 * ro;
-      const U = dirF(head, [-0.38, 0, 0.92 * sd]);
+      const U = dirF(head, [-0.6, 0, 0.8 * sd]);
       const up0 = dirF(head, [-0.12, 1, 0]);
       const Vv = nrm(add(sc(up0, Math.cos(fl)), sc(U, Math.sin(fl))));
       const Uu = nrm(sub(U, sc(Vv, dot(U, Vv))));
@@ -256,7 +256,7 @@ const Swampert = (() => {
       const sh = inF(body, [10, 80, sd * 50]);
       prims.push(E(sh, M3.mul(body.L, M3.diag(26, 26, 24)), id, id, M_BODY)); // deltoid
       // wrist target: hanging by the knees (stand), planted ahead on the ground (crouch), spread high (roar)
-      const wStand = [62 + swing, 34 + bob, sd * 80];
+      const wStand = [74 + swing, 16 + bob, sd * 104];
       const wCrouch = [96, 14, sd * 74];
       const wRoar = [34, 150, sd * 118];
       let wr = [lerp(wStand[0], wCrouch[0], cr), lerp(wStand[1], wCrouch[1], cr), lerp(wStand[2], wCrouch[2], cr)];
@@ -291,7 +291,7 @@ const Swampert = (() => {
       const fwd = walking ? 16 * Math.sin(ph) : 0;
       const lift = walking ? 9 * Math.max(0, Math.cos(ph)) : 0;
       const hip = inF(body, [0, 10, sd * 30]);
-      const ank = [8 + fwd + 6 * cr, 12 + lift, sd * (40 + 6 * cr)];
+      const ank = [4 + fwd + 6 * cr, 12 + lift, sd * (52 + 6 * cr)];
       const L = 34;
       const kn = joint(hip, ank, L, [1, 0, sd * 0.35]);
       const td = sub(kn, hip);
@@ -310,7 +310,7 @@ const Swampert = (() => {
     const wag = walking ? 0.12 * Math.sin(st) : 0;
     const tail = chain(body, T(-40, 16, 0), R(M3.ry(Math.PI + wag)), R(M3.rz(-0.1 - 0.2 * cr)));
     prims.push(ellF(chain(tail, T(14, 0, 0)), [26, 17, 17], 10, 10, M_BODY));
-    const tfin = chain(tail, T(4, 6, 0), R(M3.rz(0.1 + 0.25 * cr - 0.15 * ro)), R(M3.ry(-0.3 * side)));
+    const tfin = chain(tail, T(4, 6, 0), R(M3.rz(0.1 + 0.25 * cr - 0.15 * ro)), R(M3.ry(-0.45 * side)));
     prims.push(Object.assign(PL(tfin.t, tfin.L, 11, 11, TFIN_G, 3.2), { lines: TFIN_RIB.map((pl) => ({ pts: pl.map(([u, v]) => [u, v, 0]), mat: FIN, useLn: true })) }));
     anchors.tail = inF(tail, [4, 0, 0]);
     anchors.tailTip = inF(tfin, [40, 100, 0]);

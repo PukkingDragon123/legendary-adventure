@@ -38,13 +38,13 @@ const Wobbuffet = (() => {
   const BLUE = 1, BLACK = 2, WHITE = 3, INK = 4, LIP = 5, MOUTH = 6, TONGUE = 7;
   const MAT = { BLUE, BLACK, WHITE, INK, LIP, MOUTH, TONGUE };
   const PAL = Creature.palette({
-    [BLUE]:   { r: ['#2f6cb8', '#4a8cd6', '#68ace8', '#92c8f4', '#c8e6ff'], od: '#173c7a', ol: '#2e64aa', ln: '#2e62a6' },
+    [BLUE]:   { r: ['#2c74a8', '#3f92c8', '#56abde', '#7cc4ec', '#b0e0f8'], od: '#143e62', ol: '#2a6a9a', ln: '#2a6a9a' },
     [BLACK]:  { r: ['#15161c', '#1f2029', '#2c2e3a', '#3e4150', '#5c6070'], od: '#08080c', ol: '#15161c', ln: '#101118' },
     [WHITE]:  { r: ['#c6ccd8', '#e4e8f0', '#fbfcfe', '#ffffff', '#ffffff'], od: '#4a5060', ol: '#7a8090', ln: '#7a8090' },
     [INK]:    { r: ['#0e1420', '#121a28', '#182232', '#202c40', '#2a384e'], od: '#060a12', ol: '#0e1420', ln: '#0e1420' },
     [LIP]:    { r: ['#b8466a', '#d6628a', '#ee86a6', '#f8a8c0', '#ffd0de'], od: '#681634', ol: '#9a2e52', ln: '#9a2e52' },
-    [MOUTH]:  { r: ['#4a0e1e', '#62162a', '#7c2236', '#963044', '#ae4254'], od: '#2c060e', ol: '#4a0e1e', ln: '#4a0e1e' },
-    [TONGUE]: { r: ['#c24c68', '#dc6882', '#f08aa0', '#ffaec0', '#ffd4de'], od: '#6a1430', ol: '#94203e', ln: '#94203e' },
+    [MOUTH]:  { r: ['#6a2a36', '#843842', '#9c4a52', '#b25c62', '#c47074'], od: '#3a121a', ol: '#5a1e28', ln: '#5a1e28' },
+    [TONGUE]: { r: ['#c45a64', '#da747a', '#ec9294', '#f8b0b0', '#ffd0cc'], od: '#6a1e28', ol: '#94303a', ln: '#94303a' },
   });
   const GLOSSY = {};
   const C_BLUE = code(BLUE), C_BLUE_D = code(BLUE, -1), C_BLACK = code(BLACK), C_WHITE = code(WHITE), C_INK = code(INK);
@@ -84,18 +84,20 @@ const Wobbuffet = (() => {
   let curScale = 1;
 
   /* ---------- head decals (head frame, unit sphere s) ---------- */
-  const HR = [52, 57, 58];
-  const EYE_AZ = 0.36, EYE_V = 0.38, EYE_HW = 0.19;
-  const MO_V = 0.0, MO_HW = 0.5, MO_H = 0.2;
-  function eyePix(u, v, kind, px) {
+  const HR = [54, 66, 56];
+  const EYE_AZ = 0.42, EYE_V = 0.52, EYE_HW = 0.15;
+  const MO_V = 0.2, MO_HW = 0.62, MO_H = 0.2;
+  function eyePix(u, v, kind, px, sd = 1) {
     const k = u / EYE_HW;
     if (Math.abs(k) > 1.05) return 0;
     const lw = Math.max(0.028, 0.6 * px);
     if (kind === 'open') {
-      // squinting slit: a thick black lens, slightly arched
-      const yc = 0.02 * (1 - k * k);
-      const h = Math.max(lw * 1.2, 0.055) * Math.sqrt(Math.max(0, 1 - k * k)) + lw * 0.3;
-      return Math.abs(k) < 1 && Math.abs(v - yc) < h ? C_INK : 0;
+      // tightly shut '>' '<' chevrons (point toward the nose)
+      const t = (1 - k * sd) / 2;                 // 0 outer … 1 inner (the point)
+      if (t < 0 || t > 1) return 0;
+      const yc = 0.1 * (1 - t);
+      const w = Math.max(0.035, 0.9 * px);
+      return Math.abs(Math.abs(v) - yc) < w && Math.abs(v) < 0.1 + w ? C_INK : 0;
     }
     let yc;
     if (kind === 'happy') yc = -0.04 + 0.09 * (1 - k * k);
@@ -110,32 +112,29 @@ const Wobbuffet = (() => {
       const cv = Math.sqrt(Math.max(0, 1 - s[1] * s[1]));
       const az = Math.atan2(s[2], s[0]);
       const sd = az >= 0 ? 1 : -1;
-      const e = eyePix((az - sd * EYE_AZ) * cv, s[1] - EYE_V, kind, px);
+      const e = eyePix((az - sd * EYE_AZ) * cv, s[1] - EYE_V, kind, px, sd);
       if (e) return e;
-      // wide pink-lipped mouth
+      // huge open mouth, the upper edge a zig-zag of little teeth
       const u = az * cv;
       const k = u / MO_HW;
-      if (Math.abs(k) < 1.1) {
-        const lipW = Math.max(0.05, 1.5 * px);
-        const oh = MO_H * (0.55 + 0.45 * mo);                  // outer lip half-height
-        const b = (s[1] - (MO_V - 0.5 * oh * mo)) / (oh + 0.5 * oh * mo);
-        const r2 = k * k + b * b;
-        if (r2 < 1) {
-          // inner opening
-          const ih = Math.max(0, (oh - lipW) * mo * 1.2);
-          const iw = MO_HW - lipW * 1.3;
-          const ik = u / iw, ib = ih > 0 ? (s[1] - (MO_V - 0.5 * oh * mo)) / ih : 9;
-          if (mo > 0.05 && ik * ik + ib * ib < 1) return ib < -0.35 && Math.abs(ik) < 0.65 ? C_TONGUE : C_MOUTH;
-          // closed: the parting line between the lips
-          if (mo <= 0.05 && Math.abs(s[1] - MO_V) < Math.max(0.018, 0.5 * px) && Math.abs(k) < 0.92) return C_LIP_D;
-          return C_LIP;
-        }
+      if (Math.abs(k) < 1) {
+        const lw = Math.max(0.025, 0.6 * px);
+        const zz = Math.abs(((k * 2.5 + 0.5) % 1 + 1) % 1 - 0.5) * 2;   // 0..1 triangle wave
+        const top = MO_V + 0.05 - 0.09 * zz;
+        if (mo > 0.05) {
+          const depth = MO_H * 3.6 * mo * Math.sqrt(Math.max(0, 1 - k * k));
+          const bot = MO_V + 0.05 - depth;
+          if (s[1] < top && s[1] > bot) {
+            const tb = (s[1] - bot) / Math.max(0.01, depth * 0.5), tk = k / 0.62;
+            return tb * tb + tk * tk < 1 ? C_TONGUE : C_MOUTH;
+          }
+        } else if (Math.abs(s[1] - MO_V) < lw && Math.abs(k) < 0.8) return C_INK;
       }
       return C_BLUE;
     };
   }
   // tail head: black, with two big white eyes and black pupils (both faces)
-  const TH_R = [21, 20, 17];
+  const TH_R = [24, 23, 20];
   function tailHeadMat(s) {
     if (s[0] < 0.05) return C_BLACK;
     const az = Math.atan2(s[2], s[0]), cv = Math.sqrt(Math.max(0, 1 - s[1] * s[1]));
@@ -152,7 +151,7 @@ const Wobbuffet = (() => {
     return C_BLACK;
   }
 
-  const DEFAULT = { eyes: 'open', mouth: 0, walk: 0, sway: 0, salute: 0, squish: 0, side: 1 };
+  const DEFAULT = { eyes: 'open', mouth: 0.85, walk: 0, sway: 0, salute: 0, squish: 0, side: 1 };
   const PRI = {};
   for (let i = 1; i < 24; i++) PRI[i] = 0;
   // 1 body (head + lower body, one group), 2/3 arms, 4/5 feet, 6 tail, 7 tail head
@@ -173,11 +172,11 @@ const Wobbuffet = (() => {
     const root = chain({ L: M3.diag(1 + 0.22 * sq, 1 - 0.3 * sq, 1 + 0.22 * sq), t: [0, bob, 0] }, R(M3.rx(lean)));
 
     // --- the blob: heavy lower body + round head, merged in one contour group
-    const bodyF = chain(root, T(0, 84, 0));
-    prims.push(ellF(bodyF, [60, 86, 66], 1, 1, (s) => (s[1] < -0.93 ? C_BLUE_D : C_BLUE)));
+    const bodyF = chain(root, T(0, 82, 0));
+    prims.push(ellF(bodyF, [68, 82, 74], 1, 1, (s) => (s[1] < -0.93 ? C_BLUE_D : C_BLUE)));
     // neck filler so head and body read as one smooth blob
-    prims.push(ellF(chain(root, T(2, 138, 0)), [55, 44, 61], 1, 1, M_BLUE));
-    const hf = chain(root, T(4, 170, 0), R(M3.rx(-0.3 * lean)), R(M3.rz(walking ? 0.02 * Math.sin(2 * wk) : 0)));
+    prims.push(ellF(chain(root, T(-4, 128, 0)), [52, 50, 64], 1, 1, M_BLUE));
+    const hf = chain(root, T(8, 160, 0), R(M3.rx(-0.3 * lean)), R(M3.rz(walking ? 0.02 * Math.sin(2 * wk) : 0)));
     const headPrim = ellF(hf, HR, 1, 1, headMat(kind, mo));
     prims.push(headPrim);
     anchors.head = hf.t;
@@ -212,8 +211,8 @@ const Wobbuffet = (() => {
       const id = sd > 0 ? 4 : 5;
       const ph = wk + (sd > 0 ? 0 : Math.PI);
       const fwd = walking ? 6 * Math.sin(ph) : 0, lift = walking ? 4 * Math.max(0, Math.cos(ph)) : 0;
-      const f = [38 + fwd, 7 + lift - bob, 26 * sd];
-      prims.push(E(f, M3.diag(16, 7.5, 12), id, id, (s) => (s[1] < -0.5 ? C_BLUE_D : C_BLUE)));
+      const f = [30 + fwd, 10 + lift - bob, 34 * sd];
+      prims.push(E(f, M3.diag(26, 11, 20), id, id, (s) => (s[1] < -0.5 ? C_BLUE_D : C_BLUE)));
       anchors[sd > 0 ? 'footN' : 'footF'] = [f[0], 0, f[2]];
     }
 
@@ -231,8 +230,8 @@ const Wobbuffet = (() => {
     const NS = 10;
     for (let i = 0; i < NS; i++) {
       const a = crPt(pts, (i / NS) * (pts.length - 1)), b = crPt(pts, ((i + 1) / NS) * (pts.length - 1));
-      const r = lerp(6, 4.2, i / (NS - 1));
-      prims.push(seg(a, b, r, r, 6, 6, M_BLACK, [0, 1, 0], 1.6));
+      const r = lerp(9, 12, i / (NS - 1));
+      prims.push(seg(a, b, r, r, 6, 6, M_BLACK, [0, 1, 0], 2.4));
     }
     const tipD = nrm(sub(pts[4], crPt(pts, 3.6)));
     const tc = add(pts[4], sc(tipD, 17));

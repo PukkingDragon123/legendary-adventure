@@ -192,12 +192,12 @@ const Boardwalk = (() => {
       const C = BeachAI.classes.CorphishM;
       if (C && typeof Corphish !== 'undefined') {
         const m = new C(RING, { minX: RING - 46, maxX: RING + 46 });
-        if (m.sp) { G.addMon(m); m.champ = true; m.acc3 = { hat: 'topknot' }; m.accK = 0.62; m.scale *= 1.15; S.champ = m; }
+        if (m.sp) { G.addMon(m); m.champ = true; m.acc3 = { hat: 'topknot' }; m.scale *= 1.15; S.champ = m; }
       }
     } catch (e) { console.error(e); }
     if (typeof Eco !== 'undefined') {
       const lb = Eco.add(G, 'lombre', BAR, { minX: BAR - 34, maxX: BAR + 34, range: 34 });
-      if (lb) { lb.forceAwake = 1e9; lb.barkeep = true; lb.acc3 = { hat: 'straw' }; lb.accK = 0.8; lb.accSink = 0.42; S.barkeep = lb; }
+      if (lb) { lb.forceAwake = 1e9; lb.barkeep = true; lb.acc3 = { hat: 'straw' }; S.barkeep = lb; }
       Eco.add(G, 'marill', 6700, { range: 200 }); Eco.add(G, 'azurill', 6760, { range: 160 });
       Eco.add(G, 'linoone', 7000, { minX: X0 + 100, maxX: X1 - 100 });
       Eco.add(G, 'swellow', 7400, { range: 600 });

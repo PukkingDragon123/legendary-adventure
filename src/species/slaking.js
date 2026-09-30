@@ -44,8 +44,8 @@ const Slaking = (() => {
   const FUR = 1, FACE = 2, WHITE = 3, SNOUT = 4, DARK = 5, EYEW = 6, PUPIL = 7, INK = 8, MOUTH = 9, TONGUE = 10, CLAW = 11;
   const MAT = { FUR, FACE, WHITE, SNOUT, DARK, EYEW, PUPIL, INK, MOUTH, TONGUE, CLAW };
   const PAL = Creature.palette({
-    [FUR]:    { r: ['#5a3c26', '#765034', '#946a46', '#b0875c', '#c9a47a'], od: '#301c0e', ol: '#5c3c22', ln: '#5a3a22' },
-    [FACE]:   { r: ['#a88a62', '#c8aa7e', '#e2c99c', '#f0dcb6', '#faeed6'], od: '#56401e', ol: '#8a6c42', ln: '#8e7048' },
+    [FUR]:    { r: ['#5c4a3e', '#76614f', '#8f7a66', '#a8937e', '#bfab96'], od: '#30241c', ol: '#56463a', ln: '#56463a' },
+    [FACE]:   { r: ['#9a8a74', '#b8a78e', '#d2c2a8', '#e4d6c0', '#f2e8d8'], od: '#524634', ol: '#7e6e58', ln: '#84745e' },
     [WHITE]:  { r: ['#aaa69c', '#cecac0', '#eeebe4', '#f9f7f2', '#ffffff'], od: '#555044', ol: '#8a8474', ln: '#948e80' },
     [SNOUT]:  { r: ['#b0566c', '#d27288', '#ee98aa', '#f9bcc8', '#ffe0e6'], od: '#64203a', ol: '#9a4460', ln: '#9a4460' },
     [DARK]:   { r: ['#3a2416', '#4a301e', '#5c3e28', '#6e4e34', '#806042'], od: '#1e1008', ol: '#3a2416', ln: '#2e1c10' },
@@ -122,7 +122,7 @@ const Slaking = (() => {
   let curScale = 1;
 
   /* ---------- head (head frame, unit sphere s) ---------- */
-  const HR = [36, 34, 39];
+  const HR = [40, 38, 43];
   const EYE_AZ = 0.4, EYE_V = 0.1, ER_U = 0.19, ER_V = 0.13;
   const SNOUT_V = -0.2, MOUTH_V = -0.58, MOUTH_HW = 0.34;
   function eyePix(u, v, kind, px, sd) {
@@ -189,8 +189,14 @@ const Slaking = (() => {
   /* ---------- torso (S frame: y up the spine, x = front, z = its right side) ---------- */
   const BELLY_C = [4, 64, 0], BELLY_R = [62, 68, 66];
   const CHEST_C = [-4, 124, 0], CHEST_R = [52, 42, 66];
-  const bellyMat = (s) => (s[0] > 0.25 + 0.45 * s[2] * s[2] && s[1] < 0.8 ? C_FACE : C_FUR);
-  const chestMat = (s) => (s[0] > 0.45 + 0.4 * s[2] * s[2] && s[1] < 0.3 ? C_FACE : C_FUR);
+  const bellyMat = (s) => {
+    if (s[0] < 0.25 + 0.45 * s[2] * s[2] || s[1] > 0.8) return C_FUR;
+    // jagged white bib hanging over the top of the belly
+    const zz = Math.abs(s[2]), jag = 0.08 * Math.abs(((Math.atan2(s[2], s[0]) * 7) % 2 + 2) % 2 - 1);
+    if (s[1] > 0.42 - 0.5 * zz * zz + jag && zz < 0.62) return C_WHITE;
+    return C_FACE;
+  };
+  const chestMat = (s) => (s[0] > 0.3 + 0.5 * s[2] * s[2] ? C_WHITE : C_FUR);
 
   const DEFAULT = { lie: 1, scratch: 0, eyes: 'open', mouth: 0, walk: 0, side: 1 };
   const PRI = {};
@@ -269,16 +275,18 @@ const Slaking = (() => {
     }
     anchors.top = [hf.t[0], top, hf.t[2]];
 
-    // --- white collar of fur round the neck
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      const c = S([0 + 40 * Math.cos(a), 156 + 8 * Math.cos(a), 50 * Math.sin(a)]);
-      prims.push(E(c, M3.mul(M3.mul(Rw, M3.ry(-a)), M3.diag(12, 14, 17)), 5, 5, M_WHITE));
+    // --- white shaggy mane: jowls round the face and a spiky bib down the chest
+    for (let i = 0; i < 9; i++) {
+      const a = -1.75 + (i / 8) * 3.5;
+      const c = S([2 + 42 * Math.cos(a), 158 + 6 * Math.cos(a), 52 * Math.sin(a)]);
+      prims.push(E(c, M3.mul(M3.mul(Rw, M3.ry(-a)), M3.diag(12, 15, 17)), 5, 5, M_WHITE));
     }
-    for (let i = 0; i < 7; i++) {
-      const a = ((i + 0.5) / 7) * Math.PI * 2;
-      tuft(prims, S([2 + 50 * Math.cos(a), 142, 60 * Math.sin(a)]), M3.v(Rw, [Math.cos(a) * 0.9, -0.5, Math.sin(a) * 0.9]), 18, 7, 5, 5, M3.v(Rw, [0, 1, 0]), SPK_W_G);
+    for (let i = 0; i < 9; i++) {
+      const a = -1.6 + (i / 8) * 3.2;
+      tuft(prims, S([6 + 50 * Math.cos(a), 146, 60 * Math.sin(a)]), M3.v(Rw, [Math.cos(a) * 0.8, -0.35, Math.sin(a) * 0.9]), 20, 7, 5, 5, M3.v(Rw, [0, 1, 0]), SPK_W_G);
     }
+    for (const [z, y, l] of [[0, 104, 22], [20, 110, 20], [-20, 110, 20], [34, 122, 18], [-34, 122, 18]])
+      tuft(prims, S([CHEST_R[0] - 8 - Math.abs(z) * 0.2, y, z]), M3.v(Rw, [0.35, -1, z * 0.012]), l, 8, 5, 5, M3.v(Rw, [1, 0, 0]), SPK_W_G);
 
     // --- arms
     for (const sd of [1, -1]) {
@@ -313,6 +321,7 @@ const Slaking = (() => {
       prims.push(seg(sh, el, 21, 21, M3.v(Rw, [0, 1, 0]), id, id, M_FUR, 1.2));
       prims.push(E(el, M3.diag(19, 19, 19), id, id, M_FUR));
       prims.push(seg(el, wr, 19, 18, M3.v(Rw, [0, 1, 0]), id, id, M_FUR, 1.15));
+      for (const k of [0, 2.1, 4.2]) tuft(prims, wr, nrm(add(sc(nrm(sub(wr, el)), -0.3), M3.v(M3.ry(k), [0.8, 0, 0.6]))), 22, 7, id, id, nrm(sub(wr, el)), SPK_F_G);
       const tip = hand(prims, wr, hd, palm, hid, sd > 0 && scr > 0 ? 0.25 * scr : 0);
       anchors[sd > 0 ? 'handN' : 'handF'] = tip;
       if (sd < 0) anchors.elbow = el;
@@ -332,6 +341,7 @@ const Slaking = (() => {
       const knee = lerp3(S(kneeS), kneeL, lie), foot = lerp3(S(footS), footL, lie);
       prims.push(seg(hip, knee, 25, 25, M3.v(Rw, [0, 1, 0]), id, id, M_FUR, 1.15));
       prims.push(seg(knee, foot, 21, 21, M3.v(Rw, [0, 1, 0]), id, id, M_FUR, 1.12));
+      for (const k of [0, 2.1, 4.2]) tuft(prims, foot, nrm(add(sc(nrm(sub(foot, knee)), -0.3), M3.v(M3.ry(k), [0.8, 0, 0.6]))), 22, 7, id, id, nrm(sub(foot, knee)), SPK_F_G);
       // two-toed beige foot, toes pointing forward/up
       const fdir = nrm(lerp3(M3.v(Rw, [0.25, 0.9, 0.1 * sd]), [0.15, 0.3, 1], lie));
       const fup = nrm(lerp3(M3.v(Rw, [-1, 0.2, 0]), [-1, 0.1, 0], lie));

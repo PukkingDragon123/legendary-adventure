@@ -157,8 +157,8 @@ const Marill = (() => {
       const Y = dirF(bodyF, [-0.1, 1, sd * (0.62 + flop)]);
       const [X, Yy, Z] = frameAlong(Y, dirF(bodyF, [1, 0, 0.45 * sd]));
       const c = add(ec, sc(Yy, 5.5));
-      prims.push(ellAx(c, X, Yy, Z, [4.2, 10.8, 11.4], id, id, earMat));
-      anchors[sd > 0 ? 'earN' : 'earF'] = add(c, sc(Yy, 10.8));
+      prims.push(ellAx(c, X, Yy, Z, [4.2, 11.8, 12.6], id, id, earMat));
+      anchors[sd > 0 ? 'earN' : 'earF'] = add(c, sc(Yy, 11.8));
       top = Math.max(top, c[1] + 10.8);
     }
     anchors.top = [bodyF.t[0], top, 0];
@@ -201,7 +201,7 @@ const Marill = (() => {
     const pts = zig.map(([dx, dy, k]) => [rootP[0] + dx - 3 * sw * k * 3, rootP[1] + (dy * up + bounceT * k), rootP[2] + sg * zs * 8 * k]);
     for (let i = 0; i < pts.length - 1; i++) prims.push(seg(pts[i], pts[i + 1], 1.1, 1.1, 8, 8, M_BLACK, [0, 1, 0], 1.2));
     const last = pts[pts.length - 1], dirT = nrm(sub(last, pts[pts.length - 2]));
-    const BALL = 10;
+    const BALL = 12.5;
     const bc = add(last, sc(nrm(add(dirT, [-0.5, 0.5, 0])), BALL - 1));
     prims.push(E(bc, M3.diag(BALL, BALL, BALL), 9, 9, M_BLUE));
     anchors.tail = rootP;

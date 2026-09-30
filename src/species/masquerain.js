@@ -36,11 +36,11 @@ const Masquerain = (() => {
   const BODY = 1, FACE = 2, ANT = 3, RING = 4, CORE = 5, WING = 6, EYEK = 7, MOUTH = 8;
   const MAT = { BODY, FACE, ANT, RING, CORE, WING, EYEK, MOUTH };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#6e9cc4', '#90bade', '#b6d6f0', '#d6ecfa', '#f4fbff'], od: '#2c5680', ol: '#5a88b4', ln: '#5a88b4' },
+    [BODY]:  { r: ['#8aaccc', '#a8c6e2', '#c8def0', '#e2eff9', '#f8fcff'], od: '#3e6890', ol: '#6c94bc', ln: '#6c94bc' },
     [FACE]:  { r: ['#b85a44', '#d8745a', '#f0906e', '#fab092', '#ffd2bc'], od: '#6a2618', ol: '#a44a34', ln: '#a44a34' },
     [ANT]:   { r: ['#bc6250', '#dc7c66', '#f49a82', '#fcb8a2', '#ffd8c8'], od: '#72301e', ol: '#b05a44', ln: '#b05a44' },
     [RING]:  { r: ['#d0bcb8', '#e8d8d6', '#fcf2f0', '#ffffff', '#ffffff'], od: '#80564e', ol: '#b08a82', ln: '#b08a82' },
-    [CORE]:  { r: ['#6e2e56', '#8a3e6c', '#aa5486', '#c270a0', '#d898bc'], od: '#3a1030', ol: '#6a2a52', ln: '#6a2a52' },
+    [CORE]:  { r: ['#62283a', '#7c3448', '#96475a', '#ae6070', '#c8848e'], od: '#3a1020', ol: '#62283a', ln: '#62283a' },
     [WING]:  { r: ['#9cc0dc', '#bcd8ee', '#d8ecf8', '#ecf6fc', '#ffffff'], od: '#4a78a4', ol: '#7ca4c8', ln: '#8ab0d0' },
     [EYEK]:  { r: ['#0a0a10', '#101018', '#181820', '#20202a', '#2c2c38'], od: '#050508', ol: '#0a0a10', ln: '#050508' },
     [MOUTH]: { r: ['#5a1c1c', '#742626', '#903432', '#aa4642', '#c05c56'], od: '#340c0c', ol: '#5a1c1c', ln: '#5a1c1c' },
@@ -80,7 +80,7 @@ const Masquerain = (() => {
 
   /* ---------- head: pale blue, salmon face patch, tiny eyes (decals) ---------- */
   const HR = [16, 15.5, 16.5];
-  const EYE_AZ = 0.36, EYE_V = 0.08;
+  const EYE_AZ = 0.42, EYE_V = 0.1;
   const inFace = (az, v) => { const a = az / 0.95, b = (v + 0.12) / 0.5; return a * a + b * b < 1; };
   function headMat(kind, mo) {
     return (s) => {
@@ -89,7 +89,7 @@ const Masquerain = (() => {
       const px = 1 / (curScale * HR[1]);
       const sd = az >= 0 ? 1 : -1;
       const u = (az - sd * EYE_AZ), w = v - EYE_V;
-      const r = Math.max(0.085, 1.1 * px);
+      const r = Math.max(0.1, 1.2 * px);
       if (kind === 'open') {
         if (u * u + w * w < r * r) return C_EYEK;
         // little lash flicking out at the outer top corner
@@ -173,23 +173,22 @@ const Masquerain = (() => {
     // horn: long, tapering, curving up and back
     let hp = inF(head, [-3, 10, 0]);
     const hpts = [hp];
-    for (let i = 0; i < 4; i++) {
-      const a = 0.62 + 0.08 * i;
-      hp = add(hp, sc(dirF(head, [-Math.cos(a), Math.sin(a), 0]), 11));
+    for (let i = 0; i < 10; i++) {
+      const a = 0.8 + 0.03 * i;
+      hp = add(hp, sc(dirF(head, [-Math.cos(a), Math.sin(a), 0]), 5.8));
       hpts.push(hp);
     }
-    for (let i = 0; i < 4; i++) {
-      const r0 = 7.5 * (1 - i / 4) + 0.9, r1 = 7.5 * (1 - (i + 1) / 4) + 0.9;
-      prims.push(seg(hpts[i], hpts[i + 1], (r0 + r1) / 2, (r0 + r1) / 2, 3, 3, M_BODY, [1, 0, 0], 1.55));
-    }
-    anchors.horn = hpts[4];
+    // smooth taper: a few long overlapping spindles from the base out to the tip
+    for (const [i0, i1, r, e] of [[0, 4, 7.4, 1.25], [2, 7, 4.6, 1.2], [5, 9, 2.6, 1.15], [7, 10, 1.3, 1.05]])
+      prims.push(seg(hpts[i0], hpts[i1], r, r, 3, 3, M_BODY, [1, 0, 0], e));
+    anchors.horn = hpts[10];
 
     /* --- antennae: big D fans rising from the head sides, eye markings facing forward --- */
     const sway = 0.04 * Math.sin(fl * 0.25) + (wk !== 0 ? 0.05 * Math.sin(wk + 0.5) : 0);
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 4 : 5;
       const rootA = inF(head, [0, 7, sd * 11]);
-      const up = 0.72 + sway * sd;
+      const up = 0.55 + sway * sd;
       const U = dirF(head, [-0.12, Math.sin(up), sd * Math.cos(up)]);
       // bulge toward the back-top edge (the straight edge faces inward/forward), face turned to the front
       const tw = 0.25 * side;

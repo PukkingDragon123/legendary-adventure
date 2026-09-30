@@ -82,7 +82,7 @@ const Azumarill = (() => {
   // bubble spots on the blue belly (az, y, radius); mirrored pairs, a little uneven like the art
   const SPOTS = [[0.3, 4, 6.8], [-0.34, 6, 6], [0.8, 10, 5.6], [-0.78, 1, 6.4], [1.2, -1, 4.2], [-1.2, 12, 3.6],
     [0.52, 17, 3.4], [-0.62, 17, 3.8], [1.12, 17, 2.8]];
-  const waveY = (az) => -12 + 2.6 * Math.sin(az * 6.2 + 0.6) + 1.2 * Math.sin(az * 11 + 1.3);
+  const waveY = (az) => -7 + 2.6 * Math.sin(az * 6.2 + 0.6) + 1.2 * Math.sin(az * 11 + 1.3);
   function eyePix(ea, eb, sd, kind) {
     // ea, eb in model units on the surface
     const p = 1 / curScale;
@@ -177,14 +177,14 @@ const Azumarill = (() => {
       if (sd > 0) {
         // the standing ear: one long leaf, narrow at the base
         tipP = add(base, sc(nrm(add(d1, dirF(bodyF, [0, 0, bounce]))), 55));
-        prims.push(seg(base, tipP, 4.6, 10.6, id, id, earMat(-0.62, 0.84), fwd, 1.06));
+        prims.push(seg(base, tipP, 4.6, 12, id, id, earMat(-0.62, 0.84), fwd, 1.06));
       } else {
         // the floppy ear: bends over sideways near halfway
         const flop = 1.25 + 3 * bounce;
         const d2 = nrm(add(sc(d1, Math.cos(flop)), sc(dirF(bodyF, [0, 0, sd]), Math.sin(flop))));
         tipP = add(mid, sc(d2, 27));
-        prims.push(seg(base, mid, 4.6, 9.6, id, id, earMat(-0.55, 1.2), fwd, 1.12));
-        prims.push(seg(mid, tipP, 4.6, 10.8, id, id, earMat(-1.2, 0.72), fwd, 1.12));
+        prims.push(seg(base, mid, 4.6, 11, id, id, earMat(-0.55, 1.2), fwd, 1.12));
+        prims.push(seg(mid, tipP, 4.6, 12, id, id, earMat(-1.2, 0.72), fwd, 1.12));
       }
       anchors[sd > 0 ? 'earN' : 'earF'] = tipP;
       topY = Math.max(topY, tipP[1] + 3);

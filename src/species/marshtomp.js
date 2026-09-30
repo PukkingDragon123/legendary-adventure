@@ -31,19 +31,20 @@ const Marshtomp = (() => {
   const { chain, T, R, code } = Creature;
 
   // ---- materials
-  const BODY = 1, BELLY = 2, FIN = 3, GILL = 4, MOUTH = 5, TONGUE = 6, LINE = 7;
-  const MAT = { BODY, BELLY, FIN, GILL, MOUTH, TONGUE, LINE };
+  const BODY = 1, BELLY = 2, FIN = 3, GILL = 4, MOUTH = 5, TONGUE = 6, LINE = 7, PEACH = 8;
+  const MAT = { BODY, BELLY, FIN, GILL, MOUTH, TONGUE, LINE, PEACH };
   const PAL = Creature.palette({
-    [BODY]:   { r: ['#3478b4', '#4b9bd2', '#70c0ea', '#a2dcf6', '#dcf4ff'], od: '#173f72', ol: '#2c68a4', ln: '#2c64a0' },
-    [BELLY]:  { r: ['#7aaed0', '#9ccce6', '#c4e6f5', '#e2f4fc', '#f8fdff'], od: '#244f84', ol: '#4880b4', ln: '#5f94c2' },
-    [FIN]:    { r: ['#1c2a42', '#283a58', '#374e72', '#4c668c', '#7088ae'], od: '#0c1426', ol: '#1a2640', ln: '#1a2842' },
+    [BODY]:   { r: ['#3a8e9c', '#52b0bc', '#7ccdd4', '#a8e4e6', '#e0faf8'], od: '#1a4c5a', ol: '#2e7482', ln: '#2e7280' },
+    [BELLY]:  { r: ['#88c0c4', '#a8dcdc', '#caeeec', '#e4f8f6', '#fafffe'], od: '#245a64', ol: '#4a8c94', ln: '#5e9aa2' },
+    [PEACH]:  { r: ['#b8603a', '#d67c4e', '#ee9a68', '#fcb888', '#ffd8b4'], od: '#6a2c14', ol: '#9a4a28', ln: '#a8522e' },
+    [FIN]:    { r: ['#1e2630', '#2a3440', '#3a4656', '#52606f', '#76849a'], od: '#0c1016', ol: '#1a2028', ln: '#1a222c' },
     [GILL]:   { r: ['#b8461a', '#d96520', '#f28a2a', '#ffae45', '#ffd584'], od: '#6a2010', ol: '#9b3514', ln: '#a8401a' },
     [MOUTH]:  { r: ['#6e1a2a', '#8e2a38', '#ae3e4a', '#c85460', '#e07478'], od: '#420c18', ol: '#661626', ln: '#661626' },
     [TONGUE]: { r: ['#c8505a', '#e06a6c', '#f58c84', '#ffaea0', '#ffcfc2'], od: '#6e1428', ol: '#8e2038', ln: '#b04450' },
     [LINE]:   { r: ['#1c4a80', '#22548e', '#2a5e9a', '#3268a4', '#3a72ae'], od: '#173f72', ol: '#2c68a4', ln: '#1c4a80' },
   });
   const GLOSSY = { [BODY]: 1, [FIN]: 1, [GILL]: 1 };
-  const C_BODY = code(BODY), C_BELLY = code(BELLY), C_FIN = code(FIN), C_GILL = code(GILL), C_GILL_L = code(GILL, 1);
+  const C_BODY = code(BODY), C_BELLY = code(BELLY), C_PEACH = code(PEACH), C_FIN = code(FIN), C_GILL = code(GILL), C_GILL_L = code(GILL, 1);
   const C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE), C_LINE = code(LINE);
   const M_BODY = () => C_BODY;
 
@@ -80,8 +81,10 @@ const Marshtomp = (() => {
   const EQ = 17, TR = [24, 23, 24.5], TR_UP = 29;
   // big pale belly: the front of the torso, an oval that narrows toward the sides and the chest
   const bellyAt = (x, y, z) => { const zz = z / 24; return x > 3 + 18 * zz * zz + 0.12 * Math.max(0, y - 36); };
-  const lowMat = (s) => (s[1] > 0.02 ? 0 : bellyAt(TR[0] * s[0], EQ + TR[1] * s[1], TR[2] * s[2]) ? C_BELLY : C_BODY);
-  const upMat = (s) => (s[1] < -0.02 ? 0 : bellyAt(TR[0] * s[0], EQ + TR_UP * s[1], TR[2] * s[2]) ? C_BELLY : C_BODY);
+  // orange belly oval on the front of the torso (official art), pale cyan chin above
+  const patch = (s, ry) => { const zz = s[2] / 0.5, yy = (s[1] * ry + 1) / 15; return s[0] > 0.3 && zz * zz + yy * yy < 1; };
+  const lowMat = (s) => (s[1] > 0.02 ? 0 : patch(s, TR[1]) ? C_PEACH : C_BODY);
+  const upMat = (s) => (s[1] < -0.02 ? 0 : patch(s, TR_UP) ? C_PEACH : bellyAt(TR[0] * s[0], EQ + TR_UP * s[1], TR[2] * s[2]) && s[1] > 0.75 ? C_BELLY : C_BODY);
 
   /* ---------- head (head frame: origin at the head centre) ---------- */
   const HR = [26.5, 21, 30];
@@ -100,6 +103,8 @@ const Marshtomp = (() => {
         }
         if (v < vm - h) return C_BELLY; // pale chin
       }
+      // round orange cheek patches behind the mouth corners
+      { const ca = (a - 1.2) / 0.34, cv = (v + 0.02) / 0.4; if (ca * ca + cv * cv < 1) return C_PEACH; }
       return C_BODY;
     };
   }
@@ -107,8 +112,8 @@ const Marshtomp = (() => {
   /* ---------- plates ---------- */
   // head crest in the head's mid plane (u = forward, v = up, head-centre units): rises from the
   // forehead between the eyes, peaks toward the back and drops steeply to the nape
-  const CREST_P = [[17.5, 11], [19.5, 18], [17, 26], [11.5, 33], [3.5, 38.5], [-5, 41.5], [-13, 40.5], [-19.5, 35.5], [-24, 27.5], [-25.5, 18], [-24, 8], [-10, 4], [6, 6]];
-  const CREST_RIDGE = Shape2D.catmull([[13, 22], [7, 29.5], [-1, 35], [-9.5, 37], [-16, 33.5]], false, 5);
+  const CREST_P = [[17.5, 11], [18, 19], [13, 27], [6, 34], [-2, 41], [-10, 48], [-17, 53], [-20, 50], [-23, 38], [-25.5, 22], [-24, 8], [-10, 4], [6, 6]];
+  const CREST_RIDGE = Shape2D.catmull([[12, 21], [4, 30], [-5, 38], [-12, 46], [-17, 51]], false, 5);
   const CREST_G = bakeShape(Shape2D.poly(CREST_P, C_FIN, 8));
   // tail fin (tail frame: u back along the tail, v up): a big rounded fan over the top and end of the tail
   const TFIN_P = [[-3, 3], [3, 11], [10, 17.5], [18.5, 21], [27, 20], [33, 14], [35, 5.5], [32, -3], [25, -7], [17, -4], [8, 0.5]];
@@ -199,8 +204,8 @@ const Marshtomp = (() => {
     // crest (turned a little toward the camera)
     const crest = chain(head, T(-3, 0, 0), R(M3.ry(0.24 * side)), T(3, 0, 0));
     prims.push(Object.assign(PL(crest.t, crest.L, 2, 2, CREST_G, 2.8), { lines: [{ pts: CREST_RIDGE.map(([u, v]) => [u, v, 0]), mat: FIN, useLn: true }] }));
-    anchors.crest = inF(crest, [-4, 40, 0]);
-    anchors.top = inF(crest, [-5, 42, 0]);
+    anchors.crest = inF(crest, [-10, 47, 0]);
+    anchors.top = inF(crest, [-17, 54, 0]);
 
     // gills: frontal-ish fans behind the mouth corners, points swept back and out
     for (const sd of [1, -1]) {

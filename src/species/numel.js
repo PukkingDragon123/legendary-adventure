@@ -27,9 +27,9 @@ const Numel = (() => {
   const BODY = 1, MUZ = 2, HUMP = 3, MOUTH = 4, TONGUE = 5, EAR = 6, GLOW = 7;
   const MAT = { BODY, MUZ, HUMP, MOUTH, TONGUE, EAR, GLOW };
   const PAL = Creature.palette({
-    [BODY]:   { r: ['#9c7a28', '#c49c38', '#e4c254', '#f4da7c', '#fff0b4'], od: '#5a400e', ol: '#8e6a1c', ln: '#8e6a20' },
+    [BODY]:   { r: ['#b8943c', '#d8b654', '#f0d272', '#fae498', '#fff4c8'], od: '#5a400e', ol: '#8e6a1c', ln: '#8e6a20' },
     [MUZ]:    { r: ['#b8a064', '#d8c488', '#f2e2ae', '#faf0cc', '#fffae8'], od: '#5e4818', ol: '#8e7438', ln: '#a08448' },
-    [HUMP]:   { r: ['#3e6a4a', '#50845a', '#6ca274', '#90c092', '#c0e0bc'], od: '#1e3a26', ol: '#34603e', ln: '#2e5838' },
+    [HUMP]:   { r: ['#4a8050', '#5e9c62', '#7ab878', '#9ed09a', '#c8e8c0'], od: '#1e3a26', ol: '#34603e', ln: '#2e5838' },
     [MOUTH]:  { r: ['#4a1a1a', '#662424', '#843434', '#a04646', '#bc5e5a'], od: '#2c0a0a', ol: '#4a1414', ln: '#3a1010' },
     [TONGUE]: { r: ['#b84a56', '#d6646e', '#ee8690', '#ffaab0', '#ffd0d0'], od: '#6a1a26', ol: '#8e2a38', ln: '#8e2a38' },
     [EAR]:    { r: ['#7e5e1c', '#a07a28', '#c09a3c', '#d8b658', '#f0d488'], od: '#4a320a', ol: '#7a5616', ln: '#6e4e14' },
@@ -37,6 +37,7 @@ const Numel = (() => {
   });
   const GLOSSY = { [HUMP]: 1 };
   const C_BODY = code(BODY), C_MUZ = code(MUZ), C_HUMP = code(HUMP), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE);
+  const C_SPOT = code(HUMP, -1);
   const C_EAR = code(EAR), C_GLOW = code(GLOW), C_GLOW_H = code(GLOW, 1);
   const M_BODY = () => C_BODY, M_EAR = () => C_EAR;
 
@@ -58,11 +59,11 @@ const Numel = (() => {
   }
 
   // ---- geometry (body frame; origin on the ground under the belly)
-  const BODY_C = [-2, 44, 0], BODY_R = [38, 25, 25.5];
-  const HUMP_C = [-7, 64, 0], HUMP_R = [26, 18.5, 21.5];
-  const HEAD_C = [42, 76, 0], HEAD_R = [17.5, 16.5, 17];
-  const MUZ_C = [15, -6, 0], MUZ_R = [16, 10, 11]; // in the head frame
-  const EYE_S = nrm([0.72, 0.2, 0.66]);
+  const BODY_C = [-4, 37, 0], BODY_R = [36, 25, 25];
+  const HUMP_C = [-8, 47, 0], HUMP_R = [31, 18, 24];
+  const HEAD_C = [40, 80, 0], HEAD_R = [21, 21, 19.5];
+  const MUZ_C = [10, -4, 0], MUZ_R = [19.5, 15.5, 17.5]; // in the head frame
+  const EYE_S = nrm([0.45, 0.42, 0.78]);
   const LEGS = [{ x: 22, z: 15, ph: 0 }, { x: -24, z: 15, ph: Math.PI }];
   const PRI = { 1: 0, 2: 2, 3: 3, 4: 3, 5: 1, 6: 1, 7: 1, 8: 1, 9: 0 };
   const SIZE = 1.3;
@@ -76,13 +77,13 @@ const Numel = (() => {
     closed: ['k.k', '.k.'], closedN: ['k.', '.k'], closedF: ['k'],
   };
   const EYES_L = {
-    open: ['kkkkk', 'kpppk', 'kppwk', '.kpk.'], openN: ['kkkk', 'kppk', 'kpwk', '.kk.'], openF: ['kk', 'kp', 'kk'],
+    open: ['..ggg..', '.gkkkg.', 'gkkkkkg', 'gpppppg', 'gppppwg', '.gpppg.', '..ggg..'], openN: ['.ggg.', 'gkkkg', 'gpppg', 'gppwg', '.ggg.'], openF: ['kk', 'kp', 'kk'],
     happy: ['.kkk.', 'k...k', 'k...k'], happyN: ['.kk.', 'k..k'], happyF: ['.k', 'k.'],
     blink: ['.....', 'kkkkk', '.kkk.'], blinkN: ['...', 'kkk'], blinkF: ['..', 'kk'],
     closed: ['k...k', '.kkk.'], closedN: ['k..k', '.kk.'], closedF: ['k.', '.k'],
   };
   const EYES_XL = {
-    open: ['.kkkk.', 'kkkkkk', 'kppppk', 'kpppwk', '.kppk.'], openN: ['.kkk.', 'kkkkk', 'kpppk', 'kppwk', '.kpk.'], openF: ['.k', 'kk', 'kp', 'kk'],
+    open: ['...ggggg...', '.ggkkkkkgg.', 'ggkkkkkkkgg', 'gkkkkkkkkkg', 'gpppppppppg', 'gpppppppwpg', 'ggpppppppgg', '.ggpppppgg.', '...ggggg...'], openN: ['..ggg.', '.gkkkg', 'gkkkkg', 'gpppppg', 'gppppwg', '.gpppg', '..ggg.'], openF: ['.k', 'kk', 'kp', 'kk'],
     happy: ['.kkkk.', 'kk..kk', 'k....k'], happyN: ['.kkk.', 'kk.kk', 'k...k'], happyF: ['.k', 'k.'],
     blink: ['......', '......', 'kkkkkk', '.kkkk.'], blinkN: ['.....', '.....', 'kkkkk', '.kkk.'], blinkF: ['..', 'kk'],
     closed: ['k....k', 'kk..kk', '.kkkk.'], closedN: ['k...k', 'kk.kk', '.kkk.'], closedF: ['k.', '.k'],
@@ -90,7 +91,7 @@ const Numel = (() => {
   const mirror = (S) => Object.fromEntries(Object.entries(S).map(([k, g]) => [k, g.map((r) => r.split('').reverse().join(''))]));
   const SETS = { S: [EYES_S, mirror(EYES_S)], L: [EYES_L, mirror(EYES_L)], XL: [EYES_XL, mirror(EYES_XL)] };
   let curScale = 1;
-  const EYEC = { k: '#2a1a0a', p: '#140c06', w: '#ffffff' };
+  const EYEC = { k: '#5a4a3a', p: '#140c06', w: '#ffffff', g: '#8a8078' };
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -102,7 +103,7 @@ const Numel = (() => {
     const body = chain(T(0, bob, 0), T(0, 50, 0), R(M3.rz(rock)), T(0, -50, 0));
 
     /* --- body barrel: yellow, a little paler underneath --- */
-    const bodyMat = (s) => C_BODY;
+    const bodyMat = (s) => (s[1] < -0.35 && s[0] > -0.35 && Math.abs(s[2]) < 0.75 ? C_MUZ : C_BODY);
     prims.push(ellF(chain(body, T(...BODY_C)), BODY_R, 1, 1, bodyMat));
     anchors.body = inF(body, BODY_C);
 
@@ -110,7 +111,15 @@ const Numel = (() => {
     const hs = 1 + 0.14 * hump;
     const hc = [HUMP_C[0], HUMP_C[1] + 3 * hump, 0];
     const gl = 0.93 - 0.3 * hump;
-    const humpMat = (s) => (hump > 0.05 && s[1] > gl ? (s[1] > gl + (1 - gl) * 0.5 ? C_GLOW_H : C_GLOW) : C_HUMP);
+    const humpMat = (s) => {
+      if (hump > 0.05 && s[1] > gl) return s[1] > gl + (1 - gl) * 0.5 ? C_GLOW_H : C_GLOW;
+      // green saddle patch with a wavy lower edge; darker green hex spots near its rim
+      const edge = 0.28 + 0.1 * Math.sin(Math.atan2(s[2], s[0]) * 6);
+      if (s[1] < edge) return s[1] > edge - 0.12 ? C_SPOT : C_BODY;
+      const a = Math.atan2(s[2], s[0]) * 1.9, v = s[1] * 3.2;
+      const fa = a - Math.round(a), fv = v - Math.round(v);
+      return s[1] < 0.7 && fa * fa + fv * fv < 0.045 ? C_SPOT : C_HUMP;
+    };
     prims.push(ellF(chain(body, T(...hc)), sc(HUMP_R, hs), 2, 2, humpMat));
     anchors.hump = inF(body, [hc[0], hc[1] + HUMP_R[1] * hs * 0.9, 0]);
     anchors.top = inF(body, [hc[0], hc[1] + HUMP_R[1] * hs, 0]);
@@ -118,12 +127,12 @@ const Numel = (() => {
     /* --- neck and head (head nods while walking) --- */
     const nod = walking ? 0.06 * Math.sin(wk * 2) : 0;
     const head = chain(body, T(...HEAD_C), R(M3.rz(-0.12 + nod)));
-    prims.push(seg(inF(body, [22, 48, 0]), inF(head, [-6, -6, 0]), 13, 13.5, 1, 1, M_BODY));
+    prims.push(seg(inF(body, [20, 46, 0]), inF(head, [-6, -8, 0]), 15, 15, 1, 1, M_BODY));
     const headPrim = ellF(head, HEAD_R, 3, 3, M_BODY);
     prims.push(headPrim);
     anchors.head = head.t;
     // muzzle: long, rounded, drooping; the mouth opens along its lower front
-    const muzF = chain(head, T(...MUZ_C), R(M3.rz(-0.32)));
+    const muzF = chain(head, T(...MUZ_C), R(M3.rz(-0.2)));
     const muzMat = (s) => {
       if (s[0] > 0.2) {
         const line = -0.38 + 0.1 * s[0];
@@ -143,8 +152,8 @@ const Numel = (() => {
 
     /* --- ears: small, round, sticking out sideways --- */
     for (const sd of [1, -1]) {
-      const ef = chain(head, T(-10, 8, sd * 12), R(M3.rx(sd * 0.5)), R(M3.ry(sd * 0.3)));
-      prims.push(ellF(chain(ef, T(0, 0, sd * 5)), [5.5, 4, 8], sd > 0 ? 5 : 6, sd > 0 ? 5 : 6, M_EAR));
+      const ef = chain(head, T(-10, 15, sd * 10), R(M3.rx(sd * 0.7)), R(M3.ry(sd * 0.3)));
+      prims.push(ellF(chain(ef, T(0, 0, sd * 5)), [6, 4.5, 8.5], sd > 0 ? 5 : 6, sd > 0 ? 5 : 6, M_EAR));
     }
 
     /* --- eyes --- */
@@ -152,7 +161,7 @@ const Numel = (() => {
     for (const sd of [1, -1]) {
       const s = [EYE_S[0], EYE_S[1], EYE_S[2] * sd];
       const at = { prim: headPrim, p: inF(head, [HEAD_R[0] * s[0], HEAD_R[1] * s[1], HEAD_R[2] * s[2]]), s };
-      stamps.push({ at, sd, colors: EYEC, kind, near: 0.7, far: 0.4, minFacing: 0.12 });
+      stamps.push({ at, sd, colors: EYEC, kind, near: 0.4, far: 0.15, minFacing: 0.08 });
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = at.p;
     }
 
@@ -162,10 +171,9 @@ const Numel = (() => {
         const id = 7 + (sd > 0 ? 0 : 1);
         const ph = wk + lg.ph + (sd > 0 ? 0 : Math.PI);
         const sw = walking ? 6 * Math.sin(ph) : 0, lift = walking ? 4 * Math.max(0, Math.cos(ph)) : 0;
-        const hip = inF(body, [lg.x, 30, sd * lg.z]);
-        const foot = [lg.x + sw, 4 + lift, sd * (lg.z + 1.5)];
-        prims.push(seg(hip, foot, 10.5, 10, id, id, M_BODY));
-        prims.push(ellF(T(foot[0] + 1, foot[1] - 0.5, foot[2]), [11, 4.2, 10.4], id, id, M_BODY));
+        const hip = inF(body, [lg.x, 26, sd * lg.z]);
+        const foot = [lg.x + sw, 1 + lift, sd * (lg.z + 1.5)];
+        prims.push(seg(hip, foot, 11, 10.5, id, id, M_BODY));
         if (lg.x > 0) anchors[sd > 0 ? 'footN' : 'footF'] = [foot[0], 0, foot[2]];
       }
 

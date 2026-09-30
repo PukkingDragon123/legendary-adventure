@@ -71,12 +71,12 @@ const Azurill = (() => {
   let curScale = 1;
 
   /* ---------- body/head decals (unit sphere s; az 0 = forward) ---------- */
-  const BR = [10.2, 9.6, 10.6];
-  const EYE_AZ = 0.34, EYE_V = 0.12, MOUTH_V = -0.2, CHEEK_AZ = 0.78, CHEEK_V = -0.12;
+  const BR = [9.8, 11, 10.2];
+  const EYE_AZ = 0.36, EYE_V = 0.2, MOUTH_V = -0.2, CHEEK_AZ = 0.78, CHEEK_V = -0.12;
   // small black oval eyes with a glint, scale-aware so they stay readable at a few pixels
   function eyePix(ea, eb, sd, kind) {
     const pu = 1 / (curScale * BR[2]), pv = 1 / (curScale * BR[1]);
-    const ru = Math.max(0.1, 0.75 * pu), rv = Math.max(0.16, 1.05 * pv);
+    const ru = Math.max(0.12, 0.85 * pu), rv = Math.max(0.21, 1.25 * pv);
     const x = ea / ru, y = eb / rv;
     if (Math.abs(x) > 1.3 || Math.abs(y) > 1.3) return 0;
     const lw = Math.max(0.2, 0.7 * pv / rv);
@@ -96,10 +96,10 @@ const Azurill = (() => {
       const az = Math.atan2(s[2], s[0]), a = Math.abs(az), v = s[1];
       const cv = Math.sqrt(Math.max(0, 1 - v * v)), sd = az >= 0 ? 1 : -1;
       const pu = 1 / (curScale * BR[2]), pv = 1 / (curScale * BR[1]);
-      if (a > 0.1 && a < 0.62 && v > -0.2 && v < 0.45) { const e = eyePix((az - sd * EYE_AZ) * cv, v - EYE_V, sd, kind); if (e) return e; }
+      if (a > 0.1 && a < 0.66 && v > -0.15 && v < 0.55) { const e = eyePix((az - sd * EYE_AZ) * cv, v - EYE_V, sd, kind); if (e) return e; }
       // white cheek spots
       if (a > 0.55 && a < 1.05) {
-        const cx = (az - sd * CHEEK_AZ) * cv / Math.max(0.13, 1.1 * pu), cy = (v - CHEEK_V) / Math.max(0.13, 1.1 * pv);
+        const cx = (az - sd * CHEEK_AZ) * cv / Math.max(0.17, 1.2 * pu), cy = (v - CHEEK_V) / Math.max(0.17, 1.2 * pv);
         if (cx * cx + cy * cy < 1) return C_WHITE;
       }
       // tiny mouth: a short line (worried little "-"), or a small open oval
@@ -112,7 +112,7 @@ const Azurill = (() => {
     };
   }
   // ear: round flat disc, pink inside on the front face
-  const earMat = (s) => (s[0] > 0.3 && s[1] * s[1] + s[2] * s[2] < 0.5 ? C_PINK : C_BLUE);
+  const earMat = (s) => (s[0] > 0.3 && s[1] * s[1] + s[2] * s[2] < 0.6 ? C_PINK : C_BLUE);
 
   const DEFAULT = { walk: 0, bounce: 0.2, mouth: 0, eyes: 'open', side: 1 };
   // 1 body, 2/3 ears, 4/5 arms, 6 ball, 7 stalk
@@ -133,15 +133,15 @@ const Azurill = (() => {
     const rock = walking ? 0.1 * Math.sin(wk) : 0;
 
     /* --- ball tail: the big blue ball it sits on --- */
-    const BRAD = 10.2;
-    const by = BRAD * (1 - 0.38 * sq), bx = BRAD * (1 + 0.24 * sq);
+    const BRAD = 13;
+    const by = BRAD * (1 - 0.38 * sq), bx = BRAD * (1.1 + 0.24 * sq);
     const ball = { L: M3.diag(bx, by, bx), t: [-1.5, by + lift, 0] };
     prims.push(E(ball.t, ball.L, 6, 6, M_BLUE));
     anchors.ball = ball.t;
     anchors.foot = [ball.t[0], lift, 0];
 
     /* --- body: round, sits on the ball --- */
-    const bodyY = 2 * by + 6.8 - 1.2 * sq + lift;
+    const bodyY = 2 * by + 8 - 1.2 * sq + lift;
     const bodyF = chain(T(0.5, bodyY, 0), R(M3.rx(rock)), R(M3.rz(walking ? 0.05 * Math.sin(2 * wk) : 0)));
     const bodyPrim = ellF(bodyF, BR, 1, 1, bodyMat(kind, mo));
     prims.push(bodyPrim);
@@ -156,13 +156,13 @@ const Azurill = (() => {
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 2 : 3;
       const flop = walking ? 0.12 * Math.cos(wk) : 0;
-      const ec = onB(sd * 1.1, 0.68, 2.5);
-      const Y = dirF(bodyF, [-0.05, 1, sd * (0.55 + flop)]);
+      const ec = onB(sd * 1.05, 0.78, 2.5);
+      const Y = dirF(bodyF, [-0.05, 1, sd * (0.32 + flop)]);
       const [X, Yy, Z] = frameAlong(Y, dirF(bodyF, [1, 0, 0.35 * sd]));
       const c = add(ec, sc(Yy, 3.8));
-      prims.push(ellAx(c, X, Yy, Z, [2.4, 6.2, 6.4], id, id, earMat));
-      anchors[sd > 0 ? 'earN' : 'earF'] = add(c, sc(Yy, 6.2));
-      top = Math.max(top, c[1] + 6.2);
+      prims.push(ellAx(c, X, Yy, Z, [2.4, 6.6, 6.2], id, id, earMat));
+      anchors[sd > 0 ? 'earN' : 'earF'] = add(c, sc(Yy, 6.6));
+      top = Math.max(top, c[1] + 6.6);
     }
     anchors.top = [anchors.body[0], top, 0];
 
@@ -172,7 +172,7 @@ const Azurill = (() => {
       const flap = walking ? 0.35 * Math.sin(wk + (sd > 0 ? 0 : Math.PI)) : 0;
       const root = onB(sd * 1.0, -0.3, -1);
       const d = dirF(bodyF, [0.55 + 0.3 * mo, -0.75 + flap, sd * 0.45]);
-      prims.push(seg(root, add(root, sc(d, 6.5)), 2.6, 2.8, id, id, M_BLUE, [1, 0, 0], 1.1));
+      prims.push(seg(root, add(root, sc(d, 7.5)), 3, 3.2, id, id, M_BLUE, [1, 0, 0], 1.1));
       anchors[sd > 0 ? 'handN' : 'handF'] = add(root, sc(d, 6.5));
     }
 
@@ -184,13 +184,13 @@ const Azurill = (() => {
     const bt = ball.t;
     const pts = [
       rootP,
-      [rootP[0] - 11, rootP[1] + 5 * spring, zz(3)],
-      [rootP[0] - 8, rootP[1] - 2 * spring, zz(4.5)],
-      [rootP[0] - 16, rootP[1] - 5 * spring, zz(6)],
-      [rootP[0] - 9, rootP[1] - 11 * spring, zz(5)],
+      [rootP[0] - 16, rootP[1] + 7 * spring, zz(3)],
+      [rootP[0] - 10, rootP[1] - 3 * spring, zz(4.5)],
+      [rootP[0] - 21, rootP[1] - 7 * spring, zz(6)],
+      [rootP[0] - 10, rootP[1] - 14 * spring, zz(5)],
       [bt[0] - bx * 0.85, bt[1] - by * 0.1, zz(1.5)],
     ];
-    for (let i = 0; i < pts.length - 1; i++) prims.push(seg(pts[i], pts[i + 1], 1.05, 1.05, 7, 7, M_BLACK, [0, 1, 0], 1.18));
+    for (let i = 0; i < pts.length - 1; i++) prims.push(seg(pts[i], pts[i + 1], 1.3, 1.3, 7, 7, M_BLACK, [0, 1, 0], 1.18));
     anchors.tail = rootP;
 
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
@@ -203,5 +203,5 @@ const Azurill = (() => {
     return Creature.render(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.2, bw: 64, bh: 56, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.2, bw: 72, bh: 64, oy: 0.9 } };
 })();

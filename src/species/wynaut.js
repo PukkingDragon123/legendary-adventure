@@ -41,7 +41,7 @@ const Wynaut = (() => {
   const BLUE = 1, BLACK = 2, WHITE = 3, INK = 4, MOUTH = 5, TONGUE = 6;
   const MAT = { BLUE, BLACK, WHITE, INK, MOUTH, TONGUE };
   const PAL = Creature.palette({
-    [BLUE]:   { r: ['#3f7fbe', '#5ea3dc', '#84c5f0', '#ace0fa', '#dcf4ff'], od: '#1d4c86', ol: '#3a76b4', ln: '#3a72ae' },
+    [BLUE]:   { r: ['#3f8e9e', '#5aaebc', '#7ecad4', '#a4e0e6', '#d4f4f6'], od: '#1c5058', ol: '#3a808c', ln: '#3a808c' },
     [BLACK]:  { r: ['#15161c', '#1f2029', '#2c2e3a', '#3e4150', '#5c6070'], od: '#08080c', ol: '#15161c', ln: '#101118' },
     [WHITE]:  { r: ['#c6ccd8', '#e4e8f0', '#fbfcfe', '#ffffff', '#ffffff'], od: '#4a5060', ol: '#7a8090', ln: '#7a8090' },
     [INK]:    { r: ['#0e1420', '#121a28', '#182232', '#202c40', '#2a384e'], od: '#060a12', ol: '#0e1420', ln: '#0e1420' },
@@ -83,8 +83,8 @@ const Wynaut = (() => {
 
   /* ---------- head decals (head frame, unit sphere s) ---------- */
   const HR = [33, 32, 34];
-  const EYE_AZ = 0.36, EYE_V = 0.2, EYE_RU = 0.17, EYE_RV = 0.115;
-  const MO_TOP = -0.07, MO_HW = 0.6, MO_H = 0.52;
+  const EYE_AZ = 0.4, EYE_V = 0.28, EYE_RU = 0.17, EYE_RV = 0.115;
+  const MO_TOP = -0.02, MO_HW = 0.64, MO_H = 0.62;
 
   // closed eyes: 'open' = the official ^ (two curved strokes meeting in a point)
   function eyePix(a, b, kind, px) {
@@ -191,25 +191,27 @@ const Wynaut = (() => {
     anchors.mouth = onHead(0, MO_TOP - 0.22);
 
     // --- the bulbous knob on the forehead
-    const kc = onHead(0, 0.88, 2.4);
-    prims.push(E(kc, M3.mul(hf.L, M3.diag(6.8, 7.2, 6.8)), 3, 3, M_BLUE));
-    anchors.knob = kc;
-    anchors.top = [kc[0], kc[1] + 7.2, kc[2]];
+    // big rounded lobe rising from the crown, leaning back
+    const kf = chain(hf, T(-4, HR[1] + 2, 0), R(M3.rz(0.85)));
+    const kc = kf.t;
+    prims.push(ellF(chain(kf, T(0, 4, 0)), [12, 22, 15], 3, 3, M_BLUE));
+    anchors.knob = inF(kf, [0, 10, 0]);
+    anchors.top = inF(kf, [0, 26, 0]);
 
     // --- ear-like arms: hang from the upper sides of the head, widening to paddle tips
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 4 : 5;
       const flop = walking ? 0.16 * Math.sin(wk + (sd > 0 ? 0 : Math.PI)) : 0;
       // spread angle from straight down (in the head's side plane): hanging ≈ 0.62, raised ≈ 2.5
-      let ang = armsUp >= 0 ? lerp(0.62, 2.5, armsUp) : lerp(0.62, 0.22, -armsUp);
+      let ang = armsUp >= 0 ? lerp(0.42, 2.5, armsUp) : lerp(0.42, 0.18, -armsUp);
       ang += -0.3 * sw * sd + flop;        // inertia: the arms swing out opposite to the lean
       const root0 = onHead(sd * 1.5, 0.46, -3);
       const d = dirF(hf, [-0.1 + 0.08 * armsUp, -Math.cos(ang), sd * Math.sin(ang)]);
       // flat like an ear: the broad face looks forward and a little outward
       const [X, Y, Z] = frameAlong(d, dirF(hf, [1, 0, 0.5 * sd]));
-      prims.push(ellAx(add(root0, sc(Y, 11)), X, Y, Z, [4.8, 12.5, 7], id, id, M_BLUE));
-      prims.push(ellAx(add(root0, sc(Y, 28.5)), X, Y, Z, [5.6, 13.6, 10.8], id, id, M_BLUE));
-      anchors[sd > 0 ? 'armN' : 'armF'] = add(root0, sc(Y, 41));
+      prims.push(ellAx(add(root0, sc(Y, 13)), X, Y, Z, [4, 15, 8], id, id, M_BLUE));
+      prims.push(ellAx(add(root0, sc(Y, 38)), X, Y, Z, [3.8, 22, 13], id, id, M_BLUE));
+      anchors[sd > 0 ? 'armN' : 'armF'] = add(root0, sc(Y, 58));
     }
 
     // --- stubby legs and feet (mostly hidden by the fur hem)
@@ -258,5 +260,5 @@ const Wynaut = (() => {
     return Creature.render(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 184, bh: 146, oy: 0.88 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 184, bh: 160, oy: 0.88 } };
 })();

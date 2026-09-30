@@ -37,13 +37,13 @@ const Starmie = (() => {
   const ARM = 1, GOLD = 2, COLLAR = 3, JEWEL = 4, GLOW = 5, ARM2 = 6;
   const MAT = { ARM, GOLD, COLLAR, JEWEL, GLOW, ARM2 };
   const PAL = Creature.palette({
-    [ARM]:    { r: ['#3f2166', '#5b358f', '#7c52b8', '#a07ad6', '#c9a8f0'], od: '#241040', ol: '#4a2a78', ln: '#3c2064' },
-    [GOLD]:   { r: ['#a8801a', '#d0a826', '#f0cc3a', '#fae676', '#fffac6'], od: '#5e4206', ol: '#94721a', ln: '#886812' },
+    [ARM]:    { r: ['#46425e', '#5e5a7c', '#7a7698', '#9894b8', '#bab6d6'], od: '#26233a', ol: '#4a4664', ln: '#403c58' },
+    [GOLD]:   { r: ['#9c7e2a', '#c4a23c', '#e2c257', '#f2dc8a', '#fff4c8'], od: '#5e4206', ol: '#94721a', ln: '#886812' },
     [COLLAR]: { r: ['#c2a232', '#e0c24c', '#f6e074', '#fff0a8', '#fffce0'], od: '#664a0a', ol: '#a0801e', ln: '#8a6c16' },
-    [JEWEL]:  { r: ['#700a20', '#a01830', '#d02e44', '#ec6470', '#ffd2d2'], od: '#40040e', ol: '#721024', ln: '#6a0e22' },
+    [JEWEL]:  { r: ['#80202e', '#b0384a', '#d85a66', '#f08c8e', '#ffd8d4'], od: '#40040e', ol: '#721024', ln: '#6a0e22' },
     [GLOW]:   { r: ['#ff5c78', '#ff8c9e', '#ffbcc6', '#ffe6ea', '#ffffff'], od: '#a01a36', ol: '#d84058', ln: '#d84058' },
     // back star: the same violet, a touch deeper so the two stars read apart
-    [ARM2]:   { r: ['#381c5e', '#523086', '#7049ac', '#936ccc', '#bb98e6'], od: '#221040', ol: '#44266e', ln: '#361c5c' },
+    [ARM2]:   { r: ['#3e3a54', '#555170', '#6e6a8c', '#8a86aa', '#aaa6c8'], od: '#221f34', ol: '#423e5a', ln: '#38344e' },
   });
   const GLOSSY = { [JEWEL]: 1, [GOLD]: 1, [COLLAR]: 1 };
   const C_ARM = code(ARM), C_ARM2 = code(ARM2), C_GOLD = code(GOLD), C_GOLD_L = code(GOLD, 1), C_COLLAR = code(COLLAR), C_JEWEL = code(JEWEL), C_JEWEL_L = code(JEWEL, 1), C_JEWEL_D = code(JEWEL, -1);
@@ -83,7 +83,7 @@ const Starmie = (() => {
   }
 
   /* ---------- the two stars (core frame: x = front, stars in the y-z plane) ---------- */
-  const R_OUT = 94, R_IN = 42;                        // tip radius, inner-corner radius (sharp points)
+  const R_OUT = 96, R_IN = 36;                        // tip radius, inner-corner radius (sharp points)
   const CS = Math.cos(Math.PI / 5), SN = Math.sin(Math.PI / 5);
   const BASE = R_IN * CS, HALF = R_IN * SN;           // arm base line distance and half width
   // x: plane of the star, hF / hB: ridge height at the centre toward the front / back, rot: turn
@@ -93,9 +93,9 @@ const Starmie = (() => {
   ];
 
   /* ---------- gold setting, collar and jewel ---------- */
-  const SET_X = 11, SET_R = [9.5, 35, 35];              // gold disc (its back half sinks into the star)
-  const COLLAR_X = 17.5, COLLAR_R = [5, 20.5, 20.5];
-  const JEWEL_X = 19, JEWEL_R = 17;
+  const SET_X = 11, SET_R = [9.5, 39, 39];              // gold disc (its back half sinks into the star)
+  const COLLAR_X = 15, COLLAR_R = [5, 24.5, 24.5];
+  const JEWEL_X = 15, JEWEL_R = 21, JEWEL_D = 11;
   // ten-point sunburst rim: radius (unit disc) by angle, points toward all ten arm tips
   function sunburst(th) {
     const u = (th - Math.PI / 2) / (Math.PI / 5);
@@ -171,7 +171,7 @@ const Starmie = (() => {
     const onCore = (x, r) => E(M3.v(cL, [x, 0, 0]), M3.mul(cL, M3.diag(r[0], r[1], r[2])), 0, 0, null);
     const setP = onCore(SET_X, SET_R); setP.part = setP.grp = 20; setP.mat = setMat; prims.push(setP);
     const colP = onCore(COLLAR_X, COLLAR_R); colP.part = colP.grp = 21; colP.mat = collarMat; prims.push(colP);
-    const jewel = onCore(JEWEL_X, [JEWEL_R, JEWEL_R, JEWEL_R]);
+    const jewel = onCore(JEWEL_X, [JEWEL_D, JEWEL_R, JEWEL_R]);
     jewel.part = jewel.grp = 22;
     const dim = P.eyes === 'closed';
     // facet glints: a bright crescent toward the light, a darker rim underneath
@@ -179,7 +179,7 @@ const Starmie = (() => {
     prims.push(jewel);
     toM([SET_X - SET_R[0], 0, 0]); toM([SET_X, -SET_R[1], 0]); toM([SET_X, SET_R[1], 0]);
 
-    const jf = M3.v(cL, [JEWEL_X + JEWEL_R, 0, 0]);
+    const jf = M3.v(cL, [JEWEL_X + JEWEL_D, 0, 0]);
     const stamps = [];
     if ((+P.glow || 0) >= 0.5) {
       const ss = nrm([0.95, 0.22, 0.2]);

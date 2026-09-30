@@ -38,8 +38,8 @@ const Linoone = (() => {
   const FUR = 1, STRIPE = 2, CLAW = 3, NOSE = 4, IRIS = 5, EYEK = 6, MOUTH = 7, FANG = 8, GLINT = 9;
   const MAT = { FUR, STRIPE, CLAW, NOSE, IRIS, EYEK, MOUTH, FANG, GLINT };
   const PAL = Creature.palette({
-    [FUR]:    { r: ['#a89c94', '#cac0b8', '#e8e2dc', '#f6f3ef', '#ffffff'], od: '#584c46', ol: '#8e8078', ln: '#948880' },
-    [STRIPE]: { r: ['#6a5644', '#86705a', '#a28a70', '#bca488', '#d2bea2'], od: '#3a2a1e', ol: '#6a5440', ln: '#5e4a38' },
+    [FUR]:    { r: ['#a0968e', '#c0b6ac', '#dad2c8', '#ebe5dd', '#f8f5f0'], od: '#524640', ol: '#8a7e74', ln: '#8e8278' },
+    [STRIPE]: { r: ['#5a4636', '#72604c', '#8c7862', '#a6927a', '#bea88e'], od: '#34261a', ol: '#5e4a38', ln: '#54402e' },
     [CLAW]:   { r: ['#8496ae', '#a8b8cc', '#ccd8e6', '#e6eef6', '#ffffff'], od: '#3c4a60', ol: '#6c7c94', ln: '#6c7c94' },
     [NOSE]:   { r: ['#0c0c10', '#141418', '#1e1e24', '#2c2c34', '#8a8a94'], od: '#060608', ol: '#0c0c10', ln: '#060608' },
     [IRIS]:   { r: ['#1a6aa8', '#2488cc', '#3aa8e8', '#6ac6f6', '#b0e6ff'], od: '#0c3458', ol: '#1a6aa8', ln: '#1a6aa8' },
@@ -84,13 +84,13 @@ const Linoone = (() => {
   // flank stripe: from a jagged point at x ≈ 2 back along the upper flank into the tail
   function bodyStripe(p, sy, sz) {
     const az = Math.atan2(Math.abs(sz), sy); // 0 = top of the back, π/2 = the flank, π = belly
-    const wD = 0.4 * clamp((p[0] + 22) / 40, 0, 1) + 0.04 * tri(p[0] / 6);
+    const wD = 0.4 * clamp((p[0] + 22) / 40, 0, 1) + 0.02 * tri(p[0] / 6);
     if (az < wD) return true;
     const f0 = 2 + 5 * tri(az * 2.2 + 0.2);
     if (p[0] < f0) {
       const k = clamp((f0 - p[0]) / 30, 0, 1);
       const c = 1.02 + 0.05 * k, w = 0.12 + 0.24 * Math.sqrt(k);
-      if (Math.abs(az - c) < w + 0.05 * tri(p[0] / 7)) return true;
+      if (Math.abs(az - c) < w + 0.025 * tri(p[0] / 7)) return true;
     }
     return false;
   }
@@ -188,7 +188,7 @@ const Linoone = (() => {
     const body = chain(T(0, bob - 2.5 - 3.5 * dash, 0), R(M3.rz(pitch)), Creature.S(stretch, 1 - 0.06 * dash, 1));
 
     /* --- torso: chest, middle, rounded haunch --- */
-    for (const [C, Rr] of [[[22, 25, 0], [22, 12.5, 12]], [[-2, 24.5, 0], [34, 13.5, 13.5]], [[-26, 24, 0], [22, 15, 14.5]]])
+    for (const [C, Rr] of [[[22, 25, 0], [22, 12.5, 12]], [[-2, 24.5, 0], [34, 13.5, 13.5]], [[-26, 24, 0], [22, 13.8, 13.8]]])
       prims.push(ellF(chain(body, T(...C)), Rr, 1, 1, bodyMat(C, Rr)));
     anchors.body = inF(body, [-2, 25, 0]);
 
@@ -257,23 +257,23 @@ const Linoone = (() => {
     });
 
     /* --- tail: long bushy plume sweeping up and back, lower half brown --- */
-    const tAng = lerp(0.1, 0.0, dash) + (moving ? 0.06 * Math.sin(st + 1) : 0);
+    const tAng = lerp(0.2, 0.04, dash) + (moving ? 0.06 * Math.sin(st + 1) : 0);
     const tf = chain(body, T(-44, 27, 0), R(M3.rz(Math.PI - tAng)), R(M3.rx(moving ? 0.1 * Math.sin(st) : 0)));
     // tail frame: +x runs back along the tail, +y is the tail's upper side (flipped by the π turn)
     const tailMat = (x0, rx) => (s) => {
       const x = x0 + rx * s[0];
-      const tip = x > 50 + 4 * tri(s[2] * 1.5 + s[1]);
-      return !tip && s[1] > -0.3 + 0.1 * tri(x / 8) && x > -4 ? C_ST : C_FUR;
+      const tip = x > 58 + 4 * tri(s[2] * 1.5 + s[1]);
+      return !tip && Math.abs(s[1] + 0.05) < 0.36 - 0.12 * Math.max(0, (x - 30) / 30) + 0.06 * tri(x / 8) && x > -6 ? C_ST : C_FUR;
     };
     let top = inF(body, [-2, 38, 0]);
-    const TB = (x) => -0.32 * (x / 58) ** 2.2;
-    for (const [x, rx, ry, rz] of [[9, 15, 10, 9.6], [29, 17, 12.8, 9.6], [47, 12, 12.4, 8.2]]) {
+    const TB = (x) => -0.14 * (x / 60) ** 2;
+    for (const [x, rx, ry, rz] of [[6, 14, 11, 9.8], [20, 16, 13, 10.2], [35, 16, 13.6, 10], [49, 13, 11.6, 8.6], [58, 9, 8, 6.4]]) {
       const c = chain(tf, R(M3.rz(TB(x))), T(x, 0, 0), R(M3.rz(TB(x) * 0.8)));
       prims.push(ellF(c, [rx, ry, rz], 8, 8, tailMat(x, rx)));
     }
     // fringed tip: a fan of white spikes (and brown ones along the lower edge)
-    const tipF = chain(tf, R(M3.rz(TB(56))), T(56, 0, 0), R(M3.rz(TB(56) * 0.8)));
-    for (const [dy, dz, m, l] of [[0, 0, SPK_F, 1.5], [0.6, 0.2, SPK_F, 1.3], [-0.5, -0.3, SPK_S, 1.2], [0.2, -0.6, SPK_F, 1.2], [-0.1, 0.6, SPK_F, 1.2], [-0.8, 0, SPK_S, 1.1]]) {
+    const tipF = chain(tf, R(M3.rz(TB(64))), T(64, 0, 0), R(M3.rz(TB(64) * 0.8)));
+    for (const [dy, dz, m, l] of [[0, 0, SPK_F, 1.6], [0.6, 0.2, SPK_F, 1.4], [-0.5, -0.3, SPK_F, 1.3], [0.2, -0.6, SPK_F, 1.2], [-0.1, 0.6, SPK_F, 1.2], [-0.9, 0, SPK_F, 1.1], [1.1, 0, SPK_F, 1.1]]) {
       const root = inF(tipF, [0, dy * 8, dz * 6]);
       const U = dirF(tipF, [1, dy * 0.8, dz * 0.6]);
       const n0 = dirF(tipF, [0, 0, 1]);

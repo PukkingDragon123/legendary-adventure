@@ -36,10 +36,10 @@ const Nuzleaf = (() => {
   const BODY = 1, MASK = 2, PANTS = 3, LEAF = 4, MOUTH = 5, INNER = 6, EYEK = 7, EYEW = 8;
   const MAT = { BODY, MASK, PANTS, LEAF, MOUTH, INNER, EYEK, EYEW };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#6e4630', '#946246', '#b88260', '#d4a47e', '#ecc6a2'], od: '#3c2012', ol: '#7a5034', ln: '#6a4228' },
-    [MASK]:  { r: ['#a09688', '#c6bdb0', '#e8e2d8', '#f6f2ec', '#ffffff'], od: '#524838', ol: '#8a806e', ln: '#8a806e' },
-    [PANTS]: { r: ['#9a948c', '#c4beb4', '#e8e4dc', '#f6f4ee', '#ffffff'], od: '#4e4840', ol: '#8a8478', ln: '#8a8478' },
-    [LEAF]:  { r: ['#246416', '#318a20', '#46ac30', '#6cc84c', '#a6e67e'], od: '#0e3808', ol: '#246416', ln: '#1e5a14' },
+    [BODY]:  { r: ['#5e3e30', '#80584a', '#a27a64', '#bc967e', '#d6b49a'], od: '#342018', ol: '#6a4838', ln: '#5a3a2c' },
+    [MASK]:  { r: ['#968a78', '#b6aa96', '#d4c8b4', '#e6dccb', '#f4ede2'], od: '#4a4032', ol: '#7e7260', ln: '#7e7260' },
+    [PANTS]: { r: ['#968a78', '#b8ad9a', '#d6ccba', '#e8e0d0', '#f6f0e6'], od: '#4a4032', ol: '#7e7260', ln: '#7e7260' },
+    [LEAF]:  { r: ['#2e6a3e', '#3e8a52', '#56a468', '#78bc86', '#a4d8ae'], od: '#143a20', ol: '#2e6a3e', ln: '#2a5e36' },
     [MOUTH]: { r: ['#3c0c10', '#541418', '#6c2024', '#862e30', '#a0403e'], od: '#240408', ol: '#3c0c10', ln: '#3c0c10' },
     [INNER]: { r: ['#a8404e', '#c65464', '#e0707e', '#f0929c', '#ffbcc2'], od: '#5a1420', ol: '#8a2a38', ln: '#8a2a38' },
     [EYEK]:  { r: ['#0a0808', '#100c0c', '#161212', '#201a1a', '#2e2626'], od: '#050303', ol: '#0a0808', ln: '#050303' },
@@ -81,15 +81,15 @@ const Nuzleaf = (() => {
   let curScale = 1;
 
   /* ---------- head: tan, a cream mask band across the eyes, decal eyes and mouth ---------- */
-  const HR = [38, 40, 41];
+  const HR = [39, 41, 43];
   const EYE_AZ = 0.47, EYE_V = 0.17, EYE_W = 0.31, EYE_H = 0.19;
-  const MOUTH_V = -0.42;
+  const MOUTH_V = -0.46;
   // mask band: from eye level up to the brow, wrapping round the sides; dips under the nose
   const inBand = (az, v) => {
     const a = Math.abs(az);
     if (a > 1.55) return false;
-    const top = 0.47 - 0.12 * (a / 1.55) ** 2;
-    const bot = -0.1 - 0.2 * Math.max(0, 1 - a / 0.34) + 0.1 * (a / 1.55);
+    const top = 0.56 - 0.14 * (a / 1.55) ** 2;
+    const bot = -0.16 - 0.2 * Math.max(0, 1 - a / 0.34) + 0.1 * (a / 1.55);
     return v < top && v > bot;
   };
   function eyePix(az, v, sd, kind) {
@@ -124,11 +124,11 @@ const Nuzleaf = (() => {
         if (e) return e;
         // small round mouth: dark rim, pink inside
         const px = 1 / (curScale * HR[1]);
-        const mw = Math.max(0.07 + 0.05 * mo, 1.6 * px), mh = Math.max(0.05 + 0.1 * mo, 1.4 * px);
+        const mw = Math.max(0.13 + 0.05 * mo, 2.4 * px), mh = Math.max(0.15 + 0.08 * mo, 2.4 * px);
         const ma = az / mw, mb = (v - MOUTH_V) / mh, mr = ma * ma + mb * mb;
         if (mr < 1) {
           const ir = Math.max(0, 1 - (1.2 * px) / Math.min(mw, mh));
-          return mr < ir * ir && mo > 0.15 ? C_INNER : C_MOUTH;
+          return mr < ir * ir ? C_INNER : C_MOUTH;
         }
       }
       return inBand(az, v) ? C_MASK : C_BODY;
@@ -137,7 +137,7 @@ const Nuzleaf = (() => {
 
   /* ---------- plates ---------- */
   // head leaf: u = along the leaf (from the stem), v = across; a long pointed blade
-  const LEAF_P = [[0, 0], [8, -7], [20, -12.5], [36, -14.5], [52, -13], [66, -8], [80, 0], [68, 5], [52, 9.5], [36, 12], [20, 11], [8, 7]];
+  const LEAF_P = [[0, 0], [8, -9], [22, -16], [40, -19], [58, -17], [76, -10], [92, -2], [74, 7], [56, 12], [38, 14], [20, 12], [8, 7]];
   const LEAF_G = bakeShape(Shape2D.poly(LEAF_P, C_LEAF, 8, (u, v) => (v > 0.6 ? C_LEAF_L : C_LEAF)));
   const LEAF_RIB = Shape2D.catmull([[2, 0], [26, 0.6], [52, 0.6], [76, 0.2]], false, 4);
   // small plucked leaf held to the mouth
@@ -188,12 +188,12 @@ const Nuzleaf = (() => {
     anchors.eyeN = onHead(EYE_AZ, EYE_V); anchors.eyeF = onHead(-EYE_AZ, EYE_V);
     anchors.mouth = onHead(0, MOUTH_V);
     // thick cream cone nose from the middle of the band, pointing forward and a little up
-    const nd = dirF(head, [Math.cos(0.2), Math.sin(0.2), 0]);
+    const nd = dirF(head, [Math.cos(0.42), Math.sin(0.42), 0]);
     const nb = inF(head, [31, 4, 0]);
-    prims.push(seg(nb, add(nb, sc(nd, 18)), 10.5, 10, 3, 3, M_MASK, dirF(head, [0, 1, 0]), 1.05));
-    prims.push(seg(add(nb, sc(nd, 10)), add(nb, sc(nd, 30)), 6, 5.8, 3, 3, M_MASK, dirF(head, [0, 1, 0]), 1.05));
-    prims.push(seg(add(nb, sc(nd, 24)), add(nb, sc(nd, 38)), 2.6, 2.6, 3, 3, M_MASK, dirF(head, [0, 1, 0])));
-    anchors.nose = add(nb, sc(nd, 38));
+    prims.push(seg(nb, add(nb, sc(nd, 20)), 11.5, 10.5, 3, 3, M_MASK, dirF(head, [0, 1, 0]), 1.05));
+    prims.push(seg(add(nb, sc(nd, 12)), add(nb, sc(nd, 36)), 6.6, 6.2, 3, 3, M_MASK, dirF(head, [0, 1, 0]), 1.05));
+    prims.push(seg(add(nb, sc(nd, 30)), add(nb, sc(nd, 48)), 2.8, 2.8, 3, 3, M_MASK, dirF(head, [0, 1, 0])));
+    anchors.nose = add(nb, sc(nd, 48));
     // pucker when whistling
     if (wh > 0.3) prims.push(ellF(chain(head, T(HR[0] * 0.86, HR[1] * MOUTH_V, 0)), [4, 3.4, 4], 3, 3, () => C_MOUTH));
 
@@ -205,7 +205,7 @@ const Nuzleaf = (() => {
     leaf.lines = [{ pts: LEAF_RIB.map(([u, v]) => [u, v, 0]), mat: LEAF, useLn: true }];
     prims.push(leaf);
     prims.push(seg(inF(head, [-2, HR[1] - 6, 0]), add(lroot, sc(lu, 4)), 2.4, 2.4, 4, 4, M_LEAF));
-    anchors.leaf = add(lroot, sc(lu, 78));
+    anchors.leaf = add(lroot, sc(lu, 90));
     anchors.top = anchors.leaf[1] > inF(head, [0, HR[1], 0])[1] ? anchors.leaf : inF(head, [0, HR[1], 0]);
 
     /* --- arms: thin, big round fists; flexing pose (fists up beside the head) --- */
@@ -214,8 +214,8 @@ const Nuzleaf = (() => {
       const ph = st + (sd > 0 ? Math.PI : 0);
       const pump = walking ? Math.sin(ph) : 0;
       const sh = inF(torso, [0, 30, sd * 13]);
-      let el = inF(torso, [-2 + 3 * pump, 22, sd * 36]);
-      let fist = inF(torso, [5 + 5 * pump, 46 + 3 * pump, sd * 44]);
+      let el = inF(torso, [-2 + 3 * pump, 30, sd * 40]);
+      let fist = inF(torso, [6 + 5 * pump, 54 + 3 * pump, sd * 46]);
       if (sd > 0 && wh > 0) {
         // near fist brings the leaf flute to the mouth
         el = lerp3(el, inF(torso, [16, 22, 30]), wh);
@@ -223,7 +223,7 @@ const Nuzleaf = (() => {
       }
       prims.push(seg(sh, el, 4.2, 4.2, id, id, M_BODY, [1, 0, 0], 1.12));
       prims.push(seg(el, fist, 4, 4, id, id, M_BODY, [1, 0, 0], 1.0));
-      prims.push(ellF(T(...fist), [10, 11, 10], id, id, M_BODY));
+      prims.push(ellF(T(...fist), [13.5, 14.5, 13], id, id, M_BODY));
       // curled fingers: a crease line on the front of the fist
       prims[prims.length - 1].lines = [{ pts: [[0.8, 0.45, 0.35 * sd], [0.95, 0, 0.3 * sd], [0.8, -0.45, 0.35 * sd]], mat: BODY, useLn: true }];
       anchors[sd > 0 ? 'handN' : 'handF'] = fist;

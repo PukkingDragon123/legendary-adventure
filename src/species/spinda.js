@@ -78,8 +78,8 @@ const Spinda = (() => {
     const r = Math.hypot(du, dv);
     const p = 1 / curScale;
     if (r > R0 + 0.6 * p) return false;
-    const gap = Math.max(R0 / 2.3, 2.3 * p);  // turn spacing, at least ~2 px
-    const lw = Math.max(0.55, 0.62 * p);
+    const gap = Math.max(R0 / 1.9, 2.3 * p);  // turn spacing, at least ~2 px
+    const lw = Math.max(R0 * 0.16, 0.62 * p);
     if (r < lw * 1.2) return true;            // centre dot
     const th = dir * Math.atan2(dv, du);
     const turns = r / gap - th / (2 * Math.PI);
@@ -88,8 +88,8 @@ const Spinda = (() => {
   }
 
   /* ---------- head decals (head frame: unit sphere s) ---------- */
-  const HR = [39, 37, 44];
-  const EYE_AZ = 0.42, EYE_V = 0.1, EYE_R = 9, NOSE_V = -0.1, MOUTH_V = -0.3;
+  const HR = [44, 42, 50];
+  const EYE_AZ = 0.42, EYE_V = 0.1, EYE_R = 12, NOSE_V = -0.1, MOUTH_V = -0.3;
   // official-art spot pattern (az, v, radius in unit-sphere units)
   const OFFICIAL = [[-0.62, 0.7, 0.33], [0.5, 0.12, 0.34], [-1.7, 0.2, 0.36], [2.5, 0.45, 0.42]];
   function spotSet(seed) {
@@ -106,7 +106,7 @@ const Spinda = (() => {
       if (s[0] > 0) {
         const sd = az >= 0 ? 1 : -1;
         // eyes
-        if (a < 0.9 && Math.abs(v - EYE_V) < 0.45) {
+        if (a < 1.0 && Math.abs(v - EYE_V) < 0.5) {
           const du = (az - sd * EYE_AZ) * rh, dv = (v - EYE_V) * HR[1];
           if (kind === 'open') { if (spiral(sd * du, dv, EYE_R, 1)) return C_INK; }
           else if (Math.abs(du) < EYE_R * 0.8) {
@@ -141,8 +141,8 @@ const Spinda = (() => {
   // ear (flat ellipsoid: x = thickness facing forward, y = along the ear, z = across): red outer tip, black spiral inside
   function earMat(sd) {
     return (s) => {
-      if (s[1] > 0.42 - 0.25 * s[2] * sd) return C_RED;
-      if (s[0] > 0.3 && spiral(s[2] * 17 * sd, (s[1] + 0.05) * 25, 10, -1)) return C_INK;
+      if (s[1] > 0.55 - 0.3 * s[2] * sd) return C_RED;
+      if (s[0] > 0.3 && spiral(s[2] * 17 * sd, (s[1] + 0.05) * 25, 12, -1)) return C_INK;
       return C_CREAM;
     };
   }
@@ -172,23 +172,23 @@ const Spinda = (() => {
       const ph = wk + (sd > 0 ? 0 : Math.PI);
       const fwd = walking ? 9 * Math.sin(ph) : 0;
       const lift = walking ? 5 * Math.max(0, Math.cos(ph)) : 0;
-      const hip = inF(root, [0, 32, sd * 16]);
+      const hip = inF(root, [0, 28, sd * 16]);
       const ank = [4 + fwd, 9 + lift, sd * 18 + Math.sin(wb) * 3];
-      prims.push(seg(hip, ank, 12, 12, id, id, M_CREAM, [1, 0, 0], 1.2));
+      prims.push(seg(hip, ank, 13, 13, id, id, M_CREAM, [1, 0, 0], 1.2));
       const foot = chain(T(ank[0] + 5, ank[1] - 3, ank[2]), R(M3.ry(-sd * 0.3)), R(M3.rz(walking ? 0.2 * Math.sin(ph) : 0)));
       prims.push(ellF(foot, [15, 7.5, 11.5], id, id, M_CREAM));
       anchors[sd > 0 ? 'footN' : 'footF'] = inF(foot, [0, -7.5, 0]);
     }
 
     /* --- pear-shaped body with the red hip band --- */
-    const bodyF = chain(root, T(0, 62, 0));
-    prims.push(ellF(bodyF, [32, 38, 34], 1, 1, bodyMat));
+    const bodyF = chain(root, T(0, 56, 0));
+    prims.push(ellF(bodyF, [32, 33, 34], 1, 1, bodyMat));
     anchors.body = bodyF.t;
     anchors.belly = inF(bodyF, [33, -8, 0]);
 
     /* --- head: lags behind the sway and counter-tilts (dizzy) --- */
     const lag = 0.12 * Math.sin(wb - 0.9);
-    const head = chain(root, T(3, 110, 0), R(M3.rx(-0.6 * swayX + lag)), R(M3.rz(-0.1 * Math.sin(2 * wb - 0.6))), T(0, 10, 0));
+    const head = chain(root, T(4, 100, 0), R(M3.rx(-0.6 * swayX + lag)), R(M3.rz(-0.1 * Math.sin(2 * wb - 0.6))), T(0, 10, 0));
     const headPrim = ellF(head, HR, 2, 2, headMat(kind, mo, spots));
     prims.push(headPrim);
     anchors.head = head.t;
@@ -203,11 +203,11 @@ const Spinda = (() => {
       const id = sd > 0 ? 3 : 4;
       const flap = 0.1 * Math.sin(wb * 1.5 + sd) + (walking ? 0.05 * Math.sin(wk * 2) : 0);
       const base = onHead(sd * 1.0, 0.62, -6);
-      const d = dirF(head, [-0.12, 1, sd * (0.72 + flap)]);
+      const d = dirF(head, [-0.12, 1, sd * (0.6 + flap)]);
       const [X, Y, Z] = frameAlong(d, dirF(head, [1, 0, 0.3 * sd]));
-      const c = add(base, sc(Y, 25));
-      prims.push(ellAx(c, X, Y, Z, [6, 29, 19], id, id, earMat(sd)));
-      const tp = add(c, sc(Y, 29));
+      const c = add(base, sc(Y, 27));
+      prims.push(ellAx(c, X, Y, Z, [6, 32, 19], id, id, earMat(sd)));
+      const tp = add(c, sc(Y, 32));
       anchors[sd > 0 ? 'earN' : 'earF'] = tp;
       top = Math.max(top, tp[1]);
     }
@@ -218,7 +218,7 @@ const Spinda = (() => {
       const id = sd > 0 ? 5 : 6;
       const flail = 0.35 * Math.sin(wb * 2 + (sd > 0 ? 0 : 2)) + (walking ? 0.2 * Math.sin(wk + (sd > 0 ? Math.PI : 0)) : 0);
       const lift = (sd > 0 ? 0.55 : -0.25) + flail;
-      const sh = inF(bodyF, [2, 20, sd * 29]);
+      const sh = inF(bodyF, [2, 16, sd * 29]);
       const d = dirF(bodyF, [0.35, Math.sin(lift), sd * Math.cos(lift)]);
       const [X, Y, Z] = frameAlong(d, dirF(bodyF, [0, 1, 0]));
       // flat paddle: thin across its local x (the up-facing side)

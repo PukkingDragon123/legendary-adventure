@@ -31,16 +31,17 @@ const Torkoal = (() => {
   const PAL = Creature.palette({
     [SKIN]:   { r: ['#962a14', '#c0421c', '#e4622a', '#f68a46', '#ffb676'], od: '#541208', ol: '#8e2610', ln: '#8a2810' },
     [SHELL]:  { r: ['#1e1a1c', '#2c2628', '#40383a', '#5a4e4e', '#7e7270'], od: '#0c0808', ol: '#262022', ln: '#181314' },
-    [RIM]:    { r: ['#5a4e46', '#766a5e', '#94887a', '#b2a696', '#d2c8b8'], od: '#2a2220', ol: '#4e443e', ln: '#4a403a' },
-    [HOLE]:   { r: ['#080606', '#0e0a0a', '#161010', '#1e1616', '#281e1c'], od: '#060404', ol: '#0e0a0a', ln: '#0e0a0a' },
+    [RIM]:    { r: ['#4a4448', '#625a5e', '#7e767a', '#9a9296', '#bab2b6'], od: '#221e20', ol: '#3e383a', ln: '#3a3436' },
+    [HOLE]:   { r: ['#6a1420', '#92202e', '#bc3444', '#e0566a', '#f68a9a'], od: '#3a0810', ol: '#5a0e18', ln: '#1a1012' },
     [GLOW]:   { r: ['#b8300e', '#e04c14', '#ff7a24', '#ffae48', '#ffe49a'], od: '#5a1406', ol: '#9a2a0c', ln: '#a0300c' },
     [SMOKE]:  { r: ['#8e8c94', '#aeacb4', '#cecdd2', '#e8e7ea', '#faf9fb'], od: '#56545c', ol: '#7c7a82', ln: '#8a8890' },
     [MOUTH]:  { r: ['#3e0e10', '#581618', '#742224', '#903234', '#aa4846'], od: '#260608', ol: '#3e0c0e', ln: '#300a0c' },
     [TONGUE]: { r: ['#b84452', '#d65e6a', '#ee808a', '#ffa6aa', '#ffcccc'], od: '#6a1a26', ol: '#8e2a38', ln: '#8e2a38' },
-    [CLAW]:   { r: ['#2a2224', '#3a3032', '#504446', '#6a5c5c', '#8c7e7c'], od: '#140e0e', ol: '#2e2626', ln: '#2a2222' },
+    [CLAW]:   { r: ['#a8a4a0', '#c8c4c0', '#e4e0dc', '#f4f2ee', '#ffffff'], od: '#4a4440', ol: '#7a746e', ln: '#7a746e' },
   });
   const GLOSSY = { [SHELL]: 1 };
   const C_SKIN = code(SKIN), C_SHELL = code(SHELL), C_RIM = code(RIM), C_HOLE = code(HOLE), C_GLOW = code(GLOW), C_GLOW_H = code(GLOW, 1);
+  const C_HOLE_RIM = code(SHELL, -1);
   const C_SMOKE = code(SMOKE), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE), C_CLAW = code(CLAW);
   const M_SKIN = () => C_SKIN, M_CLAW = () => C_CLAW, M_SMOKE = () => C_SMOKE;
 
@@ -64,15 +65,24 @@ const Torkoal = (() => {
   }
 
   // ---- geometry (body frame, ground at y = 0)
-  const SHELL_C = [-4, 30, 0], SHELL_R = [38, 34, 35];
-  const RIM_V = -0.12, CUT_V = -0.42; // rim band between CUT_V and RIM_V (unit-sphere y), open below
+  const SHELL_C = [-6, 30, 0], SHELL_R = [38, 33, 34];
+  const RIM_V = -0.3, CUT_V = -0.46; // rim band between CUT_V and RIM_V (unit-sphere y), open below
   const BELLY_C = [-3, 17, 0], BELLY_R = [33, 11, 29];
   // vents on the shell top (unit-sphere directions, angular radius)
-  const VENTS = [[0, 1, 0, 0.2], ...[0.6, 1.9, 3.3, 4.6].map((a) => [...Creature.sph(a, 0.72), 0.16])].map(([x, y, z, r]) => ({ d: nrm([x, y, z]), c: Math.cos(r), ci: Math.cos(r * 0.55) }));
-  const HEAD_OUT = { neck0: [22, 24, 0], c: [44, 38, 0] }, HEAD_IN = { neck0: [6, 22, 0], c: [16, 27, 0] };
-  const HEAD_R = [16, 13.5, 14.5];
+  // hexagonal vents ringing the shell (red-hot inside, like the official art) plus a rear exhaust
+  const VENTS = [[-1, 0.2, 0, 0.22], ...[0.5, 1.55, 2.6, 3.7, 4.75, 5.8].map((a) => [...Creature.sph(a, 0.55), 0.26]), ...[1.0, 2.9, 4.2].map((a) => [...Creature.sph(a, 1.1), 0.2])]
+    .map(([x, y, z, r]) => {
+      const d = nrm([x, y, z]);
+      let u = cross(d, [0, 1, 0]); if (len3(u) < 1e-3) u = [0, 0, 1];
+      u = nrm(u); const v = cross(u, d);
+      return { d, u, v, r: Math.sin(r), c: Math.cos(r * 1.35) };
+    });
+  const hexD = (a, b) => Math.max(Math.abs(b), Math.abs(b * 0.5 + a * 0.866), Math.abs(b * 0.5 - a * 0.866));
+  const BAND_M = () => C_RIM;
+  const HEAD_OUT = { neck0: [22, 24, 0], c: [42, 54, 0] }, HEAD_IN = { neck0: [6, 22, 0], c: [16, 27, 0] };
+  const HEAD_R = [14.5, 12.5, 13];
   const SNOUT_C = [11.5, -2.5, 0], SNOUT_R = [10.5, 9.5, 11];
-  const EYE_S = nrm([0.55, 0.42, 0.72]);
+  const EYE_S = nrm([0.5, 0.5, 0.72]);
   const LEGS = [{ x: 22, z: 22, ph: 0 }, { x: -26, z: 21, ph: Math.PI }];
   const PRI = { 1: 0, 2: 2, 3: 3, 4: 3, 5: 1, 6: 1, 7: 1, 8: 1, 9: 0, 10: 4 };
   const SIZE = 1.2;
@@ -118,7 +128,10 @@ const Torkoal = (() => {
       if (s[1] < RIM_V) return C_RIM;
       for (const v of VENTS) {
         const c = s[0] * v.d[0] + s[1] * v.d[1] + s[2] * v.d[2];
-        if (c > v.c) return glow ? (c > v.ci && smoke > 0.4 ? C_GLOW_H : C_GLOW) : C_HOLE;
+        if (c < v.c) continue;
+        const h = hexD(s[0] * v.u[0] + s[1] * v.u[1] + s[2] * v.u[2], s[0] * v.v[0] + s[1] * v.v[1] + s[2] * v.v[2]) / v.r;
+        if (h < 0.72) return glow ? (h < 0.45 && smoke > 0.4 ? C_GLOW_H : C_GLOW) : C_HOLE;
+        if (h < 1) return C_HOLE_RIM;
       }
       return C_SHELL;
     };
@@ -145,8 +158,9 @@ const Torkoal = (() => {
     /* --- neck and head (pull into the shell with `hide`) --- */
     const H = { neck0: lerpV(HEAD_OUT.neck0, HEAD_IN.neck0, hk), c: lerpV(HEAD_OUT.c, HEAD_IN.c, hk) };
     const sway = walking ? 0.05 * Math.sin(wk) : 0;
-    const head = chain(body, T(...H.c), R(M3.ry(sway)), R(M3.rz(0.12)));
-    prims.push(seg(inF(body, H.neck0), inF(head, [-7, -5, 0]), 10.5, 11, 3, 3, M_SKIN));
+    const head = chain(body, T(...H.c), R(M3.ry(sway)), R(M3.rz(0.4)));
+    const neckMat = (s) => (Math.abs(s[1] + 0.05) < 0.12 ? C_RIM : C_SKIN); // grey neck band
+    prims.push(seg(inF(body, H.neck0), inF(head, [-6, -6, 0]), 9, 9.5, 3, 3, neckMat));
     const headPrim = ellF(head, HEAD_R, 3, 3, M_SKIN);
     prims.push(headPrim);
     anchors.head = head.t;
@@ -189,7 +203,7 @@ const Torkoal = (() => {
         const k = 1 - 0.55 * hk; // legs pull in and up under the shell
         const hip = inF(body, [lg.x * 0.8, 20, sd * lg.z * 0.75]);
         const foot = add(lerpV([lg.x + sw, 4 + lift, sd * lg.z * 1.12], inF(body, [lg.x * 0.7, 14, sd * lg.z * 0.7]), hk), [0, 0, 0]);
-        prims.push(seg(hip, foot, 9.5 * k + 2, 9.5 * k + 2, id, id, M_SKIN));
+        prims.push(seg(hip, foot, 9.5 * k + 2, 9.5 * k + 2, id, id, (s) => (Math.abs(s[1] + 0.05) < 0.14 ? C_RIM : C_SKIN)));
         const fd = nrm([lg.x > 0 ? 1 : -0.3, 0, sd * 0.5]);
         prims.push(ellF(T(foot[0], foot[1] - 1, foot[2]), [10 * k + 1, 5, 10 * k + 1], id, id, M_SKIN));
         if (hk < 0.8) for (const t of [-1, 0, 1]) {

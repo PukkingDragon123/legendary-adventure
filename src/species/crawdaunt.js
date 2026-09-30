@@ -23,13 +23,14 @@ const Crawdaunt = (() => {
   const { chain, T, R, F, code } = Creature;
 
   // ---- materials
-  const SHELL = 1, CREAM = 2, EYE = 3, INNER = 4, MOUTH = 5, TONGUE = 6, STAR = 7;
-  const MAT = { SHELL, CREAM, EYE, INNER, MOUTH, TONGUE, STAR };
+  const SHELL = 1, CREAM = 2, EYE = 3, INNER = 4, MOUTH = 5, TONGUE = 6, STAR = 7, BLUE = 8;
+  const MAT = { SHELL, CREAM, EYE, INNER, MOUTH, TONGUE, STAR, BLUE };
   const PAL = Creature.palette({
     [SHELL]: { r: ['#6a1216', '#921e20', '#bc302c', '#dc4c3e', '#f47a62'], od: '#3a0608', ol: '#6e1414', ln: '#6a1214' },
     [CREAM]: { r: ['#b09470', '#d2b88e', '#ecd6ac', '#f8eaca', '#fff8e6'], od: '#5a3a1e', ol: '#8a6844', ln: '#9a7a54' },
-    [EYE]: { r: ['#c08a10', '#e0b020', '#f8d840', '#fff080', '#fffac0'], od: '#3a1008', ol: '#5c2010', ln: '#3a1008' },
-    [INNER]: { r: ['#b09470', '#d2b88e', '#ecd6ac', '#f8eaca', '#fff8e6'], od: '#5a3a1e', ol: '#8a6844', ln: '#9a7a54' },
+    [EYE]: { r: ['#b8b4b0', '#d8d6d2', '#f2f0ec', '#fcfcfa', '#ffffff'], od: '#3a1008', ol: '#5c2010', ln: '#3a1008' },
+    [BLUE]: { r: ['#244a8a', '#3462b0', '#4a84d0', '#6ea4e4', '#a0c8f4'], od: '#142a5a', ol: '#1e3c78', ln: '#1e3c78' },
+    [INNER]: { r: ['#141016', '#1e181e', '#2a2228', '#382e34', '#4a3e44'], od: '#0a0608', ol: '#140c10', ln: '#e8e0d8' },
     [STAR]: { r: ['#b87410', '#dc9c1c', '#f6c634', '#ffe070', '#fff4b4'], od: '#6a3a06', ol: '#a0620e', ln: '#a8680e' },
     [MOUTH]: { r: ['#3e0c12', '#56141a', '#6e1e24', '#88282c', '#a03836'], od: '#2a0608', ol: '#3a0c10', ln: '#3a0c10' },
     [TONGUE]: { r: ['#b0404a', '#cc5a60', '#e57a78', '#f59a92', '#ffc0b4'], od: '#5a1018', ol: '#7a1c24', ln: '#8a2830' },
@@ -37,6 +38,7 @@ const Crawdaunt = (() => {
   const GLOSSY = { [SHELL]: 1, [STAR]: 1 };
   const NO_DOTS = [{}].slice(1); // empty, but with the elements kind of Mudkip's dot list
   const C_SHELL = code(SHELL), C_SHELL_D = code(SHELL, -1), C_CREAM = code(CREAM), C_EYE = code(EYE);
+  const C_BLUE = code(BLUE), C_BLUE_L = code(BLUE, 1);
   const C_INNER = code(INNER), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE);
   const M_SHELL = () => C_SHELL, M_CREAM = () => C_CREAM, M_EYE = () => C_EYE, M_LINING = () => C_SHELL_D;
 
@@ -93,14 +95,15 @@ const Crawdaunt = (() => {
 
   // yellow four-pointed star crest: two crossed star plates (frontal + sagittal) so it reads from every side
   const C_STAR = code(STAR), C_STAR_D = code(STAR, -1);
-  const STAR_C = [-3, 82, 0], STAR_R = 29, STAR_IN = 0.36;
+  const STAR_C = [-3, 94, 0], STAR_R = 31, STAR_IN = 0.46;
   const STAR_G = bakeShape({
     bb: [-STAR_R - 1, -STAR_R - 1, STAR_R + 1, STAR_R + 1],
     test(u, v) {
       const r = Math.hypot(u, v), a = Math.atan2(v, u);
-      // 4 points (up, down, left, right), concave sides
-      const k = Math.abs(Math.cos(2 * a));
-      const lim = STAR_R * (STAR_IN + (1 - STAR_IN) * Math.pow(k, 2.4));
+      // 5-pointed star, one point straight up
+      const sec = (2 * Math.PI) / 5;
+      let t = (a - Math.PI / 2) / sec; t = Math.abs(t - Math.round(t)) * 2;
+      const lim = STAR_R / (1 + (1 / STAR_IN - 1) * t);
       if (r > lim) return 0;
       return r > lim - 2.2 && r > 5 ? C_STAR_D : C_STAR;
     },
@@ -202,7 +205,7 @@ const Crawdaunt = (() => {
       if (eyeKind === 'angry' || eyeKind === 'open') prims.push(E(eyePrim.c, M3.mul(body.L, M3.mul(ax, M3.diag(EYE_R[0] * 1.12, EYE_R[1] * 1.1, EYE_R[2] * 1.15))), id + 2, id + 2, lidMat));
       let sP;
       if (closed) sP = [0, 0.05, 1];
-      else if (eyeKind === 'angry' || eyeKind === 'open') sP = [0.3, -0.25, 1];
+      else if (eyeKind === 'angry' || eyeKind === 'open') sP = [0.15, -0.05, 1];
       else if (eyeKind === 'dizzy') sP = [0, 0, 1];
       else sP = [0.28, -0.08, 1];
       sP = nrm(sP);
@@ -220,6 +223,11 @@ const Crawdaunt = (() => {
         // small mouth just above the smile line, opening upward
         const dv = (s[1] - vc) / hh, az = Math.atan2(s[2], s[0]) / 0.24;
         if (dv * dv + az * az < 1) return dv < -0.25 && mouthH > 0.4 ? C_TONGUE : C_MOUTH;
+      }
+      // blue chevron band across the snout (Crawdaunt's face mask)
+      if (s[0] > 0.15) {
+        const v = s[1] + 0.55 * Math.abs(s[2]);
+        if (v > -0.35 && v < 0.35) return v > -0.02 && v < 0.08 ? C_BLUE_L : C_BLUE;
       }
       return C_CREAM;
     };
@@ -307,7 +315,7 @@ const Crawdaunt = (() => {
      k = pupil, b = dark lid line, w = white. */
   const stampSet = (o, oN, oF) => ({ open: o, openN: oN, openF: oF, happy: o, happyN: oN, happyF: oF, blink: o, blinkN: oN, blinkF: oF, sleep: o, sleepN: oN, sleepF: oF });
   const EYE_SETS = {
-    open: stampSet(['kk', 'kk'], ['kk', 'kk'], ['k', 'k']),
+    open: stampSet(['.kk.', 'kkkk', 'kkkk', '.kk.'], ['.kk.', 'kkkk', 'kkkk', '.kk.'], ['kk', 'kk']),
     angry: stampSet(['kk', 'kk'], ['kk', 'kk'], ['k', 'k']),
     dizzy: stampSet(['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kk', 'k.k', 'kkk']),
     happy: stampSet(['..bb..', '.b..b.', 'b....b'], ['.bb.', 'b..b', 'b..b'], ['.b', 'b.', 'b.']),

@@ -98,6 +98,15 @@ const Critters = (() => {
   };
 
   const q = (v, s) => Math.round(v / s) * s;
+  // accessories baked into the sprite (snap game only): same camera, light and palette as the body
+  function accWrap(c, s, key, P) {
+    if (!s || !s.anchors || typeof Accs === 'undefined') return s;
+    const L = Accs.lookFor(c); if (!L) return s;
+    const k2 = key + '|A:' + Accs.key(L);
+    let b = cacheGet(k2);
+    if (!b) { b = Accs.bake(c, s, P, { yaw: q(c.yaw, c.qy), pitch: c.pitch, light: P.gradePal(c.basePal, c.palId).light }); cachePut(k2, b); }
+    return b;
+  }
   let uid = 0;
   // HD mode: a creature only switches to a new pose once its double-resolution sprite is ready too,
   // so it never flickers between low- and high-resolution art
@@ -199,6 +208,7 @@ const Critters = (() => {
           Budget.left -= performance.now() - t0;
         }
       }
+      if (s) s = accWrap(this, s, key, P);
       if (s) {
         if (HDS.on && !this.noHD) {
           const h2 = this.sprite2(P);
@@ -223,6 +233,7 @@ const Critters = (() => {
         if (Pool.ready && Pool.nameOf(this.sp)) { if (!Pool.pending.has(key)) Pool.request(this.id + '#2', { key, sp: Pool.nameOf(this.sp), pose, opt, time: P.key }); }
         else if (Budget.left > 4) { const t0 = performance.now(); s = crop(this.sp.render(this.sp.build(pose), opt), P.key); cachePut(key, s); Budget.left -= performance.now() - t0; }
       }
+      if (s) s = accWrap(this, s, key, P);
       return s ? { s, OX, OY } : null;
     }
     // world position of the sprite's top-left

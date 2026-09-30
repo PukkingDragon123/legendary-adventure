@@ -37,11 +37,11 @@ const Breloom = (() => {
   const GREEN = 1, CREAM = 2, GILL = 3, RED = 4, EYEK = 5, GLINT = 6, MOUTH = 7, SEED = 8;
   const MAT = { GREEN, CREAM, GILL, RED, EYEK, GLINT, MOUTH, SEED };
   const PAL = Creature.palette({
-    [GREEN]: { r: ['#3a6a2a', '#4e8a36', '#6caa48', '#8ec862', '#b8e28c'], od: '#1c3a12', ol: '#3e6e28', ln: '#355e22' },
-    [SEED]:  { r: ['#3a6a2a', '#4e8a36', '#6caa48', '#8ec862', '#b8e28c'], od: '#1c3a12', ol: '#3e6e28', ln: '#355e22' },
-    [CREAM]: { r: ['#b4a878', '#d4ca98', '#f0e8bc', '#faf6d8', '#fffff0'], od: '#62582e', ol: '#9a8e5a', ln: '#9a8e5a' },
+    [GREEN]: { r: ['#3a6242', '#4c7e54', '#64996a', '#80b284', '#a8cca6'], od: '#1c3622', ol: '#3a6242', ln: '#34583a' },
+    [SEED]:  { r: ['#3a6242', '#4c7e54', '#64996a', '#80b284', '#a8cca6'], od: '#1c3622', ol: '#3a6242', ln: '#34583a' },
+    [CREAM]: { r: ['#b0a47c', '#d0c49c', '#ece2bc', '#f6f0d6', '#fffaec'], od: '#62582e', ol: '#9a8e5a', ln: '#9a8e5a' },
     [GILL]:  { r: ['#8e7c58', '#ac9a72', '#c8b88e', '#dcceaa', '#ece2c8'], od: '#4a3c20', ol: '#7a6a48', ln: '#7a6844' },
-    [RED]:   { r: ['#90182c', '#b8243e', '#dc3a56', '#f06a7e', '#ffa4b0'], od: '#4e0612', ol: '#8a1428', ln: '#801426' },
+    [RED]:   { r: ['#a02c3a', '#c4424e', '#e0606a', '#f0868c', '#ffb4b4'], od: '#541018', ol: '#90283a', ln: '#882432' },
     [EYEK]:  { r: ['#0a0a0c', '#101014', '#18181c', '#222228', '#303038'], od: '#050506', ol: '#0a0a0c', ln: '#050506' },
     [GLINT]: { r: ['#e8eef0', '#ffffff', '#ffffff', '#ffffff', '#ffffff'], od: '#8090a0', ol: '#c0ccd8', ln: '#c0ccd8' },
     [MOUTH]: { r: ['#3a1216', '#521c20', '#6c282c', '#86383a', '#a04c4c'], od: '#22080a', ol: '#3a1216', ln: '#3a1216' },
@@ -78,12 +78,12 @@ const Breloom = (() => {
 
   /* ---------- head: cream, small black oval eyes (decals) ---------- */
   const HR = [19, 22, 18];
-  const EYE_AZ = 0.62, EYE_V = 0.12;
+  const EYE_AZ = 0.5, EYE_V = -0.04;
   function eyePix(s, kind) {
     const az = Math.atan2(Math.abs(s[2]), s[0]);
     const px = 1 / (curScale * HR[1]);
     const u = (az - EYE_AZ) * 1.1, v = s[1] - EYE_V;
-    const ru = Math.max(0.12, 1.3 * px), rv = Math.max(0.19, 1.8 * px);
+    const ru = Math.max(0.15, 1.4 * px), rv = Math.max(0.24, 2 * px);
     const a = u / ru, b = v / rv;
     if (kind === 'open') {
       if (a * a + b * b >= 1) return 0;
@@ -101,9 +101,9 @@ const Breloom = (() => {
   const headMat = (kind) => (s) => (s[0] > 0 ? eyePix(s, kind) || C_CREAM : C_CREAM);
 
   /* ---------- cap: green dome, beige gilled underside ---------- */
-  const CAP_R = [45, 23, 43];
+  const CAP_R = [40, 30, 40];
   const capMat = (s) => {
-    if (s[1] > -0.42) return C_GREEN;
+    if (s[1] > -0.5) return C_GREEN;
     // underside: radial gills
     const az = Math.atan2(s[2], s[0]);
     const r = Math.hypot(s[0], s[2]);
@@ -172,7 +172,7 @@ const Breloom = (() => {
     }
 
     /* --- cap: tilted back, gills showing under the front brim; red seeds on the sides --- */
-    const cap = chain(head, T(-5, 17, 0), R(M3.rz(0.3)));
+    const cap = chain(head, T(-10, 23, 0), R(M3.rz(0.42)));
     prims.push(ellF(cap, CAP_R, 4, 4, capMat));
     anchors.cap = inF(cap, [0, CAP_R[1], 0]);
     anchors.top = inF(cap, [-8, CAP_R[1] + 1, 0]);
@@ -243,7 +243,7 @@ const Breloom = (() => {
     }
     for (let i = 0; i < N; i++) {
       const r0 = lerp(12, 4.4, i / N), r1 = lerp(12, 4.4, (i + 1) / N);
-      prims.push(seg(pts[i], pts[i + 1], (r0 + r1) / 2, (r0 + r1) / 2, 11, 11, M_CREAM, [0, 1, 0], 1.45));
+      prims.push(seg(pts[i], pts[i + 1], (r0 + r1) / 2, (r0 + r1) / 2, 11, 11, M_CREAM, [0, 1, 0], 1.9));
     }
     const tipDir = nrm(sub(pts[N], pts[N - 1]));
     const cl = add(pts[N], sc(tipDir, 7));
