@@ -141,8 +141,6 @@ const Boardwalk = (() => {
     b0(A);
     const M = A.M, r = rng(9191);
     const put = (s, x, zd, o) => A.put(s, x, zd, o);
-    // the plank walk runs the whole way
-    for (let x = X0 + 40; x < X1 - 40; x += 96) put(planks(M, 96), x + 48, 3, { sink: 4, foot: 96 });
     // palms and grass along the back
     for (let x = X0 + 60; x < X1; x += 160 + r() * 140) put(Paint.palm(M, 110 + r() * 40, Math.floor(x), { lean: (r() - 0.5) * 0.5 }), x, -5, { windFrames: true, sink: 3 });
     for (let x = X0; x < X1; x += 14 + r() * 26) put(Paint.tuft(M, 10 + r() * 10, 10 + r() * 10, Math.floor(x * 3), { ramp: M.grass, flowers: r() < 0.3 ? [M.flowerP] : r() < 0.3 ? [M.flowerY] : null }), x, -4 + r() * 2, { windFrames: true });
@@ -169,16 +167,25 @@ const Boardwalk = (() => {
     for (let x = RING - 90; x <= RING + 90; x += 30) A.glows.push({ x, y: gy(x) - 80, r: 10, c: hex(x % 60 ? '#ff9ac0' : '#9ad8ff'), a: 0.4 });
     A.glows.push({ x: TOWER, y: gy(TOWER) - 70, r: 20, c: hex('#fff0a0'), a: 0.35 });
     // taps
-    A.addHot({ x0: BAR - 60, x1: BAR + 60, y0: gy(BAR) - 100, y1: gy(BAR), x: BAR, reach: 70, tap: () => barMenu() });
+    A.addHot({ x0: BAR - 60, x1: BAR + 60, y0: gy(BAR) - 100, y1: gy(BAR), x: BAR, reach: 70, tap: () => S.barMenu() });
     A.addHot({ x0: RING - 80, x1: RING + 80, y0: gy(RING) - 40, y1: gy(RING), x: RING, reach: 90, tap: () => challenge() });
     A.addHot({ x0: POST - 14, x1: POST + 32, y0: gy(POST) - 56, y1: gy(POST), x: POST, reach: 44, tap: () => HUD.toast('Pelipper Post — Boardwalk Branch. "Neither rain nor Ice Beam stops the mail!"', { life: 3 }) });
     A.addHot({ x0: TOWER - 26, x1: TOWER + 26, y0: gy(TOWER) - 100, y1: gy(TOWER), x: TOWER, reach: 60, tap() { HUD.toast('The lifeguard tower. From up top you can see the deep blue drop-off... something huge sleeps down there.', { life: 3.2 }); if (Save.discover('beach.tower')) Save.addPoints(150); } });
     // a far backdrop: a sunset pier and a little town on the headland
     {
-      const w = 1500, h = 80, s = spr(w, h);
+      const w = 1500, h = 96, s = spr(w, h), lit = spr(w, h);
       Paint.ridge(s, M, { ramp: M.hill, base: h, amp: 30, seed: 88, freq: 0.004 });
-      for (let x = 60; x < w - 60; x += 40 + r() * 70) { const hh = 10 + Math.floor(r() * 12), ww = 12 + Math.floor(r() * 10), y0 = h - 22 - Math.floor(r() * 16); for (let y = 0; y < hh; y++) for (let xx = 0; xx < ww; xx++) s.set(x + xx, y0 + y, y < 3 ? M.roof[2] : M.wall[(xx + y) % 5 ? 2 : 1]); }
+      const top = (x) => { let t = 0; while (t < h && !s.get(x, t)) t++; return t; };
+      const tl = spr(w, h); Paint.treeline(tl, { ramp: M.treeF || M.hill, base: h - 40, size: 5, seed: 89, jag: 4 });
+      for (let x = 0; x < w; x++) { const t0 = top(x); for (let y = t0 - 5; y < t0 + 6; y++) { const v = tl.get(x, y - t0 + (h - 44)); if (v) s.set(x, y, v); } }
+      const T = [];
+      for (let x = 0; x < w; x++) T[x] = top(x);
+      if (B.paintTown) {
+        B.paintTown(s, lit, M, { x0: 120, x1: 700, ground: (x) => T[Math.max(0, Math.min(w - 1, Math.round(x)))] + 10, maxH: 22, seed: 41, env: (u) => 0.3 + 0.7 * Math.sin(u * Math.PI) });
+        B.paintTown(s, lit, M, { x0: 900, x1: 1350, ground: (x) => T[Math.max(0, Math.min(w - 1, Math.round(x)))] + 8, maxH: 8, seed: 42, trees: true });
+      }
       const L = A.layer(s, 0.3, { haze: 0.3, base: h - 1, x: X0 * 0.3 - 100 }); L.skirt = M.hill[2];
+      L.draw = (fb, sx, sy, pal) => { const hr = Stage.S.hour; if (hr === 'night' || hr === 'dusk') Paint.blit(fb, lit, sx, sy, pal, { fade: hr === 'dusk' ? 0.45 : 0 }); };
       A.layers.sort((a, b) => a.p - b.p);
     }
   };
@@ -251,7 +258,7 @@ const Boardwalk = (() => {
   Talk.hooks.push((m) => {
     const s = Talk.qState('q.mail3');
     if (m.champ && !(s && s.s === 'active' && !(s.to || []).includes('champ'))) { challenge(m); return true; }
-    if (m.barkeep && !(s && s.s === 'active' && !(s.to || []).includes('barkeep'))) { barMenu(); return true; }
+    if (m.barkeep && !(s && s.s === 'active' && !(s.to || []).includes('barkeep'))) { S.barMenu(); return true; }
     if (!s || s.s !== 'active') return false;
     const t = TO.find((q) => isTo(m, q)); if (!t) return false;
     s.to = s.to || []; if (s.to.includes(t.k)) return false;

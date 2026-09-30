@@ -713,10 +713,11 @@ const Dex = (() => {
     ['regice.woke', 'The Iceberg Giant', 'Stand in the circle. Be still. Then sing.'],
     ['rayquaza.seen', 'Sky High', 'Once a great Pokémon wakes, watch the sky over Treetop Town.'],
     ['forest.windmill', 'The Old Windmill', 'Past the stump, Weather Woods opens into a flower meadow.'],
-    ['arcade.battle', 'Type Champion', 'Challenge a friend to a Type Battle (H) and win.'],
-    ['arcade.rope', 'Skip Star', 'Ten jumps in a row at jump rope.'],
-    ['arcade.seek', 'Seeker', 'Find your friend in Hide & Seek.'],
-    ['arcade.tag', 'Tag Master', 'Catch your friend at Tag... and escape.'],
+    ['arcade.battle', 'Type Champion', 'Beat Budew at Type Battle in Weather Woods.'],
+    ['arcade.rope', 'Skip Star', 'Ten jumps in a row at Spinda\'s jump rope.'],
+    ['arcade.seek', 'Seeker', 'Find Marill in Hide & Seek on the boardwalk.'],
+    ['arcade.tag', 'Tag Master', 'Catch Linoone at Tag... and escape.'],
+    ['arcade.bar', 'Star Mixer', 'Serve 5 drinks in one shift at the Sunset Bar.'],
   ];
   function pageDisc(fb, S, L, R, slide, t) {
     const got = SECRETS.filter((s) => Save.found(s[0])).length;

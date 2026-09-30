@@ -203,7 +203,7 @@ const Moves = (() => {
   }
   // the current move as a small chip (keyboard play: bottom right) with its cooldown
   function drawChip(fb, S, t) {
-    if (typeof Pad !== 'undefined' && Pad.touch) return;
+    if (typeof Pad !== 'undefined') return; // the pad's B button already shows the move and its cooldown
     const m = current(), r = 9, cx = fb.w - 16, cy = fb.h - 44;
     UI.disc(fb, cx, cy + 2, r, 0xff0a0e1a); UI.orb(fb, cx, cy, r, m.col, { ol: 0xff1b2240 });
     icon(fb, m.id, cx, cy, 1);

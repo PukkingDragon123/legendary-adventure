@@ -26,7 +26,7 @@ const files = [
   'src/snap/world.js', 'src/game/waves.js', 'src/game/fx.js', 'src/game/critters.js', 'src/game/audio.js',
   'src/snap/terrain.js', 'src/snap/stage.js', 'src/snap/props.js', 'src/snap/props2.js', 'src/snap/shaders.js',
   'src/snap/sfx.js', 'src/snap/save.js', 'src/snap/dexdata.js', 'src/snap/cries.js', 'src/snap/ui.js', 'src/snap/mons.js', 'src/snap/player.js',
-  'src/snap/items.js', 'src/snap/weather.js', 'src/snap/moves.js', 'src/snap/pad.js', 'src/snap/talk.js', 'src/snap/hud.js', 'src/snap/photo.js', 'src/snap/toys.js',
+  'src/snap/items.js', 'src/snap/weather.js', 'src/snap/moves.js', ...opt(['src/snap/tmfx.js']), 'src/snap/pad.js', 'src/snap/talk.js', 'src/snap/hud.js', 'src/snap/photo.js', 'src/snap/toys.js',
   ...opt(['src/snap/rewards.js', 'src/snap/quests.js', 'src/snap/music.js', 'src/snap/dex.js', 'src/snap/worldmap.js']),
   'src/snap/social.js', 'src/snap/harvest.js', 'src/snap/bag.js', 'src/beach.js', 'src/paintings.js', 'src/snap/style.js', 'src/snap/memories.js', 'src/snap/seasons.js',
   ...opt(['src/snap/stubs.js']),
@@ -34,7 +34,7 @@ const files = [
   ...opt(AI.map((a) => `src/snap/ai/${a}.js`)),
   ...opt(AREAS.map((a) => `src/snap/areas/${a}.js`)),
   ...opt(['src/snap/gallery.js']),
-  'src/snap/mailman.js', 'src/snap/rhythm.js', 'src/snap/expand.js', 'src/snap/wild.js', 'src/snap/bite.js', 'src/snap/arcade.js', 'src/snap/boardwalk.js', 'src/snap/backmons.js', 'src/snap/accs.js', 'src/snap/regi.js',
+  'src/snap/mailman.js', 'src/snap/rhythm.js', 'src/snap/expand.js', 'src/snap/wild.js', 'src/snap/bite.js', 'src/snap/arcade.js', ...opt(['src/snap/cards.js', 'src/snap/territory.js']), 'src/snap/boardwalk.js', 'src/snap/lighthouse.js', ...opt(['src/snap/bar.js', 'src/snap/hosts.js']), 'src/snap/backmons.js', 'src/snap/accs.js', 'src/snap/regi.js',
   ...opt(['src/snap/quests2.js', 'src/snap/progress.js']),
   'src/snap/main.js',
 ];

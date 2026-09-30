@@ -216,6 +216,7 @@ const Photo = (() => {
       res = { species: main.sp, beh: main.beh, stars: main.tier, score, medal, parts: Object.assign({}, main.parts, { vis: main.visMul, focus: main.focusMul, lens: main.lensMul, others: bonus, special, specialName }), others, area: Game.areaId, mon: main.m };
       res.rating = rate(main, others.length, special);
     }
+    if (typeof Territory !== 'undefined' && !quick) res = Territory.photo(res) || res; // angry territorial Pokémon ruin the shot
     // thumbnail from the visible crop (from the double-resolution frame, so Pokémon look the same as in play)
     const hd = Game.hdFrame ? Game.hdFrame(cx, cy) : null;
     const shot = hd ? cropBuf(hd, { x: c.x * 2, y: c.y * 2, w: c.w * 2, h: c.h * 2 }, quick) : cropBuf(fb, c, quick);

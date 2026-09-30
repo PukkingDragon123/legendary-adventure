@@ -125,7 +125,7 @@ Areas.beach = (() => {
       if (kind === 'house') { // pitched tiled roof with a ridge line
         const rp = [M.roof, M.boatB, M.roof, M.coralO][(x >> 3) % 4];
         const rh = Math.max(3, (w >> 1) - 1);
-        for (let yy = 0; yy < rh; yy++) for (let xx = yy - 1; xx <= w - yy; xx++) put(x + xx, top - rh + yy + 1, yy === 0 ? rp[3] : xx < w / 2 ? rp[2] : rp[1]);
+        for (let yy = 0; yy < rh; yy++) for (let xx = rh - 2 - yy; xx <= w + yy - rh + 1; xx++) put(x + xx, top - rh + yy + 1, yy === 0 ? rp[3] : xx < w / 2 ? rp[2] : rp[1]);
         if (r() < 0.4) { put(x + w - 3, top - rh, M.wall[0]); put(x + w - 3, top - rh - 1, M.wall[0]); }
       } else if (kind === 'dome') { // Contest-Hall dome with a flag
         const R = w / 2;
@@ -168,7 +168,7 @@ Areas.beach = (() => {
       for (let yy = 0; yy < 9; yy++) for (let xx = 0; xx < 7; xx++) { put(sx + sl - 14 + xx, qy - 3 - yy, yy % 3 === 1 && xx % 2 ? M.winD[0] : M.tWhite[xx < 2 ? 2 : 1]); if (yy % 3 === 1 && xx % 2) light(sx + sl - 14 + xx, qy - 3 - yy, 0.8); }
       for (let yy = 0; yy < 4; yy++) put(sx + sl - 11, qy - 12 - yy, M.tRed[1]);
       // gantry cranes: two legs, a cross beam, a long boom over the water
-      for (let cx = h0 + 8; cx < h1 - 10; cx += 26 + Math.floor(r() * 10)) {
+      for (let cx = h0 + 8; cx < h1 - 10; cx += 54 + Math.floor(r() * 20)) {
         const ch = 26 + Math.floor(r() * 8), cr = cx % 2 ? M.tRed : M.umbB;
         for (let yy = 0; yy < ch; yy++) { put(cx, qy - yy, cr[1]); put(cx + 7, qy - yy, cr[0]); if (yy % 6 === 3) for (let xx = 1; xx < 7; xx++) put(cx + xx, qy - yy, cr[0]); }
         for (let xx = -14; xx < 20; xx++) { put(cx + xx, qy - ch, cr[2]); put(cx + xx, qy - ch + 1, cr[0]); }
@@ -194,7 +194,7 @@ Areas.beach = (() => {
   const SC = {}; for (const k in SEAC) { SC[k] = {}; for (const j in SEAC[k]) SC[k][j] = hex(SEAC[k][j]); }
   def.waterCols = (hour, w) => {
     const c = SC[hour];
-    return { top: c.top, mid: c.mid, deep: c.deep, foam: c.foam, hi: mix(c.foam, c.top, 0.25), ray: w && w.rain > 0.5 ? null : c.ray, maxD: 620 };
+    return { top: c.top, mid: c.mid, deep: c.deep, foam: c.foam, hi: mix(c.foam, c.top, 0.25), ray: w && w.rain > 0.5 ? null : c.ray, maxD: 620, abyss: mix(c.deep, c.abyss, 0.5), bedFade: 320, bedMax: 0.8 };
   };
 
   /* ---------------- build ---------------- */
@@ -237,7 +237,7 @@ Areas.beach = (() => {
       },
       face(x, y, dep, e) {
         // sand fades into seabed over the shallows (ordered dither), so the slope reads as one continuous beach
-        const g = gy(x), wv = clamp((g - SEA - 2) / 60 + dep / 900, 0, 1), under = wv > 0 && U.bayer4(x, y) < wv;
+        const g = gy(x), wv = clamp(Math.max((g - SEA - 2) / 60 + dep / 900, (y - SEA - 8) / 40), 0, 1), under = wv > 0 && U.bayer4(x, y) < wv;
         const n1 = e.n1(x, y), n2 = e.n2(x, y);
         if (dep <= 1) return under ? M.bedFace[0] : M.face[0]; // shadow under the lip
         // sediment bands that follow the surface, with soft wavy boundaries
@@ -245,6 +245,16 @@ Areas.beach = (() => {
         const bi = Math.floor(band), bf = band - bi;
         const edge = bf < 0.12;
         if (under) {
+          // deep bedrock: layered strata, boulder clusters and cracks that darken gradually into the deep
+          const dd = y - Math.max(SEA, g);
+          if (dd > 40) {
+            const n3 = e.n1(x * 0.35, y * 0.35), bk = clamp((dd - 40) / 420, 0, 1);
+            const strata = Math.sin((y + n1 * 26 + Math.sin(x * 0.011) * 18) * 0.11);
+            const boulder = n3 > 0.64, crack = Math.abs(n2 - 0.5) < 0.018;
+            let t = 0.64 - bk * 0.6 + strata * 0.16 + (n2 - 0.5) * 0.26 + (boulder ? 0.16 + (n3 - 0.64) * 1.2 : 0) - (crack ? 0.25 : 0);
+            if (bk < 0.3 && bayer4(x, y) > bk / 0.3) return e.pickR(M.bedFace, t + 0.12, x, y);
+            return e.pickR(boulder ? M.rockU : M.bedDeep, t, x, y);
+          }
           let t = 0.72 - Math.min(0.45, dep / 260) - (bi % 3 === 1 ? 0.12 : bi % 3 === 2 ? 0.05 : 0) + (n2 - 0.5) * 0.18;
           if (edge) t -= 0.1;
           return e.pickR(M.bedFace, t, x, y);
@@ -323,6 +333,32 @@ Areas.beach = (() => {
     for (let x = 1110; x < 3800; x += 40 + r() * 70) { if (gy(x) < SEA + 30) continue; put(Props.kelp(M, 40 + r() * 70, Math.floor(x)), x, -4, { fps: 2.5 + r(), phase: r() * 4, sink: 2 }); }
     for (const [rx, w, h] of [[1480, 60, 34], [2080, 78, 40], [2470, 110, 58], [2600, 70, 50]]) put(Paint.rock(M, w, h, rx, { ramp: M.rockU, moss: M.algae, cracks: 3 }), rx, -3, { sink: 6 });
     A.chest = put(Props.chest(M, Save.found('beach.chest')), 2330, -1, { sink: 2 });
+    // ---- the deep: rock formations, boulders, coral outcrops, sea grass and glowing polyps on the drop-offs ----
+    {
+      const glowPolyp = (seed) => [0, 1].map((f) => {
+        const s = new ISpr(9, 12), rr = rng(seed), g = rr() < 0.5 ? M.glowB : M.glowV;
+        for (let k = 0; k < 4; k++) { const x = 1 + Math.floor(rr() * 7), L = 3 + Math.floor(rr() * 7); for (let y = 0; y < L; y++) s.set(x, 11 - y, y === L - 1 ? g[(f + k) % 2] : M.coralV[0]); }
+        s.ax = 4; s.ay = 11; return s;
+      });
+      const spots = [[2440, 3300], [8600, 12560]];
+      for (const [a0, a1] of spots) for (let x = a0; x < a1; x += 22 + r() * 46) {
+        const g = gy(x); if (g < SEA + 60) continue;
+        const deep = g > 900, k = r();
+        if (k < 0.16) put(Paint.rock(M, 26 + r() * 60, 16 + r() * 40, Math.floor(x), { ramp: M.rockU, moss: r() < 0.5 ? M.algae : null, cracks: 3 }), x, -3 + r() * 5, { sink: 5 });
+        else if (k < 0.34 && !deep) put(Props.coral(M, reefK[Math.floor(r() * reefK.length)], 12 + r() * 20, Math.floor(x)), x, r() < 0.4 ? 3 : -3, { sink: 2 });
+        else if (k < 0.5) put(Props.kelp(M, 26 + r() * (deep ? 40 : 70), Math.floor(x)), x, -4, { fps: 2 + r(), phase: r() * 4, sink: 2 });
+        else if (k < 0.62) put(Props.sponge(M, 8 + r() * 10, Math.floor(x)), x, -2, { sink: 2 });
+        else if (k < 0.74 && deep) put(glowPolyp(Math.floor(x)), x, r() < 0.5 ? -2 : 2, { fps: 1.2, phase: r() * 3, sink: 1 });
+        else if (k < 0.84) put(Props.anemone(M, 6 + r() * 5, Math.floor(x * 3)), x, -2, { fps: 2.2, phase: r() * 3, sink: 2 });
+        else for (let j = 0; j < 3; j++) put(Paint.tuft(M, 6 + r() * 6, 8 + r() * 10, Math.floor(x + j * 7), { ramp: M.kelp }), x + j * 5, -3 + j * 2, { windFrames: true, sink: 1 });
+        if (deep && r() < 0.3) A.glows.push({ x, y: g - 6, r: 14, c: hex(r() < 0.5 ? '#3ad8ff' : '#b070ff'), a: 0.35, flicker: true });
+      }
+      // big rock formations: stacked arches and pinnacles along the shelf edge and the abyss wall
+      for (const [rx, w, h] of [[2700, 120, 70], [3080, 90, 90], [8900, 110, 60], [9600, 150, 80], [10300, 130, 110], [10900, 100, 140], [11500, 160, 90], [12200, 120, 120]]) {
+        put(Paint.rock(M, w, h, rx, { ramp: M.rockU, moss: M.algae, cracks: 5 }), rx, -4, { sink: 10 });
+        put(Paint.rock(M, w * 0.5, h * 0.7, rx + 7, { ramp: M.rockU, cracks: 3 }), rx + w * 0.45, -3, { sink: 6 });
+      }
+    }
     put(Props.anchor(M), 2520, 2, { sink: 4 });
     // the islet
     A.lighthouse = put(Props.lighthouse(M), 3962, -4, { sink: 4 });
@@ -381,17 +417,18 @@ Areas.beach = (() => {
       const w = 1500, h = 120, s = new ISpr(w, h), lit = new ISpr(w, h);
       const P = Props.pick;
       // far volcano (left) with a drifting smoke plume, faint snow streaks
-      Paint.ridge(s, M, { ramp: M.far || M.hill, base: h, amp: 22, seed: 21, freq: 0.02, peaks: [[150, 150, 1.25]] });
+      for (let x = 0; x < 300; x++) { const u = Math.abs(x - 150) / 145; if (u >= 1) continue; let top = h - 52 * Math.pow(1 - u, 1.7) - (u < 0.05 ? -2 : 0) - fbm(x * 0.08, 0, 21, 2) * 3; for (let y = Math.round(top); y < h; y++) { const dep = y - top; let tt = (x < 150 ? 0.7 : 0.35) - dep / 120 + (fbm(x * 0.2, y * 0.05, 22, 2) - 0.5) * 0.3; if (Math.sin(x * 0.5 + y * 0.1) > 0.8 && dep < 30) tt -= 0.2; s.set(x, y, dep < 3 + hash(x >> 1, 0, 23) * 14 * (1 - u * 2.5) ? P(M.rock, tt + 0.1, x, y) : P(M.hill, tt, x, y)); } }
       for (let k = 0; k < 34; k++) { const cx0 = 150 + k * 2.6 + Math.sin(k * 0.7) * 4, cy0 = h - 68 - k * 1.4, rr = 3 + k * 0.3; for (let y = -rr; y <= rr; y++) for (let x = -rr; x <= rr; x++) if (x * x + y * y <= rr * rr && hash(Math.round(cx0 + x), Math.round(cy0 + y), 4) > 0.2 + k / 60) s.set(Math.round(cx0 + x), Math.round(cy0 + y), M.sail[(y < -rr * 0.3 ? 1 : 0)]); }
       // rolling hills behind the city: two ridges, a forest canopy on the nearer one
-      const hillTop = (x) => h - 20 - Math.max(0, Math.sin((x - 250) / 700 * Math.PI)) * 30 - fbm(x * 0.012, 2, 9, 3) * 12;
+      const hillTop = (x) => h - 20 - (x < 340 ? (340 - x) * -0.9 : x > 900 ? (x - 900) * -0.5 : 0) - Math.max(0, Math.sin((x - 250) / 700 * Math.PI)) * 30 - fbm(x * 0.012, 2, 9, 3) * 12;
       const back = new ISpr(w, h); Paint.ridge(back, M, { ramp: M.hill, base: h - 10, amp: 56, seed: 71, freq: 0.006, peaks: [[560, 260, 0.8], [1180, 200, 0.9]] });
-      for (let x = 250; x < w; x++) for (let y = 0; y < h; y++) { const v = back.get(x, y); if (v && x < 1480 - (y < 60 ? 0 : 0)) s.set(x, y, hash(x, y, 3) > 0.5 && back.get(x, y - 1) ? M.hill[Math.max(0, M.hill.indexOf(v) - 1)] : v); }
+      for (let x = 250; x < w; x++) for (let y = 0; y < h; y++) { const v = back.get(x, y); if (v && x < 960 && y > h - (h - hdTop(back, x)) * Math.min(1, (x - 250) / 80, (960 - x) / 80)) s.set(x, y, hash(x, y, 3) > 0.5 && back.get(x, y - 1) ? M.hill[Math.max(0, M.hill.indexOf(v) - 1)] : v); }
       const canopy = new ISpr(w, h); Paint.treeline(canopy, { ramp: M.treeF, base: h - 30, size: 5, seed: 31, jag: 6 });
-      for (let x = 240; x < w - 10; x++) { const top = Math.round(hillTop(x)); for (let y = top - 6; y < h; y++) { const v = canopy.get(x, y - (top - (h - 34))); if (y >= top) s.set(x, y, v && y < top + 10 ? v : P(M.hill, 0.6 - (y - top) / 40, x, y)); else if (v && hash(x, 0, 8) > 0.35) s.set(x, y, v); } }
+      for (let x = 270; x < 940; x++) { const top = Math.round(hillTop(x)); for (let y = top - 6; y < h; y++) { const v = canopy.get(x, y - (top - (h - 34))); if (y >= top) s.set(x, y, v && y < top + 10 ? v : P(M.hill, 0.6 - (y - top) / 40, x, y)); else if (v) s.set(x, y, v); } }
       // the city: stepping up the hill, densest downtown
       const cityG = (x) => Math.min(h - 8, hillTop(x) + 12 - (x > 600 && x < 880 ? 0 : 0));
       paintTown(s, lit, M, { x0: 300, x1: 900, ground: (x) => x > 610 ? h - 8 : Math.min(h - 8, cityG(x) + (x - 300) * 0.04), maxH: 46, seed: 5, dome: 520, env: (u) => 0.25 + 0.75 * Math.exp(-((u - 0.55) ** 2) / 0.06), harbour: [612, 880] });
+      for (const [dy, sd] of [[12, 15], [24, 25]]) paintTown(s, lit, M, { x0: 330, x1: 620, ground: (x) => Math.min(h - 8, cityG(x) + dy + (x - 300) * 0.04), maxH: 14, seed: sd, env: (u) => 0.6 + 0.4 * Math.sin(u * Math.PI) });
       // a sea wall + breakwater with a small lighthouse at its tip
       for (let x = 300; x < 930; x++) { s.set(x, h - 7, M.bldA[2]); s.set(x, h - 6, M.bldA[1]); s.set(x, h - 5, M.bldA[0]); }
       for (let y = 0; y < 14; y++) for (let x = -1; x <= 1; x++) s.set(928 + x, h - 7 - y, y > 11 ? M.ink[1] : Math.floor(y / 3) % 2 ? M.tRed[1] : M.tWhite[x < 0 ? 2 : 1]);
@@ -405,8 +442,8 @@ Areas.beach = (() => {
       const hTop = (x) => { let t = 0; while (t < h && !s.get(x, t)) t++; return t; };
       const trees = new ISpr(w, h); Paint.treeline(trees, { ramp: M.treeF, base: h - 30, size: 5, seed: 41, jag: 5 });
       for (let x = hx0 + 20; x < hx1 - 20; x++) { const top = hTop(x); for (let y = top - 4; y < Math.min(h, top + 8); y++) { const v = trees.get(x, y - top + (h - 34)); if (v) s.set(x, y, v); } }
-      paintTown(s, lit, M, { x0: 1060, x1: 1150, ground: (x) => hTop(x) + 5, maxH: 4, seed: 9, trees: false });
-      { const lx = 1240, top = hTop(lx); for (let y = 0; y < 20; y++) for (let x = -2; x <= 2; x++) s.set(lx + x, top - 18 + y, Math.floor(y / 4) % 2 ? M.roof[2] : M.wall[x < 0 ? 2 : 1]); for (let x = -3; x <= 3; x++) s.set(lx + x, top - 19, M.ink[1]); s.set(lx, top - 21, M.win[1]); s.set(lx - 1, top - 20, M.win[1]); s.set(lx + 1, top - 20, M.win[1]); A.farLight = [lx, top - 20]; }
+      paintTown(s, lit, M, { x0: 1060, x1: 1150, ground: (x) => hdTop(hd, x) + 6, maxH: 4, seed: 9, trees: false });
+      { const lx = 1240, top = hdTop(hd, lx) + 2; for (let y = 0; y < 20; y++) for (let x = -2; x <= 2; x++) s.set(lx + x, top - 18 + y, Math.floor(y / 4) % 2 ? M.roof[2] : M.wall[x < 0 ? 2 : 1]); for (let x = -3; x <= 3; x++) s.set(lx + x, top - 19, M.ink[1]); s.set(lx, top - 21, M.win[1]); s.set(lx - 1, top - 20, M.win[1]); s.set(lx + 1, top - 20, M.win[1]); A.farLight = [lx, top - 20]; }
       const L = A.layer(s, 0.03, { haze: 0.42, base: h - 1, x: -60 });
       L.draw = (fb, sx, sy, pal, t) => { const hr = Stage.S.hour; if (hr === 'night' || hr === 'dusk') Paint.blit(fb, lit, sx, sy, pal, { fade: hr === 'dusk' ? 0.45 : 0 }); };
     }
@@ -595,7 +632,7 @@ Areas.beach = (() => {
       // bushes and palms on top
       for (let x = 60; x < w; x += 90 + Math.floor(hash(x, 5, 5) * 140)) { const b = Paint.bush(M, 20 + hash(x, 6, 5) * 16, 10 + hash(x, 7, 5) * 6, x, { ramp: M.grass, dots: hash(x, 8, 5) > 0.5 ? M.flowerY : M.flowerP }); s.paste(b, x - b.ax, Math.round(top[x]) - b.ay + 3); }
       for (const [px, ph] of [[300, 80], [760, 96], [1280, 70]]) { const f = Paint.palm(M, ph, px, { lean: (r() - 0.5) * 0.5, nuts: false })[0]; s.paste(f, px - f.ax, Math.round(top[px]) - f.ay + 6); }
-      const L = A.layer(s, 0.62, { haze: 0.14, base: h - 1, x: 2150 });
+      const L = A.layer(s, 0.62, { haze: 0.14, base: h - 1, x: 2760 }); // starts behind the islet, never behind open sea
       L.skirt = M.face[2];
     }
     // foreground occluders: beach grass clumps and morning-glory vines in front of the beach, coral heads and kelp over the reef
@@ -678,13 +715,9 @@ Areas.beach = (() => {
       for (let y = ys; y < H; y++) {
         const dep = y + cy - SEA;
         const k1 = clamp(dep / 260, 0, 1), k2 = clamp((dep - 260) / 520, 0, 1);
-        const base = mix(mix(C.top, C.mid, k1), mix(C.deep, C.abyss, k2), k2 > 0 ? 1 : 0);
+        const base = k2 > 0 ? mix(C.deep, C.abyss, k2) : mix(C.top, C.deep, k1 * k1 * 0.4 + k1 * 0.6);
         const row = y * W;
-        for (let x = 0; x < W; x++) {
-          let c = base;
-          if (k2 === 0 && bayer4(x, y) < (k1 * 4) % 1) c = mix(C.top, C.mid, Math.min(1, k1 + 0.25));
-          d[row + x] = c;
-        }
+        d.fill(base, row, row + W);
       }
       // distant reef silhouettes
       BeachAI.drawUnderBackdrop(fb, cx, cy, t, C);
@@ -698,7 +731,7 @@ Areas.beach = (() => {
     // lighthouse beam sweeping at night
     const hr = Stage.S.hour;
     if (hr !== 'night' && hr !== 'dusk') return;
-    const lx = 3962 - cx, ly = World.groundAt(3962) - 84 - cy;
+    const lx = (A.lhX ?? 3962) - cx, ly = (A.lhY ?? World.groundAt(3962) - 84) - cy;
     if (lx < -400 || lx > fb.w + 400) return;
     const a = Math.sin(t * 0.8) * 1.2 + Math.PI;
     const W = fb.w, H = fb.h, d = fb.d;
@@ -744,6 +777,8 @@ Areas.beach = (() => {
       out.push({ kind: 'butterfly', rate: 0.5, c: hex(Math.random() < 0.5 ? '#ffd648' : '#ff9ad0'), c2: hex('#ffffff'), life: 12, sway: 18, bob: 10, y: (x) => World.groundAt(x) - 14 - Math.random() * 40 });
       out.push({ kind: 'sand', rate: 5, c: hex('#f5dcab'), life: 1.4, vy: -3, drift: 3, sway: 2, bob: 1, y: (x) => World.groundAt(x) - 1 - Math.random() * 4 });
     }
+    out.push({ kind: 'fish', rate: 0.35, group: [8, 14], vx0: 12, c: hex('#5a8ac0'), c2: hex('#c8e8ff'), life: 36, sway: 3, bob: 4, y: () => SEA + 280 + Math.random() * 420 });
+    out.push({ kind: 'firefly', rate: 0.6, c: hex('#7af0ff'), life: 8, sway: 8, bob: 5, y: () => SEA + 380 + Math.random() * 500 });
     out.push({ kind: 'fish', rate: 0.6, group: [5, 9], vx0: 16, c: hex('#9ad8f0'), c2: hex('#ffffff'), life: 30, sway: 2, bob: 3, y: () => SEA + 60 + Math.random() * 300 });
     if (hour === 'noon' || hour === 'afternoon') out.push({ kind: 'leaf', rate: 0.25, c: hex('#4ea044'), c2: hex('#80c45a'), life: 8, drift: 1, vy: 6, y: () => 380 + Math.random() * 60 });
     return out;

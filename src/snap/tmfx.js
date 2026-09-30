@@ -68,7 +68,7 @@ const TMFX = (() => {
       for (const m of near(mk, 400)) { const ty = (DexData.S[m.dex] || {}).type || []; if (ty.includes('Water') || ty.includes('Grass')) m.emote('heart', 1.2); }
     } });
 
-  Moves.add({ id: 'sunny', name: 'Sunny Day', col: hex('#ffa82a'), tm: 'TM08', cool: 40, how: 'Beat Nuzleaf at Type Battle in Weather Woods.', desc: 'Clears rain, fog and snow for 40 s. Golden light!',
+  Moves.add({ id: 'sunny', name: 'Sunny Day', col: hex('#ffa82a'), tm: 'TM08', cool: 40, how: 'Beat Budew at Type Battle in Weather Woods.', desc: 'Clears rain, fog and snow for 40 s. Golden light!',
     icon: ['w..w..w', '.w.w.w.', '..www..', 'wwwkwww', '..www..', '.w.w.w.', 'w..w..w'],
     *run(mk) {
       let e = 0;
@@ -106,7 +106,7 @@ const TMFX = (() => {
       const wet = World.waterAt(cx) !== null;
       const cy = wet ? WorldRender.surfaceAt(cx, Game.t) + (mk.mode === 'swim' ? 20 : 0) : World.groundAt(cx) - 2;
       Game.sfx('splash', cx, 0.8);
-      let e = 0; const caught = near({ x: cx, y: cy }, 110);
+      let e = 0; const caught = near({ x: cx, y: cy }, 110).filter((m) => !m.barkeep && !m.champ && !m.arcade);
       for (const m of caught) m.emote('shock', 0.8);
       while (e < 1.6) {
         const dt = yield; e += dt;

@@ -312,6 +312,7 @@ const Game = (() => {
       Critters.shadow(fb, cx, cy, m.x, base + 1 + m.zd, m.width() * 0.36 * (1 - h / 400), 2.6, 0.85 * (1 - h / 160));
     }
     Items.drawBack(fb, cx, cy, t);
+    if (typeof Territory !== 'undefined' && !o.ids) Territory.drawWorld(fb, cx, cy, t);
     if (typeof Arcade !== 'undefined' && Arcade.live) Arcade.drawWorld(fb, cx, cy, t, true);
     const mids = G.mons.filter((m) => !m.layer && m.visible && m.alive).sort((a, b) => (a.zd - b.zd) || (a.z - b.z));
     for (const m of mids) { m.draw(fb, cx, cy, occ); if (m.drawExtra) m.drawExtra(fb, cx, cy, P, t, occ); }

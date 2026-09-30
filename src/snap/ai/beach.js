@@ -740,19 +740,64 @@ const BeachAI = (() => {
   // after the near backdrop is drawn: is the far giant still visible?
   function checkFar(fb) { const w = S.wailord; if (!w || !w.cpx) return; const c = w.cpx; w.occluded = !(c[0] >= 0 && c[1] >= 0 && c[0] < fb.w && c[1] < fb.h) || fb.d[c[1] * fb.w + c[0]] !== w.ccol; }
   function drawUnderBackdrop(fb, cx, cy, t, C) {
-    // distant reef silhouettes, hazy toward the water colour
-    const W = fb.w, H = fb.h, d = fb.d;
-    const p = 0.5, y0 = Math.round(SEA + 140 - cy * p - (SEA * (1 - p)) + SEA * 0);
-    for (let x = 0; x < W; x++) {
-      const wx = x + cx * p;
-      const h1 = 60 + U.fbm(wx * 0.004, 0.2, 31, 4) * 180;
-      const top = Math.round((SEA + 420 - h1) - cy * 1 + (cy - 300) * (1 - p));
-      if (top >= H) continue;
-      for (let y = Math.max(0, top); y < H; y++) {
-        const dep = y + cy - SEA;
-        const k = clamp(0.55 + dep / 1600, 0.55, 0.9);
-        d[y * W + x] = U.mix(C.deep, C.mid, 1 - k);
+    // the open sea seen underwater: three parallax ranges of reef rock fading into the blue, kelp strands,
+    // a far fish school, and bioluminescent specks in the deep. The ranges sink where the lane drops away
+    // (the trench, the abyss past the shelf) so shallow → deep reads as one gradual slope.
+    const W = fb.w, H = fb.h, d = fb.d, hsh = U.hash, fbm = U.fbm, mix = U.mix;
+    const night = Stage.S.hour === 'night' || Stage.S.hour === 'dusk';
+    const waterAt = (dep) => { const k1 = clamp(dep / 260, 0, 1), k2 = clamp((dep - 260) / 520, 0, 1); return k2 > 0 ? mix(C.deep, C.abyss, k2) : mix(C.top, C.deep, k1 * k1 * 0.4 + k1 * 0.6); };
+    const drop = (wx) => clamp((wx - 10700) / 1600, 0, 1) * 420 + Math.max(0, 1 - Math.abs(wx - 2950) / 420) * 160;
+    const LAY = [[0.3, 330, 0.3, 11], [0.5, 430, 0.48, 23], [0.72, 520, 0.64, 37]];
+    const rowC = new Uint32Array(H * 4);
+    for (const [p, base, dark, seed] of LAY) {
+      const oy = SEA * (1 - p) + cy * p;
+      // per-row palette: rock body (3 tones) + lit rim, all hazed toward the water at that depth
+      for (let y = 0; y < H; y++) {
+        const dep = y + cy - SEA, w = waterAt(dep), rk = mix(w, C.abyss, dark);
+        rowC[y * 4] = mix(rk, w, 0.25); rowC[y * 4 + 1] = rk; rowC[y * 4 + 2] = mix(rk, C.abyss, 0.3); rowC[y * 4 + 3] = mix(rk, C.top, 0.28 - p * 0.15);
       }
+      for (let x = 0; x < W; x++) {
+        const wx = x + cx * p, lane = x + cx;
+        let h1 = 50 + fbm(wx * 0.0045, 0.2, seed, 4) * 190;
+        const pin = fbm(wx * 0.03, 1.3, seed + 5, 2); if (pin > 0.62) h1 += (pin - 0.62) * 260; // rock pinnacles
+        h1 += Math.max(0, Math.sin(wx * 0.07 + seed)) * 6 * (hsh(Math.floor(wx / 9), seed, 3) > 0.5 ? 1 : 0); // coral bumps along the crest
+        const topW = SEA + base + drop(lane) * (0.5 + p * 0.6) - h1;
+        const top = Math.round(topW - oy);
+        if (top >= H) continue;
+        const col = Math.floor(wx);
+        // kelp strands rising from the crest
+        if (hsh(Math.floor(wx / 3), seed, 9) > 0.965) {
+          const L = 30 + hsh(col, seed, 4) * 70;
+          for (let k = 0; k < L; k++) { const yy = top - k, xx = x + Math.round(Math.sin(k * 0.08 + t * 0.9 + wx) * (k / 30)); if (yy >= 0 && yy < H && xx >= 0 && xx < W) d[yy * W + xx] = rowC[yy * 4 + 1]; }
+        }
+        for (let y = Math.max(0, top); y < H; y++) {
+          const dd = y - top;
+          let v;
+          if (dd < 2) v = 3;
+          else {
+            const n = hsh(col >> 1, (y + cy) >> 1, seed);
+            const strata = ((y + cy * p + Math.sin(wx * 0.02) * 6) >> 3) % 3 === 0;
+            v = n > 0.82 ? 0 : n < 0.12 || strata && n < 0.4 ? 2 : 1;
+          }
+          d[y * W + x] = rowC[y * 4 + v];
+        }
+      }
+      // a far fish school drifting between the ranges
+      if (p === 0.5) {
+        const fx0 = ((t * 14 + 3000 - cx * 0.4) % (W + 400)) - 200, fy0 = Math.round(SEA + 160 - oy);
+        for (let i = 0; i < 26; i++) { const fx = Math.round(fx0 + (hsh(i, 1, 5) - 0.5) * 120 + Math.sin(t + i) * 3), fy = fy0 + Math.round((hsh(i, 2, 5) - 0.5) * 50 + Math.sin(t * 1.3 + i * 0.7) * 4); for (let k = 0; k < 3; k++) { const X = fx + k, Y = fy; if (X >= 0 && X < W && Y >= 0 && Y < H) d[Y * W + X] = rowC[Y * 4 + 3]; } }
+      }
+    }
+    // bioluminescent specks in the deep (brighter at night), gently pulsing
+    for (let i = 0; i < 90; i++) {
+      const wx = hsh(i, 3, 17) * 2400, wy = SEA + 300 + hsh(i, 4, 17) * 900;
+      const x = Math.round(((wx - cx * 0.6) % 2400 + 2400) % 2400 - 700), y = Math.round(wy - cy - Math.sin(t * 0.5 + i) * 6);
+      if (x < 0 || x >= W || y < 0 || y >= H) continue;
+      const dep = wy - SEA, a = clamp((dep - 300) / 400, 0, 1) * (night ? 1 : 0.6) * (0.5 + 0.5 * Math.sin(t * 2 + i * 1.7));
+      if (a < 0.1) continue;
+      const c = i % 3 === 0 ? 0xffffa0d0 : i % 3 === 1 ? 0xffffe060 : 0xffc0ff80;
+      d[y * W + x] = U.screen(d[y * W + x], c, a);
+      if (a > 0.5 && x > 0 && x < W - 1) { d[y * W + x - 1] = U.screen(d[y * W + x - 1], c, a * 0.35); d[y * W + x + 1] = U.screen(d[y * W + x + 1], c, a * 0.35); }
     }
   }
   function chest(A) {
