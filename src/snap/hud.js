@@ -200,7 +200,6 @@ const HUD = (() => {
       { id: 'map', fn: () => (Game.mode === 'map' ? WorldMap.close() : WorldMap.open()) },
       { id: 'bag', fn: () => Bag.open(), badge: typeof Bag !== 'undefined' && Bag.fresh && Bag.fresh() },
       { id: 'style', fn: () => Style.open(), badge: typeof Style !== 'undefined' && Style.fresh && Style.fresh() },
-      { id: 'games', fn: () => typeof Arcade !== 'undefined' && Arcade.open() },
       { id: 'snd', fn: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); } },
     ];
     items.forEach((it, i) => {
@@ -327,7 +326,7 @@ const HUD = (() => {
     drawToasts(fb, S, t);
     Quests.drawPop(fb, t);
     if (WorldMap.reveal) WorldMap.drawReveal(fb, t);
-    if (typeof Moves !== 'undefined') { Moves.drawWheel(fb, S, t); Moves.drawLearn(fb, S, t); }
+    if (typeof Moves !== 'undefined') { if (Moves.drawChip && !Talk.busy()) Moves.drawChip(fb, S, t); Moves.drawWheel(fb, S, t); Moves.drawLearn(fb, S, t); }
     Talk.drawDialog(fb, t);
     if (Photo.drawCard) Photo.drawCard(fb, t);
   }

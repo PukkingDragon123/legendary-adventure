@@ -61,10 +61,10 @@ const Wailmer = (() => {
 
   /* ---------- the ball: inner cream/teeth ball + a slightly larger blue cap shell ---------- */
   const RAD = [184, 170, 178];
-  const CAP_K = [1.1, 1.035, 1.05], CAP_OFF = [11, 2, 0]; // longer than the ball: the upper jaw juts forward as a snout
+  const CAP_K = [1.13, 1.04, 1.05], CAP_OFF = [14, 4, 0]; // longer than the ball: the upper jaw juts forward as a snout
   const AZC = 1.8; // mouth corner azimuth: the grin runs round the sides to just behind them
-  const lipV = (a) => 0.5 - 0.2 * (a / AZC) ** 2; // upper lip (cap edge) across the mouth
-  const loV = (a) => 0.12 + 0.18 * (a / AZC) ** 2; // lower edge of the grin
+  const lipV = (a) => 0.3 - 0.16 * (a / AZC) ** 2; // upper lip (cap edge) across the mouth
+  const loV = (a) => -0.04 + 0.16 * (a / AZC) ** 2; // lower edge of the grin
   // lower edge of the blue cap all the way round (cap unit sphere; a = |azimuth|, 0 = front)
   function capV(a) {
     if (a <= AZC) return lipV(a);
@@ -115,8 +115,9 @@ const Wailmer = (() => {
   const FLIP_LE = [[-12, 32], [40, 41], [95, 45], [145, 42], [184, 33], [206, 18], [214, 2]];
   const leV = (u) => { let i = 0; while (i < FLIP_LE.length - 2 && u > FLIP_LE[i + 1][0]) i++; const [a, b] = [FLIP_LE[i], FLIP_LE[i + 1]]; return a[1] + ((b[1] - a[1]) * (u - a[0])) / (b[0] - a[0]); };
   // lighter band along the rounded leading edge
-  const FLIP_G = bakeShape(Shape2D.poly(FLIP_PTS, 0, 8, (u, v) => (v > leV(u) - 11 ? C_FIN_L : C_FIN)), 0.5);
-  const FLIP_LINES = [[[187, -25], [170, -10], [150, 0]], [[161, -32], [142, -17], [120, -8]]].map((pl) => ({ pts: pl.map(([u, v]) => [u, v, 0]), mat: FIN, useLn: true }));
+  const FLIP_K = 1.22;
+  const FLIP_G = bakeShape(Shape2D.poly(FLIP_PTS.map(([u, v]) => [u * FLIP_K, v * FLIP_K]), 0, 8, (u, v) => (v / FLIP_K > leV(u / FLIP_K) - 11 ? C_FIN_L : C_FIN)), 0.5);
+  const FLIP_LINES = [[[187, -25], [170, -10], [150, 0]], [[161, -32], [142, -17], [120, -8]]].map((pl) => ({ pts: pl.map(([u, v]) => [u * FLIP_K, v * FLIP_K, 0]), mat: FIN, useLn: true }));
   /* ---------- tail flukes (u = backward, v = sideways): two tiny lobes ---------- */
   const TAIL_PTS = [[-14, -11], [10, -15], [26, -26], [40, -37], [50, -33], [45, -18], [37, -6], [41, 0], [37, 6], [45, 18], [50, 33], [40, 37], [26, 26], [10, 15], [-14, 11]];
   const TAIL_G = bakeShape(Shape2D.poly(TAIL_PTS, C_FIN_L), 0.5);
@@ -183,7 +184,7 @@ const Wailmer = (() => {
     sleep: ['k.....k', '.k...k.', '..kkk..'], sleepN: ['k...k', '.kkk.'], sleepF: ['k..k', '.kk.'],
   };
   const EYEC = { k: '#0a1020', w: '#ffffff' };
-  const EYE_AZ = 0.95, EYE_V = 0.6;
+  const EYE_AZ = 0.62, EYE_V = 0.52;
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -226,7 +227,7 @@ const Wailmer = (() => {
       const w = cross(d, c);
       const L = M3.cols(d, c, w);
       prims.push(plate(F(L, p0), FLIP_G, { part: zs > 0 ? 3 : 4, grp: zs > 0 ? 3 : 4, thick: 7, lines: FLIP_LINES }));
-      anchors[zs > 0 ? 'finN' : 'finF'] = add(p0, add(sc(d, 200), sc(c, -4)));
+      anchors[zs > 0 ? 'finN' : 'finF'] = add(p0, add(sc(d, 200 * FLIP_K), sc(c, -4)));
     }
 
     /* --- tiny tail: a stubby blue stock at the back with two small upturned flukes, beating with swim --- */
@@ -290,7 +291,7 @@ const Wailmer = (() => {
   /* ---------- render: per-view decal culling, eye size by scale, and a cropped ray-cast ---------- */
   function render(model, opt) {
     const scale = opt.scale || 1, yaw = opt.yaw ?? 1.05, pitch = opt.pitch ?? 0.16;
-    const set = scale < 0.4 ? EYES_S : scale < 0.7 ? EYES_M : scale < 0.95 ? EYES_L : EYES_XL;
+    const set = scale < 0.3 ? EYES_S : scale < 0.55 ? EYES_M : scale < 0.8 ? EYES_L : EYES_XL;
     for (const st of model.stamps) st.set = set;
     const M = M3.mul(M3.rx(pitch), M3.ry(-yaw));
     const cam = [M[6], M[7], M[8]];

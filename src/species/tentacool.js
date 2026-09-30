@@ -73,7 +73,7 @@ const Tentacool = (() => {
   };
 
   /* ---------- dome, face ---------- */
-  const DOME_C = [0, 66, 0], DOME_R = [44, 51, 48], DOME_TILT = 0.12;
+  const DOME_C = [0, 66, 0], DOME_R = [44, 47, 46], DOME_TILT = 0.12;
   const EYE_AZ = 0.5, EYE_V = -0.45, EYE_W = 11, EYE_H = 4.8;       // eye half-width / half-height (units)
   let curScale = 1;
 
@@ -165,7 +165,7 @@ const Tentacool = (() => {
   }
 
   /* ---------- tentacles ---------- */
-  const NL = 13, TL_R0 = 5, TL_R1 = 3.6;
+  const NL = 13, TL_R0 = 6.2, TL_R1 = 4.4;
 
   // gem glint: a white four-point sparkle stamped on the crystals' highlight (it may overflow the silhouette)
   const SPARK = {
@@ -208,9 +208,9 @@ const Tentacool = (() => {
     // --- red orbs: two big crystals in the upper sides, a small one on the front
     const orbMat = (s) => (s[0] * -0.35 + s[1] * 0.75 + s[2] * 0.35 > 0.6 ? C_ORB_L : s[1] < -0.6 ? C_ORB_D : C_ORB);
     for (const sd of [1, -1]) {
-      const { p, n } = onDome(sd * 0.98, 0.4, -10);
+      const { p, n } = onDome(sd * 0.92, 0.42, -8);
       const ax0 = nrm(cross([0, 1, 0], n)), ax1 = cross(n, ax0);
-      const r = 23.5;
+      const r = 17.5;
       const id = sd > 0 ? 5 : 6;
       const orb = E(inF(domeF, p), M3.mul(domeF.L, M3.cols(sc(ax0, r), sc(ax1, r * 1.1), sc(n, r))), id, id, orbMat);
       prims.push(orb);
@@ -232,7 +232,7 @@ const Tentacool = (() => {
     // the mantle is one jelly with the dome (same group: no seam at the back); a crease line is drawn
     // only across the front, where the hood meets the face under the eyes
     const DQ = J.dome.Q, DC = J.dome.c;
-    const mantle = J.mantle = ellF(bellF, [50, 40, 54], 1, 1, null);
+    const mantle = J.mantle = ellF(bellF, [56, 38, 62], 1, 1, null);
     mantle.Q = M3.inv(mantle.L);
     mantle.mat = (s) => {
       if (s[1] < RIM + 0.05 * Math.cos(Math.atan2(s[2], s[0]) * 5)) return 0;
@@ -244,7 +244,7 @@ const Tentacool = (() => {
     };
     prims.push(mantle);
     // dark underside, showing below the rim
-    prims.push(ellF(chain(bellF, T(1, -8, 0)), [46, 8, 50], 3, 3, M_UNDER));
+    prims.push(ellF(chain(bellF, T(1, -9, 0)), [53, 10, 58], 3, 3, M_UNDER));
     anchors.body = bellF.t;
     anchors.base = inF(bellF, [0, -8, 0]);
 

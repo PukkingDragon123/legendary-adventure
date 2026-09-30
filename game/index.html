@@ -6585,8 +6585,7 @@ const Feebas = (() => {
     }
   };
   // each patch = two or three overlapping round caps
-  [[0.95, 0.5, 0.15], [1.1, 0.42, 0.11], [1.55, 0.62, 0.16], [1.72, 0.5, 0.1], [2.15, 0.35, 0.14], [2.35, 0.48, 0.1],
-   [1.3, 0.12, 0.1], [1.42, 0.2, 0.07], [2.5, 0.05, 0.11], [2.62, 0.16, 0.07], [0.7, 0.72, 0.1], [2.0, 0.8, 0.12], [0, 0.95, 0.14], [3.14, 0.7, 0.13]].forEach(([a, v, r]) => addB(a, v, r));
+  [[1.05, 0.62, 0.2], [1.2, 0.5, 0.14], [1.75, 0.55, 0.2], [1.9, 0.4, 0.13], [2.35, 0.2, 0.18], [1.45, 0.05, 0.13], [0, 0.97, 0.16], [3.14, 0.7, 0.15]].forEach(([a, v, r]) => addB(a, v, r));
   function bodyMat(s) {
     // dull tan belly, lip-coloured at the very front (the snout tip is covered by the lips)
     if (s[1] < -0.3 + 0.12 * s[0] * s[0]) return C_BELLY;
@@ -6637,13 +6636,13 @@ const Feebas = (() => {
     // body frame: roll about the long axis (lying on its side), centred on the body
     // (lying on its side it rests lower: body half-height along y after the roll, plus fin clearance)
     const ra = roll * 1.35, cr = Math.cos(ra), sr = Math.sin(ra);
-    const BC = [0, Math.hypot(21.5 * cr, 14.5 * sr) + 8.5 * cr * cr, 0];
+    const BC = [0, Math.hypot(25.5 * cr, 14.5 * sr) + 8.5 * cr * cr, 0];
     const body = chain(T(...BC), R(M3.rx(-ra)), R(M3.rz(bend * 0.12)));
 
     /* --- body: main oval + head bulge --- */
-    const main = ellF(body, [37, 21.5, 14.5], 1, 1, bodyMat);
+    const main = ellF(body, [33, 25.5, 14.5], 1, 1, bodyMat);
     prims.push(main);
-    prims.push(ellF(chain(body, T(-4, -3.5, 0)), [30, 17, 13.4], 1, 1, (s) => (s[1] < -0.2 ? C_BELLY : C_BODY)));
+    prims.push(ellF(chain(body, T(-4, -4, 0)), [27, 21, 13.4], 1, 1, (s) => (s[1] < -0.2 ? C_BELLY : C_BODY)));
 
     /* --- tail stock + tail fin (flop) --- */
     const pivot = chain(body, T(-22, 0, 0), R(M3.rz(-bend * 0.3)), R(M3.ry(-tl * 0.42)));
@@ -6654,12 +6653,12 @@ const Feebas = (() => {
     anchors.tail = inF(tailF, [-15, 0, 0]);
 
     /* --- dorsal fin (lifts with `fins`) --- */
-    const df = chain(body, T(-1, 17.5, 0), R(M3.rz(0.08 - fn * 0.12)), R(M3.diag(1, 0.9 + fn * 0.3, 1)));
+    const df = chain(body, T(-1, 22, 0), R(M3.rz(0.08 - fn * 0.12)), R(M3.diag(1, 0.9 + fn * 0.3, 1)));
     prims.push(PL(df.t, df.L, 4, 3, DORSAL_G, 1.6, DORSAL_RAYS));
     anchors.top = inF(df, [-6, 14, 0]);
 
     /* --- pelvic + anal fins (hang below) --- */
-    const pv = chain(body, T(6, -19.5, 0), R(M3.rz(0.15)));
+    const pv = chain(body, T(6, -23.5, 0), R(M3.rz(0.15)));
     prims.push(PL(pv.t, M3.mul(pv.L, M3.cols([-1, 0, 0], [0, -1, 0], [0, 0, 1])), 5, 4, LOW_G, 1.6, null));
     const an = chain(pivot, T(-2, -9.5, 0), R(M3.rz(0.3)));
     prims.push(PL(an.t, M3.mul(an.L, M3.cols([-1, 0, 0], [0, -1, 0], [0, 0, 1])), 5, 4, LOW_G, 1.6, null));
@@ -6679,7 +6678,7 @@ const Feebas = (() => {
     }
 
     /* --- lips: thick pale upper and lower lip at the snout tip; the lower lip hinges open --- */
-    const snout = chain(body, T(35.5, 1.5, 0));
+    const snout = chain(body, T(32, 0, 0));
     prims.push(ellF(chain(snout, T(0.8, 1.5, 0), R(M3.rz(-0.22))), [5.8, 3.3, 7.2], 8, 6, M_LIP));
     const jaw = chain(snout, T(-5, -1, 0), R(M3.rz(-mo * 0.55)), T(5, 0, 0));
     prims.push(ellF(chain(jaw, T(-0.2, -2, 0), R(M3.rz(0.18))), [5.4, 3, 6.8], 9, 7, M_LIP));
@@ -6689,7 +6688,7 @@ const Feebas = (() => {
     /* --- eyes: droopy stamps on the head --- */
     const kind = P.eyes === 'happy' ? 'happy' : P.eyes === 'blink' ? 'blink' : P.eyes === 'closed' ? 'sleep' : 'open';
     for (const sd of [1, -1]) {
-      const s = Creature.sph(sd * 0.66, 0.3);
+      const s = Creature.sph(sd * 0.62, 0.22);
       const at = { prim: main, p: add(main.c, M3.v(main.L, s)), s };
       stamps.push({ at, set: EYES_M, colors: EYEC, kind, near: 0.72, far: 0.42, flipX: sd < 0 });
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = at.p;
@@ -6711,7 +6710,7 @@ const Feebas = (() => {
 
   function render(model, opt) {
     const sc0 = opt.scale || 1;
-    const set = sc0 >= 0.9 ? EYES_L : sc0 >= 0.6 ? EYES_M : EYES_S;
+    const set = sc0 >= 0.75 ? EYES_L : sc0 >= 0.45 ? EYES_M : EYES_S;
     for (const st of model.stamps) st.set = set;
     return Creature.render(model, opt);
   }
@@ -22776,7 +22775,7 @@ const Tentacool = (() => {
   };
 
   /* ---------- dome, face ---------- */
-  const DOME_C = [0, 66, 0], DOME_R = [44, 51, 48], DOME_TILT = 0.12;
+  const DOME_C = [0, 66, 0], DOME_R = [44, 47, 46], DOME_TILT = 0.12;
   const EYE_AZ = 0.5, EYE_V = -0.45, EYE_W = 11, EYE_H = 4.8;       // eye half-width / half-height (units)
   let curScale = 1;
 
@@ -22868,7 +22867,7 @@ const Tentacool = (() => {
   }
 
   /* ---------- tentacles ---------- */
-  const NL = 13, TL_R0 = 5, TL_R1 = 3.6;
+  const NL = 13, TL_R0 = 6.2, TL_R1 = 4.4;
 
   // gem glint: a white four-point sparkle stamped on the crystals' highlight (it may overflow the silhouette)
   const SPARK = {
@@ -22911,9 +22910,9 @@ const Tentacool = (() => {
     // --- red orbs: two big crystals in the upper sides, a small one on the front
     const orbMat = (s) => (s[0] * -0.35 + s[1] * 0.75 + s[2] * 0.35 > 0.6 ? C_ORB_L : s[1] < -0.6 ? C_ORB_D : C_ORB);
     for (const sd of [1, -1]) {
-      const { p, n } = onDome(sd * 0.98, 0.4, -10);
+      const { p, n } = onDome(sd * 0.92, 0.42, -8);
       const ax0 = nrm(cross([0, 1, 0], n)), ax1 = cross(n, ax0);
-      const r = 23.5;
+      const r = 17.5;
       const id = sd > 0 ? 5 : 6;
       const orb = E(inF(domeF, p), M3.mul(domeF.L, M3.cols(sc(ax0, r), sc(ax1, r * 1.1), sc(n, r))), id, id, orbMat);
       prims.push(orb);
@@ -22935,7 +22934,7 @@ const Tentacool = (() => {
     // the mantle is one jelly with the dome (same group: no seam at the back); a crease line is drawn
     // only across the front, where the hood meets the face under the eyes
     const DQ = J.dome.Q, DC = J.dome.c;
-    const mantle = J.mantle = ellF(bellF, [50, 40, 54], 1, 1, null);
+    const mantle = J.mantle = ellF(bellF, [56, 38, 62], 1, 1, null);
     mantle.Q = M3.inv(mantle.L);
     mantle.mat = (s) => {
       if (s[1] < RIM + 0.05 * Math.cos(Math.atan2(s[2], s[0]) * 5)) return 0;
@@ -22947,7 +22946,7 @@ const Tentacool = (() => {
     };
     prims.push(mantle);
     // dark underside, showing below the rim
-    prims.push(ellF(chain(bellF, T(1, -8, 0)), [46, 8, 50], 3, 3, M_UNDER));
+    prims.push(ellF(chain(bellF, T(1, -9, 0)), [53, 10, 58], 3, 3, M_UNDER));
     anchors.body = bellF.t;
     anchors.base = inF(bellF, [0, -8, 0]);
 
@@ -24932,10 +24931,10 @@ const Wailmer = (() => {
 
   /* ---------- the ball: inner cream/teeth ball + a slightly larger blue cap shell ---------- */
   const RAD = [184, 170, 178];
-  const CAP_K = [1.1, 1.035, 1.05], CAP_OFF = [11, 2, 0]; // longer than the ball: the upper jaw juts forward as a snout
+  const CAP_K = [1.13, 1.04, 1.05], CAP_OFF = [14, 4, 0]; // longer than the ball: the upper jaw juts forward as a snout
   const AZC = 1.8; // mouth corner azimuth: the grin runs round the sides to just behind them
-  const lipV = (a) => 0.5 - 0.2 * (a / AZC) ** 2; // upper lip (cap edge) across the mouth
-  const loV = (a) => 0.12 + 0.18 * (a / AZC) ** 2; // lower edge of the grin
+  const lipV = (a) => 0.3 - 0.16 * (a / AZC) ** 2; // upper lip (cap edge) across the mouth
+  const loV = (a) => -0.04 + 0.16 * (a / AZC) ** 2; // lower edge of the grin
   // lower edge of the blue cap all the way round (cap unit sphere; a = |azimuth|, 0 = front)
   function capV(a) {
     if (a <= AZC) return lipV(a);
@@ -24986,8 +24985,9 @@ const Wailmer = (() => {
   const FLIP_LE = [[-12, 32], [40, 41], [95, 45], [145, 42], [184, 33], [206, 18], [214, 2]];
   const leV = (u) => { let i = 0; while (i < FLIP_LE.length - 2 && u > FLIP_LE[i + 1][0]) i++; const [a, b] = [FLIP_LE[i], FLIP_LE[i + 1]]; return a[1] + ((b[1] - a[1]) * (u - a[0])) / (b[0] - a[0]); };
   // lighter band along the rounded leading edge
-  const FLIP_G = bakeShape(Shape2D.poly(FLIP_PTS, 0, 8, (u, v) => (v > leV(u) - 11 ? C_FIN_L : C_FIN)), 0.5);
-  const FLIP_LINES = [[[187, -25], [170, -10], [150, 0]], [[161, -32], [142, -17], [120, -8]]].map((pl) => ({ pts: pl.map(([u, v]) => [u, v, 0]), mat: FIN, useLn: true }));
+  const FLIP_K = 1.22;
+  const FLIP_G = bakeShape(Shape2D.poly(FLIP_PTS.map(([u, v]) => [u * FLIP_K, v * FLIP_K]), 0, 8, (u, v) => (v / FLIP_K > leV(u / FLIP_K) - 11 ? C_FIN_L : C_FIN)), 0.5);
+  const FLIP_LINES = [[[187, -25], [170, -10], [150, 0]], [[161, -32], [142, -17], [120, -8]]].map((pl) => ({ pts: pl.map(([u, v]) => [u * FLIP_K, v * FLIP_K, 0]), mat: FIN, useLn: true }));
   /* ---------- tail flukes (u = backward, v = sideways): two tiny lobes ---------- */
   const TAIL_PTS = [[-14, -11], [10, -15], [26, -26], [40, -37], [50, -33], [45, -18], [37, -6], [41, 0], [37, 6], [45, 18], [50, 33], [40, 37], [26, 26], [10, 15], [-14, 11]];
   const TAIL_G = bakeShape(Shape2D.poly(TAIL_PTS, C_FIN_L), 0.5);
@@ -25054,7 +25054,7 @@ const Wailmer = (() => {
     sleep: ['k.....k', '.k...k.', '..kkk..'], sleepN: ['k...k', '.kkk.'], sleepF: ['k..k', '.kk.'],
   };
   const EYEC = { k: '#0a1020', w: '#ffffff' };
-  const EYE_AZ = 0.95, EYE_V = 0.6;
+  const EYE_AZ = 0.62, EYE_V = 0.52;
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -25097,7 +25097,7 @@ const Wailmer = (() => {
       const w = cross(d, c);
       const L = M3.cols(d, c, w);
       prims.push(plate(F(L, p0), FLIP_G, { part: zs > 0 ? 3 : 4, grp: zs > 0 ? 3 : 4, thick: 7, lines: FLIP_LINES }));
-      anchors[zs > 0 ? 'finN' : 'finF'] = add(p0, add(sc(d, 200), sc(c, -4)));
+      anchors[zs > 0 ? 'finN' : 'finF'] = add(p0, add(sc(d, 200 * FLIP_K), sc(c, -4)));
     }
 
     /* --- tiny tail: a stubby blue stock at the back with two small upturned flukes, beating with swim --- */
@@ -25161,7 +25161,7 @@ const Wailmer = (() => {
   /* ---------- render: per-view decal culling, eye size by scale, and a cropped ray-cast ---------- */
   function render(model, opt) {
     const scale = opt.scale || 1, yaw = opt.yaw ?? 1.05, pitch = opt.pitch ?? 0.16;
-    const set = scale < 0.4 ? EYES_S : scale < 0.7 ? EYES_M : scale < 0.95 ? EYES_L : EYES_XL;
+    const set = scale < 0.3 ? EYES_S : scale < 0.55 ? EYES_M : scale < 0.8 ? EYES_L : EYES_XL;
     for (const st of model.stamps) st.set = set;
     const M = M3.mul(M3.rx(pitch), M3.ry(-yaw));
     const cam = [M[6], M[7], M[8]];
@@ -34456,8 +34456,7 @@ const Feebas = (() => {
     }
   };
   // each patch = two or three overlapping round caps
-  [[0.95, 0.5, 0.15], [1.1, 0.42, 0.11], [1.55, 0.62, 0.16], [1.72, 0.5, 0.1], [2.15, 0.35, 0.14], [2.35, 0.48, 0.1],
-   [1.3, 0.12, 0.1], [1.42, 0.2, 0.07], [2.5, 0.05, 0.11], [2.62, 0.16, 0.07], [0.7, 0.72, 0.1], [2.0, 0.8, 0.12], [0, 0.95, 0.14], [3.14, 0.7, 0.13]].forEach(([a, v, r]) => addB(a, v, r));
+  [[1.05, 0.62, 0.2], [1.2, 0.5, 0.14], [1.75, 0.55, 0.2], [1.9, 0.4, 0.13], [2.35, 0.2, 0.18], [1.45, 0.05, 0.13], [0, 0.97, 0.16], [3.14, 0.7, 0.15]].forEach(([a, v, r]) => addB(a, v, r));
   function bodyMat(s) {
     // dull tan belly, lip-coloured at the very front (the snout tip is covered by the lips)
     if (s[1] < -0.3 + 0.12 * s[0] * s[0]) return C_BELLY;
@@ -34508,13 +34507,13 @@ const Feebas = (() => {
     // body frame: roll about the long axis (lying on its side), centred on the body
     // (lying on its side it rests lower: body half-height along y after the roll, plus fin clearance)
     const ra = roll * 1.35, cr = Math.cos(ra), sr = Math.sin(ra);
-    const BC = [0, Math.hypot(21.5 * cr, 14.5 * sr) + 8.5 * cr * cr, 0];
+    const BC = [0, Math.hypot(25.5 * cr, 14.5 * sr) + 8.5 * cr * cr, 0];
     const body = chain(T(...BC), R(M3.rx(-ra)), R(M3.rz(bend * 0.12)));
 
     /* --- body: main oval + head bulge --- */
-    const main = ellF(body, [37, 21.5, 14.5], 1, 1, bodyMat);
+    const main = ellF(body, [33, 25.5, 14.5], 1, 1, bodyMat);
     prims.push(main);
-    prims.push(ellF(chain(body, T(-4, -3.5, 0)), [30, 17, 13.4], 1, 1, (s) => (s[1] < -0.2 ? C_BELLY : C_BODY)));
+    prims.push(ellF(chain(body, T(-4, -4, 0)), [27, 21, 13.4], 1, 1, (s) => (s[1] < -0.2 ? C_BELLY : C_BODY)));
 
     /* --- tail stock + tail fin (flop) --- */
     const pivot = chain(body, T(-22, 0, 0), R(M3.rz(-bend * 0.3)), R(M3.ry(-tl * 0.42)));
@@ -34525,12 +34524,12 @@ const Feebas = (() => {
     anchors.tail = inF(tailF, [-15, 0, 0]);
 
     /* --- dorsal fin (lifts with `fins`) --- */
-    const df = chain(body, T(-1, 17.5, 0), R(M3.rz(0.08 - fn * 0.12)), R(M3.diag(1, 0.9 + fn * 0.3, 1)));
+    const df = chain(body, T(-1, 22, 0), R(M3.rz(0.08 - fn * 0.12)), R(M3.diag(1, 0.9 + fn * 0.3, 1)));
     prims.push(PL(df.t, df.L, 4, 3, DORSAL_G, 1.6, DORSAL_RAYS));
     anchors.top = inF(df, [-6, 14, 0]);
 
     /* --- pelvic + anal fins (hang below) --- */
-    const pv = chain(body, T(6, -19.5, 0), R(M3.rz(0.15)));
+    const pv = chain(body, T(6, -23.5, 0), R(M3.rz(0.15)));
     prims.push(PL(pv.t, M3.mul(pv.L, M3.cols([-1, 0, 0], [0, -1, 0], [0, 0, 1])), 5, 4, LOW_G, 1.6, null));
     const an = chain(pivot, T(-2, -9.5, 0), R(M3.rz(0.3)));
     prims.push(PL(an.t, M3.mul(an.L, M3.cols([-1, 0, 0], [0, -1, 0], [0, 0, 1])), 5, 4, LOW_G, 1.6, null));
@@ -34550,7 +34549,7 @@ const Feebas = (() => {
     }
 
     /* --- lips: thick pale upper and lower lip at the snout tip; the lower lip hinges open --- */
-    const snout = chain(body, T(35.5, 1.5, 0));
+    const snout = chain(body, T(32, 0, 0));
     prims.push(ellF(chain(snout, T(0.8, 1.5, 0), R(M3.rz(-0.22))), [5.8, 3.3, 7.2], 8, 6, M_LIP));
     const jaw = chain(snout, T(-5, -1, 0), R(M3.rz(-mo * 0.55)), T(5, 0, 0));
     prims.push(ellF(chain(jaw, T(-0.2, -2, 0), R(M3.rz(0.18))), [5.4, 3, 6.8], 9, 7, M_LIP));
@@ -34560,7 +34559,7 @@ const Feebas = (() => {
     /* --- eyes: droopy stamps on the head --- */
     const kind = P.eyes === 'happy' ? 'happy' : P.eyes === 'blink' ? 'blink' : P.eyes === 'closed' ? 'sleep' : 'open';
     for (const sd of [1, -1]) {
-      const s = Creature.sph(sd * 0.66, 0.3);
+      const s = Creature.sph(sd * 0.62, 0.22);
       const at = { prim: main, p: add(main.c, M3.v(main.L, s)), s };
       stamps.push({ at, set: EYES_M, colors: EYEC, kind, near: 0.72, far: 0.42, flipX: sd < 0 });
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = at.p;
@@ -34582,7 +34581,7 @@ const Feebas = (() => {
 
   function render(model, opt) {
     const sc0 = opt.scale || 1;
-    const set = sc0 >= 0.9 ? EYES_L : sc0 >= 0.6 ? EYES_M : EYES_S;
+    const set = sc0 >= 0.75 ? EYES_L : sc0 >= 0.45 ? EYES_M : EYES_S;
     for (const st of model.stamps) st.set = set;
     return Creature.render(model, opt);
   }
@@ -50699,7 +50698,7 @@ const Tentacool = (() => {
   };
 
   /* ---------- dome, face ---------- */
-  const DOME_C = [0, 66, 0], DOME_R = [44, 51, 48], DOME_TILT = 0.12;
+  const DOME_C = [0, 66, 0], DOME_R = [44, 47, 46], DOME_TILT = 0.12;
   const EYE_AZ = 0.5, EYE_V = -0.45, EYE_W = 11, EYE_H = 4.8;       // eye half-width / half-height (units)
   let curScale = 1;
 
@@ -50791,7 +50790,7 @@ const Tentacool = (() => {
   }
 
   /* ---------- tentacles ---------- */
-  const NL = 13, TL_R0 = 5, TL_R1 = 3.6;
+  const NL = 13, TL_R0 = 6.2, TL_R1 = 4.4;
 
   // gem glint: a white four-point sparkle stamped on the crystals' highlight (it may overflow the silhouette)
   const SPARK = {
@@ -50834,9 +50833,9 @@ const Tentacool = (() => {
     // --- red orbs: two big crystals in the upper sides, a small one on the front
     const orbMat = (s) => (s[0] * -0.35 + s[1] * 0.75 + s[2] * 0.35 > 0.6 ? C_ORB_L : s[1] < -0.6 ? C_ORB_D : C_ORB);
     for (const sd of [1, -1]) {
-      const { p, n } = onDome(sd * 0.98, 0.4, -10);
+      const { p, n } = onDome(sd * 0.92, 0.42, -8);
       const ax0 = nrm(cross([0, 1, 0], n)), ax1 = cross(n, ax0);
-      const r = 23.5;
+      const r = 17.5;
       const id = sd > 0 ? 5 : 6;
       const orb = E(inF(domeF, p), M3.mul(domeF.L, M3.cols(sc(ax0, r), sc(ax1, r * 1.1), sc(n, r))), id, id, orbMat);
       prims.push(orb);
@@ -50858,7 +50857,7 @@ const Tentacool = (() => {
     // the mantle is one jelly with the dome (same group: no seam at the back); a crease line is drawn
     // only across the front, where the hood meets the face under the eyes
     const DQ = J.dome.Q, DC = J.dome.c;
-    const mantle = J.mantle = ellF(bellF, [50, 40, 54], 1, 1, null);
+    const mantle = J.mantle = ellF(bellF, [56, 38, 62], 1, 1, null);
     mantle.Q = M3.inv(mantle.L);
     mantle.mat = (s) => {
       if (s[1] < RIM + 0.05 * Math.cos(Math.atan2(s[2], s[0]) * 5)) return 0;
@@ -50870,7 +50869,7 @@ const Tentacool = (() => {
     };
     prims.push(mantle);
     // dark underside, showing below the rim
-    prims.push(ellF(chain(bellF, T(1, -8, 0)), [46, 8, 50], 3, 3, M_UNDER));
+    prims.push(ellF(chain(bellF, T(1, -9, 0)), [53, 10, 58], 3, 3, M_UNDER));
     anchors.body = bellF.t;
     anchors.base = inF(bellF, [0, -8, 0]);
 
@@ -52862,10 +52861,10 @@ const Wailmer = (() => {
 
   /* ---------- the ball: inner cream/teeth ball + a slightly larger blue cap shell ---------- */
   const RAD = [184, 170, 178];
-  const CAP_K = [1.1, 1.035, 1.05], CAP_OFF = [11, 2, 0]; // longer than the ball: the upper jaw juts forward as a snout
+  const CAP_K = [1.13, 1.04, 1.05], CAP_OFF = [14, 4, 0]; // longer than the ball: the upper jaw juts forward as a snout
   const AZC = 1.8; // mouth corner azimuth: the grin runs round the sides to just behind them
-  const lipV = (a) => 0.5 - 0.2 * (a / AZC) ** 2; // upper lip (cap edge) across the mouth
-  const loV = (a) => 0.12 + 0.18 * (a / AZC) ** 2; // lower edge of the grin
+  const lipV = (a) => 0.3 - 0.16 * (a / AZC) ** 2; // upper lip (cap edge) across the mouth
+  const loV = (a) => -0.04 + 0.16 * (a / AZC) ** 2; // lower edge of the grin
   // lower edge of the blue cap all the way round (cap unit sphere; a = |azimuth|, 0 = front)
   function capV(a) {
     if (a <= AZC) return lipV(a);
@@ -52916,8 +52915,9 @@ const Wailmer = (() => {
   const FLIP_LE = [[-12, 32], [40, 41], [95, 45], [145, 42], [184, 33], [206, 18], [214, 2]];
   const leV = (u) => { let i = 0; while (i < FLIP_LE.length - 2 && u > FLIP_LE[i + 1][0]) i++; const [a, b] = [FLIP_LE[i], FLIP_LE[i + 1]]; return a[1] + ((b[1] - a[1]) * (u - a[0])) / (b[0] - a[0]); };
   // lighter band along the rounded leading edge
-  const FLIP_G = bakeShape(Shape2D.poly(FLIP_PTS, 0, 8, (u, v) => (v > leV(u) - 11 ? C_FIN_L : C_FIN)), 0.5);
-  const FLIP_LINES = [[[187, -25], [170, -10], [150, 0]], [[161, -32], [142, -17], [120, -8]]].map((pl) => ({ pts: pl.map(([u, v]) => [u, v, 0]), mat: FIN, useLn: true }));
+  const FLIP_K = 1.22;
+  const FLIP_G = bakeShape(Shape2D.poly(FLIP_PTS.map(([u, v]) => [u * FLIP_K, v * FLIP_K]), 0, 8, (u, v) => (v / FLIP_K > leV(u / FLIP_K) - 11 ? C_FIN_L : C_FIN)), 0.5);
+  const FLIP_LINES = [[[187, -25], [170, -10], [150, 0]], [[161, -32], [142, -17], [120, -8]]].map((pl) => ({ pts: pl.map(([u, v]) => [u * FLIP_K, v * FLIP_K, 0]), mat: FIN, useLn: true }));
   /* ---------- tail flukes (u = backward, v = sideways): two tiny lobes ---------- */
   const TAIL_PTS = [[-14, -11], [10, -15], [26, -26], [40, -37], [50, -33], [45, -18], [37, -6], [41, 0], [37, 6], [45, 18], [50, 33], [40, 37], [26, 26], [10, 15], [-14, 11]];
   const TAIL_G = bakeShape(Shape2D.poly(TAIL_PTS, C_FIN_L), 0.5);
@@ -52984,7 +52984,7 @@ const Wailmer = (() => {
     sleep: ['k.....k', '.k...k.', '..kkk..'], sleepN: ['k...k', '.kkk.'], sleepF: ['k..k', '.kk.'],
   };
   const EYEC = { k: '#0a1020', w: '#ffffff' };
-  const EYE_AZ = 0.95, EYE_V = 0.6;
+  const EYE_AZ = 0.62, EYE_V = 0.52;
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -53027,7 +53027,7 @@ const Wailmer = (() => {
       const w = cross(d, c);
       const L = M3.cols(d, c, w);
       prims.push(plate(F(L, p0), FLIP_G, { part: zs > 0 ? 3 : 4, grp: zs > 0 ? 3 : 4, thick: 7, lines: FLIP_LINES }));
-      anchors[zs > 0 ? 'finN' : 'finF'] = add(p0, add(sc(d, 200), sc(c, -4)));
+      anchors[zs > 0 ? 'finN' : 'finF'] = add(p0, add(sc(d, 200 * FLIP_K), sc(c, -4)));
     }
 
     /* --- tiny tail: a stubby blue stock at the back with two small upturned flukes, beating with swim --- */
@@ -53091,7 +53091,7 @@ const Wailmer = (() => {
   /* ---------- render: per-view decal culling, eye size by scale, and a cropped ray-cast ---------- */
   function render(model, opt) {
     const scale = opt.scale || 1, yaw = opt.yaw ?? 1.05, pitch = opt.pitch ?? 0.16;
-    const set = scale < 0.4 ? EYES_S : scale < 0.7 ? EYES_M : scale < 0.95 ? EYES_L : EYES_XL;
+    const set = scale < 0.3 ? EYES_S : scale < 0.55 ? EYES_M : scale < 0.8 ? EYES_L : EYES_XL;
     for (const st of model.stamps) st.set = set;
     const M = M3.mul(M3.rx(pitch), M3.ry(-yaw));
     const cam = [M[6], M[7], M[8]];
@@ -59943,7 +59943,9 @@ const Player = (() => {
         if (this.jumpBuf > 0) {
           this.jumpBuf = 0;
           const s = WorldRender.surfaceAt(this.x, t);
-          if (this.y < s + 24) this.leapOut(s); else this.dash();
+          // water jumps are a small push with a cooldown (no spamming out of the sea)
+          if ((this.wjCool || 0) > t) FX.bubbles(this.x, this.y - 6, 2, s);
+          else { this.wjCool = t + 1.1; if (this.y < s + 24) this.leapOut(s); else this.dash(); }
         }
         return;
       }
@@ -60011,15 +60013,15 @@ const Player = (() => {
     leapOut(s) {
       this.rot = 0;
       this.mode = 'fall'; this.plat = null; this.floe = null;
-      this.jumping = true; this.cut = false; this.flipped = false; this.pound = false;
-      this.vy = -(this.running ? 360 : 325); this.vx = (this.keyDir || this.dirX()) * (this.running ? 140 : 105);
+      this.jumping = true; this.cut = false; this.flipped = true; this.pound = false; // no air flip boost off a water hop
+      this.vy = -(this.running ? 215 : 195); this.vx = (this.keyDir || this.dirX()) * (this.running ? 80 : 60);
       this.y = Math.min(this.y, s + 4);
       FX.splashAt(this.x, s, { power: 0.6, n: 10 }); Game.sfx('splash', this.x, 0.6);
       this.happyT = 0.5;
       for (const m of Mons.all) if (m !== this) m.hear('splash', this.x, 0.3);
     }
     dash() {
-      this.dashT = 0.4; this.vx += this.dirX() * 170;
+      this.dashT = 0.3; this.vx += this.dirX() * 110;
       Game.sfx('whoosh', this.x, 0.4);
       FX.bubbles(this.x - this.dirX() * 10, this.y - 6, 6, WorldRender.surfaceAt(this.x, Game.t));
     }
@@ -60976,7 +60978,10 @@ const Weather = (() => {
      Rock Smash breaks cracked rocks and boulders
      Ice Beam   freezes the water into floes you can hop across
    New moves are learned by watching Pokémon do them (stay close for a
-   moment), by finding TM discs hidden in the world, or from quests.
+   moment), from quests, NPC trainers, hosted games and challenges
+   (TM discs are no longer lying around in the world). More TMs are
+   added by tmfx.js. Every move has a cooldown (shown as a dark sweep
+   on the B button, the move chip and the wheel).
 ------------------------------------------------------------------- */
 const Moves = (() => {
   const { clamp, lerp, rnd, hex } = U;
@@ -60985,13 +60990,21 @@ const Moves = (() => {
     { id: 'tackle', name: 'Tackle', col: hex('#e0962a'), start: true, desc: 'Charge and bump! Shakes trees, bops Pokémon.' },
     { id: 'sing', name: 'Sing', col: hex('#e0529e'), start: true, desc: 'Play a song on the guitar.' },
     { id: 'scan', name: 'Scan', col: hex('#2eb07e'), start: true, desc: 'Scan with the Pokédex to find secrets.' },
-    { id: 'bubble', name: 'Bubble', col: hex('#52c4ea'), tm: 'TM01', how: 'Watch Clamperl or Wailmer blow bubbles, or find the disc on the seabed.', watch: { kinds: ['clamperl', 'wailmer', 'luvdisc', 'corphish'], acts: ['open', 'spout', 'pearl', 'bubble', 'kiss'] } },
-    { id: 'growl', name: 'Growl', col: hex('#e8b02a'), tm: 'TM02', how: 'Cheer along with Plusle and Minun, or look in the Treetop lookout.', watch: { kinds: ['plusle', 'minun', 'chatot'], acts: ['cheer', 'duo', 'mimic'] } },
-    { id: 'dig', name: 'Dig', col: hex('#a8683a'), tm: 'TM03', how: 'Watch a Zigzagoon dig up treasure, or check the hollow log.', watch: { kinds: ['zigzagoon', 'trapinch'], acts: ['find', 'sniff', 'chomp'] } },
-    { id: 'smash', name: 'Rock Smash', col: hex('#c0543a'), tm: 'TM04', how: 'Watch Bagon headbutt a boulder, or look behind the cave waterfall.', watch: { kinds: ['bagon'], acts: ['headbutt'] } },
-    { id: 'ice', name: 'Ice Beam', col: hex('#8adcf4'), tm: 'TM05', how: 'Watch Walrein use Ice Beam, or search the lighthouse islet.', watch: { kinds: ['walrein', 'sealeo'], acts: ['icebeam'] } },
+    { id: 'bubble', name: 'Bubble', col: hex('#52c4ea'), tm: 'TM01', how: 'Watch Clamperl or Wailmer blow bubbles, or help Luvdisc find its lost pearl.', watch: { kinds: ['clamperl', 'wailmer', 'luvdisc', 'corphish'], acts: ['open', 'spout', 'pearl', 'bubble', 'kiss'] } },
+    { id: 'growl', name: 'Growl', col: hex('#e8b02a'), tm: 'TM02', how: 'Cheer along with Plusle and Minun, or teach Chatot a song in Treetop Town.', watch: { kinds: ['plusle', 'minun', 'chatot'], acts: ['cheer', 'duo', 'mimic'] } },
+    { id: 'dig', name: 'Dig', col: hex('#a8683a'), tm: 'TM03', how: 'Watch a Zigzagoon dig, or find its buried treasure in Weather Woods.', watch: { kinds: ['zigzagoon', 'trapinch'], acts: ['find', 'sniff', 'chomp'] } },
+    { id: 'smash', name: 'Rock Smash', col: hex('#c0543a'), tm: 'TM04', how: 'Watch Bagon headbutt a boulder, or out-flop Corphish on the beach.', watch: { kinds: ['bagon'], acts: ['headbutt'] } },
+    { id: 'ice', name: 'Ice Beam', col: hex('#8adcf4'), tm: 'TM05', how: 'Watch Walrein use Ice Beam, or cheer grumpy Walrein up with a photo.', watch: { kinds: ['walrein', 'sealeo'], acts: ['icebeam'] } },
   ];
   const DEF = Object.fromEntries(LIST.map((m) => [m.id, m]));
+  // cooldowns (seconds) per move; moves added later carry their own `cool`
+  const COOL = { water: 0.6, tackle: 1.2, sing: 3, scan: 0, bubble: 2, growl: 5, dig: 3, smash: 2.5, ice: 6 };
+  for (const m of LIST) if (m.cool === undefined) m.cool = COOL[m.id] ?? 2;
+  const cd = {};
+  const coolLeft = (id) => Math.max(0, (cd[id] || 0) - Game.t);
+  const coolK = (id) => { const d = DEF[id]; return d && d.cool ? Math.min(1, coolLeft(id) / d.cool) : 0; };
+  // add a move from another file (tmfx.js): { id, name, col, tm, how, desc, cool, icon, run(mk, tx, ty) → generator }
+  function add(d) { if (DEF[d.id]) return DEF[d.id]; if (d.cool === undefined) d.cool = 3; LIST.push(d); DEF[d.id] = d; if (d.icon) ICON[d.id] = d.icon; return d; }
   const M = { cur: 'water', wheel: null, pressing: false, pressT: 0, watchT: {}, learnFx: null };
   const tms = () => Save.data.tms || (Save.data.tms = {});
   const has = (id) => !!DEF[id] && (DEF[id].start || !!tms()[id]);
@@ -61076,6 +61089,8 @@ const Moves = (() => {
     const mk = Game.mudkip; if (!mk || Game.mode !== 'explore') return;
     if (!has(id)) { HUD.toast(DEF[id].name + ' is not learned yet.'); return; }
     if (mk.busy(2) && !(mk.task && mk.task.idle)) return;
+    if (coolLeft(id) > 0) { if ((M.coolMsgT || 0) < Game.t) { M.coolMsgT = Game.t + 0.8; HUD.toast(DEF[id].name + ' is recharging... ' + coolLeft(id).toFixed(1) + 's', { life: 1, col: DEF[id].col }); } Game.sfx('error', null, 0.3); return; }
+    cd[id] = Game.t + (DEF[id].cool || 0);
     mk.wakeUp();
     const [tx, ty] = aim(mk);
     switch (id) {
@@ -61088,6 +61103,7 @@ const Moves = (() => {
       case 'dig': mk.doTask(mk.dig(), 2); break;
       case 'smash': mk.doTask(mk.rockSmash(), 2); break;
       case 'ice': mk.doTask(mk.iceBeam(tx, ty), 2); break;
+      default: if (DEF[id].run) { const g = DEF[id].run(mk, tx, ty); if (g) mk.doTask(g, 2); }
     }
   }
   /* ---------- drawing ---------- */
@@ -61129,6 +61145,7 @@ const Moves = (() => {
       if (own) icon(fb, m.id, sx, sy, Math.max(1, Math.round(rr / 7)));
       else { Font.draw(fb, '?', Math.round(sx), Math.round(sy) - 4, 0xffc8cce0, { font: 'title', align: 'center' }); }
       if (cur) UI.ring(fb, Math.round(sx), Math.round(sy), rr + 2, 0xffffe060, 1);
+      if (own && coolK(m.id) > 0) coolPie(fb, Math.round(sx), Math.round(sy), rr, coolK(m.id));
       if (m.tm) Font.draw(fb, m.tm, Math.round(sx), Math.round(sy + rr + 2), own ? 0xffffffff : 0xffa0a4b8, { font: 'small', align: 'center', outline: 0xff1b2240 });
     });
     // centre: the hovered move
@@ -61138,6 +61155,25 @@ const Moves = (() => {
     const lines = Font.wrap(own ? m.desc || '' : 'Not learned yet', 'small', Math.round(R * 0.95));
     lines.slice(0, 3).forEach((l, j) => Font.draw(fb, l, cx, cy + 4 + j * 9, 0xffc8d4f0, { font: 'small', align: 'center' }));
     Font.draw(fb, 'MOVE WHEEL', cx, Math.max(4, cy - R - r - 14), 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 });
+  }
+  // a dark pie that shrinks as the move recharges (k = 1 → just used)
+  function coolPie(fb, cx, cy, r, k) {
+    if (k <= 0) return;
+    const end = -Math.PI / 2 + k * Math.PI * 2;
+    for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+      if (x * x + y * y > r * r) continue;
+      let a = Math.atan2(y, x); if (a < -Math.PI / 2) a += Math.PI * 2;
+      if (a <= end) UI.put(fb, cx + x, cy + y, U.mix(fb.d[(cy + y) * fb.w + cx + x] || 0xff000000, 0xff101420, 0.62) | 0xff000000);
+    }
+  }
+  // the current move as a small chip (keyboard play: bottom right) with its cooldown
+  function drawChip(fb, S, t) {
+    if (typeof Pad !== 'undefined' && Pad.touch) return;
+    const m = current(), r = 9, cx = fb.w - 16, cy = fb.h - 44;
+    UI.disc(fb, cx, cy + 2, r, 0xff0a0e1a); UI.orb(fb, cx, cy, r, m.col, { ol: 0xff1b2240 });
+    icon(fb, m.id, cx, cy, 1);
+    const k = coolK(m.id); if (k > 0) { coolPie(fb, cx, cy, r, k); Font.draw(fb, coolLeft(m.id).toFixed(coolLeft(m.id) < 10 ? 1 : 0), cx, cy + r + 2, 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 }); }
+    else Font.draw(fb, 'X', cx + r - 2, cy - r - 4, 0xffffffff, { font: 'small', outline: 0xff1b2240 });
   }
   // the big "new move!" flourish
   function drawLearn(fb, S, t) {
@@ -61153,7 +61189,7 @@ const Moves = (() => {
   }
   // (the old gallery game's sand piles: nothing to do here)
   function addSand() {}
-  return Object.assign(M, { LIST, DEF, has, current, unlock, press, release, openWheel, closeWheel, toggleWheel, select, wheelPoint, wheelKey, tapWheel, update, use, icon, drawWheel, drawLearn, addSand });
+  return Object.assign(M, { add, coolLeft, coolK, coolPie, drawChip, ICON, cd, LIST, DEF, has, current, unlock, press, release, openWheel, closeWheel, toggleWheel, select, wheelPoint, wheelKey, tapWheel, update, use, icon, drawWheel, drawLearn, addSand });
 })();
 
 /* ==== src/snap/pad.js ==== */
@@ -61244,6 +61280,7 @@ const Pad = (() => {
     const pb = P.b ? 1 : 0, mv = Moves.current();
     UI.disc(fb, L.bx, L.by + 2, L.bR, 0xff0a0e1a); UI.orb(fb, L.bx, L.by + pb, L.bR, mv ? mv.col : S.btn, { ol: INK });
     if (mv) Moves.icon(fb, mv.id, L.bx, L.by + pb, Math.max(1, Math.round(L.bR / 9)));
+    if (mv && Moves.coolK && Moves.coolK(mv.id) > 0) { Moves.coolPie(fb, L.bx, L.by + pb, L.bR, Moves.coolK(mv.id)); Font.draw(fb, Moves.coolLeft(mv.id).toFixed(1), L.bx, L.by + pb - 3, 0xffffffff, { font: 'small', align: 'center', outline: INK }); }
     if (P.b && P.b.t > 0.18) { const k = Math.min(1, (P.b.t - 0.18) / 0.3); for (let a = 0; a < 32 * k; a++) { const an = -Math.PI / 2 + a / 32 * Math.PI * 2; UI.put(fb, Math.round(L.bx + Math.cos(an) * (L.bR + 3)), Math.round(L.by + Math.sin(an) * (L.bR + 3)), 0xffffffff); } }
     Font.draw(fb, 'B', L.bx + L.bR - 3, L.by - L.bR - 2, 0xffffffff, { font: 'small', outline: INK });
     // keyboard hint (fades after the first jump)
@@ -61841,7 +61878,6 @@ const HUD = (() => {
       { id: 'map', fn: () => (Game.mode === 'map' ? WorldMap.close() : WorldMap.open()) },
       { id: 'bag', fn: () => Bag.open(), badge: typeof Bag !== 'undefined' && Bag.fresh && Bag.fresh() },
       { id: 'style', fn: () => Style.open(), badge: typeof Style !== 'undefined' && Style.fresh && Style.fresh() },
-      { id: 'games', fn: () => typeof Arcade !== 'undefined' && Arcade.open() },
       { id: 'snd', fn: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); } },
     ];
     items.forEach((it, i) => {
@@ -61968,7 +62004,7 @@ const HUD = (() => {
     drawToasts(fb, S, t);
     Quests.drawPop(fb, t);
     if (WorldMap.reveal) WorldMap.drawReveal(fb, t);
-    if (typeof Moves !== 'undefined') { Moves.drawWheel(fb, S, t); Moves.drawLearn(fb, S, t); }
+    if (typeof Moves !== 'undefined') { if (Moves.drawChip && !Talk.busy()) Moves.drawChip(fb, S, t); Moves.drawWheel(fb, S, t); Moves.drawLearn(fb, S, t); }
     Talk.drawDialog(fb, t);
     if (Photo.drawCard) Photo.drawCard(fb, t);
   }
@@ -65160,7 +65196,7 @@ const Harvest = (() => {
     volcano: { land: ['ashT', 'dune'], flowers: ['flY', 'flP'], items: ['gem', 'starp', 'shroom'], motes: 'dust', rocks: 'rock', sparse: 0.7 },
     shoal: { land: ['snowT'], flowers: ['flB', 'flW'], items: ['shell', 'gem', 'pearl'], motes: 'dust', rocks: 'rockW', crystals: true, sparse: 0.6 },
   };
-  const TMS = { beach: [{ id: 'bubble', x: 2520 }, { id: 'ice', x: 5320 }], forest: [{ id: 'dig', x: 2150 }], canopy: [{ id: 'growl', x: 3215 }], falls: [{ id: 'smash', x: 3470 }] };
+  const TMS = {}; // TM pickups removed: TMs are taught by quests, trainers, hosted games and challenges
   const ITEM = {
     berry: { name: 'Oran Berry', inv: 'berry' }, shell: { name: 'Pretty Shell', inv: 'shell' }, pearl: { name: 'Pearl', inv: 'pearl' },
     shroom: { name: 'Tiny Mushroom', inv: 'mushroom' }, shroomG: { name: 'Glowing Mushroom', inv: 'mushroom' }, gem: { name: 'Shiny Gem', inv: 'gem' }, starp: { name: 'Star Piece', inv: 'stardust' },
@@ -65230,7 +65266,8 @@ const Harvest = (() => {
       H.items.push({ kind: 'plant', berry: pk[(r() * pk.length) | 0], x, y: World.groundAt(x) - 1, ripe: 1 + ((r() * 3) | 0), grow: 0, t: 0, taken: 0, ph: r() * 6 });
     }
     // TM discs not yet learned
-    for (const tm of TMS[id] || []) if (!Moves.has(tm.id)) H.items.push({ kind: 'tm', tm: tm.id, x: tm.x, y: World.groundAt(tm.x) - 9, under: surfaceKind(tm.x) === 'sea', t: 0, taken: 0, ph: 0 });
+    // (TM discs are no longer found in the world: they come from quests, trainers and games)
+    if (false) for (const tm of TMS[id] || []) if (!Moves.has(tm.id)) H.items.push({ kind: 'tm', tm: tm.id, x: tm.x, y: World.groundAt(tm.x) - 9, under: surfaceKind(tm.x) === 'sea', t: 0, taken: 0, ph: 0 });
     // glittering dig spots
     for (let i = 0; i < 5; i++) { for (let g = 0; g < 20; g++) { const x = 200 + r() * (W - 400); if (surfaceKind(x) === 'land' && !World.platAt(x)) { H.spots.push({ x, found: false, kind: 'treasure', ph: r() * 6 }); break; } } }
     // quest spots that are still to be found
@@ -77970,7 +78007,6 @@ const Game = (() => {
     else if (k === 'b' || k === 'i') Bag.open();
     else if (k === 'v') Style.open();
     else if (k === 'g') Rhythm.open(0);
-    else if (k === 'h' && typeof Arcade !== 'undefined') Arcade.open();
     else if (k === 'p' || k === 'Tab') { Dex.open(); e.preventDefault(); }
     else if (k === 'm') WorldMap.open();
     else if (k === 't') G.tryTime();

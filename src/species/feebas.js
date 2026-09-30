@@ -87,8 +87,7 @@ const Feebas = (() => {
     }
   };
   // each patch = two or three overlapping round caps
-  [[0.95, 0.5, 0.15], [1.1, 0.42, 0.11], [1.55, 0.62, 0.16], [1.72, 0.5, 0.1], [2.15, 0.35, 0.14], [2.35, 0.48, 0.1],
-   [1.3, 0.12, 0.1], [1.42, 0.2, 0.07], [2.5, 0.05, 0.11], [2.62, 0.16, 0.07], [0.7, 0.72, 0.1], [2.0, 0.8, 0.12], [0, 0.95, 0.14], [3.14, 0.7, 0.13]].forEach(([a, v, r]) => addB(a, v, r));
+  [[1.05, 0.62, 0.2], [1.2, 0.5, 0.14], [1.75, 0.55, 0.2], [1.9, 0.4, 0.13], [2.35, 0.2, 0.18], [1.45, 0.05, 0.13], [0, 0.97, 0.16], [3.14, 0.7, 0.15]].forEach(([a, v, r]) => addB(a, v, r));
   function bodyMat(s) {
     // dull tan belly, lip-coloured at the very front (the snout tip is covered by the lips)
     if (s[1] < -0.3 + 0.12 * s[0] * s[0]) return C_BELLY;
@@ -139,13 +138,13 @@ const Feebas = (() => {
     // body frame: roll about the long axis (lying on its side), centred on the body
     // (lying on its side it rests lower: body half-height along y after the roll, plus fin clearance)
     const ra = roll * 1.35, cr = Math.cos(ra), sr = Math.sin(ra);
-    const BC = [0, Math.hypot(21.5 * cr, 14.5 * sr) + 8.5 * cr * cr, 0];
+    const BC = [0, Math.hypot(25.5 * cr, 14.5 * sr) + 8.5 * cr * cr, 0];
     const body = chain(T(...BC), R(M3.rx(-ra)), R(M3.rz(bend * 0.12)));
 
     /* --- body: main oval + head bulge --- */
-    const main = ellF(body, [37, 21.5, 14.5], 1, 1, bodyMat);
+    const main = ellF(body, [33, 25.5, 14.5], 1, 1, bodyMat);
     prims.push(main);
-    prims.push(ellF(chain(body, T(-4, -3.5, 0)), [30, 17, 13.4], 1, 1, (s) => (s[1] < -0.2 ? C_BELLY : C_BODY)));
+    prims.push(ellF(chain(body, T(-4, -4, 0)), [27, 21, 13.4], 1, 1, (s) => (s[1] < -0.2 ? C_BELLY : C_BODY)));
 
     /* --- tail stock + tail fin (flop) --- */
     const pivot = chain(body, T(-22, 0, 0), R(M3.rz(-bend * 0.3)), R(M3.ry(-tl * 0.42)));
@@ -156,12 +155,12 @@ const Feebas = (() => {
     anchors.tail = inF(tailF, [-15, 0, 0]);
 
     /* --- dorsal fin (lifts with `fins`) --- */
-    const df = chain(body, T(-1, 17.5, 0), R(M3.rz(0.08 - fn * 0.12)), R(M3.diag(1, 0.9 + fn * 0.3, 1)));
+    const df = chain(body, T(-1, 22, 0), R(M3.rz(0.08 - fn * 0.12)), R(M3.diag(1, 0.9 + fn * 0.3, 1)));
     prims.push(PL(df.t, df.L, 4, 3, DORSAL_G, 1.6, DORSAL_RAYS));
     anchors.top = inF(df, [-6, 14, 0]);
 
     /* --- pelvic + anal fins (hang below) --- */
-    const pv = chain(body, T(6, -19.5, 0), R(M3.rz(0.15)));
+    const pv = chain(body, T(6, -23.5, 0), R(M3.rz(0.15)));
     prims.push(PL(pv.t, M3.mul(pv.L, M3.cols([-1, 0, 0], [0, -1, 0], [0, 0, 1])), 5, 4, LOW_G, 1.6, null));
     const an = chain(pivot, T(-2, -9.5, 0), R(M3.rz(0.3)));
     prims.push(PL(an.t, M3.mul(an.L, M3.cols([-1, 0, 0], [0, -1, 0], [0, 0, 1])), 5, 4, LOW_G, 1.6, null));
@@ -181,7 +180,7 @@ const Feebas = (() => {
     }
 
     /* --- lips: thick pale upper and lower lip at the snout tip; the lower lip hinges open --- */
-    const snout = chain(body, T(35.5, 1.5, 0));
+    const snout = chain(body, T(32, 0, 0));
     prims.push(ellF(chain(snout, T(0.8, 1.5, 0), R(M3.rz(-0.22))), [5.8, 3.3, 7.2], 8, 6, M_LIP));
     const jaw = chain(snout, T(-5, -1, 0), R(M3.rz(-mo * 0.55)), T(5, 0, 0));
     prims.push(ellF(chain(jaw, T(-0.2, -2, 0), R(M3.rz(0.18))), [5.4, 3, 6.8], 9, 7, M_LIP));
@@ -191,7 +190,7 @@ const Feebas = (() => {
     /* --- eyes: droopy stamps on the head --- */
     const kind = P.eyes === 'happy' ? 'happy' : P.eyes === 'blink' ? 'blink' : P.eyes === 'closed' ? 'sleep' : 'open';
     for (const sd of [1, -1]) {
-      const s = Creature.sph(sd * 0.66, 0.3);
+      const s = Creature.sph(sd * 0.62, 0.22);
       const at = { prim: main, p: add(main.c, M3.v(main.L, s)), s };
       stamps.push({ at, set: EYES_M, colors: EYEC, kind, near: 0.72, far: 0.42, flipX: sd < 0 });
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = at.p;
@@ -213,7 +212,7 @@ const Feebas = (() => {
 
   function render(model, opt) {
     const sc0 = opt.scale || 1;
-    const set = sc0 >= 0.9 ? EYES_L : sc0 >= 0.6 ? EYES_M : EYES_S;
+    const set = sc0 >= 0.75 ? EYES_L : sc0 >= 0.45 ? EYES_M : EYES_S;
     for (const st of model.stamps) st.set = set;
     return Creature.render(model, opt);
   }

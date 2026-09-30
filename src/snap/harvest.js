@@ -62,7 +62,7 @@ const Harvest = (() => {
     volcano: { land: ['ashT', 'dune'], flowers: ['flY', 'flP'], items: ['gem', 'starp', 'shroom'], motes: 'dust', rocks: 'rock', sparse: 0.7 },
     shoal: { land: ['snowT'], flowers: ['flB', 'flW'], items: ['shell', 'gem', 'pearl'], motes: 'dust', rocks: 'rockW', crystals: true, sparse: 0.6 },
   };
-  const TMS = { beach: [{ id: 'bubble', x: 2520 }, { id: 'ice', x: 5320 }], forest: [{ id: 'dig', x: 2150 }], canopy: [{ id: 'growl', x: 3215 }], falls: [{ id: 'smash', x: 3470 }] };
+  const TMS = {}; // TM pickups removed: TMs are taught by quests, trainers, hosted games and challenges
   const ITEM = {
     berry: { name: 'Oran Berry', inv: 'berry' }, shell: { name: 'Pretty Shell', inv: 'shell' }, pearl: { name: 'Pearl', inv: 'pearl' },
     shroom: { name: 'Tiny Mushroom', inv: 'mushroom' }, shroomG: { name: 'Glowing Mushroom', inv: 'mushroom' }, gem: { name: 'Shiny Gem', inv: 'gem' }, starp: { name: 'Star Piece', inv: 'stardust' },
@@ -132,7 +132,8 @@ const Harvest = (() => {
       H.items.push({ kind: 'plant', berry: pk[(r() * pk.length) | 0], x, y: World.groundAt(x) - 1, ripe: 1 + ((r() * 3) | 0), grow: 0, t: 0, taken: 0, ph: r() * 6 });
     }
     // TM discs not yet learned
-    for (const tm of TMS[id] || []) if (!Moves.has(tm.id)) H.items.push({ kind: 'tm', tm: tm.id, x: tm.x, y: World.groundAt(tm.x) - 9, under: surfaceKind(tm.x) === 'sea', t: 0, taken: 0, ph: 0 });
+    // (TM discs are no longer found in the world: they come from quests, trainers and games)
+    if (false) for (const tm of TMS[id] || []) if (!Moves.has(tm.id)) H.items.push({ kind: 'tm', tm: tm.id, x: tm.x, y: World.groundAt(tm.x) - 9, under: surfaceKind(tm.x) === 'sea', t: 0, taken: 0, ph: 0 });
     // glittering dig spots
     for (let i = 0; i < 5; i++) { for (let g = 0; g < 20; g++) { const x = 200 + r() * (W - 400); if (surfaceKind(x) === 'land' && !World.platAt(x)) { H.spots.push({ x, found: false, kind: 'treasure', ph: r() * 6 }); break; } } }
     // quest spots that are still to be found

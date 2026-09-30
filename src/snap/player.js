@@ -161,7 +161,9 @@ const Player = (() => {
         if (this.jumpBuf > 0) {
           this.jumpBuf = 0;
           const s = WorldRender.surfaceAt(this.x, t);
-          if (this.y < s + 24) this.leapOut(s); else this.dash();
+          // water jumps are a small push with a cooldown (no spamming out of the sea)
+          if ((this.wjCool || 0) > t) FX.bubbles(this.x, this.y - 6, 2, s);
+          else { this.wjCool = t + 1.1; if (this.y < s + 24) this.leapOut(s); else this.dash(); }
         }
         return;
       }
@@ -229,15 +231,15 @@ const Player = (() => {
     leapOut(s) {
       this.rot = 0;
       this.mode = 'fall'; this.plat = null; this.floe = null;
-      this.jumping = true; this.cut = false; this.flipped = false; this.pound = false;
-      this.vy = -(this.running ? 360 : 325); this.vx = (this.keyDir || this.dirX()) * (this.running ? 140 : 105);
+      this.jumping = true; this.cut = false; this.flipped = true; this.pound = false; // no air flip boost off a water hop
+      this.vy = -(this.running ? 215 : 195); this.vx = (this.keyDir || this.dirX()) * (this.running ? 80 : 60);
       this.y = Math.min(this.y, s + 4);
       FX.splashAt(this.x, s, { power: 0.6, n: 10 }); Game.sfx('splash', this.x, 0.6);
       this.happyT = 0.5;
       for (const m of Mons.all) if (m !== this) m.hear('splash', this.x, 0.3);
     }
     dash() {
-      this.dashT = 0.4; this.vx += this.dirX() * 170;
+      this.dashT = 0.3; this.vx += this.dirX() * 110;
       Game.sfx('whoosh', this.x, 0.4);
       FX.bubbles(this.x - this.dirX() * 10, this.y - 6, 6, WorldRender.surfaceAt(this.x, Game.t));
     }

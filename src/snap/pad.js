@@ -85,6 +85,7 @@ const Pad = (() => {
     const pb = P.b ? 1 : 0, mv = Moves.current();
     UI.disc(fb, L.bx, L.by + 2, L.bR, 0xff0a0e1a); UI.orb(fb, L.bx, L.by + pb, L.bR, mv ? mv.col : S.btn, { ol: INK });
     if (mv) Moves.icon(fb, mv.id, L.bx, L.by + pb, Math.max(1, Math.round(L.bR / 9)));
+    if (mv && Moves.coolK && Moves.coolK(mv.id) > 0) { Moves.coolPie(fb, L.bx, L.by + pb, L.bR, Moves.coolK(mv.id)); Font.draw(fb, Moves.coolLeft(mv.id).toFixed(1), L.bx, L.by + pb - 3, 0xffffffff, { font: 'small', align: 'center', outline: INK }); }
     if (P.b && P.b.t > 0.18) { const k = Math.min(1, (P.b.t - 0.18) / 0.3); for (let a = 0; a < 32 * k; a++) { const an = -Math.PI / 2 + a / 32 * Math.PI * 2; UI.put(fb, Math.round(L.bx + Math.cos(an) * (L.bR + 3)), Math.round(L.by + Math.sin(an) * (L.bR + 3)), 0xffffffff); } }
     Font.draw(fb, 'B', L.bx + L.bR - 3, L.by - L.bR - 2, 0xffffffff, { font: 'small', outline: INK });
     // keyboard hint (fades after the first jump)

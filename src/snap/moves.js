@@ -13,7 +13,10 @@
      Rock Smash breaks cracked rocks and boulders
      Ice Beam   freezes the water into floes you can hop across
    New moves are learned by watching Pokémon do them (stay close for a
-   moment), by finding TM discs hidden in the world, or from quests.
+   moment), from quests, NPC trainers, hosted games and challenges
+   (TM discs are no longer lying around in the world). More TMs are
+   added by tmfx.js. Every move has a cooldown (shown as a dark sweep
+   on the B button, the move chip and the wheel).
 ------------------------------------------------------------------- */
 const Moves = (() => {
   const { clamp, lerp, rnd, hex } = U;
@@ -22,13 +25,21 @@ const Moves = (() => {
     { id: 'tackle', name: 'Tackle', col: hex('#e0962a'), start: true, desc: 'Charge and bump! Shakes trees, bops Pokémon.' },
     { id: 'sing', name: 'Sing', col: hex('#e0529e'), start: true, desc: 'Play a song on the guitar.' },
     { id: 'scan', name: 'Scan', col: hex('#2eb07e'), start: true, desc: 'Scan with the Pokédex to find secrets.' },
-    { id: 'bubble', name: 'Bubble', col: hex('#52c4ea'), tm: 'TM01', how: 'Watch Clamperl or Wailmer blow bubbles, or find the disc on the seabed.', watch: { kinds: ['clamperl', 'wailmer', 'luvdisc', 'corphish'], acts: ['open', 'spout', 'pearl', 'bubble', 'kiss'] } },
-    { id: 'growl', name: 'Growl', col: hex('#e8b02a'), tm: 'TM02', how: 'Cheer along with Plusle and Minun, or look in the Treetop lookout.', watch: { kinds: ['plusle', 'minun', 'chatot'], acts: ['cheer', 'duo', 'mimic'] } },
-    { id: 'dig', name: 'Dig', col: hex('#a8683a'), tm: 'TM03', how: 'Watch a Zigzagoon dig up treasure, or check the hollow log.', watch: { kinds: ['zigzagoon', 'trapinch'], acts: ['find', 'sniff', 'chomp'] } },
-    { id: 'smash', name: 'Rock Smash', col: hex('#c0543a'), tm: 'TM04', how: 'Watch Bagon headbutt a boulder, or look behind the cave waterfall.', watch: { kinds: ['bagon'], acts: ['headbutt'] } },
-    { id: 'ice', name: 'Ice Beam', col: hex('#8adcf4'), tm: 'TM05', how: 'Watch Walrein use Ice Beam, or search the lighthouse islet.', watch: { kinds: ['walrein', 'sealeo'], acts: ['icebeam'] } },
+    { id: 'bubble', name: 'Bubble', col: hex('#52c4ea'), tm: 'TM01', how: 'Watch Clamperl or Wailmer blow bubbles, or help Luvdisc find its lost pearl.', watch: { kinds: ['clamperl', 'wailmer', 'luvdisc', 'corphish'], acts: ['open', 'spout', 'pearl', 'bubble', 'kiss'] } },
+    { id: 'growl', name: 'Growl', col: hex('#e8b02a'), tm: 'TM02', how: 'Cheer along with Plusle and Minun, or teach Chatot a song in Treetop Town.', watch: { kinds: ['plusle', 'minun', 'chatot'], acts: ['cheer', 'duo', 'mimic'] } },
+    { id: 'dig', name: 'Dig', col: hex('#a8683a'), tm: 'TM03', how: 'Watch a Zigzagoon dig, or find its buried treasure in Weather Woods.', watch: { kinds: ['zigzagoon', 'trapinch'], acts: ['find', 'sniff', 'chomp'] } },
+    { id: 'smash', name: 'Rock Smash', col: hex('#c0543a'), tm: 'TM04', how: 'Watch Bagon headbutt a boulder, or out-flop Corphish on the beach.', watch: { kinds: ['bagon'], acts: ['headbutt'] } },
+    { id: 'ice', name: 'Ice Beam', col: hex('#8adcf4'), tm: 'TM05', how: 'Watch Walrein use Ice Beam, or cheer grumpy Walrein up with a photo.', watch: { kinds: ['walrein', 'sealeo'], acts: ['icebeam'] } },
   ];
   const DEF = Object.fromEntries(LIST.map((m) => [m.id, m]));
+  // cooldowns (seconds) per move; moves added later carry their own `cool`
+  const COOL = { water: 0.6, tackle: 1.2, sing: 3, scan: 0, bubble: 2, growl: 5, dig: 3, smash: 2.5, ice: 6 };
+  for (const m of LIST) if (m.cool === undefined) m.cool = COOL[m.id] ?? 2;
+  const cd = {};
+  const coolLeft = (id) => Math.max(0, (cd[id] || 0) - Game.t);
+  const coolK = (id) => { const d = DEF[id]; return d && d.cool ? Math.min(1, coolLeft(id) / d.cool) : 0; };
+  // add a move from another file (tmfx.js): { id, name, col, tm, how, desc, cool, icon, run(mk, tx, ty) → generator }
+  function add(d) { if (DEF[d.id]) return DEF[d.id]; if (d.cool === undefined) d.cool = 3; LIST.push(d); DEF[d.id] = d; if (d.icon) ICON[d.id] = d.icon; return d; }
   const M = { cur: 'water', wheel: null, pressing: false, pressT: 0, watchT: {}, learnFx: null };
   const tms = () => Save.data.tms || (Save.data.tms = {});
   const has = (id) => !!DEF[id] && (DEF[id].start || !!tms()[id]);
@@ -113,6 +124,8 @@ const Moves = (() => {
     const mk = Game.mudkip; if (!mk || Game.mode !== 'explore') return;
     if (!has(id)) { HUD.toast(DEF[id].name + ' is not learned yet.'); return; }
     if (mk.busy(2) && !(mk.task && mk.task.idle)) return;
+    if (coolLeft(id) > 0) { if ((M.coolMsgT || 0) < Game.t) { M.coolMsgT = Game.t + 0.8; HUD.toast(DEF[id].name + ' is recharging... ' + coolLeft(id).toFixed(1) + 's', { life: 1, col: DEF[id].col }); } Game.sfx('error', null, 0.3); return; }
+    cd[id] = Game.t + (DEF[id].cool || 0);
     mk.wakeUp();
     const [tx, ty] = aim(mk);
     switch (id) {
@@ -125,6 +138,7 @@ const Moves = (() => {
       case 'dig': mk.doTask(mk.dig(), 2); break;
       case 'smash': mk.doTask(mk.rockSmash(), 2); break;
       case 'ice': mk.doTask(mk.iceBeam(tx, ty), 2); break;
+      default: if (DEF[id].run) { const g = DEF[id].run(mk, tx, ty); if (g) mk.doTask(g, 2); }
     }
   }
   /* ---------- drawing ---------- */
@@ -166,6 +180,7 @@ const Moves = (() => {
       if (own) icon(fb, m.id, sx, sy, Math.max(1, Math.round(rr / 7)));
       else { Font.draw(fb, '?', Math.round(sx), Math.round(sy) - 4, 0xffc8cce0, { font: 'title', align: 'center' }); }
       if (cur) UI.ring(fb, Math.round(sx), Math.round(sy), rr + 2, 0xffffe060, 1);
+      if (own && coolK(m.id) > 0) coolPie(fb, Math.round(sx), Math.round(sy), rr, coolK(m.id));
       if (m.tm) Font.draw(fb, m.tm, Math.round(sx), Math.round(sy + rr + 2), own ? 0xffffffff : 0xffa0a4b8, { font: 'small', align: 'center', outline: 0xff1b2240 });
     });
     // centre: the hovered move
@@ -175,6 +190,25 @@ const Moves = (() => {
     const lines = Font.wrap(own ? m.desc || '' : 'Not learned yet', 'small', Math.round(R * 0.95));
     lines.slice(0, 3).forEach((l, j) => Font.draw(fb, l, cx, cy + 4 + j * 9, 0xffc8d4f0, { font: 'small', align: 'center' }));
     Font.draw(fb, 'MOVE WHEEL', cx, Math.max(4, cy - R - r - 14), 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 });
+  }
+  // a dark pie that shrinks as the move recharges (k = 1 → just used)
+  function coolPie(fb, cx, cy, r, k) {
+    if (k <= 0) return;
+    const end = -Math.PI / 2 + k * Math.PI * 2;
+    for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+      if (x * x + y * y > r * r) continue;
+      let a = Math.atan2(y, x); if (a < -Math.PI / 2) a += Math.PI * 2;
+      if (a <= end) UI.put(fb, cx + x, cy + y, U.mix(fb.d[(cy + y) * fb.w + cx + x] || 0xff000000, 0xff101420, 0.62) | 0xff000000);
+    }
+  }
+  // the current move as a small chip (keyboard play: bottom right) with its cooldown
+  function drawChip(fb, S, t) {
+    if (typeof Pad !== 'undefined' && Pad.touch) return;
+    const m = current(), r = 9, cx = fb.w - 16, cy = fb.h - 44;
+    UI.disc(fb, cx, cy + 2, r, 0xff0a0e1a); UI.orb(fb, cx, cy, r, m.col, { ol: 0xff1b2240 });
+    icon(fb, m.id, cx, cy, 1);
+    const k = coolK(m.id); if (k > 0) { coolPie(fb, cx, cy, r, k); Font.draw(fb, coolLeft(m.id).toFixed(coolLeft(m.id) < 10 ? 1 : 0), cx, cy + r + 2, 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 }); }
+    else Font.draw(fb, 'X', cx + r - 2, cy - r - 4, 0xffffffff, { font: 'small', outline: 0xff1b2240 });
   }
   // the big "new move!" flourish
   function drawLearn(fb, S, t) {
@@ -190,5 +224,5 @@ const Moves = (() => {
   }
   // (the old gallery game's sand piles: nothing to do here)
   function addSand() {}
-  return Object.assign(M, { LIST, DEF, has, current, unlock, press, release, openWheel, closeWheel, toggleWheel, select, wheelPoint, wheelKey, tapWheel, update, use, icon, drawWheel, drawLearn, addSand });
+  return Object.assign(M, { add, coolLeft, coolK, coolPie, drawChip, ICON, cd, LIST, DEF, has, current, unlock, press, release, openWheel, closeWheel, toggleWheel, select, wheelPoint, wheelKey, tapWheel, update, use, icon, drawWheel, drawLearn, addSand });
 })();

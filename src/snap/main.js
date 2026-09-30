@@ -669,7 +669,6 @@ const Game = (() => {
     else if (k === 'b' || k === 'i') Bag.open();
     else if (k === 'v') Style.open();
     else if (k === 'g') Rhythm.open(0);
-    else if (k === 'h' && typeof Arcade !== 'undefined') Arcade.open();
     else if (k === 'p' || k === 'Tab') { Dex.open(); e.preventDefault(); }
     else if (k === 'm') WorldMap.open();
     else if (k === 't') G.tryTime();
