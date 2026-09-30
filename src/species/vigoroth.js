@@ -116,7 +116,7 @@ const Vigoroth = (() => {
 
   /* ---------- head decals (head frame, unit sphere s) ---------- */
   const HR = [30, 28.5, 31];
-  const EYE_AZ = 0.43, EYE_V = 0.3, RING_R = 0.37, WHITE_R = 0.21;
+  const EYE_AZ = 0.43, EYE_V = 0.3, RING_R = 0.41, WHITE_R = 0.26;
   const NOSE_V = 0.08, MOUTH_V = -0.06, MOUTH_HW = 0.62;
   function eyePix(a, b, kind, px, sd) {
     const r = Math.hypot(a, b * 0.95);
@@ -130,12 +130,12 @@ const Vigoroth = (() => {
       }
       return C_BROWN;
     }
-    const wr = Math.min(RING_R * 0.6, RING_R - 1.3 * px);
+    const wr = Math.min(RING_R * 0.74, RING_R - 1.3 * px);
     if (r > wr) return C_BROWN;
-    const pr = Math.max(0.095, 1.4 * px);
+    const pr = Math.max(0.11, 1.6 * px);
     const pa = a + 0.035 * sd, pb = b + 0.01;
     if (pa * pa + pb * pb < pr * pr) {
-      if (pr > 2.4 * px && (pa - 0.35 * pr) ** 2 + (pb - 0.4 * pr) ** 2 < (0.35 * pr) ** 2) return C_GLINT;
+      if (pr > 1.8 * px && (pa - 0.35 * pr) ** 2 + (pb - 0.4 * pr) ** 2 < (0.35 * pr) ** 2) return C_GLINT;
       return C_PUPIL;
     }
     return C_EYEW;
