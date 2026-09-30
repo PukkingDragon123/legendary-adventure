@@ -1,19 +1,23 @@
 /* ------------------------------------------------------------------
-   Dex — the Rotom Dex. A chunky glossy-red pixel device with Rotom
-   living in it: a lightning-bolt antenna that sparks, grey side clips,
-   a pointed tail with a round Home button, and Rotom's face at the top
-   of the screen (big eyes that blink and follow your selection, a
-   toothy grin that talks).
+   Dex — the Rotom Dex, drawn after the reference art: a chunky red
+   pixel device (thick rounded frame with darker segments and rivets, a
+   big lightning-bolt antenna rising from the top centre, grey side
+   clips, a pointed tail with a round Home button) with Rotom living in
+   it: big eyes on a dark bridge sitting ON the top frame, and a cyan
+   face with a toothy grin hanging from the top of a periwinkle screen.
+   The device keeps the reference's proportions, is centred and scaled
+   to fit the canvas (crisp integer pixels); the page title / back
+   button sit to its left, Rotom's speech bubble and the close button to
+   its right (above / below it on portrait screens).
      · Main page: the Pokédex — species list with sprites, seen/caught,
-       a detail card (habitat, behaviours, photos, completion) and full
-       entries (a photo per star tier, behaviour clues, objectives).
-     · Home (the tail button / H): a grid of apps on pages — Pokédex,
-       Encyclopedia (habitats + behaviours), Quests, Progress, Map,
-       Photos, Mail from NPCs, Settings, Style, Shop, Secrets, TMs,
-       Day/Night, Rotom Chat, Help, Bag.
-   Touch, mouse (hover, wheel, drag, swipe) and keyboard. On big UI
-   canvases (phones at 2-3x) the device is drawn at 2x so it fills the
-   screen and stays readable.
+       a detail card and full entries (a photo per star tier,
+       behaviour clues, objectives).
+     · Home (the tail button / H): the app grid of the reference (two
+       2x2 groups, the ◀ ═══ ▶ page bar between the rows) — Pokédex,
+       Encyclopedia, Quests, Progress, Map, Photos, Mail, Settings,
+       Style, Shop, Secrets, TMs, Day/Night, Rotom Chat, Help, Bag.
+   Touch, mouse (hover, wheel, drag, swipe) and keyboard. Phones draw at
+   2x so the text stays readable.
 ------------------------------------------------------------------- */
 const Dex = (() => {
   const { clamp, lerp, hex, mix } = U;
@@ -38,7 +42,7 @@ const Dex = (() => {
     icoSh: hex('#5a78c4'), icoRing: hex('#5b95d8'), bar: hex('#84b8f0'), barL: hex('#b4dcfa'), barD: hex('#6aa0e2'), barO: hex('#4f86d4'), barOff: hex('#8aa8dc'), barOffO: hex('#7596d0'),
   };
   // the classic red frame, sampled from the reference art
-  const FR_CLASSIC = { b: hex('#bc3110'), l: hex('#da3709'), hi: hex('#fc2221'), spec: hex('#ff7a5c'), d1: hex('#b1351d'), sh: hex('#ad3621'), dd: hex('#a20e0e'), ink: hex('#4e0406'), ink2: hex('#740e10') };
+  const FR_CLASSIC = { b: hex('#bc3110'), l: hex('#da3709'), hi: hex('#fc2221'), spec: hex('#ff7a5c'), d1: hex('#b1351d'), sh: hex('#ad3621'), dd: hex('#a20e0e'), ink: hex('#4e0406'), ink2: hex('#740e10'), mv: hex('#a0556b'), mvD: hex('#6a3c64'), mvS: hex('#784d74') };
   const frCache = {};
   // the skin handed to the older page drawers (they read screen / screenText / accent / ink / btn)
   function pageSkin(S) {
@@ -467,30 +471,6 @@ const Dex = (() => {
       for (let i = ins; i < w - ins; i++) { const X = x + i; if (X < 0 || X >= fb.w) continue; const c = fn(i, j, ins, w, h); if (c) fb.d[Y * fb.w + X] = c; }
     }
   }
-  // darken towards a soft shadow (keeps the world visible through transparent UI pixels)
-  function shadow(fb, x, y, w, h, r, a) {
-    rrFill(fb, x, y, w, h, r, () => 0);
-    for (let j = 0; j < h; j++) {
-      let ins = 0;
-      if (j < r) ins = r - Math.round(Math.sqrt(r * r - (r - j - 0.5) ** 2)); else if (j >= h - r) ins = r - Math.round(Math.sqrt(r * r - (j - (h - r) + 0.5) ** 2));
-      const Y = y + j; if (Y < 0 || Y >= fb.h) continue;
-      for (let i = ins; i < w - ins; i++) {
-        const X = x + i; if (X < 0 || X >= fb.w) continue;
-        const k = Y * fb.w + X, v = fb.d[k], al = v >>> 24;
-        fb.d[k] = al < 255 ? ((Math.min(255, al + a * 255) << 24) | (v & 0xffffff)) >>> 0 : mix(v, 0xff0f0605, a);
-      }
-    }
-  }
-  // rasterise a shape given by inside(x, y) with bevel shading and a 1px outline
-  function blob(fb, x0, y0, w, h, inside, shade, ink) {
-    const W2 = w + 2, m = new Uint8Array(W2 * (h + 2));
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (inside(x + 0.5, y + 0.5)) m[(y + 1) * W2 + x + 1] = 1;
-    for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) {
-      const i = (y + 1) * W2 + x + 1, g = (dx, dy) => { const xx = x + dx, yy = y + dy; return xx >= -1 && yy >= -1 && xx <= w && yy <= h ? m[(yy + 1) * W2 + xx + 1] : 0; };
-      if (m[i]) UI.put(fb, x0 + x, y0 + y, shade(x, y, !g(0, -1), !g(0, 1), !g(-1, 0), !g(1, 0)));
-      else if (g(-1, 0) || g(1, 0) || g(0, -1) || g(0, 1)) UI.put(fb, x0 + x, y0 + y, ink);
-    }
-  }
   function segDist(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy; const t = l ? clamp(((px - ax) * dx + (py - ay) * dy) / l, 0, 1) : 0; return [Math.hypot(px - ax - dx * t, py - ay - dy * t), t]; }
   function inPoly(pts, x, y) { let ins = false; for (let a = 0, b = pts.length - 1; a < pts.length; b = a++) { const [xa, ya] = pts[a], [xb, yb] = pts[b]; if ((ya > y) !== (yb > y) && x < ((xb - xa) * (y - ya)) / (yb - ya) + xa) ins = !ins; } return ins; }
 
@@ -550,7 +530,7 @@ const Dex = (() => {
   }
   const ANT = [[16, -53.5], [19.5, -50], [23.2, -16.5], [9, -16.5], [14.5, 6], [-10.5, 6], [-22.8, -39.2], [11, -30.2], [13.8, -50]];
   function devBuf(G, FR) {
-    const key = G.W + 'x' + G.H + '|' + FR.b + '|' + FR.hi + '|' + P.scr;
+    const key = G.W + 'x' + G.H + '|' + FR.b + '|' + FR.hi + '|' + FR.mv;
     if (D.devC && D.devC.key === key) return D.devC.buf;
     const { k, DW, hw, TH, yR } = G, B = new PX.Buf(DW, TH), bd = B.d;
     const ux = (i) => (i + 0.5 - hw) / k, uy = (j) => (j + 0.5 - yR) / k;
@@ -653,9 +633,9 @@ const Dex = (() => {
       for (let ii = ins; ii < s.w - ins; ii++) {
         const lft = ii - ins, rgt = s.w - 1 - ins - ii, bot = s.h - 1 - jj;
         let c;
-        if (jj < rimT - 1) c = P.mv;
-        else if (jj === rimT - 1) c = P.mvD;
-        else if (lft === 0 || rgt === 0 || bot === 0) c = P.mvS;
+        if (jj < rimT - 1) c = FR.mv;
+        else if (jj === rimT - 1) c = FR.mvD;
+        else if (lft === 0 || rgt === 0 || bot === 0) c = FR.mvS;
         else {
           c = mix(P.scrHi, P.scr, clamp((jj - rimT) / (s.h * 0.42), 0, 1));
           if (bot <= band) c = P.scrB;
@@ -675,7 +655,8 @@ const Dex = (() => {
     if (!S || S.id === 'skin.classic') return FR_CLASSIC;
     if (frCache[S.id]) return frCache[S.id];
     const b = S.body, l = S.bodyL, d = S.bodyD, W = 0xffffffff;
-    return (frCache[S.id] = { b, l: mix(b, l, 0.55), hi: mix(l, W, 0.12), spec: mix(l, W, 0.45), d1: mix(b, d, 0.25), sh: mix(b, d, 0.5), dd: d, ink: mix(d, S.ink, 0.6), ink2: mix(d, S.ink, 0.35) });
+    const ml = mix(b, l, 0.55);
+    return (frCache[S.id] = { b, l: ml, hi: mix(l, W, 0.12), spec: mix(l, W, 0.45), d1: mix(b, d, 0.25), sh: mix(b, d, 0.5), dd: d, ink: mix(d, S.ink, 0.6), ink2: mix(d, S.ink, 0.35), mv: mix(ml, P.scr, 0.45), mvD: mix(d, P.scr, 0.25), mvS: mix(d, P.scr, 0.4) });
   }
   function drawShell(fb, G, FR, t) {
     UI.img(fb, devBuf(G, FR), G.ox, G.top, 1);
@@ -840,8 +821,6 @@ const Dex = (() => {
       }
     }
   }
-  function ellipse(fb, cx, cy, rx, ry, c) { for (let y = -ry; y <= ry; y++) { const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y / (ry + 0.3)) ** 2))); UI.hline(fb, cx - hw, cx + hw, cy + y, c); } }
-
   /* ---------- around the device: title + back on the left, Rotom's speech + close on the right ---------- */
   const OL = 0xff321410;
   function sideLayout(G) {
@@ -893,7 +872,7 @@ const Dex = (() => {
     let x0, y0, w, tail;
     if (L.lr) { x0 = L.rx + 4; w = Math.min(L.rw - 6, 170); y0 = Math.max(G.C ? 22 : 26, G.oy - Math.round(14 * G.k)); tail = 'left'; }
     else { w = Math.min(G.W - 16, 220); x0 = Math.round((G.W - w) / 2); y0 = G.bottom() + 4; tail = 'up'; if (y0 + 30 > G.H) { y0 = G.scr.y + G.scr.h - 34; tail = 'none'; } }
-    const lines = Font.wrap(Ln.text.replace(/★/g, '{star}'), 'small', w - 12).slice(0, 4);
+    const lines = Font.wrap(Ln.text.replace(/★/g, '{star}'), 'small', w - 12).slice(0, L.lr ? 7 : 4);
     const bw = Math.min(w, Math.max(...lines.map((l) => Font.measure(l, 'small'))) + 12), bh = lines.length * 9 + 7;
     const by = y0 + (Ln.t < 0.1 ? Math.round((1 - Ln.t / 0.1) * 3) : 0);
     if (tail === 'up') x0 = Math.round((G.W - bw) / 2);
