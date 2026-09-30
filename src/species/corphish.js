@@ -8,9 +8,9 @@
    carapace hood crowned by three sharp spikes (a tall one in the middle,
    two swept out to the sides) covers the head, back and sides; a nose
    keel runs down between two big, bulging white eyes with tiny pupils.
-   A Λ-topped window in the front of the hood shows the cream face and the
-   stacked cream belly plates (their overlaps draw the "smile" and the
-   segment lines). Two huge egg-shaped claws, held up beside the head:
+   A cream face plate with a Λ top and a prow-like crease ends in the
+   "smile" over the cream belly plate and its segment lines; red cheeks
+   and a red cape frame them. Two huge egg-shaped claws, held up beside the head:
    a big cream palm under a red cap with a zigzag, tooth-edged rim that
    also runs down the inner edge; the cap is the movable jaw, hinged on
    the inner side, and opens like a mouth at the outer top. Thin red arms
@@ -44,9 +44,9 @@ const Corphish = (() => {
   });
   const GLOSSY = { [SHELL]: 1 };
   const NO_DOTS = [{}].slice(1); // empty, but with the elements kind of Mudkip's dot list
-  const C_SHELL = code(SHELL), C_SHELL_D = code(SHELL, -1), C_CREAM = code(CREAM), C_EYE = code(EYE), C_INNER = code(INNER);
+  const C_SHELL = code(SHELL), C_CREAM = code(CREAM), C_EYE = code(EYE), C_INNER = code(INNER);
   const C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE), C_SEG = code(SEG);
-  const M_SHELL = () => C_SHELL, M_CREAM = () => C_CREAM, M_EYE = () => C_EYE, M_LINING = () => C_SHELL_D;
+  const M_SHELL = () => C_SHELL, M_CREAM = () => C_CREAM, M_EYE = () => C_EYE;
 
   // ---- vector helpers
   const add = V3.add, sub = V3.sub, sc = V3.scale, dot = V3.dot, cross = V3.cross, nrm = V3.norm;
@@ -246,8 +246,9 @@ const Corphish = (() => {
     const prims = [], stamps = [], anchors = {};
     const sq = clamp(+P.squash || 0, -0.3, 0.8);
     const root = F(M3.diag(1 + sq * 0.3, 1 - sq, 1 + sq * 0.3), [0, 0, 0]);
-    // body roll about the forward axis (sideways shuffle); legs are IK so the feet stay planted
-    const body = chain(root, T(0, 40, 0), R(M3.rx(-(+P.tilt || 0))), T(0, -40, 0));
+    // body roll about the forward axis (sideways shuffle); the feet stay planted
+    const wk = +P.walk || 0, bob = wk ? 1.2 * Math.abs(Math.sin(wk)) : 0; // a little bounce while scuttling
+    const body = chain(root, T(0, 40 + bob, 0), R(M3.rx(-(+P.tilt || 0))), T(0, -40, 0));
     const hood = chain(body, T(...HC));
 
     /* --- eyes first (front-most): white eyeballs bulging from the hood; pupils are stamps --- */
@@ -285,22 +286,21 @@ const Corphish = (() => {
     /* --- cream face plate (Λ top edge, smile bottom, optional mouth) and the belly plate --- */
     const mo = clamp(+P.mouth || 0, 0, 1);
     const fa = faceAt(mo, 1.1 + 2.6 * mo, 1.1 + 2.6 * mo);
-    const hood2 = chain(body, T(...HC));
     for (const zs of [1, -1]) {
-      const fr = chain(hood2, R(M3.ry(PROW * zs)));
+      const fr = chain(hood, R(M3.ry(PROW * zs)));
       prims.push(ellF(fr, [HRX * FACE_K[0], HRU * FACE_K[1], HRZ * FACE_K[2]], 3, 3, prowMat(FACE_K, HRU, true, zs, fa)));
       prims.push(ellF(fr, [HRX * FACE_K[0], HRL * FACE_K[1], HRZ * FACE_K[2]], 3, 3, prowMat(FACE_K, HRL, false, zs, fa)));
     }
-    prims.push(ellF(hood2, [HRX * BELLY_K[0], HRU * BELLY_K[1], HRZ * BELLY_K[2]], 4, 4, BELLY_U));
-    prims.push(ellF(hood2, [HRX * BELLY_K[0], HRL * BELLY_K[1], HRZ * BELLY_K[2]], 4, 4, BELLY_L));
+    prims.push(ellF(hood, [HRX * BELLY_K[0], HRU * BELLY_K[1], HRZ * BELLY_K[2]], 4, 4, BELLY_U));
+    prims.push(ellF(hood, [HRX * BELLY_K[0], HRL * BELLY_K[1], HRZ * BELLY_K[2]], 4, 4, BELLY_L));
 
-    /* --- hood (egg with the Λ window), nose keel, spikes --- */
+    /* --- hood (egg, cream underside), crown, nose keel, spikes --- */
     const hoodPrim = ellF(hood, [HRX, HRU, HRZ], 1, 2, hoodU);
     prims.push(hoodPrim);
     prims.push(ellF(hood, [HRX, HRL, HRZ], 1, 2, hoodL));
     // crown: broadens the top of the head between the spikes (sits behind the face and eyes)
     prims.push(ellF(chain(body, T(-2.5, 62, 0)), [16, 17, 20.5], 1, 2, M_SHELL));
-    prims.push(ellF(chain(body, T(13.6, 68.5, 0), R(M3.rz(0.5))), [2.8, 9.5, 2.6], 1, 2, M_SHELL));
+    prims.push(ellF(chain(body, T(13.6, 68.5, 0), R(M3.rz(0.5))), [2.8, 9.5, 2.6], 1, 2, M_SHELL)); // nose keel
     for (const sp of SPIKES) for (const f of sp.faces) prims.push(PL(inF(body, f.M), M3.mul(body.L, f.axes), 8, 2, sp.shape, 1.01));
 
     /* --- claws --- */
@@ -343,9 +343,8 @@ const Corphish = (() => {
       anchors[side > 0 ? 'clawTipN' : 'clawTipF'] = sc(add(inF(CF, tipL), inF(UF, tipL)), 0.5);
     }
 
-
     /* --- legs: hips and knees ride on the body, feet stay planted (tripod scuttle) --- */
-    const walk = +P.walk || 0;
+    const walk = wk;
     const W0 = F(M3.I(), [0, 0, 0]);
     let li = 0;
     for (const side of [1, -1])

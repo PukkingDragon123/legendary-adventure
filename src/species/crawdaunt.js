@@ -112,7 +112,7 @@ const Crawdaunt = (() => {
      armour plates with clean contour lines at every size. */
   const TORSO_C = [-4, 72, 0], TORSO_R = [35, 36, 37];
   const POT_C = [-3, 52, 0], POT_R = [37, 21, 40.5]; // pot belly: the body is widest low down
-  const NECK_C = [6, 98, 0], NECK_R = [30, 23, 32]; 
+  const NECK_C = [6, 98, 0], NECK_R = [30, 23, 32];
   const HEAD_C = [12, 121, 0], HEAD_R = [25.5, 37, 28.5], HEAD_LEAN = -0.3;
   const HEAD_M = M3.rz(HEAD_LEAN);
   const PROUD = [1.06, 1.012, 1.03];
@@ -171,7 +171,7 @@ const Crawdaunt = (() => {
     for (const h of [STAR_H, -STAR_H]) {
       const C = [h, 0, 0];
       for (let k = 0; k < 5; k++) {
-        const kp = (k + 1) % 5, kn = (k + 4) % 5;
+        const kn = (k + 4) % 5;
         out.push(triPlate(C, tips[k], ins[k], C_STAR));
         out.push(triPlate(C, ins[kn], tips[k], C_STAR));
       }
@@ -223,9 +223,9 @@ const Crawdaunt = (() => {
 
   /* ---------- tail: overlapping segments trailing back and down, then a pointed fan ---------- */
   const TAIL = [
-    { c: [-31, 46, 0], r: [10, 9, 16], a: -0.25 },
-    { c: [-40, 41.5, 0], r: [8.5, 7.6, 14], a: -0.45 },
-    { c: [-48, 36, 0], r: [7.5, 6.6, 12.5], a: -0.7 },
+    { c: [-35, 55, 0], r: [10.5, 9.5, 16.5], a: -0.2 },
+    { c: [-45, 51, 0], r: [9, 8, 14.5], a: -0.38 },
+    { c: [-54, 45.5, 0], r: [8, 7, 13], a: -0.58 },
   ];
   const FAN_P = [[0, -8], [10, -14], [21, -20], [18, -11], [27, -8], [33, 0], [27, 8], [18, 11], [21, 20], [10, 14], [0, 8]];
   const FAN_POLY = Shape2D.poly(FAN_P, C_SHELL, 4);
@@ -251,8 +251,10 @@ const Crawdaunt = (() => {
     const prims = [], stamps = [], anchors = {};
     const sq = clamp(+P.squash || 0, -0.3, 0.8);
     const root = F(M3.diag(1 + sq * 0.25, 1 - sq, 1 + sq * 0.25), [0, 0, 0]);
-    // body roll about the forward axis (sideways shuffle); legs are IK so the feet stay planted
-    const body = chain(root, T(0, 60, 0), R(M3.rx(-(+P.tilt || 0))), T(0, -60, 0));
+    // body roll about the forward axis (sideways shuffle); the feet stay planted
+    // swagger while walking: a bob and a slow side-to-side roll
+    const wk = +P.walk || 0, bob = wk ? 2 * Math.abs(Math.sin(wk)) : 0, roll = wk ? 0.045 * Math.sin(wk) : 0;
+    const body = chain(root, T(0, 60 + bob, 0), R(M3.rx(-(+P.tilt || 0) - roll)), T(0, -60, 0));
     const head = chain(body, T(...HEAD_C), R(HEAD_M));
     const side = clamp(+P.side || 0, -1, 1);
     mouthK = clamp(+P.mouth || 0, 0, 1);
@@ -365,7 +367,7 @@ const Crawdaunt = (() => {
 
     /* --- tail --- */
     TAIL.forEach((t, i) => prims.push(ellF(chain(body, T(...t.c), R(M3.rz(t.a))), t.r, 60 + i, 60 + i, M_SHELL)));
-    const fan = chain(body, T(-54, 30, 0), R(M3.rz(-0.9)));
+    const fan = chain(body, T(-60, 40, 0), R(M3.rz(-0.68)));
     for (const zs of [1, -1]) {
       const V = [0, -Math.sin(FAN_CUP), Math.cos(FAN_CUP) * zs], U = [-1, 0, 0];
       const lines = FAN_LINES.map((pl) => ({ pts: pl.map(([u, v]) => [u, v, 0]), mat: SHELL, useLn: true }));
