@@ -46,11 +46,11 @@ const Lombre = (() => {
   const GREEN = 1, MINT = 2, PAD = 3, PADU = 4, RIM = 5, LIP = 6, MOUTH = 7, CLAW = 8, EYEW = 9, EYE = 10;
   const MAT = { GREEN, MINT, PAD, PADU, RIM, LIP, MOUTH, CLAW, EYEW, EYE };
   const PAL = Creature.palette({
-    [GREEN]: { r: ['#3d7628', '#579836', '#77b848', '#98d260', '#c4ec8c'], od: '#1d4012', ol: '#3a6e26', ln: '#3a6c26' },
-    [MINT]:  { r: ['#4c9684', '#6ab4a0', '#8ed0bc', '#b4e6d6', '#e0f8f0'], od: '#1c4c42', ol: '#3a7c6c', ln: '#3c7a6c' },
-    [PAD]:   { r: ['#3a8a30', '#52a83e', '#66c24c', '#80dc5e', '#a8f282'], od: '#1c4a16', ol: '#387c2a', ln: '#34742a' },
-    [PADU]:  { r: ['#28581e', '#346c26', '#40822e', '#4e9638', '#62aa48'], od: '#15300c', ol: '#2a5a1e', ln: '#2a561e' },
-    [RIM]:   { r: ['#3a8630', '#50a23e', '#62ba4a', '#7cd45c', '#a2ec7e'], od: '#1c4a16', ol: '#387c2a', ln: '#327028' },
+    [GREEN]: { r: ['#4a7a24', '#64982e', '#80b43c', '#9ccc56', '#c0e482'], od: '#223e0e', ol: '#46701e', ln: '#446c20' },
+    [MINT]:  { r: ['#6a9a86', '#8ab8a2', '#a8d2bc', '#c4e4d2', '#e4f6ec'], od: '#2a5244', ol: '#4e8270', ln: '#4e8270' },
+    [PAD]:   { r: ['#4a7e2a', '#5e9834', '#74b042', '#8ec658', '#b0de7e'], od: '#224212', ol: '#447424', ln: '#406e22' },
+    [PADU]:  { r: ['#305a1e', '#3c6c26', '#4a802e', '#5a9438', '#6ea848'], od: '#15300c', ol: '#2a5a1e', ln: '#2a561e' },
+    [RIM]:   { r: ['#44782a', '#5a9234', '#6ea840', '#88c056', '#aad87a'], od: '#224212', ol: '#447424', ln: '#3e6a20' },
     [LIP]:   { r: ['#a2324a', '#c44a60', '#e26a7a', '#f2909a', '#ffc0c4'], od: '#58101e', ol: '#922a3c', ln: '#8a2838' },
     [MOUTH]: { r: ['#3c0c14', '#54141e', '#6c2029', '#862e36', '#a24048'], od: '#26060c', ol: '#3c0c14', ln: '#3c0c14' },
     [CLAW]:  { r: ['#b4465a', '#d26276', '#ec8696', '#f8acb6', '#ffd6dc'], od: '#661426', ol: '#a0384c', ln: '#9c384a' },
@@ -140,7 +140,7 @@ const Lombre = (() => {
 
   /* ---------- lily-pad hat: top + underside discs, a rim wall of plates, a square notch ---------- */
   const HAT_R = 64, HAT_H = 19, RIM_N = 28;
-  const NOTCH_A = 2.25, NOTCH_IN = 0.66, NOTCH_W = 23; // notch direction (atan2(z, x) in the hat frame), depth, width
+  const NOTCH_A = -1.75, NOTCH_IN = 0.66, NOTCH_W = 23; // notch direction (atan2(z, x) in the hat frame), depth, width
   const ND = [Math.cos(NOTCH_A), Math.sin(NOTCH_A)], NP = [-ND[1], ND[0]];
   const inNotch = (x, z) => x * ND[0] + z * ND[1] > HAT_R * NOTCH_IN && Math.abs(x * NP[0] + z * NP[1]) < NOTCH_W / 2;
   const padTop = (s) => (s[1] < 0 || inNotch(HAT_R * s[0], HAT_R * s[2]) ? 0 : C_PAD);
@@ -211,12 +211,12 @@ const Lombre = (() => {
     // ---- beak: upper lip (centre + drooping corners), lower lip hinged, dark mouth
     const bk = chain(hf, T(...BEAK), R(M3.rz(0.1)));
     const upF = chain(bk, R(M3.rz(0.18 * mo)));
-    const upC = ellF(chain(upF, T(5.5, 3.2, 0)), [12.5, 6.4, 12.5], 4, 4, M_LIP);
+    const upC = ellF(chain(upF, T(5.5, 2.6, 0)), [12, 5.2, 16], 4, 4, M_LIP);
     prims.push(upC);
-    for (const sd of [1, -1]) prims.push(ellF(chain(upF, T(-0.5, 0.2, sd * 10.5), R(M3.ry(sd * 0.55)), R(M3.rx(-sd * 0.5))), [10, 5.6, 9.5], 4, 4, M_LIP));
+    for (const sd of [1, -1]) prims.push(ellF(chain(upF, T(-3.5, -1.2, sd * 15), R(M3.ry(sd * 0.7)), R(M3.rx(-sd * 0.55))), [10, 5, 9], 4, 4, M_LIP));
     const loF = chain(bk, R(M3.rz(-0.55 * mo)));
-    prims.push(ellF(chain(loF, T(3.5, -3.6, 0)), [10.5, 5, 11], 5, 5, (s) => (s[1] > 0.5 && mo > 0.05 ? C_LIP_D : C_LIP)));
-    for (const sd of [1, -1]) prims.push(ellF(chain(loF, T(-2, -2.6, sd * 9), R(M3.ry(sd * 0.55)), R(M3.rx(-sd * 0.45))), [8.5, 4.6, 8], 5, 5, M_LIP));
+    prims.push(ellF(chain(loF, T(3.5, -3.4, 0)), [10.5, 4.4, 14], 5, 5, (s) => (s[1] > 0.5 && mo > 0.05 ? C_LIP_D : C_LIP)));
+    for (const sd of [1, -1]) prims.push(ellF(chain(loF, T(-4, -3.6, sd * 13), R(M3.ry(sd * 0.7)), R(M3.rx(-sd * 0.5))), [8.5, 4.2, 8], 5, 5, M_LIP));
     if (mo > 0.03) prims.push(ellF(chain(bk, T(0, -1, 0)), [9, 3 + 5 * mo, 13], 6, 6, () => C_MOUTH));
     anchors.mouth = inF(bk, [14, -1, 0]);
 
@@ -253,16 +253,16 @@ const Lombre = (() => {
       let a = armR[k];
       if (dancing) a = clamp(a + g * (0.55 + 0.45 * sd * ds), -1, 1);
       // abduction from hanging straight down: −1 → 0.22, 0 → 0.62 (rest), 1 → 2.7 (overhead)
-      const ab = a < 0 ? lerp(0.62, 0.22, -a) : lerp(0.62, 2.7, a);
+      const ab = a < 0 ? lerp(0.74, 0.22, -a) : lerp(0.74, 2.7, a);
       let swing = walking && !swimming ? -0.34 * sd * ws : 0;
-      let bend = 0.28 + 0.1 * Math.max(0, a);
+      let bend = 0.14 + 0.1 * Math.max(0, a);
       if (swimming) {
         // breaststroke: arms reach forward, sweep out and back
         const sp = Math.sin(swp), cp = Math.cos(swp);
         swing = 1.2 + 0.7 * sp; bend = 0.4 - 0.3 * cp;
       }
       const sh = chain(torso, T(1, 82, sd * 21), R(M3.rz(swing)), R(M3.rx(-sd * ab)));
-      const L1 = 37, L2 = 37;
+      const L1 = 41, L2 = 40;
       const el = chain(sh, T(0, -L1, 0), R(M3.rz(bend)));
       const id = k ? 11 : 10;
       prims.push(seg(sh.t, el.t, 7.8, 7.4, id, id, M_MINT, dirF(sh, [1, 0, 0])));

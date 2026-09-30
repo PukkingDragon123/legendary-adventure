@@ -74,7 +74,7 @@ const Slugma = (() => {
   const FOOT_SPOTS = spots([[0.9, 0.55, 0.2], [-1.3, 0.6, 0.17], [2.1, 0.5, 0.15], [-2.4, 0.45, 0.19], [0.1, 0.8, 0.12]]);
   const CRATER_IN = spots([[0.9, 0.55, 0.12], [-1.3, 0.6, 0.1], [2.1, 0.5, 0.08], [-2.4, 0.45, 0.11], [0.1, 0.8, 0.06]]);
   // eyes (head unit-sphere): big round yellow eyes set wide on the front of the head
-  const EYE_AZ = 0.36, EYE_V = 0.12, EYE_RA = 0.3, EYE_RV = 0.3;
+  const EYE_AZ = 0.46, EYE_V = 0.16, EYE_RA = 0.4, EYE_RV = 0.34;
   const PRI = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 3, 6: 3, 7: 2 };
   const SIZE = 1.14;
   const DEFAULT = { ooze: 0, walk: 0, mouth: 0, eyes: 'open', side: 1 };
@@ -146,13 +146,13 @@ const Slugma = (() => {
     }
 
     /* --- crown: flame-like lava tendrils licking up and back from the head --- */
-    const FLAMES = [[-2, 18, 0, 0.35, 30, 8], [4, 16, -12, 0.2, 22, 6.5], [4, 16, 12, 0.2, 22, 6.5], [-14, 14, 6, 0.9, 18, 5.5], [-14, 14, -6, 0.9, 18, 5.5]];
+    const FLAMES = [[-6, 16, 0, 0.4, 30, 10], [0, 14, -15, 0.15, 24, 8], [0, 14, 15, 0.15, 24, 8]];
     FLAMES.forEach(([x, y, z, back, len, r], i) => {
       const k = 1 + 0.12 * w(i * 1.7 + 0.5);
       const p0 = inF(head, [x, y, z]);
-      const d = nrm([-Math.sin(back), Math.cos(back), z * 0.03]);
+      const d = nrm([-Math.sin(back), Math.cos(back), z * 0.045]);
       const p1 = add(p0, sc(d, len * 0.55 * k));
-      const d2 = nrm(add(d, [-0.55, 0.1, z * 0.02]));
+      const d2 = nrm(add(d, [-0.45, 0.05, z * 0.05]));
       const p2 = add(p1, sc(d2, len * 0.5 * k));
       prims.push(seg(p0, p1, r, r, 4, 4, M_LAVA));
       prims.push(seg(sub(p1, sc(d, 2)), p2, r * 0.62, r * 0.62, 4, 4, M_LAVA));
@@ -161,9 +161,9 @@ const Slugma = (() => {
     anchors.top = inF(head, [-4, 18 + 26, 0]);
 
     /* --- molten drips hanging off the head's rim --- */
-    const DRIPS = [[0.62, 0.9, 4.6], [-0.62, 0.9, 4.6], [0.05, 0.55, 4], [1.2, 0.6, 4.2], [-1.25, 0.7, 4.2]];
+    const DRIPS = [[0.5, 0.55, 3.6], [-0.5, 0.45, 3.6], [1.15, 0.3, 3.2]];
     DRIPS.forEach(([az, len, r], i) => {
-      const s = Creature.sph(az, -0.28);
+      const s = Creature.sph(az, -0.22);
       const root = inF(head, [s[0] * HEAD_R[0] * 0.92, s[1] * HEAD_R[1] * 0.92, s[2] * HEAD_R[2] * 0.92]);
       const L = (8 + 12 * len) * (1 + 0.25 * w(i * 1.3 + 2));
       const out = nrm([s[0], 0, s[2]]);

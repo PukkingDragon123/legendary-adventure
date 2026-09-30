@@ -7,13 +7,12 @@
    Model space: x = forward, y = up, z = near side at yaw 0, ground at y = 0
    (the tips of its feet; the game lifts it when it hovers).
 
-   Design (official art): a dragonfly-like larva. A broad yellow head with
-   two huge bulging green compound eyes with black oval pupils, two thin
-   yellow antennae swept back, and two big white fangs jutting down from the
-   sides of the mouth. A small yellow thorax on four skinny black legs; a
-   long, thin, yellow segmented abdomen (thin green bands) ending in two
-   green rhombus fins. Four green rhombus wings with black edges (a paler
-   green band inside), held out to the sides and buzzing.
+   Design (official art): a dragonfly-like larva. A pale cream, tapered
+   head with round green eyes (black pupils) on its sides, two white bumps
+   on top, and two long cream mandibles jutting forward from the snout. A
+   small cream thorax on four long, jointed dark-grey legs; a short
+   segmented abdomen curving up behind, ending in two green rhombus fins.
+   Four big green rhombus wings with thick dark-grey frames, raised in a V.
 
    Pose parameters (all optional):
      eyes    'open' (default) | 'happy' | 'blink' | 'closed'
@@ -50,7 +49,7 @@ const Vibrava = (() => {
   });
   const GLOSSY = { [EYE]: 1 };
   const C_BODY = code(BODY), C_EYE = code(EYE), C_EYE_L = code(EYE, 1), C_PUPIL = code(PUPIL), C_GLINT = code(FANG, 1), C_LEG = code(LEG);
-  const C_WING = code(WING), C_WINGL = code(WINGL), C_EDGE = code(EDGE), C_FANG = code(FANG), C_MOUTH = code(MOUTH), C_BAND = code(BAND);
+  const C_EYE_D = code(EYE, -2), C_WING = code(WING), C_WINGL = code(WINGL), C_EDGE = code(EDGE), C_FANG = code(FANG), C_MOUTH = code(MOUTH), C_BAND = code(BAND);
   const M_BODY = () => C_BODY, M_LEG = () => C_LEG, M_FANG = () => C_FANG, M_BUMP = () => C_FANG;
 
   // ---- helpers
@@ -102,13 +101,13 @@ const Vibrava = (() => {
       },
     });
   }
-  const WING_F = rhombus(86, 30, 0.45, C_WING, C_WINGL, 4, 0);
-  const WING_H = rhombus(74, 26, 0.45, C_WING, C_WINGL, 3.6, 0);
+  const WING_F = rhombus(100, 34, 0.45, C_WING, C_WINGL, 5, 0);
+  const WING_H = rhombus(86, 30, 0.45, C_WING, C_WINGL, 4.5, 0);
   const FIN_G = rhombus(30, 12, 0.5, C_WING, C_WINGL, 2.6, 0);
 
   /* ---------- head, eyes ---------- */
   const HR = [26, 15, 17];
-  const ER = [10, 11, 6];
+  const ER = [11, 12, 6.5];
   function eyeMat(kind, sd) {
     return (s) => {
       // s: eye-local unit sphere; its outward face is +z·sd, looking a little forward
@@ -123,7 +122,7 @@ const Vibrava = (() => {
           if ((u + 0.1) ** 2 + (v - 0.14) ** 2 < 0.02 && px < 0.12) return C_GLINT;
           return C_PUPIL;
         }
-        if (r < pr + Math.max(0.14, 0.9 * px)) return code(EYE, -2);
+        if (r < pr + Math.max(0.14, 0.9 * px)) return C_EYE_D;
         if (r > 0.86) return C_PUPIL;
         return C_EYE;
       }
@@ -187,7 +186,7 @@ const Vibrava = (() => {
 
     // --- long thin segmented abdomen, curving up a little at the end, two rhombus fins
     const sway = walking ? 0.12 * Math.sin(wk) : 0;
-    const tp = [inF(tf, [-12, -2, 0]), inF(tf, [-36, -2, 0]), inF(tf, [-58, 6, 14 * sway]), inF(tf, [-72, 26, 26 * sway]), inF(tf, [-76, 50, 36 * sway])];
+    const tp = [inF(tf, [-12, -2, 0]), inF(tf, [-36, -2, 0]), inF(tf, [-58, 6, 14 * sway]), inF(tf, [-70, 20, 26 * sway]), inF(tf, [-74, 38, 36 * sway])];
     const NS = 12;
     for (let i = 0; i < NS; i++) {
       const a = crPt(tp, (i / NS) * 4), b = crPt(tp, ((i + 1) / NS) * 4);
@@ -211,14 +210,14 @@ const Vibrava = (() => {
       const id = 10 + (hind ? 2 : 0) + (sd > 0 ? 0 : 1);
       const root = inF(tf, [hind ? -8 : 4, 12, 7 * sd]);
       const beat = 0.5 * Math.sin(fl + (hind ? Math.PI * 0.7 : 0));
-      const elev = lerp(0.2, hind ? 0.38 : 0.62, spread) + (fl ? beat : 0);          // up from horizontal
+      const elev = lerp(0.2, hind ? 0.5 : 0.85, spread) + (fl ? beat : 0);          // up from horizontal
       const sweep = lerp(1.35, hind ? -0.1 : 0.2, spread) * (hind ? 1 : 0.8) + (hind ? 0.15 : 0); // back from straight out
       // span direction: out to the side, swept back, raised
       const U = nrm([-Math.sin(sweep) * Math.cos(elev), Math.sin(elev), sd * Math.cos(sweep) * Math.cos(elev)]);
       const back = nrm(cross([0, 1, 0], U)); // chord axis, roughly along the body
       const N = nrm(cross(U, back));
       prims.push(PL(root, M3.cols(U, back, N), id, id, hind ? WING_H : WING_F, 1.1));
-      if (!hind) tipsF.push(add(root, sc(U, 80)));
+      if (!hind) tipsF.push(add(root, sc(U, 100)));
     }
     anchors.wingN = tipsF[0]; anchors.wingF = tipsF[1];
 

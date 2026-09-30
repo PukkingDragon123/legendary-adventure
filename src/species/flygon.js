@@ -42,12 +42,12 @@ const Flygon = (() => {
   const BODY = 1, BELLY = 2, DARK = 3, COVER = 4, WING = 5, TRIM = 6, VEIN = 7, CLAW = 8, MOUTH = 9, INK = 10;
   const MAT = { BODY, BELLY, DARK, COVER, WING, TRIM, VEIN, CLAW, MOUTH, INK };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#4c8a3a', '#62a64a', '#82c460', '#a6dc80', '#d4f4b4'], od: '#1f4a1a', ol: '#3e7a32', ln: '#3c7430' },
+    [BODY]:  { r: ['#5e9a52', '#78b468', '#98cc82', '#b8e2a2', '#dcf4cc'], od: '#284e22', ol: '#4a803e', ln: '#4a803e' },
     [BELLY]: { r: ['#9eae62', '#bccc7c', '#dae69c', '#eaf2bc', '#f8fce0'], od: '#4a5a22', ol: '#7a8a44', ln: '#86984a' },
-    [DARK]:  { r: ['#244e22', '#2e622a', '#3a7834', '#4a8e42', '#5ea654'], od: '#10280e', ol: '#224a20', ln: '#1c401a' },
-    [COVER]: { r: ['#8c1420', '#b4202a', '#d8363a', '#ee6660', '#ffa69a'], od: '#4e0810', ol: '#861420', ln: '#7e1420' },
-    [WING]:  { r: ['#8ab852', '#a4d064', '#c2e67e', '#daf2a2', '#f0fcd2'], od: '#3e6a1e', ol: '#6a9a3a', ln: '#6a9a3a' },
-    [TRIM]:  { r: ['#8c1420', '#b01e28', '#d23234', '#e85a52', '#fa9486'], od: '#4e0810', ol: '#861420', ln: '#7e1420' },
+    [DARK]:  { r: ['#2e6030', '#3a7a3c', '#4a9248', '#60a85a', '#7cc074'], od: '#143016', ol: '#2a562a', ln: '#2a562a' },
+    [COVER]: { r: ['#6e1018', '#921a26', '#b42a34', '#d2504e', '#f08a80'], od: '#3e060c', ol: '#6e1018', ln: '#6e1018' },
+    [WING]:  { r: ['#86b872', '#a0d08a', '#bce4a4', '#d4f0c0', '#ecfae0'], od: '#3e6a30', ol: '#6a9a58', ln: '#6a9a58' },
+    [TRIM]:  { r: ['#a8343e', '#c84a52', '#e06a6c', '#f08c88', '#fcb4ac'], od: '#5a141c', ol: '#962c36', ln: '#962c36' },
     [VEIN]:  { r: ['#3a7a2e', '#4a9038', '#5ca646', '#76bc5a', '#98d47a'], od: '#1a4412', ol: '#346e28', ln: '#346e28' },
     [CLAW]:  { r: ['#a8a8a0', '#cacac2', '#ecece6', '#f8f8f4', '#ffffff'], od: '#50504a', ol: '#80807a', ln: '#86867e' },
     [MOUTH]: { r: ['#3e0e14', '#5a1820', '#76262c', '#90383a', '#a84c4a'], od: '#26060a', ol: '#3e0e14', ln: '#3e0e14' },
@@ -119,7 +119,7 @@ const Flygon = (() => {
       const rr = r((i + 0.5) / n);
       const d = sub(b, a), hl = (len3(d) / 2) * over;
       const Rm = axesAlong(d, up);
-      prims.push(E(sc(add(a, b), 0.5), M3.mul(Rm, M3.diag(hl, rr, rr)), part, grp, tubeMat(Rm, hl, rr, m)));
+      prims.push(E(sc(add(a, b), 0.5), M3.mul(Rm, M3.diag(hl, rr, rr)), part, grp, tubeMat(Rm, hl, rr, typeof m === 'function' ? m(i) : m)));
     }
   }
 
@@ -137,13 +137,13 @@ const Flygon = (() => {
         const d = (a - q) * Math.min(mid * len, w);
         if (d < trim) return C_TRIM;
         // a darker green vein: an inner diamond outline
-        if (vein && Math.abs(d - vein) < 1.3) return C_VEIN;
+        if (vein && d > vein && (u - v * 0.4) % 40 < 7 && u > len * 0.2) return code(WING, 1);
         return C_WING;
       },
     });
   }
-  const WING_G = rhombus(168, 52, 0.36, 4.5, 16);
-  const FAN_G = rhombus(30, 10, 0.45, 2.6, 0);
+  const WING_G = rhombus(168, 56, 0.36, 7.5, 18);
+  const FAN_G = rhombus(34, 12, 0.5, 3.6, 0);
 
   /* ---------- head, eye covers ---------- */
   const HR = [24, 20, 21];
@@ -264,10 +264,11 @@ const Flygon = (() => {
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = inF(ef, [0, 0, CR[2] * sd]);
       // long antennae swept back from the top of the head, with a kink
       const a0 = inF(hf, [-2, 17, 6 * sd]);
-      const ap = [a0, inF(hf, [-14, 30, 9 * sd]), inF(hf, [-32, 38, 14 * sd]), inF(hf, [-52, 38, 18 * sd]), inF(hf, [-70, 44, 22 * sd])];
-      tube(prims, ap, 7, (t) => lerp(3.4, 2, t), 7, 7, DARK, [0, 1, 0], 1.7);
+      const a0b = inF(hf, [8, 16, 4 * sd]);
+      const ap = [a0b, inF(hf, [-4, 34, 7 * sd]), inF(hf, [-26, 50, 11 * sd]), inF(hf, [-58, 58, 16 * sd]), inF(hf, [-96, 58, 22 * sd]), inF(hf, [-126, 50, 27 * sd])];
+      tube(prims, ap, 12, (t) => lerp(6, 2, t), 7, 7, (i) => (i < 3 ? BODY : DARK), [0, 1, 0], 1.7);
     }
-    anchors.top = inF(hf, [-40, 44, 0]);
+    anchors.top = inF(hf, [-58, 60, 0]);
 
     // --- the big rhombus wings: roots on the upper back, a V up and out; flap buzzes them
     for (const sd of [1, -1]) {
@@ -280,7 +281,7 @@ const Flygon = (() => {
       const back = nrm(cross([0, 1, 0], U));
       // chord axis pointing forward, its leading edge twisted up so the broad face shows in 3/4 views
       const fwdC = sd > 0 ? back : sc(back, -1);
-      const chord = nrm(sub(add(fwdC, [0, 0.55, 0]), sc(U, dot(add(fwdC, [0, 0.55, 0]), U))));
+      const chord = nrm(sub(add(fwdC, [0, 1.0, 0]), sc(U, dot(add(fwdC, [0, 1.0, 0]), U))));
       const N = nrm(cross(U, chord));
       prims.push(PL(root, M3.cols(U, cross(N, U), N), id, id, WING_G, 1.4));
       anchors[sd > 0 ? 'wingN' : 'wingF'] = add(root, sc(U, 168));
@@ -325,7 +326,7 @@ const Flygon = (() => {
     const sway = (walking ? 0.25 * Math.sin(wk) : 0);
     const tb = inF(tf, [-24, 14, 0]);
     const tp = [inF(tf, [-10, 24, 0]), tb, add(tb, [-38, -22, 10 * sway]), add(tb, [-84, -32, 26 * sway + 8 * side]), add(tb, [-128, -26, 40 * sway + 16 * side]), add(tb, [-160, -8, 50 * sway + 22 * side])];
-    tube(prims, tp, 16, (t) => lerp(17, 5, Math.pow(t, 0.8)), 14, 14, BODY, [0, 1, 0], 1.8);
+    tube(prims, tp, 16, (t) => lerp(17, 5, Math.pow(t, 0.8)), 14, 14, (i) => (i >= 3 && i % 3 === 0 ? DARK : BODY), [0, 1, 0], 1.8);
     const tEnd = tp[5], tD = nrm(sub(tEnd, crPt(tp, 4.7)));
     const fanN = nrm(cross(tD, [0, 0, 1]).map((x, i) => x + (i === 2 ? 0.5 * side : 0)));
     for (const a of [-0.75, 0, 0.75]) {

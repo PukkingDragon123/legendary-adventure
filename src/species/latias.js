@@ -32,8 +32,8 @@ const Latias = (() => {
   const MAIN = 1, WHITE = 2, MARK = 3, MOUTH = 4, TONGUE = 5;
   const MAT = { RED: MAIN, WHITE, MARK, MOUTH, TONGUE };
   const PAL = Creature.palette({
-    [MAIN]:   { r: ['#962236', '#c23648', '#e2525c', '#f47c80', '#ffb4b2'], od: '#560e22', ol: '#9c2a3c', ln: '#8a2032' },
-    [WHITE]:  { r: ['#aaa8c2', '#cfcee0', '#edeef6', '#fcfcff', '#ffffff'], od: '#4a4866', ol: '#8886a6', ln: '#9492b0' },
+    [MAIN]:   { r: ['#8c2c3a', '#b64652', '#d6646a', '#ee8c8c', '#fcc0bc'], od: '#541020', ol: '#9a3242', ln: '#8a2a38' },
+    [WHITE]:  { r: ['#98a0c2', '#bac4de', '#dae2f2', '#f0f4fc', '#ffffff'], od: '#464c72', ol: '#8088ac', ln: '#8e96b8' },
     [MARK]:   { r: ['#2654aa', '#3670cc', '#5290e8', '#80b4f8', '#bcdafe'], od: '#122c66', ol: '#2a56a6', ln: '#244a96' },
     [MOUTH]:  { r: ['#4a1020', '#66182c', '#84263c', '#a2384e', '#bc5264'], od: '#2c0612', ol: '#4a1020', ln: '#3c0c1a' },
     [TONGUE]: { r: ['#b8485e', '#d66276', '#ee8290', '#ffa8b0', '#ffd0d2'], od: '#6a1a2e', ol: '#8e2a40', ln: '#8e2a40' },
@@ -134,24 +134,25 @@ const Latias = (() => {
   // spine from the tail tip to the top of the neck: hover (h) and jet (j) positions in the x-y plane,
   // half thickness rn (back ↔ belly), half width rw, white-belly threshold wk (white where s·dorsal < wk)
   const SPINE = [
-    { h: [-104, 9], j: [-146, 104], rn: 4.5, rw: 5, wk: -0.35 },
-    { h: [-79, 18], j: [-114, 104], rn: 9, rw: 10, wk: -0.32 },
-    { h: [-52, 37], j: [-80, 105], rn: 15, rw: 16, wk: -0.22 },
-    { h: [-28, 64], j: [-46, 106], rn: 21.5, rw: 22.5, wk: -0.1 },
-    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: 0.02 },
-    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: 0.08 },
-    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 0.12 },
-    { h: [20, 170], j: [70, 113], rn: 12, rw: 12, wk: 0.14 },
-    { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 0.14 },
+    { h: [-104, 9], j: [-146, 104], rn: 4.5, rw: 5, wk: -2 },
+    { h: [-79, 18], j: [-114, 104], rn: 9, rw: 10, wk: -2 },
+    { h: [-52, 37], j: [-80, 105], rn: 15, rw: 16, wk: -2 },
+    { h: [-28, 64], j: [-46, 106], rn: 21.5, rw: 22.5, wk: -2 },
+    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: -0.55 },
+    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: 0.3 },
+    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 2 },
+    { h: [20, 170], j: [70, 113], rn: 12, rw: 12, wk: 2 },
+    { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 2 },
   ];
-  const TRI = { t0: 4.55, t1: 5.5, w: 10 };          // chest triangle (spline param range, top half-width)
+  const TRI = { t0: 3.55, t1: 4.55, w: 12 };          // belly triangle (spline param range, top half-width)
+  const PATCH = { t: 3.3, dt: 0.95, z: 0.62, dz: 0.42, y: -0.25, dy: 0.55 };
   const HEAD = { h: [48, 203, 0], j: [112, 125, 0], ph: -0.06, pj: 0.06 };
   const CRAN_R = [25, 21, 20.5], SNOUT_C = [14.5, -6, 0], SNOUT_R = [17, 13, 14.5], SNOUT_TILT = -0.08;
   const jawLine = (x) => (x > 8 ? -3 - (x - 8) * 0.1 : -3 - (8 - x) * 0.26);
   const EYE_S = nrm([0.62, 0.2, 0.76]);                // eye position on the cranium (unit sphere, near side)
 
   // wing (u = span out from the root, v = chord: + toward the leading edge)
-  const WING = outline([[-8, 25], [18, 24], [48, 18], [78, 8], [100, -5], [107, -14], [97, -21], [74, -23], [48, -29], [24, -39], [5, -44], [-8, -34]], 16, 6.5);
+  const WING = outline([[-8, 20], [20, 15], [52, 9], [84, 4], [112, 1], [124, -3], [114, -8], [110, -13], [104, -9], [84, -11], [54, -16], [26, -25], [6, -32], [-8, -24]], 16, 6);
   const EAR = outline([[-6, 10], [12, 10.5], [28, 7], [44, 0.5], [31, -4], [14, -7.5], [-6, -7.5]], 6, 3.2);
   const TFIN = outline([[-5, 12], [10, 10], [22, 3], [32, -7], [22, -9], [9, -7], [-5, -8]], 2, 2.6);
 
@@ -167,6 +168,12 @@ const Latias = (() => {
     happy: ['.kkk.', 'k...k', 'k...k'], happyN: ['.kk.', 'k..k', 'k..k'], happyF: ['.k.', 'k.k'],
     closed: ['k...k', '.kkk.'], closedN: ['k..k', '.kk.'], closedF: ['k.', '.k'],
     blink: ['.....', 'kkkkk', '.kkk.'], blinkN: ['....', 'kkkk', '.kk.'], blinkF: ['kkk'],
+  };
+  const EYES_XL = {
+    open: ['.kkkk.', 'kwwyyk', 'kwyppk', 'kyyppk', 'koyyok', '.kkkk.'], openN: ['.kkk.', 'kwyyk', 'kyppk', 'kyppk', 'koyok', '.kkk.'], openF: ['.kk.', 'kwpk', 'kypk', 'kook', '.kk.'],
+    happy: ['.kkkk.', 'k....k', 'k....k'], happyN: ['.kkk.', 'k...k', 'k...k'], happyF: ['.kk.', 'k..k'],
+    closed: ['k....k', '.kkkk.'], closedN: ['k...k', '.kkk.'], closedF: ['k..k', '.kk.'],
+    blink: ['......', 'kkkkkk', '.kkkk.'], blinkN: ['.....', 'kkkkk', '.kkk.'], blinkF: ['kkkk'],
   };
   const EYEC = { k: '#3a0c1a', y: '#ffd23c', o: '#e0961c', p: '#2a0c14', w: '#ffffff' };
 
@@ -189,10 +196,14 @@ const Latias = (() => {
     };
     // body material: white belly below the dorsal threshold, blue triangle on the chest
     const bodyMat = (tm, rlT, rw, wk) => (s) => {
-      if (s[1] < -0.3) {
-        const t = tm + s[0] * rlT;
-        if (t > TRI.t0 && t < TRI.t1 && Math.abs(s[2] * rw) < (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0)) return C_MARK;
+      const t = tm + s[0] * rlT;
+      if (s[1] < -0.2 && t > TRI.t0 && t < TRI.t1) {
+        const hw = (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0), z = Math.abs(s[2] * rw);
+        if (z < hw) return (z < hw - 2.6 && t < TRI.t1 - 0.22 && t > TRI.t0 + 0.28 ? C_MAIN : C_MARK);
       }
+      // white jet-intake patches low on the flanks
+      const pt = (t - PATCH.t) / PATCH.dt, pz = (Math.abs(s[2]) - PATCH.z) / PATCH.dz, py = (s[1] - PATCH.y) / PATCH.dy;
+      if (pt * pt + pz * pz + py * py < 1) return C_WHITE;
       return s[1] < wk ? C_WHITE : C_MAIN;
     };
     const NS = 56;
@@ -215,7 +226,9 @@ const Latias = (() => {
         const open = mouth * 0.34 * (p[0] - 15);
         if (p[1] < yb + 0.9 && p[1] > yb - open) return p[1] < yb - open * 0.5 && Math.abs(p[2]) < 8.5 ? C_TONGUE : C_MOUTH;
       }
-      return p[1] < yb ? C_WHITE : C_MAIN;
+      // white head; a red band across the face through the eyes and back over the crown
+      if (!snout || p[0] < 26) { if (p[1] > yb + 3.5 && p[1] < yb + 16 - 0.1 * p[0]) return C_MAIN; }
+      return C_WHITE;
     };
     const crL = M3.diag(...CRAN_R);
     const cran = E(add(hc, M3.v(HL, [0, 0, 0])), M3.mul(HL, crL), 20, 2, headMat([0, 0, 0], crL, false));
@@ -232,7 +245,7 @@ const Latias = (() => {
       const root = HP([-12, 8.5, sd * 9]);
       const dir = HD(nrm([-1, -0.08 + 0.1 * k, sd * 0.42]));
       const L = frameUV(dir, HD([0, 1, sd * 0.7]), sd < 0);
-      prims.push(shell(root, L, EAR, sd > 0 ? 22 : 23, sd > 0 ? 3 : 4, MAIN, 1.6));
+      prims.push(shell(root, L, EAR, sd > 0 ? 22 : 23, sd > 0 ? 3 : 4, WHITE, 1.6));
     }
 
     /* --- eyes --- */
@@ -272,9 +285,15 @@ const Latias = (() => {
       const fo = nrm(lerpV(dir(0.28, -0.95, -0.02), dir(-0.97, 0.06, -0.06), k));
       const el = add(sh, scl(up, 19)), ha = add(el, scl(fo, 16));
       const id = sd > 0 ? 7 : 8;
-      prims.push(segE(sh, el, 7.2, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
-      prims.push(segE(el, ha, 6.4, SH.n, 41 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
-      prims.push(E(add(ha, scl(fo, 1.5)), M3.diag(7, 6.6, 6.6), 42 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
+      prims.push(segE(sh, el, 7.6, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      prims.push(segE(el, ha, 6.8, SH.n, 41 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      prims.push(E(add(ha, scl(fo, 1.5)), M3.diag(7.4, 7, 7), 42 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      // three small white claws
+      for (const c of [-1, 0, 1]) {
+        const cd = nrm(add(add(fo, scl(SH.t, 0.5)), scl(z, c * 0.55)));
+        const cb = add(ha, scl(fo, 4));
+        prims.push(segE(cb, add(cb, scl(cd, 9)), 2.4, SH.n, 42 + (sd > 0 ? 0 : 3), id, () => C_WHITE, 1));
+      }
       anchors[sd > 0 ? 'handN' : 'handF'] = ha;
     }
 
@@ -306,7 +325,7 @@ const Latias = (() => {
   /* ---------- render: eye set by scale, glow lift + aura, tight ray-cast box ---------- */
   function render(model, opt) {
     const sc = opt.scale || 1;
-    const set = sc >= 0.42 ? EYES_L : EYES_S;
+    const set = sc >= 0.7 ? EYES_XL : sc >= 0.36 ? EYES_L : EYES_S;
     for (const st of model.stamps) st.set = set;
     const g = clamp((model.pose && model.pose.glow) || 0, 0, 1);
     let pal = opt.pal || PAL;
