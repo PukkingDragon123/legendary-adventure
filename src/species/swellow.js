@@ -173,10 +173,10 @@ const Swellow = (() => {
     const hop = walking ? 3.5 * Math.abs(Math.sin(st)) : 0;
     // body pitch: perched upright, level in flight, nose down in a dive
     const pitch = lerp(0.05, 0.42, pe) * (1 - dv) - 0.95 * dv;
-    const root = chain(T(0, lerp(55, 44, pe) + hop, 0), R(M3.rz(pitch)));
+    const root = chain(T(0, lerp(55, 40, pe) + hop, 0), R(M3.rz(pitch)));
 
     /* --- body --- */
-    prims.push(ellF(root, [39, 24.5, 22.5], 1, 1, bodyMat));
+    prims.push(ellF(root, [40, 26.5, 24], 1, 1, bodyMat));
     anchors.body = root.t;
 
     /* --- neck + head (the head stays level-ish when perched) --- */
@@ -199,7 +199,7 @@ const Swellow = (() => {
     anchors.mouth = inF(hinge, [4, -1.5, 0]);
     // crest: three navy spikes swept back from the back of the head
     const cb = inF(head, [-15, 8, 0]);
-    for (const [a, z, l] of [[0.4, 0, 1.6], [0.1, 5, 1.35], [0.1, -5, 1.35], [-0.2, 0, 1.1]]) {
+    for (const [a, z, l] of [[0.35, 0, 1.9], [0.12, 5, 1.6], [0.12, -5, 1.6], [-0.15, 0, 1.3]]) {
       const U = dirF(head, [-Math.cos(a), Math.sin(a), z * 0.03]);
       const L = M3.mul(frameUV(U, dirF(head, [0, 1, 0.2 * Math.sign(z || 1)])), M3.diag(l, 1, 1));
       prims.push(plate(add(cb, dirF(head, [0, 0, z])), L, 11, 11, CREST_G, 2.2));
