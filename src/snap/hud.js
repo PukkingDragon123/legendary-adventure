@@ -316,6 +316,7 @@ const HUD = (() => {
     }
     drawScan(fb, S, t);
     Talk.drawBubbles(fb, t);
+    if (typeof Boardwalk !== 'undefined' && Boardwalk.drawUI) Boardwalk.drawUI(fb, t);
     if (typeof Harvest !== 'undefined' && !Talk.busy()) Harvest.drawPrompt(fb, t);
     drawTop(fb, S, t);
     if (typeof Pad !== 'undefined') Pad.draw(fb, S, t);

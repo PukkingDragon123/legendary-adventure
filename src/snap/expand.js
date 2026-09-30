@@ -46,7 +46,7 @@ const Expand = (() => {
         put(Paint.tuft(M, 10 + r() * 8, 10 + r() * 12, Math.floor(x * 7), { ramp: M.grass, flowers: [fl], density: 1.2 }), x, r() < 0.5 ? 3 : -3, { windFrames: true });
       }
       // orchard trees heavy with fruit, a picnic blanket and a signpost
-      for (const x of [3440, 3600, 4380, 4560]) put(Paint.tree(M, 110 + r() * 30, Math.floor(x), { trunkRamp: M.bark, leafRamp: M.leaf, fruit: M.fruit, fruitN: 12, crownW: 110, crownH: 70 }), x, -4, { sink: 4, foot: 14 });
+      for (const x of [3440, 3610, 3780, 4240, 4400, 4580, 4760]) put(Paint.tree(M, 140 + r() * 40, Math.floor(x), { trunkRamp: M.bark, leafRamp: M.leaf, fruit: M.fruit, fruitN: 22, crownW: 140, crownH: 92 }), x, -4, { sink: 4, foot: 16 });
       { const s = new ISpr(40, 8); for (let y = 0; y < 8; y++) for (let x = 0; x < 40; x++) s.set(x, y, ((x >> 2) + (y >> 1)) % 2 ? M.capR[2] : M.stem[3]); Paint.outline(s, M.ink[0]); s.ax = 20; s.ay = 7; put(s, 4200, 3, { sink: 1 }); }
       { const s = new ISpr(20, 28); for (let y = 8; y < 28; y++) { s.set(9, y, M.wood[1]); s.set(10, y, M.wood[2]); } for (let y = 2; y < 10; y++) for (let x = 0; x < 20; x++) s.set(x, y, x === 0 || x === 19 || y === 2 || y === 9 ? M.wood[0] : M.wood[4]); Paint.outline(s, M.ink[0]); s.ax = 10; s.ay = 27; put(s, 3360, -2, { sink: 1 }); }
       A.addHot({ x0: 3346, x1: 3374, y0: gy(3360) - 28, y1: gy(3360), x: 3360, reach: 34, tap() { HUD.toast('Flower Meadow — "Rest your paws. The windmill has watched these fields for a hundred years."', { life: 3 }); } });

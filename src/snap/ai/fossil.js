@@ -20,8 +20,8 @@ const FossilAI = (() => {
   const { Walker, Swimmer, mk, dist, hourIs, surf } = AI;
   const gy = (x) => World.groundAt(x);
   const sp = (name) => { try { return (0, eval)(name); } catch (e) { return null; } };
-  const PIT = { x0: 4080, x1: 4220, c: 4150 }, POOL = { x0: 4395, x1: 4570, level: 456 }, TREE = 3860, ALTAR = 4720;
-  const DIGS = [{ x: 3965, item: 'rootfossil', name: 'Root Fossil' }, { x: 4305, item: 'clawfossil', name: 'Claw Fossil' }, { x: 4860, item: 'berry', name: '3 berries', n: 3 }];
+  const PIT = { x0: 4680, x1: 4820, c: 4750 }, POOL = { x0: 4995, x1: 5170, level: 456 }, TREE = 4460, ALTAR = 5320;
+  const DIGS = [{ x: 4565, item: 'rootfossil', name: 'Root Fossil' }, { x: 4905, item: 'clawfossil', name: 'Claw Fossil' }, { x: 5460, item: 'berry', name: '3 berries', n: 3 }];
   let S = {}, A0 = null, G0 = null;
   function* hold(m, T, act, peak = 0.3, stop = null) { let e = 0; while (e < T) { const dt = yield; e += dt; m.setAct(act, typeof peak === 'function' ? peak(e) : peak); if (stop && stop()) return; } }
   const sand = () => Game.P && Game.P.sand ? Game.P.sand : [0xff5a8ab7, 0xff629bcc, 0xff76b4df, 0xff8ec7eb];
@@ -77,7 +77,7 @@ const FossilAI = (() => {
   /* ================= NINCADA ================= */
   class NincadaM extends Walker {
     constructor() {
-      super(sp('Nincada'), { kind: 'nincada', dex: 'nincada', x: TREE - 20, y: gy(TREE - 20), yaw: 1.1, z: 1.7, scale: 0.5, qPose: 0.06, qFields: { step: 0.5, dig: 0.25, feelers: 0.25 }, persona: 'shy', speed: 38, minX: 3700, maxX: 4040 });
+      super(sp('Nincada'), { kind: 'nincada', dex: 'nincada', x: TREE - 20, y: gy(TREE - 20), yaw: 1.1, z: 1.7, scale: 0.5, qPose: 0.06, qFields: { step: 0.5, dig: 0.25, feelers: 0.25 }, persona: 'shy', speed: 38, minX: 4300, maxX: 4640 });
       this.under = true; this.bury = 1; this.visible = false; this.stepPh = 0; this.senseR = 100; this.alert = 1.3;
     }
     animate(dt, t) { if (this.moving) this.stepPh += dt * 12; const P = { step: this.moving ? this.stepPh : 0, dig: 0, feelers: Math.sin(t * 3 + this.seed) * 0.6, eyes: this.blink(t, dt) ? 'blink' : 'open' }; Object.assign(P, this.o); this.pose = P; }
@@ -112,7 +112,7 @@ const FossilAI = (() => {
   /* ================= LILEEP ================= */
   class LileepM extends Mons.Mon {
     constructor(entrance) {
-      super(sp('Lileep'), { kind: 'lileep', dex: 'lileep', x: 4470, y: gy(4470), yaw: 1.2, z: 1.5, scale: 0.36, qPose: 0.06, qFields: { sway: 0.2, tentacles: 0.2, mouth: 0.25, hide: 0.2 }, persona: 'calm', mode: 'rooted' });
+      super(sp('Lileep'), { kind: 'lileep', dex: 'lileep', x: 5070, y: gy(5070), yaw: 1.2, z: 1.5, scale: 0.36, qPose: 0.06, qFields: { sway: 0.2, tentacles: 0.2, mouth: 0.25, hide: 0.2 }, persona: 'calm', mode: 'rooted' });
       this.noShadow = true; this.senseR = 80;
       if (entrance) { this.tint = 0xffffffff; this.tintK = 1; }
     }
@@ -133,7 +133,7 @@ const FossilAI = (() => {
   /* ================= ANORITH ================= */
   class AnorithM extends Walker {
     constructor(entrance) {
-      super(sp('Anorith'), { kind: 'anorith', dex: 'anorith', x: ALTAR - 50, y: gy(ALTAR - 50), yaw: Math.PI - 1, z: 1.7, scale: 0.42, qPose: 0.06, qFields: { step: 0.5, clawN: 0.2, clawF: 0.2, fins: 0.25, mouth: 0.25 }, persona: 'curious', speed: 34, minX: 4250, maxX: 4960 });
+      super(sp('Anorith'), { kind: 'anorith', dex: 'anorith', x: ALTAR - 50, y: gy(ALTAR - 50), yaw: Math.PI - 1, z: 1.7, scale: 0.42, qPose: 0.06, qFields: { step: 0.5, clawN: 0.2, clawF: 0.2, fins: 0.25, mouth: 0.25 }, persona: 'curious', speed: 34, minX: 4850, maxX: 5560 });
       this.stepPh = 0; this.senseR = 110;
       if (entrance) { this.tint = 0xffffffff; this.tintK = 1; }
     }
@@ -173,7 +173,7 @@ const FossilAI = (() => {
         this.setAct(S.friends ? 'friends' : 'swim', 0.7);
       }
       const out = this.x < (POOL.x0 + POOL.x1) / 2 ? POOL.x0 - 8 : POOL.x1 + 8;
-      this.mode = 'land'; this.x = out; FX.splashAt(out, surf(out + (out < 4400 ? 8 : -8)), { power: 0.3, n: 5 });
+      this.mode = 'land'; this.x = out; FX.splashAt(out, surf(out + (out < 5000 ? 8 : -8)), { power: 0.3, n: 5 });
     }
     *meet() { yield* this.swim(12); }
     *slash(it) {
@@ -233,7 +233,7 @@ const FossilAI = (() => {
   function revive(A, G, which) {
     Save.discover('fossil.' + which);
     Game.sfx('evolve', ALTAR, 1); Game.shake(1.5);
-    Game.cine.pan(which === 'lileep' ? (ALTAR + 4470) / 2 : ALTAR - 30, gy(ALTAR) - 26, { hold: 3.5, zoom: 1.14 });
+    Game.cine.pan(which === 'lileep' ? (ALTAR + 5070) / 2 : ALTAR - 30, gy(ALTAR) - 26, { hold: 3.5, zoom: 1.14 });
     A.altarGlow.k = 1; setTimeout(() => { A.altarGlow.k = 0.25; }, 4000);
     FX.sparkles(ALTAR, gy(ALTAR) - 30, 30, 50, 0xffffffff, hex('#9fe8ff'));
     setTimeout(() => {

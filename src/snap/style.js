@@ -10,17 +10,19 @@ const Style = (() => {
   const INK = 0xff1b2240, WHITE = 0xffffffff;
   const ST = { t: 0, tab: 0, sel: 0, pt: null, buf: null, fresh: {}, hover: -1, spin: 0 };
   const CATS = [
-    { slot: 'hat', name: 'Hats', items: ['hat.party', 'hat.crown', 'hat.propeller', 'hat.bow', 'hat.chef', 'hat.headphones', 'hat.pirate', 'hat.straw', 'hat.bucket', 'hat.beanie', 'hat.sailor', 'hat.flower', 'hat.star', 'hat.lobster'] },
-    { slot: 'shirt', name: 'Shirts', items: ['shirt.heart', 'shirt.stripe', 'shirt.hoodie', 'shirt.pop'] },
+    { slot: 'hat', name: 'Hats', items: ['hat.party', 'hat.crown', 'hat.propeller', 'hat.bow', 'hat.chef', 'hat.headphones', 'hat.pirate', 'hat.straw', 'hat.bucket', 'hat.beanie', 'hat.sailor', 'hat.flower', 'hat.star', 'hat.lobster', 'hat.mail', 'hat.topknot'] },
+    { slot: 'shirt', name: 'Shirts', items: ['shirt.heart', 'shirt.stripe', 'shirt.hoodie', 'shirt.pop', 'shirt.postal', 'shirt.sumo'] },
     { slot: 'glasses', name: 'Shades', items: ['glasses.round', 'glasses.star', 'glasses.rock'] },
-    { slot: 'neck', name: 'Neck', items: ['neck.lei', 'neck.medal', 'neck.bow', 'neck.scarf', 'neck.camera'] },
+    { slot: 'neck', name: 'Neck', items: ['neck.lei', 'neck.medal', 'neck.bow', 'neck.scarf', 'neck.camera', 'neck.mailbag'] },
     { slot: 'shoes', name: 'Shoes', items: ['shoes.sneakers', 'shoes.boots'] },
-    { slot: 'fun', name: 'Fun', items: ['fun.stache', 'fun.floaties', 'fun.ring'] },
+    { slot: 'fun', name: 'Fun', items: ['fun.stache', 'fun.floaties', 'fun.ring', 'fun.belt'] },
   ];
   // how to get what you do not have yet
   const HOW = { 'hat.headphones': 'Get an A rank in the Guitar Jam (G).', 'glasses.rock': 'Get an S rank in the Guitar Jam.',
     'hat.party': 'Help a hungry Spheal at the cove.', 'hat.crown': 'Photograph Bagon smashing the boulder.', 'hat.propeller': 'Nap next to Slakoth in the forest.',
     'shoes.boots': 'Throw Ludicolo a dance party.', 'shoes.sneakers': 'A memory from the edge of space.', 'fun.ring': 'A memory from the deep blue sea.',
+    'hat.mail': 'Help Pelipper deliver the Boardwalk letters.', 'shirt.postal': 'Help Pelipper deliver the Boardwalk letters.', 'neck.mailbag': 'Help Pelipper deliver the Boardwalk letters.',
+    'shirt.sumo': 'Beat Corphish in the Boardwalk sumo ring.', 'fun.belt': 'Beat Corphish in the Boardwalk sumo ring.', 'hat.topknot': 'Win the sumo ring three times.',
   };
   const PRICE = { 'hat.pirate': 1500, 'neck.medal': 2500, 'hat.bow': 400, 'hat.chef': 700, 'neck.lei': 500, 'fun.floaties': 800, 'shoes.sneakers': 1200, 'fun.ring': 900, 'shirt.stripe': 700, 'neck.bow': 500, 'neck.scarf': 600 };
   function open() {
@@ -92,6 +94,7 @@ const Style = (() => {
     'shirt.heart': ['#f890b8', '#e84a44'], 'shirt.stripe': ['#ffffff', '#3150ae'], 'shirt.hoodie': ['#fb8f3c', '#ffffff'], 'shirt.pop': ['#c43cbc', '#f0c038'],
     'glasses.round': ['#262e40', '#58a0d8'], 'glasses.star': ['#f890b8', '#7c285c'], 'neck.bow': ['#e84a44', '#8e1c2c'], 'neck.scarf': ['#e84a44', '#ff7a62'], 'neck.camera': ['#e84a44', '#ffffff'],
     'shoes.sneakers': ['#e84a44', '#ffffff'], 'hat.bow': ['#e84a44', '#ff7a62'], 'hat.headphones': ['#262e40', '#c43cbc'], 'hat.pirate': ['#262e40', '#ffffff'], 'glasses.rock': ['#e84a44', '#7c285c'], 'neck.medal': ['#f0c038', '#3150ae'], 'hat.chef': ['#ffffff', '#c2cde0'], 'neck.lei': ['#f890b8', '#f4d272'], 'fun.floaties': ['#fb8f3c', '#f4d272'], 'shoes.boots': ['#f4d272', '#262e40'], 'fun.stache': ['#3a2a20', '#6a4a36'], 'fun.ring': ['#e84a44', '#ffffff'],
+    'hat.mail': ['#3150ae', '#f0c038'], 'shirt.postal': ['#3150ae', '#f0c038'], 'neck.mailbag': ['#935a30', '#ffffff'], 'shirt.sumo': ['#3150ae', '#1a2860'], 'hat.topknot': ['#262e40', '#ffffff'], 'fun.belt': ['#f0c038', '#e84a44'],
   };
   function swatch(fb, id, x, y, s, locked) {
     const cols = (SW[id] || ['#8a8ea0']).map(U.hex);

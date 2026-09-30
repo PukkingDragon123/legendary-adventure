@@ -668,7 +668,7 @@ const BeachAI = (() => {
     facing() { return 0.3; }
   }
   class KyogreM extends Swimmer {
-    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 7380, y: 1060, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 7100, x1: 7520, y0: 900, y1: 1110 } }); this.swimTop = 20; }
+    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 10580, y: 1060, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 10300, x1: 10720, y0: 900, y1: 1110 } }); this.swimTop = 20; }
     senses() {}
     animate(dt, t) { const P = { fin: Math.sin(t * 1.2) * 0.5, tail: Math.sin(t * 1.4 + 1) * 0.5, mouth: 0.1, eyes: 'open', glow: 0.6 + 0.4 * Math.sin(t * 2), headPitch: -0.1, roll: 0 }; Object.assign(P, this.o); this.pose = P; }
     brain() { return this.life(); }
@@ -819,7 +819,7 @@ const BeachAI = (() => {
       this.emote('note'); m.emote('shock');
       HUD.toast('A Wingull stole your hat!', { life: 2.4 });
       this.setAct('steal', 1);
-      yield* this.flyTo(3380, gy(3380) - 110, 110, { act: 'steal', peak: () => 0.7 });
+      yield* this.flyTo(3980, gy(3980) - 110, 110, { act: 'steal', peak: () => 0.7 });
       Secrets.dropHat(this.hat);
       this.hat = null; S.hatThief = null;
     }
@@ -836,7 +836,7 @@ const BeachAI = (() => {
     update(A, dt, t, G) {
       const m = G.mudkip;
       // Kyogre: the Blue Orb in the trench at night
-      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 6900 && m.y > 900 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(7380, 980, { dur: 1.6, hold: 4, zoom: 1.1 }); }
+      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 10100 && m.y > 900 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(10580, 980, { dur: 1.6, hold: 4, zoom: 1.1 }); }
     },
     song(x) {
       const m = Game.mudkip;
@@ -866,7 +866,7 @@ const BeachAI = (() => {
       }
     },
     dropHat(hat) {
-      const x = 3395, y = gy(3395);
+      const x = 3995, y = gy(3995);
       Stage.A.addHot({ x0: x - 12, x1: x + 12, y0: y - 16, y1: y + 2, x, reach: 30, hat, tap() { this.off = true; const mk0 = Game.mudkip; mk0.look.hat = hat; HUD.toast('Got your hat back!', { life: 2 }); Game.sfx('twinkle', x, 0.8); } });
       FX.sparkles(x, y - 6, 8, 20);
     },

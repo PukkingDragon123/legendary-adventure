@@ -76,7 +76,7 @@ const Player = (() => {
         this.platform(dt, t);
         return;
       }
-      const speed = this.mode === 'swim' ? 95 : this.sneak ? 45 : 88;
+      const speed = (this.mode === 'swim' ? 95 : this.sneak ? 45 : 88) * (this.buffT > 0 ? 1.35 : 1);
       if (this.mode !== 'swim' && !this.target) this.drive(0, dt);
       const tg = this.target;
       if (!tg) { if (this.mode === 'swim') { this.vx *= Math.pow(0.1, dt); this.vy *= Math.pow(0.1, dt); } return; }
@@ -153,7 +153,7 @@ const Player = (() => {
       const kx = this.keyDir, ky = this.keyY;
       const run = this.running && !this.sneak;
       if (this.mode === 'swim') {
-        const sp = (run ? 140 : 95) + (this.dashT > 0 ? 120 : 0);
+        const sp = ((run ? 140 : 95) + (this.dashT > 0 ? 120 : 0)) * (this.buffT > 0 ? 1.35 : 1);
         this.vx = lerp(this.vx, kx * sp, dt * (this.dashT > 0 ? 2 : 5)); this.vy = lerp(this.vy, ky * sp * 0.8, dt * 5);
         if (kx) this.turn(this.face(kx, true), dt, 8);
         // dive: press down at the surface for a nose-first plunge

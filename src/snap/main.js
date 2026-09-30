@@ -263,6 +263,7 @@ const Game = (() => {
     if (typeof Social !== 'undefined') Social.update(dt, t);
     if (typeof Bite !== 'undefined' && !(typeof Arcade !== 'undefined' && Arcade.live)) Bite.update(dt);
     if (typeof Arcade !== 'undefined') Arcade.update(dt);
+    if (typeof Boardwalk !== 'undefined' && Boardwalk.update) Boardwalk.update(dt);
     if (typeof Legends !== 'undefined') Legends.update(dt);
     G.mons = G.mons.filter((m) => m.alive);
     if (G.area.def.update) G.area.def.update(G.area, dt, t, G);

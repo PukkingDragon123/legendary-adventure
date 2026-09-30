@@ -21,7 +21,7 @@ const Legends = (() => {
   /* ================= GROUDON ================= */
   class GroudonM extends Mons.Mon {
     constructor(x, lava, awake) {
-      super(sp('Groudon'), { kind: 'groudon', dex: 'groudon', x, y: gy(x), yaw: Math.PI / 2 - 0.25, z: 3, scale: 0.62, qPose: 0.05, qFields: { roar: 0.1, glow: 0.1, sleep: 0.1, mouth: 0.2 }, persona: 'calm', mode: 'land' });
+      super(sp('Groudon'), { kind: 'groudon', dex: 'groudon', x, y: gy(x), yaw: Math.PI / 2 - 0.25, z: 3, scale: 0.3, qPose: 0.05, qFields: { roar: 0.1, glow: 0.1, sleep: 0.1, mouth: 0.2 }, persona: 'calm', mode: 'land' });
       this.lava = lava; this.awake = awake; this.senseR = 0; this.noShadow = true; this.speed = 14; this.rise = awake ? 1 : 0; this.glowK = awake ? 0.5 : 0; this.wph = 0;
       this.minX = lava.x0 + 120; this.maxX = lava.x1 - 120;
     }
@@ -129,7 +129,7 @@ const Legends = (() => {
   class RayquazaM extends Mons.Mon {
     constructor(dir) {
       const c = Game.cam;
-      super(sp('Rayquaza'), { kind: 'rayquaza', dex: 'rayquaza', x: dir > 0 ? c.x - 260 : c.x + Game.VW + 260, y: c.y + Game.VH * 0.28, yaw: dir > 0 ? 0.25 : Math.PI - 0.25, z: 4, scale: 0.55, qPose: 0.05, qFields: { wave: 0.35, roar: 0.1, glow: 0.1 }, persona: 'calm', mode: 'fly' });
+      super(sp('Rayquaza'), { kind: 'rayquaza', dex: 'rayquaza', x: dir > 0 ? c.x - 260 : c.x + Game.VW + 260, y: c.y + Game.VH * 0.28, yaw: dir > 0 ? 0.25 : Math.PI - 0.25, z: 4, scale: 0.25, qPose: 0.05, qFields: { wave: 0.35, roar: 0.1, glow: 0.1 }, persona: 'calm', mode: 'fly' });
       this.dir = dir; this.always = true; this.noShadow = true; this.senseR = 0; this.roared = false; this.wave = 0;
     }
     senses() {}

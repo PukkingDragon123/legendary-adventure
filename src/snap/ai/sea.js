@@ -173,7 +173,7 @@ const SeaAI = (() => {
   const dark = () => hourIs('night') || hourIs('dusk');
 
   /* ================= STARYU ================= */
-  const SHORE = { x0: 930, x1: 1070 }, SHALLOW = { x0: 1150, x1: 1380 }, POOL = { x0: 4400, x1: 4565 };
+  const SHORE = { x0: 930, x1: 1070 }, SHALLOW = { x0: 1150, x1: 1380 }, POOL = { x0: 5000, x1: 5165 };
   class StaryuM extends Mons.Mon {
     constructor(x, home) {
       super(sp('Staryu'), { kind: 'staryu', dex: 'staryu', x, y: gy(x), yaw: Math.PI / 2, z: 1.8, scale: 0.36, qPose: 0.06, qFields: { spin: 0.2, glow: 0.2, bend: 0.25 }, persona: 'shy', mode: 'land' });
@@ -446,7 +446,7 @@ const SeaAI = (() => {
     if (sp('Wailmer')) { S.wailmer = [add(new WailmerM(2300)), add(new WailmerM(2800))]; }
     if (sp('Clamperl')) { add(new ClamperlM(2250)); add(new ClamperlM(2430)); add(new ClamperlM(2690)); }
     if (sp('Relicanth')) add(new RelicanthM());
-    if (sp('Staryu')) { add(new StaryuM(1200, 'shore')); add(new StaryuM(1270, 'shore')); add(new StaryuM(1340, 'shore')); add(new StaryuM(4470, 'pool')); }
+    if (sp('Staryu')) { add(new StaryuM(1200, 'shore')); add(new StaryuM(1270, 'shore')); add(new StaryuM(1340, 'shore')); add(new StaryuM(5070, 'pool')); }
     if (sp('Tentacool')) {
       for (const [x, y] of [[1560, SEA + 40], [1720, SEA + 70], [2140, SEA + 30], [2480, SEA + 60]]) add(new TentacoolM(x, y));
       if (!Save.found('tentacool.rescue')) add(new TentacoolM(BEACHED_X, gy(BEACHED_X), true));

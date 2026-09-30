@@ -63,7 +63,7 @@ const Arcade = (() => {
   function leave() {
     if (!A.live) return;
     cleanup();
-    A.live = false; A.phase = 'off'; A.g = null; Game.camFocus = null;
+    A.live = false; A.solo = false; A.phase = 'off'; A.g = null; Game.camFocus = null;
     if (A.song && typeof Music !== 'undefined' && Game.area) { A.song = false; Music.areaTrack(Game.area.def.music); }
     release(A.partner); release(A.partner2); A.partner = A.partner2 = null;
     Game.sfx('back');
@@ -74,7 +74,17 @@ const Arcade = (() => {
     if (A.partner) { A.partner.hidden = false; A.partner.tintK = 0; }
     const M = mk(); if (M) { M.tintK = 0; }
   }
-  function toMenu() { cleanup(); A.g = null; A.phase = 'menu'; const p = A.partner, M = mk(); if (p && p.alive && M) ctl(p, walkThen(p, clamp(M.x + (p.x >= M.x ? 1 : -1) * 46, M.x - 200, M.x + 200), (p.speed || 50) * 1.2, function* () { yield* idleFace(p, M); })); }
+  // a direct challenge (the Boardwalk sumo ring): no menu, straight into the game, and out again after
+  function challenge(id, partner, o = {}) {
+    const M = mk(); if (!M || Game.mode !== 'explore' || A.live || !partner || !partner.alive) return false;
+    if (M.mode !== 'land' && M.mode !== 'fall') return false;
+    A.live = true; A.solo = true; A.g = null; A.t = 0; A.fx.length = 0; A.partner = partner; A.partner2 = null; A.opt = o;
+    if (typeof Pad !== 'undefined') Pad.reset();
+    M.stop && M.stop();
+    start(id);
+    return true;
+  }
+  function toMenu() { if (A.solo) { leave(); return; } cleanup(); A.g = null; A.phase = 'menu'; const p = A.partner, M = mk(); if (p && p.alive && M) ctl(p, walkThen(p, clamp(M.x + (p.x >= M.x ? 1 : -1) * 46, M.x - 200, M.x + 200), (p.speed || 50) * 1.2, function* () { yield* idleFace(p, M); })); }
   function start(id) {
     const M = mk(), p = A.partner; if (!M || !p || !p.alive) { leave(); return; }
     A.phase = 'play';
@@ -98,6 +108,11 @@ const Arcade = (() => {
       Object.assign(G, { round: 0, found: 0, tries: 3, step: 'count', st: 0, bushes: [], hideIdx: 0, rT: 2, shake: -1, shakeT: 0 });
       makeBushes(G, M.x);
       seekRound(G);
+    } else if (id === 'sumo') {
+      const RX = (A.opt && A.opt.ring) || M.x;
+      Object.assign(G, { step: 'intro', st: 0, pos: 0, RX, RR: 54, ringT: 0, combo: 0, charge: 0, chargeT: rnd(2.5, 4), pushK: 0, shoves: 0 });
+      ctl(p, sumoBrain(p, G));
+      say(p, pick(['*SNIP SNIP* The ring is MINE, shrimp!', 'Nobody out-belly-flops the champ!', 'Hakkeyoi! Show me your belly!']), 2.2);
     } else if (id === 'tag') {
       Object.assign(G, { step: 'you', time: 18, st: 0, zone: [M.x - 280, M.x + 280], caught: false, survived: false, tagT: 0 });
       ctl(p, tagRun(p, G));
@@ -304,6 +319,73 @@ const Arcade = (() => {
     Game.camFocus = { x: (M.x + p.x) / 2, y: Math.min(M.y, p.y) - 20, zoom: Math.abs(M.x - p.x) > 180 ? 1 : 1.15, speed: 3 };
   }
 
+
+  /* ---------- Sumo (the Boardwalk ring) ---------- */
+  // Mudkip and the champion lean into each other in the middle of the ring. Mash to shove; press right
+  // as the shrinking ring meets the target for a big BELLY BUMP. Watch out when the champ charges (!).
+  function* sumoBrain(p, G) { for (;;) { const dt = yield; p.o.clawN = 0.5 + Math.sin(G.t * 18) * 0.3 * (G.charge > 0 ? 1.6 : 0.6); p.o.clawF = 0.5 + Math.cos(G.t * 17) * 0.3; p.setAct('battle', 0.6); } }
+  function sumoWindow(G) { return G.ringT > 0.72 && G.ringT < 0.93; }
+  function sumoPush() {
+    const G = A.g, M = mk(); if (!G || G.step !== 'go' || G.over) return;
+    G.shoves++;
+    if (sumoWindow(G)) {
+      G.combo++; const k = 0.17 + Math.min(0.08, G.combo * 0.02);
+      G.pos += G.charge > 0 ? k * 1.4 : k; G.ringT = 0; G.pushK = 1; G.bump = 0.6;
+      Game.shake(3); Game.sfx('bonk', M.x, 0.9); FX.sparkles(G.RX + G.pos * G.RR, M.y - 14, 10, 18, WHITE, hex('#ffe070'));
+      FX.add({ type: 'ring', x: G.RX + G.pos * G.RR, y: M.y - 12, r0: 3, r1: 20, life: 0.35, c: WHITE, layer: 4 });
+      if (M.say) M.say(G.combo > 2 ? 'BELLY BUMP x' + G.combo + '!' : 'BELLY BUMP!', 0.8);
+      M.vair = 130; M.air = 0.3;
+    } else { G.pos += 0.035; G.pushK = Math.max(G.pushK, 0.4); Game.sfx('step', M.x, 0.5); }
+  }
+  function sumoAward(id) {
+    if (typeof Rewards === 'undefined') return;
+    const r = Rewards.grant(id); if (!r) return;
+    if (typeof Quests !== 'undefined') { Quests.Q.pops.push({ t: 0, life: 4.2, text: 'Sumo Champion!', reward: r }); Quests.Q.unseenN++; }
+    if (typeof Style !== 'undefined') Style.markNew(id);
+  }
+  function updateSumo(G, dt) {
+    const M = mk(), p = A.partner; if (!M || !p) return;
+    G.st += dt;
+    const face = () => { M.turn(M.face(1, false), dt, 10); p.turn(p.face(-1, false), dt, 10); };
+    if (G.step === 'intro') {
+      // walk to the marks, crouch, and go
+      const mx = G.RX - 18, px = G.RX + 18;
+      M.x += clamp(mx - M.x, -90 * dt, 90 * dt); p.x += clamp(px - p.x, -90 * dt, 90 * dt);
+      if (G.st > 0.8) face();
+      if (G.st > 2.2) { G.step = 'go'; G.st = 0; say(p, 'HAKKEYOI!', 1.2); Game.sfx('chime', G.RX, 0.8); }
+      Game.camFocus = { x: G.RX, y: gy(G.RX) - 30, zoom: 1.45 };
+      return;
+    }
+    if (G.step === 'go' && !G.over) {
+      G.ringT += dt / 1.05; if (G.ringT > 1) { G.ringT = 0; G.combo = 0; }
+      G.chargeT -= dt;
+      if (G.charge <= 0 && G.chargeT <= 0 && G.chargeT > -0.7) { if (!G.warned) { G.warned = true; if (p.emote) p.emote('anger', 0.8); say(p, '!!', 0.6); Game.sfx('error', p.x, 0.5); } }
+      else if (G.charge <= 0 && G.chargeT <= -0.7) { G.charge = 0.6; G.warned = false; Game.sfx('whoosh', p.x, 0.7); }
+      if (G.charge > 0) { G.charge -= dt; if (G.charge <= 0) G.chargeT = rnd(2.2, 4.2) - Math.min(1.2, G.st * 0.04); }
+      const push = 0.12 + Math.min(0.14, G.st * 0.008) + (G.charge > 0 ? 0.7 : 0);
+      G.pos -= push * dt;
+      G.pushK = Math.max(0, G.pushK - dt * 3); G.bump = Math.max(0, (G.bump || 0) - dt);
+      if (G.pos >= 1) {
+        G.step = 'done'; G.stats = Save.data.stats; const n = G.stats.sumo = (G.stats.sumo || 0) + 1;
+        p.vair = 260; p.air = 0.5; Game.shake(6); FX.confetti(p.x, p.y - 20, 30); Game.sfx('boing', p.x, 0.9);
+        say(p, pick(['*snip*... You are the champ now, shrimp.', 'NOOO! My belt!', 'Oof! What a belly!']), 2.4);
+        finish(true, n === 1 ? 'You beat the Belly-Flop Champion! The belt is yours!' : n === 3 ? 'Three wins! A true Yokozuna!' : 'Sumo win #' + n + '!', n === 1 ? 800 : 250);
+        if (n === 1) { sumoAward('fun.belt'); setTimeout(() => sumoAward('shirt.sumo'), 600); }
+        if (n === 3) sumoAward('hat.topknot');
+        Save.save();
+      } else if (G.pos <= -1) {
+        G.step = 'done'; M.vair = 240; M.air = 0.5; Game.shake(4); Game.sfx('bonk', M.x, 0.8);
+        say(p, pick(['OUT! Come back when your belly is bigger!', 'Hah! Nobody beats the champ!']), 2.2);
+        finish(false, 'Pushed out of the ring! Mash, and hit the ring for BELLY BUMPS.', 30);
+      }
+    }
+    // both wrestlers ride the push position (leaning into each other)
+    const cxp = G.RX + clamp(G.pos, -1.1, 1.1) * G.RR, wob = Math.sin(G.t * 26) * (G.charge > 0 ? 1.4 : 0.5);
+    if (G.step === 'go' || G.over < 0.3) { M.x = cxp - 13 - G.pushK * 2 + wob; p.x = cxp + 13 + wob; }
+    face();
+    Game.camFocus = { x: G.RX + G.pos * 20, y: gy(G.RX) - 30, zoom: 1.5 - (G.over ? 0.15 : 0), speed: 4 };
+  }
+
   /* ---------- per-frame ---------- */
   function update(dt) {
     A.bars = clamp(A.bars + (A.live ? dt : -dt) * 3, 0, 1);
@@ -329,6 +411,7 @@ const Arcade = (() => {
     else if (G.id === 'rope') updateRope(G, dt);
     else if (G.id === 'seek') updateSeek(G, dt);
     else if (G.id === 'tag') updateTag(G, dt);
+    else if (G.id === 'sumo') updateSumo(G, dt);
   }
   // Mudkip's controls while playing: returns true when the game drives Mudkip (no free movement)
   function freeMove() { const G = A.g; return !!(A.live && G && !G.over && ((G.id === 'tag' && (G.step === 'you' || G.step === 'them')) || (G.id === 'seek' && G.step === 'search'))); }
@@ -352,6 +435,7 @@ const Arcade = (() => {
     }
     if (!G || G.over) { if (G && G.over > 0.8 && k === 'ok') toMenu(); return; }
     if (G.id === 'battle' && typeof k === 'number' && k < 3) battlePick(k);
+    if (G.id === 'sumo' && (k === 'ok' || k === 'up' || k === 'right')) sumoPush();
     if (G.id === 'rope' && k === 'ok' && G.step === 'go') { const M = mk(); M.jumpPress(); A.jumpT = 0.2; }
     if (G.id === 'seek' && (k === 'ok' || k === 'search')) { const i = nearestBush(G); if (i >= 0) search(i); else HUD.toast('Walk up to a bush to search it!', { life: 1.4 }); }
   }
@@ -372,7 +456,7 @@ const Arcade = (() => {
     if (!A.live) return false;
     for (const b of A.btns) if (ux >= b.x && ux < b.x + b.w && uy >= b.y && uy < b.y + b.h) { b.fn(); return true; }
     const G = A.g;
-    if (G && G.id === 'rope' && !G.over) { act('ok'); return true; }
+    if (G && (G.id === 'rope' || G.id === 'sumo') && !G.over) { act('ok'); return true; }
     if (freeMove()) return false; // the joystick / tap-to-walk still work
     return true;
   }
@@ -383,6 +467,13 @@ const Arcade = (() => {
     const G = A.g;
     if (G && G.id === 'rope' && G.step !== 'intro') { if (back) { if (G.stake !== undefined) drawStake(fb, cx, cy, G.stake); drawRope(fb, cx, cy, G, false); } else drawRope(fb, cx, cy, G, true); }
     if (back) return;
+    if (G && G.id === 'sumo' && G.step === 'go' && !G.over) {
+      const M = mk(), X = Math.round(G.RX + G.pos * G.RR - cx), Y = Math.round(M.y - 44 - cy);
+      const r = Math.round(4 + (1 - G.ringT) * 20), hit = sumoWindow(G), tc = hit ? 0xff5aff7a : 0xffffffff;
+      for (let a = 0; a < 6.283; a += 0.12) UI.put(fb, X + Math.round(Math.cos(a) * 7), Y + Math.round(Math.sin(a) * 7), hit ? 0xff5aff7a : 0xffa0f0ff);
+      for (let a = 0; a < 6.283; a += 0.5 / Math.max(3, r)) UI.put(fb, X + Math.round(Math.cos(a) * r), Y + Math.round(Math.sin(a) * r), G.charge > 0 ? 0xff4a6aff : tc);
+      if (hit) UI.disc(fb, X, Y, 3, 0xff5aff7a);
+    }
     // flying attacks
     for (const f of A.fx) {
       const X = Math.round(f.x - cx), Y = Math.round(f.y - cy), c1 = hex(f.type.col), c2 = hex(f.type.c2), r = 4 + Math.round(Math.sin(t * 20) * 0.6);
@@ -452,6 +543,15 @@ const Arcade = (() => {
         if (typeof Pad !== 'undefined' && Pad.touch) { const sw = 58, sx = W - sw - 10, sy = H - bh - 70; btn(fb, sx, sy, sw, 22, 'SEARCH', '#4ac860', () => act('search')); }
         const i = nearestBush(G); if (i >= 0) { const b = G.bushes[i], [ux, uy] = Talk.toUI(b.x, gy(b.x) - 30); Font.draw(fb, '?', Math.round(ux), Math.round(uy + Math.sin(t * 6) * 2), 0xffffe070, { font: 'title', align: 'center', outline: INK }); }
       }
+    } else if (G.id === 'sumo') {
+      title(G.step === 'intro' ? 'SUMO: Belly-Flop Champion' : G.charge > 0 ? 'CHARGE! Hold on!' : 'Hakkeyoi!', G.charge > 0 ? hex('#ff8a8a') : hex('#ffe070'));
+      // the ring as a bar: where the two wrestlers stand
+      const bw = Math.min(200, W - 40), bx = Math.round(W / 2 - bw / 2), byy = bh + 6, k = (clamp(G.pos, -1, 1) + 1) / 2;
+      UI.rect(fb, bx - 1, byy - 1, bw + 2, 8, INK); UI.rect(fb, bx, byy, bw, 6, 0xff5a86b8);
+      UI.rect(fb, bx, byy, Math.round(bw * 0.08), 6, 0xff4a4aff); UI.rect(fb, bx + bw - Math.round(bw * 0.08), byy, Math.round(bw * 0.08), 6, 0xff4a4aff);
+      UI.rect(fb, bx + Math.round(bw * k) - 2, byy - 2, 4, 10, WHITE);
+      Font.draw(fb, 'You', bx - 4, byy - 1, 0xffffe0a0, { font: 'small', align: 'right', outline: INK }); Font.draw(fb, 'Champ', bx + bw + 4, byy - 1, 0xffa0c0ff, { font: 'small', outline: INK });
+      foot(G.step === 'intro' ? 'Mash Space / tap to shove. Hit when the ring is GREEN!' : 'Space / tap!  Green ring = BELLY BUMP' + (G.combo > 1 ? '  combo x' + G.combo : ''));
     } else if (G.id === 'tag') {
       const T = Math.max(0, G.time);
       title(G.step === 'you' ? 'You\'re it! Catch ' + nameOf(p) + '!' : G.step === 'them' ? 'Run! ' + nameOf(p) + ' is it!' : 'Tag!', G.step === 'them' ? hex('#ff8a8a') : WHITE);
@@ -467,5 +567,5 @@ const Arcade = (() => {
     }
   }
   U.on && U.on('area', () => { A.live = false; A.phase = 'off'; A.g = null; A.bars = 0; A.fx.length = 0; A.partner = A.partner2 = null; Game.camFocus = null; });
-  return Object.assign(A, { open, leave, update, drive, freeMove, key, down, drawWorld, drawUI, GAMES });
+  return Object.assign(A, { open, challenge, leave, update, drive, freeMove, key, down, drawWorld, drawUI, GAMES });
 })();

@@ -27,13 +27,13 @@ const Wild = (() => {
     pose: (m, st) => ({ walk: st.mv ? st.ph : 0, crouch: 0, mouth: 0, side: 3 * Math.cos(m.yaw) }),
     acts: [{ id: 'mudplay', w: 2, T: [1.6, 2.6], sfx: 'mud', p: (m, k) => ({ crouch: Math.abs(Math.sin(k * 9)), mouth: 0.6 }), fx: (m) => { if (Math.random() < 0.2) FX.add({ type: 'drop', x: m.x + rnd(-8, 8), y: m.y - 4, vx: rnd(-40, 40), vy: -rnd(40, 80), g: 400, life: 0.6, c: 0xff3a5a7a, size: 1, floor: World.groundAt(m.x), layer: 2 }); } },
       { id: 'flex', w: 1, T: 1.5, face: 0.8, p: () => ({ mouth: 1, eyes: 'happy' }) }] });
-  E.def('swampert', { sp: 'Swampert', scale: 0.5, speed: 36, persona: 'calm', diet: true, active: 'any', alert: 0.6,
+  E.def('swampert', { sp: 'Swampert', scale: 0.44, speed: 36, persona: 'calm', diet: true, active: 'any', alert: 0.6,
     pose: (m, st) => ({ walk: st.mv ? st.ph : 0, crouch: 0, roar: 0, mouth: 0 }),
     acts: [{ id: 'roar', w: 1, T: 1.8, face: 0.7, sfx: 'roar', vol: 0.4, cry: true, p: (m, k) => ({ roar: Math.sin(k * Math.PI), mouth: Math.sin(k * Math.PI) }), fx: (m, k) => { if (k > 0.3 && k < 0.6) Game.shake(0.6); } },
       { id: 'guard', w: 2, T: [2, 3], p: () => ({ crouch: 0.8, eyes: 'open' }) },
       { id: 'mudshot', w: 1, T: 1.2, sfx: 'mud', p: (m, k) => ({ mouth: k < 0.5 ? 1 : 0, crouch: 0.4 }), fx: (m, k, dt) => { if (Math.random() < dt * 30) FX.add({ type: 'drop', x: m.x + Math.cos(m.yaw) * 14, y: m.y - 22, vx: Math.cos(m.yaw) * rnd(120, 200), vy: -rnd(20, 60), g: 300, life: 0.8, c: 0xff2a4a6a, c2: 0xff3a6a8a, size: 2, floor: World.groundAt(m.x), layer: 3 }); } }] });
   // ---- the Marill family (Weather Woods pond) ----
-  E.def('azurill', { sp: 'Azurill', scale: 0.3, speed: 30, persona: 'curious', baby: true, hopper: 150, active: 'day', diet: true, leash: 56,
+  E.def('azurill', { sp: 'Azurill', scale: 0.38, speed: 30, persona: 'curious', baby: true, hopper: 150, active: 'day', diet: true, leash: 56,
     pose: (m, st) => ({ walk: st.mv ? st.ph : 0, bounce: st.air > 0.5 ? 1 : 0.2 + 0.2 * Math.sin(st.t * 5 + m.seed), mouth: 0.3 }),
     acts: [{ id: 'bounce', w: 3, T: [1.4, 2], hop: 240, sfx: 'boing', p: (m, k) => ({ bounce: 1 - k, eyes: 'happy', mouth: 0.8 }) },
       { id: 'tailspin', w: 1, T: 1.2, p: (m, k) => ({ eyes: 'happy' }), fx: (m, k) => { m.rot = Math.sin(k * Math.PI * 2) * 0.3; }, after: (m) => { m.rot = 0; } }],
@@ -261,8 +261,8 @@ const Wild = (() => {
     E.add(G, 'swampert', 1060, { range: 200 });
     E.add(G, 'wynaut', 640, { range: 180 }); E.add(G, 'wynaut', 700, { range: 180 });
     E.add(G, 'crawdaunt', 1100, { range: 260 });
-    E.add(G, 'vibrava', 4020, { range: 200 }); E.add(G, 'vibrava', 4280, { range: 160 });
-    E.add(G, 'flygon', 4460, { range: 220 });
+    E.add(G, 'vibrava', 4620, { range: 200 }); E.add(G, 'vibrava', 4880, { range: 160 });
+    E.add(G, 'flygon', 5060, { range: 220 });
     const h = Game.hour();
     if (h === 'night' || h === 'dusk') E.add(G, 'starmie', 2000, { box: { x0: 1500, x1: 2600, y0: World.SEA + 30, y1: World.SEA + 160 } });
   });

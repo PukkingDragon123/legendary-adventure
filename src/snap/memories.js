@@ -313,7 +313,7 @@ const Memories = (() => {
     /* ---------------- VI · Groudon ---------------- */
     groudon: {
       no: 'VI', title: 'The Land Awakens', who: 'Groudon', trigger: 'groudon.woke', reward: 'pts:1500', delay: 7000,
-      cast: Object.assign({ gro: { sp: 'Groudon', scale: 0.9, yaw: 1.2, pose: { eyes: 'open', glow: 1 } }, groRoar: { sp: 'Groudon', scale: 0.9, yaw: 1.2, pose: { eyes: 'open', glow: 1, roar: 1, mouth: 1 } } }, mkPoses),
+      cast: Object.assign({ gro: { sp: 'Groudon', scale: 0.44, yaw: 1.2, pose: { eyes: 'open', glow: 1 } }, groRoar: { sp: 'Groudon', scale: 0.44, yaw: 1.2, pose: { eyes: 'open', glow: 1, roar: 1, mouth: 1 } } }, mkPoses),
       shots: [
         { d: 3, title: true, draw: (fb, k, t) => { vgrad(fb, [[0, '#1a0404'], [1, '#3a0a04']]); }, sfx: [[0.3, 'rumble']] },
         { d: 4.6, say: ['', '(The ground is warm... and beating, like a giant heart.)'], shake: [0.5, 2], draw: (fb, k, t, C) => {
@@ -339,7 +339,7 @@ const Memories = (() => {
     /* ---------------- VII · Regice ---------------- */
     regice: {
       no: 'VII', title: 'The Iceberg Giant', who: 'Regice', trigger: 'regice.woke', reward: 'pts:1500', delay: 6000,
-      cast: Object.assign({ reg: { sp: 'Regice', scale: 1.1, yaw: Math.PI / 2 - 0.15, pose: { awake: 1, glow: 1 } }, regArms: { sp: 'Regice', scale: 1.1, yaw: Math.PI / 2 - 0.15, pose: { awake: 1, glow: 1, arms: 1 } } }, mkPoses),
+      cast: Object.assign({ reg: { sp: 'Regice', scale: 0.75, yaw: Math.PI / 2 - 0.15, pose: { awake: 1, glow: 1 } }, regArms: { sp: 'Regice', scale: 0.75, yaw: Math.PI / 2 - 0.15, pose: { awake: 1, glow: 1, arms: 1 } } }, mkPoses),
       shots: [
         { d: 3, title: true, draw: (fb) => { vgrad(fb, [[0, '#020818'], [1, '#0a2244']]); }, sfx: [[0.4, 'icering']] },
         { d: 5, say: ['', '(Seven dots... glowing in the ice, one after another.)'], draw: (fb, k, t, C) => {

@@ -167,6 +167,7 @@ const Talk = (() => {
   // tap a Pokémon next to Mudkip: quest givers open the dialogue box, everyone else chats
   function tryTalk(m) {
     if (T.dlg || !(m instanceof Mons.Mon)) return false;
+    for (const h of T.hooks) if (h(m)) return true;
     const q = giverQuest(m);
     if (q) {
       const nm = DexData.S[q.giver] ? DexData.S[q.giver].name : q.giver;
@@ -359,5 +360,6 @@ const Talk = (() => {
   }
   function reset() { T.bubbles.length = 0; T.dlg = null; }
   U.on && U.on('area', reset);
+  T.hooks = [];
   return Object.assign(T, { QUESTS, CHAT, bubble, drawBubbles, open, down, key, busy, update, drawDialog, tryTalk, event, progress, giverOf, ready, qState, chatter, toUI });
 })();

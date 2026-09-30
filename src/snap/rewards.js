@@ -75,6 +75,12 @@ const Rewards = (() => {
     'neck.lei': { slot: 'neck', name: 'Flower Lei', desc: 'Aloha from Coral Cove!' },
     'fun.floaties': { slot: 'fun', name: 'Arm Floaties', desc: 'Safety first. Even for a Water type.' },
     'fun.ring': { slot: 'fun', name: 'Swim Ring', desc: 'Mudkip can swim. It just likes the ring.' },
+    'hat.mail': { slot: 'hat', name: 'Postman Cap', desc: 'Official Pelipper Post headwear.' },
+    'shirt.postal': { slot: 'shirt', name: 'Postal Uniform', desc: 'Sky blue. Neither rain nor Ice Beam stops it.' },
+    'neck.mailbag': { slot: 'neck', name: 'Mail Satchel', desc: 'Holds letters, snacks and one confused Wingull feather.' },
+    'shirt.sumo': { slot: 'shirt', name: 'Sumo Mawashi', desc: 'Won in the Boardwalk ring. Very serious business.' },
+    'hat.topknot': { slot: 'hat', name: 'Sumo Topknot', desc: 'A proper rikishi hairdo.' },
+    'fun.belt': { slot: 'fun', name: 'Champion Belt', desc: 'Belly-Flop Champion of Coral Cove. Undisputed.' },
   };
   const SLOTS = [['hat', 'Hats'], ['shirt', 'Shirts'], ['glasses', 'Shades'], ['neck', 'Neck'], ['shoes', 'Shoes'], ['fun', 'Fun'], ['skin', 'Skins'], ['banner', 'Banners'], ['key', 'Charms'], ['deco', 'Frames']];
   const name = (id) => (C[id] ? C[id].name : id);

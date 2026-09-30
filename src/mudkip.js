@@ -31,9 +31,9 @@ const Mudkip = (() => {
   const BODY = 1, BELLY = 2, JAW = 3, FIN = 4, FINEDGE = 5, TAIL = 6, GILL = 7, MOUTH = 8, TONGUE = 9;
   // cosmetic material ids (10..25)
   const RED = 10, WHITE = 11, NAVY = 12, YELLOW = 13, SPHEAL = 14, CREAM = 15, PINK = 16, GREEN = 17,
-    GOLD = 18, MAGENTA = 19, ORANGE = 20, STRAW = 21, DARK = 22, LENS = 23, METAL = 24, SHADE = 25;
+    GOLD = 18, MAGENTA = 19, ORANGE = 20, STRAW = 21, DARK = 22, LENS = 23, METAL = 24, SHADE = 25, BROWN = 26, SKY = 27;
   const MAT = { BODY, BELLY, JAW, FIN, FINEDGE, TAIL, GILL, MOUTH, TONGUE,
-    RED, WHITE, NAVY, YELLOW, SPHEAL, CREAM, PINK, GREEN, GOLD, MAGENTA, ORANGE, STRAW, DARK, LENS, METAL, SHADE };
+    RED, WHITE, NAVY, YELLOW, SPHEAL, CREAM, PINK, GREEN, GOLD, MAGENTA, ORANGE, STRAW, DARK, LENS, METAL, SHADE, BROWN, SKY };
   const code = (m, bias = 0) => m | ((bias + 2) << 5);
 
   /* Base ("noon") palette. Each ramp: [deep, shadow, base, light, highlight], plus
@@ -66,6 +66,8 @@ const Mudkip = (() => {
     [LENS]:    { r: [H('#0e1c44'), H('#1a3672'), H('#2c5ca4'), H('#58a0d8'), H('#d6f4ff')], od: H('#07102c'), ol: H('#132656'), ln: H('#132656') },
     [METAL]:   { r: [H('#5a6474'), H('#808c9e'), H('#a8b2c2'), H('#d0d8e4'), H('#f6f9fc')], od: H('#262c3a'), ol: H('#465062'), ln: H('#4a5466') },
     [SHADE]:   { r: [H('#36102e'), H('#561846'), H('#7c285c'), H('#ae4a88'), H('#f2acd8')], od: H('#1e0818'), ol: H('#3e1030'), ln: H('#3e1030') },
+    [BROWN]:   { r: [H('#4a2a16'), H('#6e3e20'), H('#935a30'), H('#b87c48'), H('#dcae7e')], od: H('#28140a'), ol: H('#4a2812'), ln: H('#532e16') },
+    [SKY]:     { r: [H('#3a6c9c'), H('#5890c0'), H('#80b4e0'), H('#aad2f2'), H('#dcf0ff')], od: H('#1a3658'), ol: H('#305a86'), ln: H('#3a6690') },
   };
   const GLOSSY = { [BODY]: 1, [FIN]: 1, [GILL]: 1, [BELLY]: 0, [JAW]: 1, [TAIL]: 0, [FINEDGE]: 0,
     [GOLD]: 1, [DARK]: 1, [LENS]: 1, [METAL]: 1, [SHADE]: 1 };
@@ -393,6 +395,25 @@ const Mudkip = (() => {
 
   /* ---- hats (head frame h; sd = pose.side for camera-facing cheats) ---- */
   const HATS = {
+    // postman's cap: navy crown, a stiff black visor out front and a gold horn badge
+    mail(h, add) {
+      const cf = chain(h, T(0.4, 8.6, 0), R(M3.rz(-0.06)));
+      add(eA(cf, [13.2, 8.2, 14.6], G.HAT, (s) => {
+        if (s[1] < -0.02) return 0;
+        if (s[1] < 0.26) return K(DARK, 1);
+        if (s[0] > 0.78 && Math.abs(s[2]) < 0.22 && s[1] < 0.62) return K(GOLD, s[1] > 0.45 ? 1 : 0);
+        return K(NAVY);
+      }));
+      add(eA(chain(cf, T(0, 6.2, 0)), [13.6, 2.6, 15.0], G.HAT2, () => K(NAVY, 1)));
+      add(eAx(cf, [11.8, 0.6, 0], basis([0.18, 1, 0]), [9.2, 7.4, 1.0], G.HAT3, (s) => (s[0] < -0.1 ? 0 : K(DARK, s[0] > 0.8 ? 1 : 0))));
+    },
+    // sumo topknot: a glossy black chonmage folded over the crown, tied with white cord
+    topknot(h, add) {
+      const b = headPt(V3.norm([-0.25, 1, 0]), 0.2).p;
+      add(eA(chain(h, T(b[0], b[1], b[2])), [7.4, 3.2, 6.6], G.HAT, () => K(DARK)));
+      add(eA(chain(h, T(b[0] + 5.6, b[1] + 3.0, b[2]), R(M3.rz(-0.5))), [5.2, 2.2, 2.6], G.HAT2, (s) => K(DARK, s[1] > 0.4 ? 2 : 0)));
+      add(eA(chain(h, T(b[0] + 1.4, b[1] + 2.4, b[2])), [1.2, 1.6, 2.9], G.HAT3, () => K(WHITE, 1)));
+    },
     // Spheal-blue knit beanie: cream cuff, Spheal's white spots, pom-pom behind the head fin
     beanie(h, add) {
       const n = V3.norm([-0.12, 1, 0]), d = 0.28;
@@ -583,6 +604,33 @@ const Mudkip = (() => {
   const sparkle = (s, n = 9) => hash3(Math.floor(s[0] * n + 50), Math.floor(s[1] * n + 50), Math.floor(s[2] * n + 50)) < 0.09;
   const HOOD_OPEN = V3.norm([0.62, 0.78, 0]);
   const SHIRTS = {
+    // postal uniform: a navy jacket with a sky-blue collar, gold buttons down the front and a white breast pocket
+    postal: {
+      x0: -0.5, slvY: -2.4, slvR: [4.2, 3.2, 4.0],
+      body(s, hem) {
+        if (hem) return K(GOLD, -1);
+        if (s[0] > 0.72 && s[1] > 0.2) return K(SKY, 1);
+        if (s[0] > 0.9 && Math.abs(s[2]) < 0.08 && Math.floor((s[1] + 1) * 7) % 2 === 0) return K(GOLD, 1);
+        if (Math.abs(s[2]) > 0.55 && s[0] > 0.1 && s[0] < 0.42 && s[1] > -0.2 && s[1] < 0.18) return K(WHITE, s[1] > 0.1 ? -1 : 0);
+        return K(NAVY, 1);
+      },
+      sleeve: (s) => (s[1] < -0.55 ? K(GOLD, -1) : K(NAVY, 1)),
+    },
+    // sumo mawashi: a thick navy band round the middle, a knot at the back and the stiff sagari fringe hanging in front
+    sumo: {
+      x0: -1.2, noSleeve: true,
+      body(s) {
+        if (s[1] > -0.02 || s[1] < -0.62) return 0;
+        return K(NAVY, s[1] > -0.12 ? 1 : s[1] < -0.52 ? -1 : 0);
+      },
+      extra(body, add) {
+        add(eA(chain(body, T(-14.2, -3.6, 0)), [3.4, 3.8, 4.4], G.SHIRT2, () => K(NAVY, -1)));
+        for (let i = -3; i <= 3; i++) {
+          const z = i * 2.0, x = 14.6 - Math.abs(i) * 0.9;
+          add(rodA(body, [x, -6.4, z], [x + 0.6, -11.0, z * 1.05], 0.55, G.SHIRT2, () => K(NAVY, 1)));
+        }
+      },
+    },
     heart: {
       x0: -0.52, slvY: -2.4, slvR: [4.2, 3.2, 4.0],
       body(s, hem) {
@@ -638,7 +686,7 @@ const Mudkip = (() => {
   function shirt(kind, body, legs, add) {
     const S = SHIRTS[kind];
     add(eA(body, SHIRT_R, G.SHIRT, (s) => (s[0] < S.x0 ? 0 : S.body(s, s[0] < S.x0 + 0.075))));
-    for (const id of [2, 3]) add(eA(chain(legs[id], T(0.25, S.slvY, 0)), S.slvR, id === 2 ? G.SLV2 : G.SLV3, S.sleeve));
+    if (!S.noSleeve) for (const id of [2, 3]) add(eA(chain(legs[id], T(0.25, S.slvY, 0)), S.slvR, id === 2 ? G.SLV2 : G.SLV3, S.sleeve));
     if (S.extra) S.extra(body, add);
   }
 
@@ -712,6 +760,15 @@ const Mudkip = (() => {
         }
       }
     }
+    if (P.neck === 'mailbag') {
+      // a leather satchel slung across the body, an envelope peeking out of the flap
+      add(rodA(body, [8.6, 9.6, -9.0], [14.2, 3.0, 2.0], 0.8, G.NECK2, () => K(BROWN, -1)));
+      add(rodA(body, [14.2, 3.0, 2.0], [4.0, -5.0, 11.8], 0.8, G.NECK2, () => K(BROWN, -1)));
+      const bq = [2.0, -5.2, 12.2];
+      add(eAx(body, bq, basis([0, 0.05, 1]), [7.6, 6.0, 2.6], G.NECK, (s) => K(BROWN, s[1] > 0.3 ? 1 : 0)));
+      add(eAx(body, V3.add(bq, [0, 2.4, 1.5]), basis([0, 0.2, 1]), [7.4, 3.2, 1.0], G.NECK3, (s) => (Math.hypot(s[0], s[1]) < 0.28 ? K(GOLD, 1) : K(BROWN, -1))));
+      add(eAx(body, V3.add(bq, [-2.8, 6.2, -0.4]), basis([0, 0, 1]), [3.6, 2.2, 0.5], G.NECK2, (s) => (Math.abs(s[0] + s[1]) < 0.12 || Math.abs(s[0] - s[1]) < 0.12 ? K(RED) : K(WHITE, 1))));
+    }
     if (P.neck === 'medal') {
       // a champion's gold medal on a blue ribbon
       for (const sz of [1, -1]) add(rodA(body, [10.5, 7, 9 * sz], [16.4, -1, 1.6 * sz], 0.7, G.NECK2, () => K(NAVY)));
@@ -726,7 +783,20 @@ const Mudkip = (() => {
       for (const id of [2, 3]) { const f = legs[id]; if (!f) continue; add(eA(chain(f, T(0.2, -2.6, 0)), [4.6, 2.6, 4.4], id === 2 ? G.FUN : G.FUN2, (s) => K(Math.abs(s[1]) < 0.25 ? WHITE : ORANGE, s[1] > 0.5 ? 1 : 0))); }
     }
     // fun extras
-    if (P.fun === 'ring') {
+    if (P.fun === 'belt') {
+      // the Sumo Champion's belt: red leather round the tummy, a big gold plate with a ruby on each side
+      for (let i = 0; i < 20; i++) {
+        const a = (i / 20) * Math.PI * 2;
+        add(eA(chain(body, T(Math.cos(a) * 15.0, -2.6, Math.sin(a) * 11.2)), [2.6, 2.4, 2.6], G.FUN, () => K(RED, -1)));
+      }
+      for (const sz of [1, -1]) {
+        add(eAx(body, [2.0, -2.6, 12.2 * sz], basis([0, 0, sz]), [6.4, 4.6, 1.2], G.FUN2, (s) => {
+          const r = Math.hypot(s[0], s[1]);
+          return r < 0.3 ? K(RED, 2) : r > 0.84 ? K(GOLD, -1) : K(GOLD, sparkle(s, 6) ? 2 : 1);
+        }));
+        for (const dx of [-8.2, 8.2]) add(eAx(body, [2.0 + dx, -2.6, 11.4 * sz], basis([dx * 0.04, 0, sz]), [2.2, 3.0, 0.9], G.FUN2, () => K(GOLD)));
+      }
+    } else if (P.fun === 'ring') {
       // a striped swim ring round the tummy
       for (let i = 0; i < 18; i++) {
         const a = (i / 18) * Math.PI * 2;
@@ -845,5 +915,12 @@ const Mudkip = (() => {
     return out;
   }
 
-  return { build, render, BASE_PAL, PAL: BASE_PAL, gradePalette, MAT, EYES, meta: { heightM: 0.4, bw: 112, bh: 112, oy: 0.86 } };
+  // just the accessory prims on a bare head frame (no Mudkip), so other Pokémon can wear the same 3D hats and shades
+  function accModel(P) {
+    const I = F(M3.I(), [0, 0, 0]), prims = [], anchors = {}, pri = {};
+    dress(Object.assign({ side: 1 }, P), { body: I, head: I, legs: {}, gside: 1 }, prims, anchors, pri);
+    return { prims, anchors, pose: P, stamps: [], dots: [], pri, glossy: GLOSSY, baseMat: BODY };
+  }
+
+  return { build, render, accModel, BASE_PAL, PAL: BASE_PAL, gradePalette, MAT, EYES, meta: { heightM: 0.4, bw: 112, bh: 112, oy: 0.86 } };
 })();

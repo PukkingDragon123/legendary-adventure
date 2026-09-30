@@ -62,7 +62,7 @@ const Harvest = (() => {
     volcano: { land: ['ashT', 'dune'], flowers: ['flY', 'flP'], items: ['gem', 'starp', 'shroom'], motes: 'dust', rocks: 'rock', sparse: 0.7 },
     shoal: { land: ['snowT'], flowers: ['flB', 'flW'], items: ['shell', 'gem', 'pearl'], motes: 'dust', rocks: 'rockW', crystals: true, sparse: 0.6 },
   };
-  const TMS = { beach: [{ id: 'bubble', x: 2520 }, { id: 'ice', x: 4720 }], forest: [{ id: 'dig', x: 2150 }], canopy: [{ id: 'growl', x: 3215 }], falls: [{ id: 'smash', x: 3470 }] };
+  const TMS = { beach: [{ id: 'bubble', x: 2520 }, { id: 'ice', x: 5320 }], forest: [{ id: 'dig', x: 2150 }], canopy: [{ id: 'growl', x: 3215 }], falls: [{ id: 'smash', x: 3470 }] };
   const ITEM = {
     berry: { name: 'Oran Berry', inv: 'berry' }, shell: { name: 'Pretty Shell', inv: 'shell' }, pearl: { name: 'Pearl', inv: 'pearl' },
     shroom: { name: 'Tiny Mushroom', inv: 'mushroom' }, shroomG: { name: 'Glowing Mushroom', inv: 'mushroom' }, gem: { name: 'Shiny Gem', inv: 'gem' }, starp: { name: 'Star Piece', inv: 'stardust' },
@@ -127,7 +127,7 @@ const Harvest = (() => {
     }
     // berry bushes
     const pk = PLANTS[id] || ['oran'];
-    for (let x = 160; x < W - 120; x += 220 + r() * 260) {
+    for (let x = 140; x < W - 120; x += 120 + r() * 170) {
       if (surfaceKind(x) !== 'land' || World.platAt(x)) continue;
       H.items.push({ kind: 'plant', berry: pk[(r() * pk.length) | 0], x, y: World.groundAt(x) - 1, ripe: 1 + ((r() * 3) | 0), grow: 0, t: 0, taken: 0, ph: r() * 6 });
     }
@@ -363,6 +363,14 @@ const Harvest = (() => {
   const putO = (fb, x, y, c, occ, v) => { if (x >= 0 && y >= 0 && x < fb.w && y < fb.h) { const i = y * fb.w + x; fb.d[i] = c; if (occ) occ[i] = v; } };
   const blend = (fb, x, y, c, a) => { if (x >= 0 && y >= 0 && x < fb.w && y < fb.h) { const i = y * fb.w + x; fb.d[i] = U.mix(fb.d[i], c, a); } };
   const glow = (fb, x, y, c, r, a) => { for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) { const d = Math.hypot(xx, yy); if (d > r) continue; const X = x + xx, Y = y + yy; if (X < 0 || Y < 0 || X >= fb.w || Y >= fb.h) continue; const i = Y * fb.w + X; fb.d[i] = U.screen(fb.d[i], c, a * (1 - d / r)); } };
+  // a four-point sparkle that blinks on and off above pick-ups (brighter with the Glow Colada)
+  function twinkle(fb, x, y, t, ph) {
+    const boost = typeof Boardwalk !== 'undefined' && Boardwalk.glowT > 0;
+    const k = Math.sin(t * 2.1 + ph * 3); if (k < (boost ? 0.1 : 0.55)) return;
+    const n = k > 0.9 || boost ? 2 : 1, c = 0xffffffff, c2 = 0xfff0f8ff;
+    put(fb, x, y, c); for (let j = 1; j <= n; j++) { put(fb, x - j, y, c2); put(fb, x + j, y, c2); put(fb, x, y - j, c2); put(fb, x, y + j, c2); }
+    if (boost) glow(fb, x, y, 0xfffff0c0, 6, 0.3);
+  }
   function first(arr, x) { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m].x < x) lo = m + 1; else hi = m; } return lo; }
   // items lying on the ground (drawn before the water so seabed ones get the water tint)
   function draw(fb, cx, cy, t) {
@@ -390,12 +398,24 @@ const Harvest = (() => {
     const o = it.under ? 1 : 2;
     switch (it.kind) {
       case 'plant': {
-        // a leafy berry bush with its ripe berries
-        const bm = (BERRY[it.berry] || BERRY.oran).mat, sw = Math.sin(t * 1.5 + it.ph) * 0.6;
-        for (let k = 0; k < 9; k++) { const a = -Math.PI / 2 + (k - 4) * 0.33, L = 6 + (k % 3) * 2; for (let j = 0; j < L; j++) { const q = j / L; putO(fb, Math.round(X + Math.cos(a) * j * 0.9 + sw * q), Math.round(Y + Math.sin(a) * j), C('stem', 0.25 + q * 0.7), occ, o); } }
-        for (let k = 0; k < 7; k++) { const lx = X + Math.round(Math.cos(k * 0.9) * 5 + sw), ly = Y - 4 - ((k * 3) % 6); putO(fb, lx, ly, C('leafB', 0.6), occ, o); putO(fb, lx + 1, ly, C('leafB', 1), occ, o); putO(fb, lx, ly + 1, C('leafB', 0.2), occ, o); }
-        const spots = [[-4, -6], [3, -8], [0, -11]];
-        for (let n = 0; n < it.ripe; n++) { const [bx, by] = spots[n]; for (let yy = -1; yy <= 1; yy++) for (let xx = -1; xx <= 1; xx++) putO(fb, X + bx + xx + Math.round(sw), Y + by + yy, C(bm, xx + yy < 0 ? 0.9 : 0.4), occ, o); put(fb, X + bx - 1 + Math.round(sw), Y + by - 1, 0xffffffff); }
+        // a big round berry bush: a shaded leaf mound with a dark rim, leaf tufts on top and plump glossy berries
+        const bm = (BERRY[it.berry] || BERRY.oran).mat, sw = Math.sin(t * 1.5 + it.ph) * 0.8, RX = 13, RY = 10, cyB = Y - RY + 1;
+        for (let yy = -RY; yy <= RY; yy++) for (let xx = -RX - 1; xx <= RX + 1; xx++) {
+          const lob = 1 + Math.sin(Math.atan2(yy, xx) * 5 + it.ph) * 0.08;
+          const d = (xx * xx) / (RX * RX) + (yy * yy) / (RY * RY);
+          if (d > lob || (yy > RY - 2 && d > 0.7)) continue;
+          const sx = xx + Math.round(sw * (1 - (yy + RY) / (2 * RY)));
+          const lit = clamp(0.62 - yy / RY * 0.3 - xx / RX * 0.22 + (U.hash(xx + (it.x | 0), yy, 3) - 0.5) * 0.25, 0, 1);
+          putO(fb, X + sx, cyB + yy, d > lob - 0.16 ? C('leafB', 0.05) : C('leafB', lit), occ, o);
+        }
+        for (let k = 0; k < 7; k++) { const lx = X + Math.round((k - 3) * 3.4 + sw * 1.4), ly = cyB - RY + 1 + Math.abs(k - 3) * 0.9; putO(fb, lx, Math.round(ly) - 1, C('leafB', 0.95), occ, o); putO(fb, lx + 1, Math.round(ly), C('leafB', 0.8), occ, o); putO(fb, lx, Math.round(ly), C('leafB', 0.7), occ, o); }
+        const spots = [[-6, -8], [5, -12], [0, -16], [-9, -14], [8, -5]], nB = Math.min(5, it.ripe * 2 - 1);
+        for (let n = 0; n < nB; n++) {
+          const [bx, by] = spots[n], BX = X + bx + Math.round(sw), BY = Y + by;
+          for (let yy = -2; yy <= 2; yy++) for (let xx = -2; xx <= 2; xx++) { const q = xx * xx + yy * yy; if (q > 5) continue; putO(fb, BX + xx, BY + yy, q > 3.5 ? C(bm, 0.1) : C(bm, clamp(0.75 - (xx + yy) * 0.14, 0, 1)), occ, o); }
+          put(fb, BX - 1, BY - 1, 0xffffffff); put(fb, BX, BY - 3, C('leafB', 0.9));
+        }
+        if (it.ripe > 0 && Math.sin(t * 2 + it.ph) > 0.7) glow(fb, X + spots[0][0], Y + spots[0][1], C(bm, 1), 6, 0.25);
         break;
       }
       case 'berry': {
@@ -406,12 +426,14 @@ const Harvest = (() => {
       }
       case 'shell': {
         const m = ['..a..', '.aba.', 'abcba', 'bcdcb'];
+        glow(fb, X, Y - 2, 0xffe8f0ff, 7, 0.22 + 0.12 * Math.sin(t * 2.4 + it.ph));
         for (let y = 0; y < 4; y++) for (let x = 0; x < 5; x++) { const ch = m[y][x]; if (ch === '.') continue; putO(fb, X - 2 + x, Y - 3 + y, C('shell', { a: 1, b: 0.66, c: 0.4, d: 0 }[ch]), occ, o); }
+        twinkle(fb, X + 1, Y - 5, t, it.ph);
         break;
       }
       case 'pearl': case 'qpearl': {
         for (let y = -2; y <= 0; y++) for (let x = -1; x <= 1; x++) putO(fb, X + x, Y + y, C('pearl', x + y < -1 ? 1 : 0.5), occ, o);
-        if (Math.sin(t * 3 + it.x) > 0.6 || it.kind === 'qpearl') { put(fb, X - 1, Y - 2, 0xffffffff); glow(fb, X, Y - 1, 0xffffe8f8, it.kind === 'qpearl' ? 7 : 4, 0.35); }
+        glow(fb, X, Y - 1, 0xffffe8f8, it.kind === 'qpearl' ? 9 : 7, 0.3 + 0.15 * Math.sin(t * 3 + it.x)); put(fb, X - 1, Y - 2, 0xffffffff); twinkle(fb, X, Y - 4, t, it.ph);
         break;
       }
       case 'shroom': case 'shroomG': {
@@ -427,7 +449,7 @@ const Harvest = (() => {
         const g = ['gemB', 'gemP', 'gemG', 'gemY'][Math.floor(it.x) % 4];
         const m = ['..a..', '.aab.', 'abbcc', '.bcc.', '..c..'];
         for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) { const ch = m[y][x]; if (ch === '.') continue; putO(fb, X - 2 + x, Y - 5 + y, C(g, { a: 1, b: 0.66, c: 0.33 }[ch]), occ, o); }
-        if (Math.sin(t * 2.6 + it.x) > 0.5) { put(fb, X - 1, Y - 5, 0xffffffff); glow(fb, X, Y - 3, C(g, 0.9), 5, 0.3); }
+        glow(fb, X, Y - 3, C(g, 0.9), 8, 0.3 + 0.14 * Math.sin(t * 2.6 + it.x)); if (Math.sin(t * 2.6 + it.x) > 0.3) put(fb, X - 1, Y - 5, 0xffffffff); twinkle(fb, X + 1, Y - 7, t, it.ph);
         break;
       }
       case 'starp': {
@@ -435,7 +457,7 @@ const Harvest = (() => {
         putO(fb, X, Y - 4, c1, occ, o); putO(fb, X - 1, Y - 3, c1, occ, o); putO(fb, X, Y - 3, 0xffffffff, occ, o); putO(fb, X + 1, Y - 3, c1, occ, o);
         putO(fb, X - 2, Y - 2, c0, occ, o); putO(fb, X - 1, Y - 2, c1, occ, o); putO(fb, X, Y - 2, c1, occ, o); putO(fb, X + 1, Y - 2, c1, occ, o); putO(fb, X + 2, Y - 2, c0, occ, o);
         putO(fb, X - 1, Y - 1, c0, occ, o); putO(fb, X + 1, Y - 1, c0, occ, o);
-        glow(fb, X, Y - 3, C('starp', 1), 5, 0.25 + 0.15 * Math.sin(t * 3));
+        glow(fb, X, Y - 3, C('starp', 1), 9, 0.35 + 0.15 * Math.sin(t * 3)); twinkle(fb, X, Y - 6, t, it.ph);
         break;
       }
       case 'tm': {
