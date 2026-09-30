@@ -124,7 +124,7 @@ const Lighthouse = (() => {
     for (let y = 470; y < G0; y++) for (let x = 306; x < 334; x++) { const u = (x - 306) / 28; s.set(x, y, (y % 24 === 0) ? M.stone[1] : pickR(M.stone, 0.75 - Math.abs(u - 0.35) * 1.4, x, y)); }
     // floors: planks on heavy beams
     function slab(p) {
-      for (let x = p.x0 - 2; x <= p.x1 + 2; x++) for (let y = p.y; y < p.y + 16; y++) {
+      for (let x = Math.max(14, p.x0 - 2); x <= Math.min(626, p.x1 + 2); x++) for (let y = p.y; y < p.y + 16; y++) {
         const k = y - p.y;
         s.set(x, y, k === 0 ? M.wood[5] : k < 3 ? (x % 26 === 0 ? M.wood[1] : M.wood[4]) : k < 5 ? M.wood[1] : (x % 42 < 8 && k < 14) ? pickR(M.wood, 0.55, x, y) : k < 8 ? M.wood[2] : k === 15 ? M.ink[0] : M.wood[1]);
       }
@@ -132,7 +132,7 @@ const Lighthouse = (() => {
     slab(PL.fl1); slab(PL.fl2);
     // stairs: treads, risers and a stringer
     function stairs(p) {
-      for (let x = p.x0; x <= p.x1; x++) {
+      for (let x = Math.max(14, p.x0); x <= Math.min(626, p.x1); x++) {
         const st = Math.floor(x / 16) * 16, top = Math.round(Math.min(p.fy(st), p.fy(st + 15)));
         const y0 = Math.round(p.fy(x));
         for (let y = top; y < y0 + 14; y++) {
@@ -143,7 +143,7 @@ const Lighthouse = (() => {
         s.set(x, y0 + 14, M.ink[0]);
       }
       // wall brackets under the landings
-      for (const bx of [p.x0 + 6, p.x1 - 12]) { const y = Math.round(p.fy(bx)) + 14; for (let k = 0; k < 10; k++) for (let q = 0; q < 10 - k; q++) s.set(bx + (bx < 320 ? q : -q + 6), y + k, q === 10 - k - 1 ? M.iron[0] : M.iron[2]); }
+      for (const bx of [Math.max(16, p.x0 + 6), Math.min(614, p.x1 - 12)]) { const y = Math.round(p.fy(bx)) + 14; for (let k = 0; k < 10; k++) for (let q = 0; q < 10 - k; q++) s.set(bx + (bx < 320 ? q : -q + 6), y + k, q === 10 - k - 1 ? M.iron[0] : M.iron[2]); }
     }
     for (const k of ['f1', 'f2', 'f3', 'f4']) stairs(PL[k]);
 
@@ -230,7 +230,7 @@ const Lighthouse = (() => {
   function rails(M) {
     const s = new ISpr(W, H);
     function along(p, rise = 18) {
-      for (let x = p.x0 + 2; x <= p.x1 - 2; x++) {
+      for (let x = Math.max(16, p.x0 + 2); x <= Math.min(624, p.x1 - 2); x++) {
         const y = Math.round(p.fy ? p.fy(x) : p.y) - rise;
         s.set(x, y, M.brass[3]); s.set(x, y + 1, M.brass[1]);
         if (x % 12 === 0) for (let k = 2; k < rise; k++) s.set(x, y + k, k === rise - 1 ? M.wood[1] : M.wood[3]);
@@ -396,7 +396,7 @@ const Lighthouse = (() => {
     fadeTo(() => {
       Game.enterArea('beach', { x: DX + 16, noIntro: true });
       const A = Game.area; if (!A.gallery) return;
-      place(A.gallery, DX + 22);
+      place(A.gallery, DX + 8);
       const gy = A.gallery.y;
       if (Save.discover('lighthouse.gallery')) { Save.addPoints(250); }
       HUD.toast('From the gallery: all of Coral Cove spread out below!', { life: 3.4, col: 0xffffe8a0 });
@@ -495,7 +495,7 @@ const Lighthouse = (() => {
       if (u0) u0(A, dt, t, G);
       const mk = G.mudkip; S.near = null; if (!mk) return;
       const gy = World.groundAt(DX);
-      if (A.gallery && mk.plat === A.gallery && Math.abs(mk.x - DX) < 16) S.near = { x: DX, y: A.gallery.y - 30, label: 'Go inside', fn: fromGallery };
+      if (A.gallery && mk.plat === A.gallery && Math.abs(mk.x - DX) < 20) S.near = { x: DX, y: A.gallery.y - 30, label: 'Go inside', fn: fromGallery };
       else if (mk.mode === 'land' && !mk.plat && Math.abs(mk.x - DX) < 16 && Math.abs(mk.y - gy) < 12) S.near = { x: DX, y: gy - 50, label: 'Enter the lighthouse', fn: enterTower };
       // the panoramic sweep from the gallery
       if (S.pans.length && Game.mode === 'explore') {

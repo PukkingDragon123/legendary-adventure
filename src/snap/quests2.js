@@ -98,6 +98,8 @@ const Quests2 = (() => {
   };
   if (typeof Talk !== 'undefined') {
     Talk.QUESTS.push(...Q);
+    // the pearl lies on the deep seabed: needs deep diving (Lv4)
+    const lq = Talk.QUESTS.find((q) => q.id === 'q.luvdisc'); if (lq) lq.lv = 4;
     for (const k in CHAT) Talk.CHAT[k] = (Talk.CHAT[k] || []).concat(CHAT[k]);
   }
   return { Q };

@@ -431,7 +431,7 @@ const Cards = (() => {
     const midX = (G.mx + G.fx) / 2, top = Math.min(M.headPt()[1], F.headPt()[1]);
     const span = Math.abs(G.fx - G.mx) + 90;
     const zf = clamp(Game.VW / span * 0.5, 1.0, 1.3), feet = Math.max(M.y, F.y);
-    Game.camFocus = { x: midX, y: Math.max((top + feet) / 2 - 6, feet - Game.VH / zf * 0.5 + Game.VH / zf * 0.36), zoom: clamp(Game.VW / span * 0.5, 1.0, 1.3), speed: 4 };
+    Game.camFocus = { x: midX, y: feet - Game.VH / zf * 0.16, zoom: zf, speed: 4 };
   }
   function pose(m, u, bx, dir) {
     const o = u.off;
@@ -608,15 +608,15 @@ const Cards = (() => {
     if (C.deckView) { drawDeck(fb, t); return; }
     if (G.step === 'reward') { drawReward(fb, t); return; }
     // hand
-    const n = G.hand.length, cw = clamp(Math.round(W * 0.13), 56, 72), ch = Math.round(cw * 1.36);
+    const n = G.hand.length, cw = clamp(Math.round(Math.min(W * 0.13, H * 0.21)), 50, 72), ch = Math.round(cw * 1.36);
     const handW = Math.min(W - 150, n * (cw + 4)), step = n > 1 ? Math.min(cw + 4, (handW - cw) / (n - 1)) : 0;
-    const x0 = Math.round(W / 2 - ((n - 1) * step + cw) / 2), yBase = H - Math.round(ch * 0.6);
+    const x0 = Math.round(W / 2 - ((n - 1) * step + cw) / 2), yBase = H - Math.round(ch * 0.56);
     const order = G.hand.map((h, i) => i).filter((i) => i !== C.sel); if (C.sel >= 0 && C.sel < n) order.push(C.sel);
     for (const i of order) {
       const h = G.hand[i], sel = i === C.sel, ok = canPlay(G, i);
       const mid = (i - (n - 1) / 2), arc = Math.round(mid * mid * 1.2);
       const deal = clamp(h.t / 0.25, 0, 1);
-      const x = Math.round(x0 + i * step + (h.shake ? Math.sin(h.shake * 60) * 3 : 0)), y = Math.round(yBase + arc - (sel ? Math.round(ch * 0.4) + 2 : 0) + (1 - deal) * 40);
+      const x = Math.round(x0 + i * step + (h.shake ? Math.sin(h.shake * 60) * 3 : 0)), y = Math.round(yBase + arc - (sel ? Math.round(ch * 0.44) : 0) + (1 - deal) * 40);
       cardFace(fb, h.id, x, y, cw, ch, { sel, dim: !ok && G.step === 'you' });
       if (n <= 9) txt(fb, String(i + 1), x + cw / 2, y - 8, sel ? hex('#ffe070') : 0xffb0b8c8, { align: 'center' });
       C.btns.push({ x, y: y - 8, w: sel ? cw : Math.max(8, Math.round(step)), h: ch + 8, fn: () => { if (G.step !== 'you' || G.seq) return; if (C.sel === i) play(i); else { C.sel = i; sfx('blip', null, 0.4); } } });

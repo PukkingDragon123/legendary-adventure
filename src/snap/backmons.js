@@ -35,12 +35,15 @@ const BackMons = (() => {
     }
     draw(fb, cx, cy) {
       const s = this.spr; if (!s) return;
+      // never seen from underwater: hidden whenever Mudkip or the camera is below the sea surface
+      const mk = Game.mudkip, lv = mk ? World.waterAt(mk.x) : null, cl = World.waterAt(cx + fb.w / 2);
+      if ((lv != null && mk.y > lv + 4) || (cl != null && cy + fb.h * 0.5 > cl)) { this.x = -1e6; return; }
       const t = Game.t, [sx, sy] = this.screenPos(cx, cy, t);
       const j = this.jump > 0 ? Math.sin(this.jump * Math.PI) : 0, lift = Math.round(j * s.h * 1.3);
       const X = sx - Math.round(s.w / 2), Y = (this.bgMode === 'sea' ? sy - Math.round(s.h * 0.55) : sy - s.h) - lift;
       this.x = sx + cx; this.y = Y + s.h + cy;
       const W = fb.w, H = fb.h, d = fb.d, idb = Stage.S.idOn ? Stage.S.idb : null;
-      const haze = Pal.LOOK[Stage.S.hour].hazeC, hk = clamp(0.5 - this.p * 0.6, 0.12, 0.45);
+      const haze = Pal.LOOK[Stage.S.hour].hazeC, hk = clamp(0.62 - this.p * 0.6, 0.4, 0.6); // far away: small and hazy
       for (let yy = 0; yy < s.h; yy++) {
         const ty = Y + yy; if (ty < 0 || ty >= H) continue;
         if (this.bgMode === 'sea' && ty > sy + 1) continue; // under the surface
@@ -85,17 +88,17 @@ const BackMons = (() => {
     G.addMon(m); return m;
   }
   // a little flock: a few birds in a loose V, all going the same way
-  function flock(G, dex, wx, n, o = {}) { const dir = o.dir ?? (Math.random() < 0.5 ? 1 : -1), alt = o.alt ?? rnd(22, 46); for (let i = 0; i < n; i++) add(G, dex, wx - dir * i * 18, Object.assign({}, o, { dir, alt: alt - Math.abs(i - (n - 1) / 2) * 6 + rnd(-2, 2), k: rnd(0.9, 1.05) })); }
+  function flock(G, dex, wx, n, o = {}) { const dir = o.dir ?? (Math.random() < 0.5 ? 1 : -1), alt = o.alt ?? rnd(22, 46); for (let i = 0; i < n; i++) add(G, dex, wx - dir * i * 18, Object.assign({}, o, { dir, alt: alt - Math.abs(i - (n - 1) / 2) * 4 + rnd(-2, 2), k: (o.k || 1) * rnd(0.9, 1.05) })); }
   const SPAWN = {
     beach(G) {
-      flock(G, 'wingull', 600, 3); flock(G, 'wingull', 4200, 2, { p: 0.3 }); add(G, 'pelipper', 2400, { alt: 35 }); flock(G, 'swellow', 7000, 2);
-      add(G, 'mantine', 1800); add(G, 'mantine', 5200, { p: 0.18 }); add(G, 'wailmer', 3200, { p: 0.16 }); add(G, 'wailmer', 8800, { p: 0.2 });
-      add(G, 'luvdisc', 2600, { p: 0.28 }); add(G, 'luvdisc', 6400, { p: 0.26 });
+      // only seagulls over the cove: small flocks of Wingull far out, high over the horizon
+      flock(G, 'wingull', 600, 3, { p: 0.16, alt: rnd(60, 90), k: 0.7 }); flock(G, 'wingull', 4200, 2, { p: 0.12, alt: rnd(70, 100), k: 0.6 });
+      flock(G, 'wingull', 7600, 3, { p: 0.14, alt: rnd(60, 90), k: 0.65 }); flock(G, 'wingull', 10400, 2, { p: 0.15, alt: rnd(66, 96), k: 0.65 });
     },
-    forest(G) { flock(G, 'swellow', 900, 2, { p: 0.35, alt: 40 }); flock(G, 'taillow', 3000, 3, { p: 0.4 }); add(G, 'tropius', 4200, { p: 0.3, alt: 35 }); },
-    canopy(G) { add(G, 'swablu', 800, { alt: 30 }); add(G, 'swablu', 2000, { alt: 45 }); add(G, 'altaria', 3000, { p: 0.3, alt: 50 }); flock(G, 'wingull', 1500, 2, { p: 0.3 }); },
-    stage(G) { flock(G, 'swablu', 900, 3, { p: 0.35, alt: 40 }); },
-    volcano(G) { add(G, 'swablu', 1200, { p: 0.3, alt: 55 }); add(G, 'altaria', 2600, { p: 0.25, alt: 60 }); },
+    forest(G) { flock(G, 'swellow', 900, 2, { p: 0.16, alt: 70, k: 0.7 }); flock(G, 'taillow', 3000, 3, { p: 0.18, alt: 64, k: 0.7 }); add(G, 'tropius', 4200, { p: 0.14, alt: 80, k: 0.7 }); },
+    canopy(G) { add(G, 'swablu', 800, { p: 0.18, alt: 66, k: 0.7 }); add(G, 'swablu', 2000, { p: 0.16, alt: 80, k: 0.7 }); add(G, 'altaria', 3000, { p: 0.14, alt: 86, k: 0.7 }); flock(G, 'wingull', 1500, 2, { p: 0.14, alt: 76, k: 0.7 }); },
+    stage(G) { flock(G, 'swablu', 900, 3, { p: 0.16, alt: 72, k: 0.7 }); },
+    volcano(G) { add(G, 'swablu', 1200, { p: 0.15, alt: 80, k: 0.7 }); add(G, 'altaria', 2600, { p: 0.13, alt: 90, k: 0.7 }); },
   };
   for (const id of Object.keys(SPAWN)) {
     const A = Areas[id]; if (!A) continue;

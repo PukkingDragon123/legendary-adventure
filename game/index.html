@@ -68964,8 +68964,8 @@ const BeachAI = (() => {
       const oy = SEA * (1 - p) + cy * p;
       // per-row palette: rock body (3 tones) + lit rim, all hazed toward the water at that depth
       for (let y = 0; y < H; y++) {
-        const dep = y + cy - SEA, w = waterAt(dep), rk = mix(w, C.abyss, dark);
-        rowC[y * 4] = mix(rk, w, 0.25); rowC[y * 4 + 1] = rk; rowC[y * 4 + 2] = mix(rk, C.abyss, 0.3); rowC[y * 4 + 3] = mix(rk, C.top, 0.28 - p * 0.15);
+        const dep = y + cy - SEA, w = waterAt(dep), rk = mix(w, 0xff050308, dark * 0.8);
+        rowC[y * 4] = mix(rk, w, 0.25); rowC[y * 4 + 1] = rk; rowC[y * 4 + 2] = mix(rk, C.abyss, 0.3); rowC[y * 4 + 3] = mix(rk, C.top, 0.4 - p * 0.15);
       }
       for (let x = 0; x < W; x++) {
         const wx = x + cx * p, lane = x + cx;
@@ -77264,7 +77264,6 @@ const Cards = (() => {
     drawCards(G, n);
     pickIntent(G);
     C.sel = G.hand.length ? 0 : -1;
-    if (G.turn === 1) HUD.toast('Your turn! Play cards, then End Turn (E).', { life: 2.4 });
   }
   function drawCards(G, n) {
     for (let i = 0; i < n; i++) {
@@ -77549,7 +77548,8 @@ const Cards = (() => {
     // camera frames both
     const midX = (G.mx + G.fx) / 2, top = Math.min(M.headPt()[1], F.headPt()[1]);
     const span = Math.abs(G.fx - G.mx) + 90;
-    Game.camFocus = { x: midX, y: (top + Math.max(M.y, F.y)) / 2 - 6, zoom: clamp(Game.VW / span * 0.5, 1.0, 1.3), speed: 4 };
+    const zf = clamp(Game.VW / span * 0.5, 1.0, 1.3), feet = Math.max(M.y, F.y);
+    Game.camFocus = { x: midX, y: feet - Game.VH / zf * 0.16, zoom: zf, speed: 4 };
   }
   function pose(m, u, bx, dir) {
     const o = u.off;
@@ -77726,15 +77726,15 @@ const Cards = (() => {
     if (C.deckView) { drawDeck(fb, t); return; }
     if (G.step === 'reward') { drawReward(fb, t); return; }
     // hand
-    const n = G.hand.length, cw = clamp(Math.round(W * 0.13), 56, 72), ch = Math.round(cw * 1.36);
+    const n = G.hand.length, cw = clamp(Math.round(Math.min(W * 0.13, H * 0.21)), 50, 72), ch = Math.round(cw * 1.36);
     const handW = Math.min(W - 150, n * (cw + 4)), step = n > 1 ? Math.min(cw + 4, (handW - cw) / (n - 1)) : 0;
-    const x0 = Math.round(W / 2 - ((n - 1) * step + cw) / 2), yBase = H - ch - 4 + Math.round(ch * 0.2);
+    const x0 = Math.round(W / 2 - ((n - 1) * step + cw) / 2), yBase = H - Math.round(ch * 0.56);
     const order = G.hand.map((h, i) => i).filter((i) => i !== C.sel); if (C.sel >= 0 && C.sel < n) order.push(C.sel);
     for (const i of order) {
       const h = G.hand[i], sel = i === C.sel, ok = canPlay(G, i);
       const mid = (i - (n - 1) / 2), arc = Math.round(mid * mid * 1.2);
       const deal = clamp(h.t / 0.25, 0, 1);
-      const x = Math.round(x0 + i * step + (h.shake ? Math.sin(h.shake * 60) * 3 : 0)), y = Math.round(yBase + arc - (sel ? Math.round(ch * 0.28) : 0) + (1 - deal) * 40);
+      const x = Math.round(x0 + i * step + (h.shake ? Math.sin(h.shake * 60) * 3 : 0)), y = Math.round(yBase + arc - (sel ? Math.round(ch * 0.44) : 0) + (1 - deal) * 40);
       cardFace(fb, h.id, x, y, cw, ch, { sel, dim: !ok && G.step === 'you' });
       if (n <= 9) txt(fb, String(i + 1), x + cw / 2, y - 8, sel ? hex('#ffe070') : 0xffb0b8c8, { align: 'center' });
       C.btns.push({ x, y: y - 8, w: sel ? cw : Math.max(8, Math.round(step)), h: ch + 8, fn: () => { if (G.step !== 'you' || G.seq) return; if (C.sel === i) play(i); else { C.sel = i; sfx('blip', null, 0.4); } } });
@@ -77752,7 +77752,7 @@ const Cards = (() => {
     const noMoves = my2 && !G.hand.some((h, i) => canPlay(G, i));
     const ew = 64, eh = 24;
     btn(fb, W - ew - 8, H - eh - 14, ew, eh, my2 ? 'End Turn (E)' : G.step === 'them' ? 'Foe turn...' : '...', my2 ? (noMoves ? '#3ab860' : '#2a8a4a') : '#46505e', endTurn, { dim: !my2, on: noMoves && ((t * 3) | 0) % 2 === 0 });
-    if (G.step === 'you' && G.turn === 1 && !G.seq) txt(fb, Pad && Pad.touch ? 'Tap a card, tap again to play' : '1-9 or arrows + Space to play, E ends turn', W / 2, H - ch - 16, 0xffd8e0f0, { align: 'center' });
+    if (G.step === 'you' && G.turn === 1 && !G.seq) txt(fb, Pad && Pad.touch ? 'Tap a card, tap again to play' : '1-9 or arrows + Space to play, E ends turn', W / 2, bh + 4, 0xffd8e0f0, { align: 'center' });
     if (G.over) {
       const w = 180, h = 40, x = Math.round(W / 2 - w / 2), y = Math.round(H * 0.3);
       UI.panel(fb, x, y, w, h, { r: 8, ol: INK, fill: G.win ? 0xff2a7a3a : 0xff3a2a6a });
@@ -78351,12 +78351,12 @@ const Lighthouse = (() => {
   }
   const floor = (x0, x1, y) => ({ x0, x1, y, kind: 'floor' });
   const PL = {
-    f1: flight(150, 190, 974, 540, 880, 624),
-    f2: flight(16, 110, 760, 520, 854, 596),
-    fl1: floor(44, 624, 734),
-    f3: flight(80, 130, 708, 560, 610, 624),
-    f4: flight(16, 110, 490, 530, 584, 596),
-    fl2: floor(44, 624, 464),
+    f1: flight(150, 190, 974, 540, 880, W),
+    f2: flight(0, 110, 760, 520, 854, 596),
+    fl1: floor(44, W, 734),
+    f3: flight(80, 130, 708, 560, 610, W),
+    f4: flight(0, 110, 490, 530, 584, 596),
+    fl2: floor(44, W, 464),
   };
   const PAGES = [{ id: 'lh.page1', x: 566, y: G0 }, { id: 'lh.page2', x: 40, y: 760 }, { id: 'lh.page3', x: 604, y: 610 }];
   const LENS = 330, GDOOR = 606, EXIT = 44;
@@ -78447,7 +78447,7 @@ const Lighthouse = (() => {
     for (let y = 470; y < G0; y++) for (let x = 306; x < 334; x++) { const u = (x - 306) / 28; s.set(x, y, (y % 24 === 0) ? M.stone[1] : pickR(M.stone, 0.75 - Math.abs(u - 0.35) * 1.4, x, y)); }
     // floors: planks on heavy beams
     function slab(p) {
-      for (let x = p.x0 - 2; x <= p.x1 + 2; x++) for (let y = p.y; y < p.y + 16; y++) {
+      for (let x = Math.max(14, p.x0 - 2); x <= Math.min(626, p.x1 + 2); x++) for (let y = p.y; y < p.y + 16; y++) {
         const k = y - p.y;
         s.set(x, y, k === 0 ? M.wood[5] : k < 3 ? (x % 26 === 0 ? M.wood[1] : M.wood[4]) : k < 5 ? M.wood[1] : (x % 42 < 8 && k < 14) ? pickR(M.wood, 0.55, x, y) : k < 8 ? M.wood[2] : k === 15 ? M.ink[0] : M.wood[1]);
       }
@@ -78455,7 +78455,7 @@ const Lighthouse = (() => {
     slab(PL.fl1); slab(PL.fl2);
     // stairs: treads, risers and a stringer
     function stairs(p) {
-      for (let x = p.x0; x <= p.x1; x++) {
+      for (let x = Math.max(14, p.x0); x <= Math.min(626, p.x1); x++) {
         const st = Math.floor(x / 16) * 16, top = Math.round(Math.min(p.fy(st), p.fy(st + 15)));
         const y0 = Math.round(p.fy(x));
         for (let y = top; y < y0 + 14; y++) {
@@ -78466,7 +78466,7 @@ const Lighthouse = (() => {
         s.set(x, y0 + 14, M.ink[0]);
       }
       // wall brackets under the landings
-      for (const bx of [p.x0 + 6, p.x1 - 12]) { const y = Math.round(p.fy(bx)) + 14; for (let k = 0; k < 10; k++) for (let q = 0; q < 10 - k; q++) s.set(bx + (bx < 320 ? q : -q + 6), y + k, q === 10 - k - 1 ? M.iron[0] : M.iron[2]); }
+      for (const bx of [Math.max(16, p.x0 + 6), Math.min(614, p.x1 - 12)]) { const y = Math.round(p.fy(bx)) + 14; for (let k = 0; k < 10; k++) for (let q = 0; q < 10 - k; q++) s.set(bx + (bx < 320 ? q : -q + 6), y + k, q === 10 - k - 1 ? M.iron[0] : M.iron[2]); }
     }
     for (const k of ['f1', 'f2', 'f3', 'f4']) stairs(PL[k]);
 
@@ -78553,7 +78553,7 @@ const Lighthouse = (() => {
   function rails(M) {
     const s = new ISpr(W, H);
     function along(p, rise = 18) {
-      for (let x = p.x0 + 2; x <= p.x1 - 2; x++) {
+      for (let x = Math.max(16, p.x0 + 2); x <= Math.min(624, p.x1 - 2); x++) {
         const y = Math.round(p.fy ? p.fy(x) : p.y) - rise;
         s.set(x, y, M.brass[3]); s.set(x, y + 1, M.brass[1]);
         if (x % 12 === 0) for (let k = 2; k < rise; k++) s.set(x, y + k, k === rise - 1 ? M.wood[1] : M.wood[3]);
@@ -78719,7 +78719,7 @@ const Lighthouse = (() => {
     fadeTo(() => {
       Game.enterArea('beach', { x: DX + 16, noIntro: true });
       const A = Game.area; if (!A.gallery) return;
-      place(A.gallery, DX + 22);
+      place(A.gallery, DX + 8);
       const gy = A.gallery.y;
       if (Save.discover('lighthouse.gallery')) { Save.addPoints(250); }
       HUD.toast('From the gallery: all of Coral Cove spread out below!', { life: 3.4, col: 0xffffe8a0 });
@@ -78818,7 +78818,7 @@ const Lighthouse = (() => {
       if (u0) u0(A, dt, t, G);
       const mk = G.mudkip; S.near = null; if (!mk) return;
       const gy = World.groundAt(DX);
-      if (A.gallery && mk.plat === A.gallery && Math.abs(mk.x - DX) < 16) S.near = { x: DX, y: A.gallery.y - 30, label: 'Go inside', fn: fromGallery };
+      if (A.gallery && mk.plat === A.gallery && Math.abs(mk.x - DX) < 20) S.near = { x: DX, y: A.gallery.y - 30, label: 'Go inside', fn: fromGallery };
       else if (mk.mode === 'land' && !mk.plat && Math.abs(mk.x - DX) < 16 && Math.abs(mk.y - gy) < 12) S.near = { x: DX, y: gy - 50, label: 'Enter the lighthouse', fn: enterTower };
       // the panoramic sweep from the gallery
       if (S.pans.length && Game.mode === 'explore') {
@@ -79154,12 +79154,15 @@ const BackMons = (() => {
     }
     draw(fb, cx, cy) {
       const s = this.spr; if (!s) return;
+      // never seen from underwater: hidden whenever Mudkip or the camera is below the sea surface
+      const mk = Game.mudkip, lv = mk ? World.waterAt(mk.x) : null, cl = World.waterAt(cx + fb.w / 2);
+      if ((lv != null && mk.y > lv + 4) || (cl != null && cy + fb.h * 0.5 > cl)) { this.x = -1e6; return; }
       const t = Game.t, [sx, sy] = this.screenPos(cx, cy, t);
       const j = this.jump > 0 ? Math.sin(this.jump * Math.PI) : 0, lift = Math.round(j * s.h * 1.3);
       const X = sx - Math.round(s.w / 2), Y = (this.bgMode === 'sea' ? sy - Math.round(s.h * 0.55) : sy - s.h) - lift;
       this.x = sx + cx; this.y = Y + s.h + cy;
       const W = fb.w, H = fb.h, d = fb.d, idb = Stage.S.idOn ? Stage.S.idb : null;
-      const haze = Pal.LOOK[Stage.S.hour].hazeC, hk = clamp(0.5 - this.p * 0.6, 0.12, 0.45);
+      const haze = Pal.LOOK[Stage.S.hour].hazeC, hk = clamp(0.62 - this.p * 0.6, 0.4, 0.6); // far away: small and hazy
       for (let yy = 0; yy < s.h; yy++) {
         const ty = Y + yy; if (ty < 0 || ty >= H) continue;
         if (this.bgMode === 'sea' && ty > sy + 1) continue; // under the surface
@@ -79204,17 +79207,17 @@ const BackMons = (() => {
     G.addMon(m); return m;
   }
   // a little flock: a few birds in a loose V, all going the same way
-  function flock(G, dex, wx, n, o = {}) { const dir = o.dir ?? (Math.random() < 0.5 ? 1 : -1), alt = o.alt ?? rnd(22, 46); for (let i = 0; i < n; i++) add(G, dex, wx - dir * i * 18, Object.assign({}, o, { dir, alt: alt - Math.abs(i - (n - 1) / 2) * 6 + rnd(-2, 2), k: rnd(0.9, 1.05) })); }
+  function flock(G, dex, wx, n, o = {}) { const dir = o.dir ?? (Math.random() < 0.5 ? 1 : -1), alt = o.alt ?? rnd(22, 46); for (let i = 0; i < n; i++) add(G, dex, wx - dir * i * 18, Object.assign({}, o, { dir, alt: alt - Math.abs(i - (n - 1) / 2) * 4 + rnd(-2, 2), k: (o.k || 1) * rnd(0.9, 1.05) })); }
   const SPAWN = {
     beach(G) {
-      flock(G, 'wingull', 600, 3); flock(G, 'wingull', 4200, 2, { p: 0.3 }); add(G, 'pelipper', 2400, { alt: 35 }); flock(G, 'swellow', 7000, 2);
-      add(G, 'mantine', 1800); add(G, 'mantine', 5200, { p: 0.18 }); add(G, 'wailmer', 3200, { p: 0.16 }); add(G, 'wailmer', 8800, { p: 0.2 });
-      add(G, 'luvdisc', 2600, { p: 0.28 }); add(G, 'luvdisc', 6400, { p: 0.26 });
+      // only seagulls over the cove: small flocks of Wingull far out, high over the horizon
+      flock(G, 'wingull', 600, 3, { p: 0.16, alt: rnd(60, 90), k: 0.7 }); flock(G, 'wingull', 4200, 2, { p: 0.12, alt: rnd(70, 100), k: 0.6 });
+      flock(G, 'wingull', 7600, 3, { p: 0.14, alt: rnd(60, 90), k: 0.65 }); flock(G, 'wingull', 10400, 2, { p: 0.15, alt: rnd(66, 96), k: 0.65 });
     },
-    forest(G) { flock(G, 'swellow', 900, 2, { p: 0.35, alt: 40 }); flock(G, 'taillow', 3000, 3, { p: 0.4 }); add(G, 'tropius', 4200, { p: 0.3, alt: 35 }); },
-    canopy(G) { add(G, 'swablu', 800, { alt: 30 }); add(G, 'swablu', 2000, { alt: 45 }); add(G, 'altaria', 3000, { p: 0.3, alt: 50 }); flock(G, 'wingull', 1500, 2, { p: 0.3 }); },
-    stage(G) { flock(G, 'swablu', 900, 3, { p: 0.35, alt: 40 }); },
-    volcano(G) { add(G, 'swablu', 1200, { p: 0.3, alt: 55 }); add(G, 'altaria', 2600, { p: 0.25, alt: 60 }); },
+    forest(G) { flock(G, 'swellow', 900, 2, { p: 0.16, alt: 70, k: 0.7 }); flock(G, 'taillow', 3000, 3, { p: 0.18, alt: 64, k: 0.7 }); add(G, 'tropius', 4200, { p: 0.14, alt: 80, k: 0.7 }); },
+    canopy(G) { add(G, 'swablu', 800, { p: 0.18, alt: 66, k: 0.7 }); add(G, 'swablu', 2000, { p: 0.16, alt: 80, k: 0.7 }); add(G, 'altaria', 3000, { p: 0.14, alt: 86, k: 0.7 }); flock(G, 'wingull', 1500, 2, { p: 0.14, alt: 76, k: 0.7 }); },
+    stage(G) { flock(G, 'swablu', 900, 3, { p: 0.16, alt: 72, k: 0.7 }); },
+    volcano(G) { add(G, 'swablu', 1200, { p: 0.15, alt: 80, k: 0.7 }); add(G, 'altaria', 2600, { p: 0.13, alt: 90, k: 0.7 }); },
   };
   for (const id of Object.keys(SPAWN)) {
     const A = Areas[id]; if (!A) continue;
@@ -79458,6 +79461,8 @@ const Quests2 = (() => {
   };
   if (typeof Talk !== 'undefined') {
     Talk.QUESTS.push(...Q);
+    // the pearl lies on the deep seabed: needs deep diving (Lv4)
+    const lq = Talk.QUESTS.find((q) => q.id === 'q.luvdisc'); if (lq) lq.lv = 4;
     for (const k in CHAT) Talk.CHAT[k] = (Talk.CHAT[k] || []).concat(CHAT[k]);
   }
   return { Q };

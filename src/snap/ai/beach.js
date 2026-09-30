@@ -753,8 +753,8 @@ const BeachAI = (() => {
       const oy = SEA * (1 - p) + cy * p;
       // per-row palette: rock body (3 tones) + lit rim, all hazed toward the water at that depth
       for (let y = 0; y < H; y++) {
-        const dep = y + cy - SEA, w = waterAt(dep), rk = mix(w, C.abyss, dark);
-        rowC[y * 4] = mix(rk, w, 0.25); rowC[y * 4 + 1] = rk; rowC[y * 4 + 2] = mix(rk, C.abyss, 0.3); rowC[y * 4 + 3] = mix(rk, C.top, 0.28 - p * 0.15);
+        const dep = y + cy - SEA, w = waterAt(dep), rk = mix(w, 0xff050308, dark * 0.8);
+        rowC[y * 4] = mix(rk, w, 0.25); rowC[y * 4 + 1] = rk; rowC[y * 4 + 2] = mix(rk, C.abyss, 0.3); rowC[y * 4 + 3] = mix(rk, C.top, 0.4 - p * 0.15);
       }
       for (let x = 0; x < W; x++) {
         const wx = x + cx * p, lane = x + cx;
