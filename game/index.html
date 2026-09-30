@@ -3099,12 +3099,11 @@ const Breloom = (() => {
    art by the shared Creature pipeline (src/creature.js, dev/CREATURE_GUIDE.md).
    Model space: x = forward, y = up, z = near side at yaw 0, ground at y = 0.
 
-   Design (official art / HOME model): a tiny green Pokémon whose head is
-   wrapped in a big closed flower bud: a pale yellow-green "hood" that
-   frames the round green face like a bonnet and rises to a pointed tip
-   leaning back, with faint darker seams where the bud's petals overlap.
-   Big dark glossy eyes, a small smile, a small round green body and two
-   stubby feet.
+   Design (official art): one green pear-shaped bud. The lower bulb holds
+   a round pale-yellow face (tiny vertical-dash eyes, a small smile) above
+   a dark green four-lobed leaf collar; a leaf band wraps diagonally up the
+   narrowing top and ends in a closed bud with a pale mint scalloped cap.
+   Two tiny pointed yellow-green feet.
    Built at 2× in design units and scaled down (SIZE) at the end.
 
    Pose parameters (all optional):
@@ -3123,116 +3122,109 @@ const Budew = (() => {
   const { chain, T, R, code, sph } = Creature;
 
   // ---- materials
-  const GREEN = 1, BUD = 2, SEAM = 3, MOUTH = 4, HEART = 5, POLLEN = 6, EYE = 7, GLINT = 8, FOOT = 9;
-  const MAT = { GREEN, BUD, SEAM, MOUTH, HEART, POLLEN, EYE, GLINT, FOOT };
+  const GREEN = 1, BUD = 2, SEAM = 3, MOUTH = 4, HEART = 5, POLLEN = 6, EYE = 7, GLINT = 8, FOOT = 9, FACE = 10, COLLAR = 11;
+  const MAT = { GREEN, BUD, SEAM, MOUTH, HEART, POLLEN, EYE, GLINT, FOOT, FACE, COLLAR };
   const PAL = Creature.palette({
-    [GREEN]:  { r: ['#347a2e', '#4a9a3c', '#64b64c', '#86d066', '#b2e890'], od: '#163e14', ol: '#2e6a26', ln: '#2c6424' },
-    [FOOT]:   { r: ['#2c6a28', '#3e8834', '#56a444', '#74c05c', '#9ad882'], od: '#123612', ol: '#285e22', ln: '#245620' },
-    [BUD]:    { r: ['#a2b448', '#c0d05c', '#dce878', '#eff5a4', '#fbfdd8'], od: '#4a5a1a', ol: '#82962e', ln: '#7a8c2a' },
-    [SEAM]:   { r: ['#7c9a36', '#94b240', '#aac852', '#c2da6e', '#d8ea90'], od: '#3a4c14', ol: '#6c8428', ln: '#627a24' },
-    [MOUTH]:  { r: ['#4a1a1c', '#662628', '#843636', '#a04a48', '#bc6460'], od: '#2c0c0e', ol: '#4a1a1c', ln: '#4a1a1c' },
+    [GREEN]:  { r: ['#3a7e2c', '#4e9a3a', '#66b44a', '#84cc60', '#aee288'], od: '#163e14', ol: '#2e6a26', ln: '#2c6424' },
+    [FOOT]:   { r: ['#8aa832', '#a6c440', '#c0dc56', '#d8ec7a', '#eef8a8'], od: '#3e5010', ol: '#6c8424', ln: '#627a20' },
+    [BUD]:    { r: ['#88b878', '#a2cc8e', '#bcdea6', '#d2ecc0', '#ecf8e0'], od: '#2e5a26', ol: '#5a8a4a', ln: '#4e7e40' },
+    [SEAM]:   { r: ['#3a6a2a', '#487c34', '#58903e', '#6ca44e', '#84b866'], od: '#1a3a12', ol: '#305e22', ln: '#2a5a20' },
+    [MOUTH]:  { r: ['#3a2a10', '#4a3616', '#5a441e', '#6a5428', '#7a6434'], od: '#2c1c08', ol: '#3a2a10', ln: '#3a2a10' },
     [HEART]:  { r: ['#c89a20', '#e4bc30', '#f6d84a', '#fdec84', '#fffbd0'], od: '#6a4c08', ol: '#a47c18', ln: '#9a7416' },
     [POLLEN]: { r: ['#d6b830', '#ecd246', '#fae466', '#fff29a', '#fffde0'], od: '#7a6214', ol: '#b09426', ln: '#b09426' },
-    [EYE]:    { r: ['#0e1812', '#121e16', '#16241a', '#1e2e22', '#2a3c2e'], od: '#08100a', ol: '#0e1812', ln: '#0e1812' },
+    [EYE]:    { r: ['#1a1a0e', '#222212', '#2a2a16', '#34341c', '#404024'], od: '#0e0e06', ol: '#1a1a0e', ln: '#1a1a0e' },
     [GLINT]:  { r: ['#e6ece8', '#f4f8f4', '#ffffff', '#ffffff', '#ffffff'], od: '#16241a', ol: '#16241a', ln: '#16241a' },
+    [FACE]:   { r: ['#b8c04a', '#d0d85c', '#e4ea74', '#f2f49a', '#fcfcd0'], od: '#5a5a14', ol: '#8a9028', ln: '#7a8024' },
+    [COLLAR]: { r: ['#244e1e', '#2e6226', '#3a762e', '#4a8a3a', '#5e9e4a'], od: '#10280c', ol: '#1e4218', ln: '#183a14' },
   });
   const GLOSSY = {};
-  const C_GREEN = code(GREEN), C_BUD = code(BUD), C_BUD_D = code(BUD, -1), C_SEAM = code(SEAM), C_MOUTH = code(MOUTH), C_HEART = code(HEART), C_POLLEN = code(POLLEN);
-  const C_EYE = code(EYE), C_GLINT = code(GLINT), C_FOOT = code(FOOT);
-  const M_GREEN = () => C_GREEN, M_FOOT = () => C_FOOT, M_HEART = () => C_HEART, M_POLLEN = () => C_POLLEN, M_LINING = () => C_BUD_D;
+  const C_GREEN = code(GREEN), C_BUD = code(BUD), C_SEAM = code(SEAM), C_HEART = code(HEART), C_POLLEN = code(POLLEN);
+  const C_EYE = code(EYE), C_FOOT = code(FOOT), C_FACE = code(FACE), C_COLLAR = code(COLLAR);
+  const M_GREEN = () => C_GREEN, M_FOOT = () => C_FOOT, M_HEART = () => C_HEART, M_POLLEN = () => C_POLLEN, M_COLLAR = () => C_COLLAR, M_BUD = () => C_BUD;
 
   // ---- helpers
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-  const add = V3.add, sc = V3.scale;
+  const add = V3.add, sub = V3.sub, sc = V3.scale, cross = V3.cross, nrm = V3.norm, dot = V3.dot;
+  const len3 = (a) => Math.hypot(a[0], a[1], a[2]);
   const inF = (f, p) => add(f.t, M3.v(f.L, p));
   const E = (c, L, part, grp, mat) => ({ kind: 'ell', part, grp, c, L, mat });
   const ellF = (f, r, part, grp, mat) => E(f.t, M3.mul(f.L, M3.diag(r[0], r[1], r[2])), part, grp, mat);
+  function seg(p0, p1, rx, rz, part, grp, mat, fwd = [1, 0, 0]) {
+    const d = sub(p1, p0), l = len3(d);
+    const Y = nrm(d);
+    let X = sub(fwd, sc(Y, dot(fwd, Y)));
+    if (len3(X) < 1e-4) X = cross(Y, [0, 0, 1]);
+    X = nrm(X);
+    const Z = cross(X, Y);
+    return E(sc(add(p0, p1), 0.5), M3.cols(sc(X, rx), sc(Y, l / 2), sc(Z, rz)), part, grp, mat);
+  }
 
   /* ---------- layout (design units, 2× the final size) ---------- */
-  const BODY_C = [0, 14, 0], BODY_R = [9.6, 10.6, 10.2];
-  const HEAD_C = [0.4, 35, 0], HEAD_R = [14, 14.2, 14.8];
-  const HOOD_C = [-1.2, 38, 0], HOOD_R = [15.6, 17, 16.6];
+  const BODY_C = [0, 22, 0], BODY_R = [17, 19, 17.5];
+  const HEAD_C = [7.5, 25.5, 0], HEAD_R = [11, 12, 14.5]; // the yellow face dome
+  const TOP_C = [1.5, 58, 0], TOP_R = [11, 9.5, 11]; // closed bud at the top
   const SIZE = 0.5;
-  // render-time state (set by render(): the renderer calls the material functions)
   let curScale = 1, MO = 0, EYEK = 'open', DECAL = false;
-  const px1 = (r) => 0.55 / (curScale * SIZE * r); // about one pixel on a unit sphere of radius r
+  const px1 = (r) => 0.55 / (curScale * SIZE * r);
 
-  // seams on the bud: meridians from the tip, thin at any scale
-  function seam(s, n, ph, r) {
-    const az = Math.atan2(s[2], s[0]);
-    const k = (az / (2 * Math.PI)) * n + ph;
-    const w = (Math.max(0.03, px1(r)) * n) / (2 * Math.PI) / Math.max(0.35, Math.sqrt(1 - s[1] * s[1]));
-    return Math.abs(k - Math.round(k)) < w;
-  }
-  // hood: open in front (the face window) and underneath (the neck); darker seams toward the back
-  const WIN_Z = 0.64, WIN_V = -0.14, WIN_H = 0.6;
-  function hoodMat(s) {
-    if (s[1] < -0.74) return 0;
-    if (s[0] > 0) {
-      const a = s[2] / WIN_Z, b = (s[1] - WIN_V) / WIN_H;
-      if (a * a + b * b < 1) return 0;
-    }
-    if (s[0] < 0.62 && s[1] > -0.5 && seam(s, 5, 0.5, HOOD_R[0])) return C_SEAM;
-    return C_BUD;
-  }
-  function tipMat(s) { return s[1] < 0.75 && seam(s, 5, 0.5, 7) ? C_SEAM : C_BUD; }
-
-  // face: eyes (surface decals when the head is big on screen) and a small smile
-  const EYE_AZ = 0.44, EYE_V = 0.1, EW = 0.22, EH = 0.3;
-  function eyeDecal(s) {
-    const az = Math.atan2(s[2], s[0]);
-    for (const sd of [1, -1]) {
-      const du = (az - sd * EYE_AZ) / EW, dv = (s[1] - EYE_V) / EH;
-      if (du * du + dv * dv > 1.6) continue;
-      const lw = Math.max(0.22, px1(HEAD_R[1]) * 1.3 / EH);
-      if (EYEK === 'open') {
-        if (du * du + dv * dv >= 1) continue;
-        const gu = (du - 0.3) / 0.36, gv = (dv - 0.36) / 0.32;
-        if (gu * gu + gv * gv < 1) return C_GLINT;
-        const hu = (du + 0.28) / 0.2, hv = (dv + 0.5) / 0.16;
-        if (hu * hu + hv * hv < 1) return code(EYE, 3);
-        return C_EYE;
-      }
-      if (Math.abs(du) > 0.95) continue;
-      if (EYEK === 'happy') { if (Math.abs(dv - (0.05 + 0.45 * (1 - du * du))) < lw) return C_EYE; }
-      else if (EYEK === 'closed') { if (Math.abs(dv - (-0.1 - 0.4 * (1 - du * du))) < lw) return C_EYE; }
-      else if (Math.abs(dv + 0.35 - 0.12 * du * du) < lw) return C_EYE; // blink: a flat lash line
-    }
-    return 0;
-  }
+  // face: tiny vertical-dash eyes and a small smile (surface decals when big on screen)
+  const EYE_AZ = 0.42, EYE_V = 0.18;
   function faceMat(s) {
-    if (DECAL && s[0] > 0.3) { const e = eyeDecal(s); if (e) return e; }
-    if (s[0] > 0.6 && Math.abs(s[2]) < 0.32) {
-      const u = s[2] / 0.32, v = s[1] + 0.36;
-      if (MO > 0.05) {
-        if (Math.abs(u) < 0.72 && v < 0.05 - 0.04 * u * u && v > -0.04 - 0.22 * MO * (1 - u * u)) return C_MOUTH;
-      } else if (Math.abs(u) < 0.62) {
-        if (Math.abs(v - 0.12 * u * u) < Math.max(0.045, px1(HEAD_R[1]))) return code(MOUTH, 1);
+    if (s[0] < 0.1) return C_FACE;
+    const az = Math.atan2(s[2], s[0]), v = s[1];
+    if (DECAL) {
+      const lw = Math.max(0.06, px1(HEAD_R[2]) * 0.8);
+      for (const sd of [1, -1]) {
+        const du = az - sd * EYE_AZ;
+        if (EYEK === 'open') { if (Math.abs(du) < lw && Math.abs(v - EYE_V) < 0.16) return C_EYE; }
+        else if (Math.abs(du) < 0.16) {
+          const u = du / 0.16;
+          if (EYEK === 'happy' && Math.abs(v - EYE_V - 0.08 * (1 - u * u)) < lw) return C_EYE;
+          if (EYEK === 'closed' && Math.abs(v - EYE_V + 0.08 * (1 - u * u)) < lw) return C_EYE;
+          if (EYEK === 'blink' && Math.abs(v - EYE_V + 0.08) < lw) return C_EYE;
+        }
       }
+    }
+    // smile: a small V/U curve under the eyes
+    const u = az / 0.26, mv = v + 0.22;
+    if (Math.abs(u) < 1) {
+      if (MO > 0.05) { if (mv < 0.02 && mv > -0.04 - 0.2 * MO * (1 - u * u)) return code(MOUTH); }
+      else if (Math.abs(mv + 0.07 * (1 - u * u)) < Math.max(0.04, px1(HEAD_R[1]) * 0.8)) return code(MOUTH);
+    }
+    return C_FACE;
+  }
+  // top bud: green bulb with a pale mint cap whose lower edge is scalloped
+  function topMat(s) {
+    const az = Math.atan2(s[2], s[0]);
+    const edge = -0.05 + 0.14 * Math.abs(Math.cos(az * 2));
+    if (s[1] > edge) {
+      // two seam ticks on the cap front
+      if (s[0] > 0.2 && s[1] > 0.3 && s[1] < 0.6 && Math.abs(Math.abs(s[2]) - 0.28) < Math.max(0.05, px1(TOP_R[0]))) return C_SEAM;
+      return C_BUD;
     }
     return C_GREEN;
   }
 
-  /* ---------- eye stamps for small sizes (k = eye, w = white glint) ---------- */
+  /* ---------- eye stamps for small sizes: vertical dashes ---------- */
   const EYES_S = {
-    open: ['kk', 'wk', 'kk'], openN: ['kk', 'wk', 'kk'], openF: ['k', 'k'],
-    happy: ['.k.', 'k.k'], happyN: ['.k', 'k.'], happyF: ['k', 'k'],
+    open: ['k', 'k'], openN: ['k', 'k'], openF: ['k'],
+    happy: ['.k.', 'k.k'], happyN: ['.k', 'k.'], happyF: ['k'],
     closed: ['k.k', '.k.'], closedN: ['k.', '.k'], closedF: ['k'],
     blink: ['kk'], blinkN: ['kk'], blinkF: ['k'],
   };
   const EYES_M = {
-    open: ['.kk.', 'wwkk', 'wkkk', 'kkkk', '.kk.'], openN: ['.k.', 'wkk', 'kkk', 'kkk', '.k.'], openF: ['k.', 'wk', 'kk', 'k.'],
+    open: ['k', 'k', 'k'], openN: ['k', 'k', 'k'], openF: ['k', 'k'],
     happy: ['.kk.', 'k..k'], happyN: ['.k.', 'k.k'], happyF: ['.k', 'k.'],
     closed: ['k..k', '.kk.'], closedN: ['k.k', '.k.'], closedF: ['k.', '.k'],
-    blink: ['....', 'kkkk', '.kk.'], blinkN: ['...', 'kkk', '.k.'], blinkF: ['..', 'kk'],
+    blink: ['kkk'], blinkN: ['kk'], blinkF: ['k'],
   };
-  const EYEC = { k: '#16201a', w: '#ffffff' };
+  const EYEC = { k: '#1a1a0e', w: '#ffffff' };
 
   const DEFAULT = { walk: 0, bloom: 0, eyes: 'open', mouth: 0, tilt: 0, side: 1 };
   const PRI = {};
   for (let i = 1; i < 64; i++) PRI[i] = 0;
-  // 1 body, 2 head, 3 hood (+ tip), 4 lining, 5..7 petals, 8 heart, 10/11 feet, 20+ pollen
-  Object.assign(PRI, { 2: 1, 3: 2, 4: -1, 5: 3, 6: 3, 7: 3, 8: 2 });
+  // 1 body, 2 face, 3 wrap band, 4 top bud, 5..7 petals, 8 heart, 10/11 feet, 12..15 collar, 20+ pollen
+  Object.assign(PRI, { 2: 2, 3: 1, 4: 2, 5: 3, 6: 3, 7: 3, 8: 2, 12: 3, 13: 3, 14: 3, 15: 3 });
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -3243,41 +3235,43 @@ const Budew = (() => {
     const roll = moving ? 0.08 * Math.sin(wk) : 0;
     const root = chain(T(0, bob, 0), T(0, 4, 0), R(M3.rx(roll)), T(0, -4, 0));
 
-    // --- body
+    // --- pear body: round lower bulb narrowing into the neck
     prims.push(ellF(chain(root, T(...BODY_C)), BODY_R, 1, 1, M_GREEN));
+    prims.push(ellF(chain(root, T(-1, 40, 0)), [11.5, 15, 12], 1, 1, M_GREEN));
     anchors.body = inF(root, BODY_C);
 
-    // --- head (face) inside the hood; the head tilt pivots at the neck
-    const neck = chain(root, T(0, 22, 0), R(M3.rx(-0.2 * tilt)), T(0, -22, 0));
+    // --- face dome and the dark four-lobed collar under it (tilt rolls the upper body)
+    const neck = chain(root, T(0, 24, 0), R(M3.rx(-0.15 * tilt)), T(0, -24, 0));
     const head = chain(neck, T(...HEAD_C));
     const headPrim = ellF(head, HEAD_R, 2, 2, faceMat);
     prims.push(headPrim);
-    const hood = chain(neck, T(...HOOD_C));
-    prims.push(ellF(hood, HOOD_R, 3, 3, hoodMat));
-    prims.push(ellF(hood, [HOOD_R[0] * 0.94, HOOD_R[1] * 0.94, HOOD_R[2] * 0.94], 4, 4, M_LINING));
+    [[-0.55, 0], [-0.18, 1], [0.18, 2], [0.55, 3]].forEach(([az, i]) => {
+      const c = [BODY_C[0] + 14 * Math.cos(az), 12 - 2 * Math.abs(az), 17 * Math.sin(az)];
+      prims.push(ellF(chain(neck, T(...c), R(M3.ry(-az))), [5, 6.2, 7], 12 + i, 12 + i, M_COLLAR));
+    });
 
-    // --- bud tip: a tapering point leaning back; parts into three petals when blooming
-    const tipBase = chain(hood, T(-1.2, HOOD_R[1] - 4.5, 0), R(M3.rz(0.3)));
-    // lower bud swell (same group as the hood: no contour line)
-    prims.push(ellF(chain(tipBase, T(0, 3.2, 0)), [8.6, 8.4, 8.6], 3, 3, tipMat));
+    // --- leaf band wrapping diagonally up from the near side to the top bud
+    prims.push(seg(inF(neck, [2, 26, 15]), inF(neck, [4, 44, -3]), 5.5, 5, 3, 3, M_GREEN));
+    prims.push(seg(inF(neck, [4, 42, -4]), inF(neck, [1, 54, -1]), 5.5, 5.5, 3, 3, M_GREEN));
+
+    // --- top bud; parts into petals when blooming
+    const tipBase = chain(neck, T(...TOP_C), R(M3.rz(-0.15)));
+    prims.push(ellF(tipBase, TOP_R, 4, 4, topMat));
     if (bloom < 0.04) {
-      prims.push(ellF(chain(tipBase, T(-0.4, 10, 0), R(M3.rz(0.1))), [4.2, 7.2, 4.2], 3, 3, tipMat));
-      anchors.top = inF(tipBase, [-1.6, 17, 0]);
+      anchors.top = inF(tipBase, [0, TOP_R[1], 0]);
     } else {
-      // flower heart and four broad petals parting round it
-      prims.push(ellF(chain(tipBase, T(0, 9 + 2.5 * bloom, 0)), [3.8 + 1.2 * bloom, 3.4 + bloom, 3.8 + 1.2 * bloom], 8, 8, M_HEART));
+      prims.push(ellF(chain(tipBase, T(0, 7 + 2.5 * bloom, 0)), [3.8 + 1.2 * bloom, 3.4 + bloom, 3.8 + 1.2 * bloom], 8, 8, M_HEART));
       for (let k = 0; k < 4; k++) {
         const az = (k / 4) * Math.PI * 2 + Math.PI / 4;
-        const pf = chain(tipBase, T(0, 7, 0), R(M3.ry(-az)), R(M3.rz(-0.12 - 0.5 * bloom)), T(2.6, 4.6, 0), R(M3.rz(0.28)));
-        prims.push(ellF(pf, [2.2, 5.6, 5.4], 5 + (k % 3), 5 + (k % 3), tipMat));
+        const pf = chain(tipBase, T(0, 5, 0), R(M3.ry(-az)), R(M3.rz(-0.12 - 0.5 * bloom)), T(2.6, 4.6, 0), R(M3.rz(0.28)));
+        prims.push(ellF(pf, [2.2, 5.6, 5.4], 5 + (k % 3), 5 + (k % 3), M_BUD));
       }
-      anchors.top = inF(tipBase, [0, 16, 0]);
-      // pollen specks puffing up over the open bud
+      anchors.top = inF(tipBase, [0, 14, 0]);
       if (bloom > 0.3) {
         const n = 6, g = Math.min(1, (bloom - 0.3) / 0.4);
         for (let k = 0; k < n; k++) {
           const a = k * 2.4 + 0.6, f = ((k * 37) % 7) / 7;
-          const rr = (2 + 7 * bloom) * (0.4 + 0.6 * f), hgt = 17 + 11 * bloom * (0.2 + 0.8 * (((k * 53) % 7) / 7));
+          const rr = (2 + 7 * bloom) * (0.4 + 0.6 * f), hgt = 15 + 11 * bloom * (0.2 + 0.8 * (((k * 53) % 7) / 7));
           const c = add(inF(tipBase, [0, 0, 0]), [rr * Math.cos(a) - 1.5, hgt, rr * Math.sin(a)]);
           const r = (1 + 0.9 * (((k * 29) % 5) / 5)) * g;
           prims.push(ellF(T(...c), [r, r, r], 20 + k, 20 + k, M_POLLEN));
@@ -3287,23 +3281,23 @@ const Budew = (() => {
     anchors.bud = add(anchors.top, [0, 3, 0]);
     anchors.head = head.t;
 
-    // --- eyes (stamps at small sizes; render() swaps in surface decals when the head is big)
+    // --- eyes (stamps at small sizes; render() swaps in surface decals when the face is big)
     const kind = ['open', 'happy', 'blink', 'closed'].includes(P.eyes) ? P.eyes : 'open';
     for (const sd of [1, -1]) {
       const s = sph(sd * EYE_AZ, EYE_V);
       const at = { prim: headPrim, p: inF(head, [HEAD_R[0] * s[0], HEAD_R[1] * s[1], HEAD_R[2] * s[2]]), s };
-      stamps.push({ at, set: EYES_M, colors: EYEC, kind, near: 0.72, far: 0.42 });
+      stamps.push({ at, set: EYES_M, colors: EYEC, kind, near: 0.5, far: 0.2, minFacing: 0.08 });
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = at.p;
     }
-    anchors.mouth = inF(head, [HEAD_R[0] * 0.92, -HEAD_R[1] * 0.38, 0]);
+    anchors.mouth = inF(head, [HEAD_R[0] * 0.95, -HEAD_R[1] * 0.25, 0]);
 
-    // --- feet: stubby, alternate when walking
+    // --- feet: tiny pointed yellow-green nubs, alternate when walking
     [[1, 0], [-1, Math.PI]].forEach(([sd, ph], i) => {
       const lift = moving ? Math.max(0, Math.sin(wk + ph)) * 3 : 0;
       const sw = moving ? Math.cos(wk + ph) * 2.8 : 0;
-      const c = [2.4 + sw, 3.4 + lift, sd * 5.8];
-      prims.push(ellF(chain(T(...c), R(M3.ry(-sd * 0.25))), [5.8, 3.5, 4.6], 10 + i, 10 + i, M_FOOT));
-      anchors[sd > 0 ? 'footN' : 'footF'] = [c[0], c[1] - 3.4, c[2]];
+      const c = [3 + sw, 3 + lift, sd * 8];
+      prims.push(seg([c[0] - 1, c[1] + 4, c[2] * 0.85], [c[0] + 2, c[1] - 3, c[2] * 1.1], 3.2, 3.6, 10 + i, 10 + i, M_FOOT));
+      anchors[sd > 0 ? 'footN' : 'footF'] = [c[0], 0, c[2]];
     });
 
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
@@ -3316,10 +3310,10 @@ const Budew = (() => {
     curScale = opt.scale || 1;
     MO = clamp(+model.pose.mouth || 0, 0, 1);
     EYEK = ['open', 'happy', 'blink', 'closed'].includes(model.pose.eyes) ? model.pose.eyes : 'open';
-    const px = HEAD_R[0] * SIZE * curScale; // head radius in pixels
+    const px = HEAD_R[0] * SIZE * curScale; // face radius in pixels
     DECAL = px >= 10.5;
     model.stamps = DECAL ? [] : model.eyeStamps;
-    for (const st of model.eyeStamps) st.set = px >= 6 ? EYES_M : EYES_S;
+    for (const st of model.eyeStamps) st.set = px >= 5 ? EYES_M : EYES_S;
     return Creature.render(model, opt);
   }
 
@@ -6769,12 +6763,12 @@ const Flygon = (() => {
   const BODY = 1, BELLY = 2, DARK = 3, COVER = 4, WING = 5, TRIM = 6, VEIN = 7, CLAW = 8, MOUTH = 9, INK = 10;
   const MAT = { BODY, BELLY, DARK, COVER, WING, TRIM, VEIN, CLAW, MOUTH, INK };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#4c8a3a', '#62a64a', '#82c460', '#a6dc80', '#d4f4b4'], od: '#1f4a1a', ol: '#3e7a32', ln: '#3c7430' },
+    [BODY]:  { r: ['#5e9a52', '#78b468', '#98cc82', '#b8e2a2', '#dcf4cc'], od: '#284e22', ol: '#4a803e', ln: '#4a803e' },
     [BELLY]: { r: ['#9eae62', '#bccc7c', '#dae69c', '#eaf2bc', '#f8fce0'], od: '#4a5a22', ol: '#7a8a44', ln: '#86984a' },
-    [DARK]:  { r: ['#244e22', '#2e622a', '#3a7834', '#4a8e42', '#5ea654'], od: '#10280e', ol: '#224a20', ln: '#1c401a' },
-    [COVER]: { r: ['#8c1420', '#b4202a', '#d8363a', '#ee6660', '#ffa69a'], od: '#4e0810', ol: '#861420', ln: '#7e1420' },
-    [WING]:  { r: ['#8ab852', '#a4d064', '#c2e67e', '#daf2a2', '#f0fcd2'], od: '#3e6a1e', ol: '#6a9a3a', ln: '#6a9a3a' },
-    [TRIM]:  { r: ['#8c1420', '#b01e28', '#d23234', '#e85a52', '#fa9486'], od: '#4e0810', ol: '#861420', ln: '#7e1420' },
+    [DARK]:  { r: ['#2e6030', '#3a7a3c', '#4a9248', '#60a85a', '#7cc074'], od: '#143016', ol: '#2a562a', ln: '#2a562a' },
+    [COVER]: { r: ['#6e1018', '#921a26', '#b42a34', '#d2504e', '#f08a80'], od: '#3e060c', ol: '#6e1018', ln: '#6e1018' },
+    [WING]:  { r: ['#86b872', '#a0d08a', '#bce4a4', '#d4f0c0', '#ecfae0'], od: '#3e6a30', ol: '#6a9a58', ln: '#6a9a58' },
+    [TRIM]:  { r: ['#a8343e', '#c84a52', '#e06a6c', '#f08c88', '#fcb4ac'], od: '#5a141c', ol: '#962c36', ln: '#962c36' },
     [VEIN]:  { r: ['#3a7a2e', '#4a9038', '#5ca646', '#76bc5a', '#98d47a'], od: '#1a4412', ol: '#346e28', ln: '#346e28' },
     [CLAW]:  { r: ['#a8a8a0', '#cacac2', '#ecece6', '#f8f8f4', '#ffffff'], od: '#50504a', ol: '#80807a', ln: '#86867e' },
     [MOUTH]: { r: ['#3e0e14', '#5a1820', '#76262c', '#90383a', '#a84c4a'], od: '#26060a', ol: '#3e0e14', ln: '#3e0e14' },
@@ -6846,7 +6840,7 @@ const Flygon = (() => {
       const rr = r((i + 0.5) / n);
       const d = sub(b, a), hl = (len3(d) / 2) * over;
       const Rm = axesAlong(d, up);
-      prims.push(E(sc(add(a, b), 0.5), M3.mul(Rm, M3.diag(hl, rr, rr)), part, grp, tubeMat(Rm, hl, rr, m)));
+      prims.push(E(sc(add(a, b), 0.5), M3.mul(Rm, M3.diag(hl, rr, rr)), part, grp, tubeMat(Rm, hl, rr, typeof m === 'function' ? m(i) : m)));
     }
   }
 
@@ -6864,13 +6858,13 @@ const Flygon = (() => {
         const d = (a - q) * Math.min(mid * len, w);
         if (d < trim) return C_TRIM;
         // a darker green vein: an inner diamond outline
-        if (vein && Math.abs(d - vein) < 1.3) return C_VEIN;
+        if (vein && d > vein && (u - v * 0.4) % 40 < 7 && u > len * 0.2) return code(WING, 1);
         return C_WING;
       },
     });
   }
-  const WING_G = rhombus(168, 52, 0.36, 4.5, 16);
-  const FAN_G = rhombus(30, 10, 0.45, 2.6, 0);
+  const WING_G = rhombus(168, 56, 0.36, 7.5, 18);
+  const FAN_G = rhombus(34, 12, 0.5, 3.6, 0);
 
   /* ---------- head, eye covers ---------- */
   const HR = [24, 20, 21];
@@ -6991,10 +6985,11 @@ const Flygon = (() => {
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = inF(ef, [0, 0, CR[2] * sd]);
       // long antennae swept back from the top of the head, with a kink
       const a0 = inF(hf, [-2, 17, 6 * sd]);
-      const ap = [a0, inF(hf, [-14, 30, 9 * sd]), inF(hf, [-32, 38, 14 * sd]), inF(hf, [-52, 38, 18 * sd]), inF(hf, [-70, 44, 22 * sd])];
-      tube(prims, ap, 7, (t) => lerp(3.4, 2, t), 7, 7, DARK, [0, 1, 0], 1.7);
+      const a0b = inF(hf, [8, 16, 4 * sd]);
+      const ap = [a0b, inF(hf, [-4, 34, 7 * sd]), inF(hf, [-26, 50, 11 * sd]), inF(hf, [-58, 58, 16 * sd]), inF(hf, [-96, 58, 22 * sd]), inF(hf, [-126, 50, 27 * sd])];
+      tube(prims, ap, 12, (t) => lerp(6, 2, t), 7, 7, (i) => (i < 3 ? BODY : DARK), [0, 1, 0], 1.7);
     }
-    anchors.top = inF(hf, [-40, 44, 0]);
+    anchors.top = inF(hf, [-58, 60, 0]);
 
     // --- the big rhombus wings: roots on the upper back, a V up and out; flap buzzes them
     for (const sd of [1, -1]) {
@@ -7007,7 +7002,7 @@ const Flygon = (() => {
       const back = nrm(cross([0, 1, 0], U));
       // chord axis pointing forward, its leading edge twisted up so the broad face shows in 3/4 views
       const fwdC = sd > 0 ? back : sc(back, -1);
-      const chord = nrm(sub(add(fwdC, [0, 0.55, 0]), sc(U, dot(add(fwdC, [0, 0.55, 0]), U))));
+      const chord = nrm(sub(add(fwdC, [0, 1.0, 0]), sc(U, dot(add(fwdC, [0, 1.0, 0]), U))));
       const N = nrm(cross(U, chord));
       prims.push(PL(root, M3.cols(U, cross(N, U), N), id, id, WING_G, 1.4));
       anchors[sd > 0 ? 'wingN' : 'wingF'] = add(root, sc(U, 168));
@@ -7052,7 +7047,7 @@ const Flygon = (() => {
     const sway = (walking ? 0.25 * Math.sin(wk) : 0);
     const tb = inF(tf, [-24, 14, 0]);
     const tp = [inF(tf, [-10, 24, 0]), tb, add(tb, [-38, -22, 10 * sway]), add(tb, [-84, -32, 26 * sway + 8 * side]), add(tb, [-128, -26, 40 * sway + 16 * side]), add(tb, [-160, -8, 50 * sway + 22 * side])];
-    tube(prims, tp, 16, (t) => lerp(17, 5, Math.pow(t, 0.8)), 14, 14, BODY, [0, 1, 0], 1.8);
+    tube(prims, tp, 16, (t) => lerp(17, 5, Math.pow(t, 0.8)), 14, 14, (i) => (i >= 3 && i % 3 === 0 ? DARK : BODY), [0, 1, 0], 1.8);
     const tEnd = tp[5], tD = nrm(sub(tEnd, crPt(tp, 4.7)));
     const fanN = nrm(cross(tD, [0, 0, 1]).map((x, i) => x + (i === 2 ? 0.5 * side : 0)));
     for (const a of [-0.75, 0, 0.75]) {
@@ -7155,9 +7150,9 @@ const Groudon = (() => {
   const RED = 1, GREY = 2, LINE = 3, CLAW = 4, EYE = 5, PUPIL = 6, MOUTH = 7, TONGUE = 8, TOOTH = 9, PLATE = 10;
   const MAT = { RED, GREY, LINE, CLAW, EYE, PUPIL, MOUTH, TONGUE, TOOTH, PLATE };
   const PAL = Creature.palette({
-    [RED]:    { r: ['#6e121e', '#a01e2a', '#d2323a', '#ec5a54', '#ff9a88'], od: '#420812', ol: '#7e141e', ln: '#621019' },
-    [GREY]:   { r: ['#5e5a5e', '#88848a', '#b0acae', '#d4d0cc', '#f2f0ea'], od: '#2e2a30', ol: '#5a565c', ln: '#4a464c' },
-    [PLATE]:  { r: ['#66626a', '#8e8a90', '#b8b4b4', '#dcd8d2', '#f6f4ee'], od: '#2e2a30', ol: '#5a565c', ln: '#4a464c' },
+    [RED]:    { r: ['#6a1410', '#9e2618', '#ca3c22', '#ea643e', '#ffa07c'], od: '#3e0a08', ol: '#7a1a12', ln: '#5e120e' },
+    [GREY]:   { r: ['#4e4442', '#6e6260', '#8e8280', '#b0a6a2', '#d4ccc6'], od: '#2e2a30', ol: '#5a565c', ln: '#4a464c' },
+    [PLATE]:  { r: ['#5e120e', '#8e2216', '#bc361e', '#e05838', '#fa9070'], od: '#300806', ol: '#6a160e', ln: '#200806' },
     [LINE]:   { r: ['#170e12', '#1e1418', '#261a1e', '#302226', '#3c2a30'], od: '#10080c', ol: '#1e1418', ln: '#10080c' },
     [CLAW]:   { r: ['#8e8a88', '#bcb8b4', '#e2e0da', '#f6f4f0', '#ffffff'], od: '#3e3a3a', ol: '#6a6664', ln: '#6a6664' },
     [EYE]:    { r: ['#c8920e', '#e8b41c', '#ffd23a', '#ffe684', '#fff6c8'], od: '#6a3a06', ol: '#8a5a10', ln: '#6a3a06' },
@@ -7199,6 +7194,45 @@ const Groudon = (() => {
   };
 
   let curScale = 1;
+
+  /* ---------- white spikes: faceted cones (flat plates) ---------- */
+  const PAD = 0.5;
+  function convexShape(pts, m) {
+    let area = 0;
+    for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; area += a[0] * b[1] - b[0] * a[1]; }
+    const P = area < 0 ? pts.slice().reverse() : pts;
+    const n = P.length, EQ = new Float64Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const a = P[i], b = P[(i + 1) % n];
+      const ex = b[0] - a[0], ey = b[1] - a[1], l = Math.hypot(ex, ey) || 1;
+      const nx = -ey / l, ny = ex / l;
+      EQ[i * 3] = nx; EQ[i * 3 + 1] = ny; EQ[i * 3 + 2] = PAD - (nx * a[0] + ny * a[1]);
+    }
+    return { bb: Shape2D.bbox(P, PAD + 0.3), test(u, v) { for (let i = 0; i < n * 3; i += 3) if (EQ[i] * u + EQ[i + 1] * v + EQ[i + 2] < 0) return 0; return m; } };
+  }
+  function tri(a, b, c, part, m) {
+    const e1 = sub(b, a), e2 = sub(c, a), nz = nrm(cross(e1, e2)), u = nrm(e1), v = cross(nz, u);
+    const pts = [a, b, c].map((p) => { const d = sub(p, a); return [dot(d, u), dot(d, v)]; });
+    return { kind: 'plate', part, grp: part, c: a, L: M3.cols(u, v, nz), shape: convexShape(pts, m), thick: 1.4 };
+  }
+  // cone from base centre b along direction d (length l, base radius r), 7 facets + a round base cap
+  function cone(out, b, d, l, r, part, curve = 0) {
+    d = nrm(d);
+    let U = cross(d, [0, 1, 0]); if (len3(U) < 1e-3) U = [1, 0, 0]; U = nrm(U); const V = cross(d, U);
+    const tip = add(b, sc(d, l)), n = 7, ring = [];
+    for (let k = 0; k < n; k++) { const a = (k * 2 * Math.PI) / n; ring.push(add(b, add(sc(U, r * Math.cos(a)), sc(V, r * Math.sin(a))))); }
+    // a slightly curved spike: bend the tip half way
+    const mid = add(b, sc(d, l * 0.5));
+    for (let k = 0; k < n; k++) {
+      const a = ring[k], c = ring[(k + 1) % n];
+      if (curve) {
+        const am = add(add(sc(a, 0.5), sc(mid, 0.5)), [0, 0, 0]), cm = add(sc(c, 0.5), sc(mid, 0.5));
+        out.push(tri(a, c, cm, part, C_CLAW)); out.push(tri(a, cm, am, part, C_CLAW)); out.push(tri(am, cm, add(tip, sc(V, curve)), part, C_CLAW));
+      } else out.push(tri(a, c, tip, part, C_CLAW));
+    }
+    out.push(E(b, M3.mul(M3.cols(U, V, d), M3.diag(r, r, r * 0.3)), part, part, M_CLAW_F));
+    return tip;
+  }
   // half line width in unit-sphere units for an ellipsoid of radius r (at least ~1 px)
   const lw = (r, base) => Math.max(base, 0.62 / (curScale * r));
 
@@ -7289,7 +7323,7 @@ const Groudon = (() => {
     };
   }
   const JAWR = [70, 26, 46];
-  const jawMat = (s) => (s[1] < -0.2 ? C_GREY : s[1] > 0.55 && s[0] > -0.1 && Math.abs(s[2]) < 0.8 ? C_TONGUE : C_RED);
+  const jawMat = (s) => (s[1] > 0.55 && s[0] > -0.1 && Math.abs(s[2]) < 0.8 ? C_TONGUE : s[1] > 0.25 && Math.abs(s[2]) > 0.55 ? C_RED : C_GREY);
 
   /* ---------- limb decals ---------- */
   // thighs: a black line ring that dips down on the outside (the "knee" chevron)
@@ -7306,17 +7340,18 @@ const Groudon = (() => {
     return Math.abs(s[0] - 0.42) < w && s[1] > -0.9 ? C_LINE : C_RED;
   };
   const M_RED = () => C_RED, M_CLAW = () => C_CLAW, M_GREY = () => C_GREY;
+  function M_CLAW_F() { return C_CLAW; }
 
   /* ---------- rock plates (flat, chunky; u = along, v = up) ---------- */
   // big shoulder slab: three blunt spikes pointing up and back
   const SHOULDER = bakeShape(Shape2D.poly([[70, 0], [96, 40], [88, 84], [64, 118], [44, 98], [22, 150], [-2, 110], [-30, 142], [-44, 92], [-72, 104], [-70, 52], [-50, 10], [-10, -12], [40, -12]], C_PLATE, 6, (u, v) => (v > 20 + 0.25 * u && (u + v * 0.35) % 42 < 5 ? C_PLATE_D : C_PLATE)));
   const SMALLPL = bakeShape(Shape2D.poly([[34, 0], [40, 30], [16, 62], [0, 40], [-22, 58], [-34, 20], [-20, -6], [10, -8]], C_PLATE, 6));
-  const TAILSP = bakeShape(Shape2D.poly([[20, 0], [8, 24], [-4, 52], [-14, 22], [-22, 0], [0, -6]], C_PLATE, 6));
+  const TAILSP = bakeShape(Shape2D.poly([[26, 0], [18, 30], [-2, 58], [-16, 50], [-10, 24], [-24, 0], [0, -6]], C_PLATE, 6, (u, v) => (v > 44 - 0.4 * u ? C_LINE : C_PLATE)));
 
   const DEFAULT = { walk: 0, roar: 0, glow: 0, sleep: 0, mouth: 0, eyes: 'open', side: 1 };
   // 1 torso, 2 head, 3 jaw, 4 mouth, 5/6 arms, 7/8 legs, 9 tail, 10.. plates
   const SIZE = 0.945;
-  const PRI = { 1: 0, 2: 2, 3: 2, 4: 1, 5: 3, 6: 1, 7: 2, 8: 1, 9: 0, 10: 3, 11: 1, 12: 2, 13: 2 };
+  const PRI = { 1: 0, 2: 2, 3: 2, 4: 1, 5: 3, 6: 1, 7: 2, 8: 1, 9: 0, 10: 3, 11: 1, 12: 2, 13: 3 };
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -7331,7 +7366,7 @@ const Groudon = (() => {
     const bob = walking ? 6 * Math.abs(Math.cos(wk)) : 0;
     const roll = walking ? 0.045 * Math.sin(wk) : 0;
     const hipY = lerp(212, 92, ssl) - bob;
-    const lean = lerp(-0.26, -0.95, ssl) + 0.2 * ro;
+    const lean = lerp(-0.78, -0.95, ssl) + 0.45 * ro;
     const B = chain(T(lerp(0, 40, ssl), hipY, 0), R(M3.rx(roll)), R(M3.rz(lean)));
 
     /* --- torso --- */
@@ -7356,27 +7391,31 @@ const Groudon = (() => {
     prims.push(ellF(jawF, JAWR, 3, 3, jawMat));
     if (mo > 0.04) prims.push(ellF(chain(H, T(48, -30, 0)), [58, 22 + 18 * mo, 38], 4, 4, (s) => (s[1] < -0.2 && Math.abs(s[2]) < 0.6 ? C_TONGUE : C_MOUTH)));
     // grey horn-plates at the back of the head
-    for (const sd of [1, -1]) prims.push(seg(inF(H, [-20, 30, sd * 34]), inF(H, [-92, 52, sd * 44]), 13, 10, 2, 2, M_GREY, [0, 1, 0], 0.4));
+    for (const [x, y, l, r] of [[34, 44, 58, 11], [8, 50, 74, 12], [-22, 50, 84, 12], [-50, 42, 80, 11]])
+      for (const sd of [1, -1]) prims.push(seg(inF(H, [x, y - 10, sd * 26]), inF(H, [x - l * 0.55, y + l * 0.62, sd * 32]), r, 9, 2, 2, (q) => (q[1] < -0.2 ? C_LINE : C_RED), [1, 0, 0], 0.3));
     anchors.head = H.t;
     anchors.mouth = inF(H, [96, -34, 0]);
     const eyeP = (sd) => inF(H, [HR[0] * EC[0], HR[1] * EC[1], sd * HR[2] * EC[2]]);
     anchors.eyeN = eyeP(1); anchors.eyeF = eyeP(-1);
 
-    /* --- shoulder plates: big grey slabs rising up and back behind the head --- */
+    /* --- shoulder armour: red domes cut by black lines, a row of white spikes along each side of the back --- */
     let top = [0, -1e9, 0];
+    const armMatS = (s) => {
+      const w = lw(80, 0.03);
+      // plate seams: a ring round the dome and two cross seams
+      if (Math.abs(s[1] - 0.15 + 0.2 * s[0]) < w || Math.abs(s[0] - 0.35) < w * 1.2 || Math.abs(s[0] + 0.3) < w * 1.2) return C_LINE;
+      return C_RED;
+    };
     for (const sd of [1, -1]) {
-      const base = inF(B, [-6, 262, sd * 118]);
-      const U = dirF(B, [1, 0.05, 0]);
-      const Vv = dirF(B, [0.18 * 0, 1, sd * 0.22]);
-      const Vp = nrm(sub(Vv, sc(U, dot(Vv, U))));
-      const W = cross(U, Vp);
-      const k = 1.02;
-      prims.push(PL(base, M3.cols(sc(U, -k), sc(Vp, k), W), sd > 0 ? 10 : 11, sd > 0 ? 10 : 11, SHOULDER, 16));
-      const pk = add(base, add(sc(U, 2), sc(Vp, 150 * k)));
-      if (pk[1] > top[1]) top = pk;
-      // small front plate
-      const b2 = inF(B, [60, 232, sd * 128]);
-      prims.push(PL(b2, M3.cols(sc(U, -0.9), sc(Vp, 0.9), W), sd > 0 ? 10 : 11, sd > 0 ? 10 : 11, SMALLPL, 12));
+      const id = sd > 0 ? 10 : 11;
+      const dF = chain(B, T(10, 262, sd * 92), R(M3.rx(-sd * 0.35)), R(M3.rz(0.1)));
+      prims.push(ellF(dF, [128, 64, 70], id, id, armMatS));
+      // back spikes: four cones pointing up, out and back
+      for (const [x, h, l] of [[74, 292, 92], [20, 316, 120], [-36, 316, 124], [-92, 292, 100]]) {
+        const bp = inF(B, [x, h - 6, sd * 108]);
+        const tip = cone(prims, bp, dirF(B, [-0.45, 0.8, sd * 0.5]), l, 21, id);
+        if (tip[1] > top[1]) top = tip;
+      }
     }
     anchors.top = top;
 
@@ -7394,6 +7433,7 @@ const Groudon = (() => {
       const wr = add(el, sc(d2, 62));
       prims.push(seg(sh, el, 46, 44, id, id, M_RED));
       prims.push(seg(el, wr, 38, 36, id, id, armMat(38)));
+      cone(prims, add(el, [-8, 0, sd * 26]), [-0.55, -0.2, sd * 0.8], 66, 17, id);
       prims.push(E(wr, M3.diag(34, 32, 34), id, id, M_RED));
       for (const k of [-1, 0, 1]) {
         const cd = nrm(add(d2, [0.2, -0.25, sd * 0.3 * k + sd * 0.05]));
@@ -7416,6 +7456,7 @@ const Groudon = (() => {
       void thF;
       prims.push(seg(add(hip, [0, 28, 0]), kneeP, THR[1] * 0.78, THR[2], id, id, thighMat, [1, 0, 0], 0.5));
       prims.push(seg(kneeP, add(ft, [0, 30, 0]), 50, 50, id, id, M_RED));
+      cone(prims, add(kneeP, [20, 20, sd * 50]), [0.55, 0.3, sd * 0.8], 72, 18, id);
       const foot = chain(T(ft[0] + 22, ft[1] + 22, ft[2]), R(M3.ry(-sd * 0.12)));
       prims.push(ellF(foot, [66, 26, 52], id, id, M_RED));
       for (const k of [-1, 0, 1]) {
@@ -7426,7 +7467,7 @@ const Groudon = (() => {
     }
 
     /* --- tail: a thick tapering tube on a spline, dragging on the ground; grey spikes near the tip --- */
-    const ctrl0 = [[-96, 150, 0, 104], [-210, 128, 0, 92], [-360, 76, 0, 68], [-500, 36, 0, 46], [-620, 24, 0, 28], [-700, 22, 0, 14]];
+    const ctrl0 = [[-96, 150, 0, 106], [-210, 120, 0, 94], [-330, 104, 0, 76], [-440, 118, 0, 58], [-520, 150, 0, 42], [-570, 180, 0, 26]];
     const ctrl = ctrl0.map((q, i) => {
       let p = [q[0], q[1], q[2]];
       const t = i / (ctrl0.length - 1);
@@ -7482,15 +7523,24 @@ const Groudon = (() => {
       prims.push(prim);
       if (j === nBead - 1) tailTip = add(Bq.p, sc(X, r));
     }
-    // grey spikes on top of the tail toward the tip
-    for (const [fr, h] of [[0.62, 0.95], [0.72, 0.85], [0.82, 0.72], [0.9, 0.6]]) {
+    // red fins stacked on top toward the tip, white spikes jutting from the sides
+    for (const [fr, h] of [[0.6, 1.2], [0.7, 1.15], [0.8, 1.05], [0.9, 0.9]]) {
       const i = Math.floor(fr * (dense.length - 1));
       const a = dense[i], b = dense[Math.min(dense.length - 1, i + 1)];
       const X = nrm(sub(b.p, a.p));
       let Y = nrm(sub([0, 1, 0], sc(X, X[1])));
       const Z = cross(X, Y);
       const base = add(a.p, sc(Y, a.r * 0.7));
-      prims.push(PL(base, M3.cols(sc(X, -h * 1.4), sc(Y, h * 1.4), Z), 12, 12, TAILSP, 10));
+      prims.push(PL(base, M3.cols(sc(X, -h * 1.4), sc(Y, h * 1.4), Z), 12, 12, TAILSP, 14));
+    }
+    for (const fr of [0.3, 0.48, 0.66]) {
+      const i = Math.floor(fr * (dense.length - 1));
+      const a = dense[i], b = dense[Math.min(dense.length - 1, i + 1)];
+      const X = nrm(sub(b.p, a.p));
+      for (const sd of [1, -1]) {
+        const Z = nrm(cross(X, [0, 1, 0])), o = sc(Z, -sd);
+        cone(prims, add(a.p, sc(o, a.r * 0.8)), add(add(o, sc(X, 0.55)), [0, -0.15, 0]), 34 + a.r * 0.45, 13, 13);
+      }
     }
     anchors.tail = ctrl[0].p;
     anchors.tailTip = tailTip;
@@ -8956,8 +9006,8 @@ const Latias = (() => {
   const MAIN = 1, WHITE = 2, MARK = 3, MOUTH = 4, TONGUE = 5;
   const MAT = { RED: MAIN, WHITE, MARK, MOUTH, TONGUE };
   const PAL = Creature.palette({
-    [MAIN]:   { r: ['#962236', '#c23648', '#e2525c', '#f47c80', '#ffb4b2'], od: '#560e22', ol: '#9c2a3c', ln: '#8a2032' },
-    [WHITE]:  { r: ['#aaa8c2', '#cfcee0', '#edeef6', '#fcfcff', '#ffffff'], od: '#4a4866', ol: '#8886a6', ln: '#9492b0' },
+    [MAIN]:   { r: ['#8c2c3a', '#b64652', '#d6646a', '#ee8c8c', '#fcc0bc'], od: '#541020', ol: '#9a3242', ln: '#8a2a38' },
+    [WHITE]:  { r: ['#98a0c2', '#bac4de', '#dae2f2', '#f0f4fc', '#ffffff'], od: '#464c72', ol: '#8088ac', ln: '#8e96b8' },
     [MARK]:   { r: ['#2654aa', '#3670cc', '#5290e8', '#80b4f8', '#bcdafe'], od: '#122c66', ol: '#2a56a6', ln: '#244a96' },
     [MOUTH]:  { r: ['#4a1020', '#66182c', '#84263c', '#a2384e', '#bc5264'], od: '#2c0612', ol: '#4a1020', ln: '#3c0c1a' },
     [TONGUE]: { r: ['#b8485e', '#d66276', '#ee8290', '#ffa8b0', '#ffd0d2'], od: '#6a1a2e', ol: '#8e2a40', ln: '#8e2a40' },
@@ -9058,24 +9108,25 @@ const Latias = (() => {
   // spine from the tail tip to the top of the neck: hover (h) and jet (j) positions in the x-y plane,
   // half thickness rn (back ↔ belly), half width rw, white-belly threshold wk (white where s·dorsal < wk)
   const SPINE = [
-    { h: [-104, 9], j: [-146, 104], rn: 4.5, rw: 5, wk: -0.35 },
-    { h: [-79, 18], j: [-114, 104], rn: 9, rw: 10, wk: -0.32 },
-    { h: [-52, 37], j: [-80, 105], rn: 15, rw: 16, wk: -0.22 },
-    { h: [-28, 64], j: [-46, 106], rn: 21.5, rw: 22.5, wk: -0.1 },
-    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: 0.02 },
-    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: 0.08 },
-    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 0.12 },
-    { h: [20, 170], j: [70, 113], rn: 12, rw: 12, wk: 0.14 },
-    { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 0.14 },
+    { h: [-104, 9], j: [-146, 104], rn: 4.5, rw: 5, wk: -2 },
+    { h: [-79, 18], j: [-114, 104], rn: 9, rw: 10, wk: -2 },
+    { h: [-52, 37], j: [-80, 105], rn: 15, rw: 16, wk: -2 },
+    { h: [-28, 64], j: [-46, 106], rn: 21.5, rw: 22.5, wk: -2 },
+    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: -0.55 },
+    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: 0.3 },
+    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 2 },
+    { h: [20, 170], j: [70, 113], rn: 12, rw: 12, wk: 2 },
+    { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 2 },
   ];
-  const TRI = { t0: 4.55, t1: 5.5, w: 10 };          // chest triangle (spline param range, top half-width)
+  const TRI = { t0: 3.55, t1: 4.55, w: 12 };          // belly triangle (spline param range, top half-width)
+  const PATCH = { t: 3.45, dt: 0.62, z: 0.8, dz: 0.3, y: -0.15, dy: 0.5 };
   const HEAD = { h: [48, 203, 0], j: [112, 125, 0], ph: -0.06, pj: 0.06 };
   const CRAN_R = [25, 21, 20.5], SNOUT_C = [14.5, -6, 0], SNOUT_R = [17, 13, 14.5], SNOUT_TILT = -0.08;
   const jawLine = (x) => (x > 8 ? -3 - (x - 8) * 0.1 : -3 - (8 - x) * 0.26);
   const EYE_S = nrm([0.62, 0.2, 0.76]);                // eye position on the cranium (unit sphere, near side)
 
   // wing (u = span out from the root, v = chord: + toward the leading edge)
-  const WING = outline([[-8, 25], [18, 24], [48, 18], [78, 8], [100, -5], [107, -14], [97, -21], [74, -23], [48, -29], [24, -39], [5, -44], [-8, -34]], 16, 6.5);
+  const WING = outline([[-8, 20], [20, 15], [52, 9], [84, 4], [112, 1], [124, -3], [114, -8], [110, -13], [104, -9], [84, -11], [54, -16], [26, -25], [6, -32], [-8, -24]], 16, 6);
   const EAR = outline([[-6, 10], [12, 10.5], [28, 7], [44, 0.5], [31, -4], [14, -7.5], [-6, -7.5]], 6, 3.2);
   const TFIN = outline([[-5, 12], [10, 10], [22, 3], [32, -7], [22, -9], [9, -7], [-5, -8]], 2, 2.6);
 
@@ -9091,6 +9142,12 @@ const Latias = (() => {
     happy: ['.kkk.', 'k...k', 'k...k'], happyN: ['.kk.', 'k..k', 'k..k'], happyF: ['.k.', 'k.k'],
     closed: ['k...k', '.kkk.'], closedN: ['k..k', '.kk.'], closedF: ['k.', '.k'],
     blink: ['.....', 'kkkkk', '.kkk.'], blinkN: ['....', 'kkkk', '.kk.'], blinkF: ['kkk'],
+  };
+  const EYES_XL = {
+    open: ['.kkkk.', 'kwwyyk', 'kwyppk', 'kyyppk', 'koyyok', '.kkkk.'], openN: ['.kkk.', 'kwyyk', 'kyppk', 'kyppk', 'koyok', '.kkk.'], openF: ['.kk.', 'kwpk', 'kypk', 'kook', '.kk.'],
+    happy: ['.kkkk.', 'k....k', 'k....k'], happyN: ['.kkk.', 'k...k', 'k...k'], happyF: ['.kk.', 'k..k'],
+    closed: ['k....k', '.kkkk.'], closedN: ['k...k', '.kkk.'], closedF: ['k..k', '.kk.'],
+    blink: ['......', 'kkkkkk', '.kkkk.'], blinkN: ['.....', 'kkkkk', '.kkk.'], blinkF: ['kkkk'],
   };
   const EYEC = { k: '#3a0c1a', y: '#ffd23c', o: '#e0961c', p: '#2a0c14', w: '#ffffff' };
 
@@ -9113,10 +9170,14 @@ const Latias = (() => {
     };
     // body material: white belly below the dorsal threshold, blue triangle on the chest
     const bodyMat = (tm, rlT, rw, wk) => (s) => {
-      if (s[1] < -0.3) {
-        const t = tm + s[0] * rlT;
-        if (t > TRI.t0 && t < TRI.t1 && Math.abs(s[2] * rw) < (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0)) return C_MARK;
+      const t = tm + s[0] * rlT;
+      if (s[1] < -0.2 && t > TRI.t0 && t < TRI.t1) {
+        const hw = (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0), z = Math.abs(s[2] * rw);
+        if (z < hw) return (z < hw - 2.6 && t < TRI.t1 - 0.22 && t > TRI.t0 + 0.28 ? C_MAIN : C_MARK);
       }
+      // white jet-intake patches low on the flanks
+      const pt = (t - PATCH.t) / PATCH.dt, pz = (Math.abs(s[2]) - PATCH.z) / PATCH.dz, py = (s[1] - PATCH.y) / PATCH.dy;
+      if (pt * pt + pz * pz + py * py < 1) return C_WHITE;
       return s[1] < wk ? C_WHITE : C_MAIN;
     };
     const NS = 56;
@@ -9139,7 +9200,9 @@ const Latias = (() => {
         const open = mouth * 0.34 * (p[0] - 15);
         if (p[1] < yb + 0.9 && p[1] > yb - open) return p[1] < yb - open * 0.5 && Math.abs(p[2]) < 8.5 ? C_TONGUE : C_MOUTH;
       }
-      return p[1] < yb ? C_WHITE : C_MAIN;
+      // white head; a red band across the face through the eyes and back over the crown
+      if (!snout || p[0] < 26) { if (p[1] > yb + 3.5 && p[1] < yb + 16 - 0.1 * p[0]) return C_MAIN; }
+      return C_WHITE;
     };
     const crL = M3.diag(...CRAN_R);
     const cran = E(add(hc, M3.v(HL, [0, 0, 0])), M3.mul(HL, crL), 20, 2, headMat([0, 0, 0], crL, false));
@@ -9154,9 +9217,9 @@ const Latias = (() => {
     // ear fins: swept back from the back of the head, tilted outward
     for (const sd of [1, -1]) {
       const root = HP([-12, 8.5, sd * 9]);
-      const dir = HD(nrm([-1, -0.08 + 0.1 * k, sd * 0.42]));
+      const dir = HD(nrm([-1, 0.42 - 0.3 * k, sd * 0.42]));
       const L = frameUV(dir, HD([0, 1, sd * 0.7]), sd < 0);
-      prims.push(shell(root, L, EAR, sd > 0 ? 22 : 23, sd > 0 ? 3 : 4, MAIN, 1.6));
+      prims.push(shell(root, L, EAR, sd > 0 ? 22 : 23, sd > 0 ? 3 : 4, WHITE, 1.6));
     }
 
     /* --- eyes --- */
@@ -9196,9 +9259,15 @@ const Latias = (() => {
       const fo = nrm(lerpV(dir(0.28, -0.95, -0.02), dir(-0.97, 0.06, -0.06), k));
       const el = add(sh, scl(up, 19)), ha = add(el, scl(fo, 16));
       const id = sd > 0 ? 7 : 8;
-      prims.push(segE(sh, el, 7.2, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
-      prims.push(segE(el, ha, 6.4, SH.n, 41 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
-      prims.push(E(add(ha, scl(fo, 1.5)), M3.diag(7, 6.6, 6.6), 42 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
+      prims.push(segE(sh, el, 7.6, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      prims.push(segE(el, ha, 6.8, SH.n, 41 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      prims.push(E(add(ha, scl(fo, 1.5)), M3.diag(7.4, 7, 7), 42 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      // three small white claws
+      for (const c of [-1, 0, 1]) {
+        const cd = nrm(add(add(fo, scl(SH.t, 0.5)), scl(z, c * 0.55)));
+        const cb = add(ha, scl(fo, 4));
+        prims.push(segE(cb, add(cb, scl(cd, 9)), 2.4, SH.n, 42 + (sd > 0 ? 0 : 3), id, () => C_WHITE, 1));
+      }
       anchors[sd > 0 ? 'handN' : 'handF'] = ha;
     }
 
@@ -9230,7 +9299,7 @@ const Latias = (() => {
   /* ---------- render: eye set by scale, glow lift + aura, tight ray-cast box ---------- */
   function render(model, opt) {
     const sc = opt.scale || 1;
-    const set = sc >= 0.42 ? EYES_L : EYES_S;
+    const set = sc >= 0.7 ? EYES_XL : sc >= 0.36 ? EYES_L : EYES_S;
     for (const st of model.stamps) st.set = set;
     const g = clamp((model.pose && model.pose.glow) || 0, 0, 1);
     let pal = opt.pal || PAL;
@@ -9319,8 +9388,8 @@ const Latios = (() => {
   const MAIN = 1, WHITE = 2, MARK = 3, MOUTH = 4, TONGUE = 5;
   const MAT = { BLUE: MAIN, WHITE, MARK, MOUTH, TONGUE };
   const PAL = Creature.palette({
-    [MAIN]:   { r: ['#28388e', '#3a52b4', '#5474d6', '#7c9cec', '#b4c8fc'], od: '#141e5a', ol: '#2c3f96', ln: '#26378a' },
-    [WHITE]:  { r: ['#a4a6c0', '#c8cadc', '#e8eaf4', '#f8f9ff', '#ffffff'], od: '#40426a', ol: '#7e82a6', ln: '#8a8eb0' },
+    [MAIN]:   { r: ['#1a4a82', '#2a68a6', '#4a8cc6', '#76b0de', '#b0d4f2'], od: '#0e2a54', ol: '#285a90', ln: '#225488' },
+    [WHITE]:  { r: ['#868a9c', '#a6aabc', '#c6cad8', '#e2e6ee', '#fafbff'], od: '#3c4058', ol: '#747a94', ln: '#7e849c' },
     [MARK]:   { r: ['#9a1c2c', '#c42c3c', '#e44a52', '#f67a7a', '#ffb0aa'], od: '#5a0c18', ol: '#9a2230', ln: '#8a1c2a' },
     [MOUTH]:  { r: ['#3a1030', '#521840', '#6c2452', '#883466', '#a24c7e'], od: '#220618', ol: '#3a1030', ln: '#2e0c24' },
     [TONGUE]: { r: ['#b8485e', '#d66276', '#ee8290', '#ffa8b0', '#ffd0d2'], od: '#6a1a2e', ol: '#8e2a40', ln: '#8e2a40' },
@@ -9421,24 +9490,25 @@ const Latios = (() => {
   // spine from the tail tip to the top of the neck: hover (h) and jet (j) positions in the x-y plane,
   // half thickness rn (back ↔ belly), half width rw, white-belly threshold wk (white where s·dorsal < wk)
   const SPINE = [
-    { h: [-104, 9], j: [-146, 104], rn: 4.5, rw: 5, wk: -0.35 },
-    { h: [-79, 18], j: [-114, 104], rn: 9, rw: 10, wk: -0.32 },
-    { h: [-52, 37], j: [-80, 105], rn: 15, rw: 16, wk: -0.22 },
-    { h: [-28, 64], j: [-46, 106], rn: 21.5, rw: 22.5, wk: -0.1 },
-    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: 0.02 },
-    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: 0.08 },
-    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 0.12 },
-    { h: [20, 170], j: [70, 113], rn: 12, rw: 12, wk: 0.14 },
-    { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 0.14 },
+    { h: [-104, 9], j: [-146, 104], rn: 4.5, rw: 5, wk: -2 },
+    { h: [-79, 18], j: [-114, 104], rn: 9, rw: 10, wk: -2 },
+    { h: [-52, 37], j: [-80, 105], rn: 15, rw: 16, wk: -2 },
+    { h: [-28, 64], j: [-46, 106], rn: 21.5, rw: 22.5, wk: -2 },
+    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: -0.55 },
+    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: 0.3 },
+    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 2 },
+    { h: [20, 170], j: [70, 113], rn: 12, rw: 12, wk: 2 },
+    { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 2 },
   ];
-  const TRI = { t0: 4.55, t1: 5.5, w: 10 };          // chest triangle (spline param range, top half-width)
+  const TRI = { t0: 3.55, t1: 4.55, w: 11 };          // belly triangle (spline param range, top half-width)
+  const PATCH = { t: 3.45, dt: 0.62, z: 0.8, dz: 0.3, y: -0.15, dy: 0.5 };
   const HEAD = { h: [48, 203, 0], j: [112, 125, 0], ph: -0.06, pj: 0.06 };
   const CRAN_R = [24, 19.5, 19], SNOUT_C = [16.5, -5.5, 0], SNOUT_R = [19.5, 11.5, 13], SNOUT_TILT = -0.1;
   const jawLine = (x) => (x > 8 ? -3 - (x - 8) * 0.1 : -3 - (8 - x) * 0.26);
   const EYE_S = nrm([0.62, 0.2, 0.76]);                // eye position on the cranium (unit sphere, near side)
 
   // wing (u = span out from the root, v = chord: + toward the leading edge)
-  const WING = outline([[-8, 25], [20, 23], [50, 15], [80, 1], [104, -14], [116, -26], [100, -26], [76, -25], [50, -30], [26, -40], [6, -45], [-8, -34]], 16, 6.5);
+  const WING = outline([[-8, 22], [22, 17], [54, 9], [86, 1], [112, -8], [126, -16], [110, -18], [104, -24], [94, -19], [84, -26], [74, -21], [62, -27], [48, -24], [26, -31], [6, -36], [-8, -28]], 16, 6);
   const EAR = outline([[-6, 9.5], [14, 9.5], [32, 6], [52, 0], [34, -3.5], [14, -6.5], [-6, -7]], 6, 3.2);
   const TFIN = outline([[-5, 12], [10, 10], [22, 3], [32, -7], [22, -9], [9, -7], [-5, -8]], 2, 2.6);
 
@@ -9454,6 +9524,12 @@ const Latios = (() => {
     happy: ['.kkk.', 'k...k', 'k...k'], happyN: ['.kk.', 'k..k', 'k..k'], happyF: ['.k.', 'k.k'],
     closed: ['k...k', '.kkk.'], closedN: ['k..k', '.kk.'], closedF: ['k.', '.k'],
     blink: ['.....', 'kkkkk', '.kkk.'], blinkN: ['....', 'kkkk', '.kk.'], blinkF: ['kkk'],
+  };
+  const EYES_XL = {
+    open: ['.kkkk.', 'kwwyyk', 'kwyppk', 'kyyppk', 'koyyok', '.kkkk.'], openN: ['.kkk.', 'kwyyk', 'kyppk', 'kyppk', 'koyok', '.kkk.'], openF: ['.kk.', 'kwpk', 'kypk', 'kook', '.kk.'],
+    happy: ['.kkkk.', 'k....k', 'k....k'], happyN: ['.kkk.', 'k...k', 'k...k'], happyF: ['.kk.', 'k..k'],
+    closed: ['k....k', '.kkkk.'], closedN: ['k...k', '.kkk.'], closedF: ['k..k', '.kk.'],
+    blink: ['......', 'kkkkkk', '.kkkk.'], blinkN: ['.....', 'kkkkk', '.kkk.'], blinkF: ['kkkk'],
   };
   const EYEC = { k: '#1e0c2a', y: '#f03a44', o: '#a81c2c', p: '#2a0814', w: '#ffffff' };
 
@@ -9481,10 +9557,14 @@ const Latios = (() => {
     };
     // body material: white belly below the dorsal threshold, blue triangle on the chest
     const bodyMat = (tm, rlT, rw, wk) => (s) => {
-      if (s[1] < -0.3) {
-        const t = tm + s[0] * rlT;
-        if (t > TRI.t0 && t < TRI.t1 && Math.abs(s[2] * rw) < (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0)) return C_MARK;
+      const t = tm + s[0] * rlT;
+      if (s[1] < -0.2 && t > TRI.t0 && t < TRI.t1) {
+        const hw = (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0), z = Math.abs(s[2] * rw);
+        if (z < hw) return C_MARK;
       }
+      // white jet-intake patches low on the flanks
+      const pt = (t - PATCH.t) / PATCH.dt, pz = (Math.abs(s[2]) - PATCH.z) / PATCH.dz, py = (s[1] - PATCH.y) / PATCH.dy;
+      if (pt * pt + pz * pz + py * py < 1) return C_WHITE;
       return s[1] < wk ? C_WHITE : C_MAIN;
     };
     const NS = 56;
@@ -9508,7 +9588,8 @@ const Latios = (() => {
         const open = mouth * 0.34 * (p[0] - 15);
         if (p[1] < yb + 0.9 && p[1] > yb - open) return p[1] < yb - open * 0.5 && Math.abs(p[2]) < 8.5 ? C_TONGUE : C_MOUTH;
       }
-      return p[1] < yb ? C_WHITE : C_MAIN;
+      // blue face mask over the snout and forehead, pale grey jaw and back of the head
+      return p[1] > yb + 1 && p[0] > -9 + 0.4 * (yb + 20 - p[1]) * 0 && p[0] > -9 ? C_MAIN : C_WHITE;
     };
     const crL = M3.diag(...CRAN_R);
     const cran = E(add(hc, M3.v(HL, [0, 0, 0])), M3.mul(HL, crL), 20, 2, headMat([0, 0, 0], crL, false));
@@ -9525,7 +9606,7 @@ const Latios = (() => {
       const root = HP([-12, 8.5, sd * 9]);
       const dir = HD(nrm([-1, -0.08 + 0.1 * k, sd * 0.42]));
       const L = frameUV(dir, HD([0, 1, sd * 0.7]), sd < 0);
-      prims.push(shell(root, L, EAR, sd > 0 ? 22 : 23, sd > 0 ? 3 : 4, MAIN, 1.6));
+      prims.push(shell(root, L, EAR, sd > 0 ? 22 : 23, sd > 0 ? 3 : 4, WHITE, 1.6));
     }
 
     /* --- eyes --- */
@@ -9565,9 +9646,15 @@ const Latios = (() => {
       const fo = nrm(lerpV(dir(0.28, -0.95, -0.02), dir(-0.97, 0.06, -0.06), k));
       const el = add(sh, scl(up, 19)), ha = add(el, scl(fo, 16));
       const id = sd > 0 ? 7 : 8;
-      prims.push(segE(sh, el, 7.2, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
-      prims.push(segE(el, ha, 6.4, SH.n, 41 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
-      prims.push(E(add(ha, scl(fo, 1.5)), M3.diag(7, 6.6, 6.6), 42 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
+      prims.push(segE(sh, el, 7.6, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      prims.push(segE(el, ha, 6.8, SH.n, 41 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      prims.push(E(add(ha, scl(fo, 1.5)), M3.diag(7.4, 7, 7), 42 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      // three small white claws
+      for (const c of [-1, 0, 1]) {
+        const cd = nrm(add(add(fo, scl(SH.t, 0.5)), scl(z, c * 0.55)));
+        const cb = add(ha, scl(fo, 4));
+        prims.push(segE(cb, add(cb, scl(cd, 9)), 2.4, SH.n, 42 + (sd > 0 ? 0 : 3), id, () => C_WHITE, 1));
+      }
       anchors[sd > 0 ? 'handN' : 'handF'] = ha;
     }
 
@@ -9600,7 +9687,7 @@ const Latios = (() => {
   /* ---------- render: eye set by scale, glow lift + aura, tight ray-cast box ---------- */
   function render(model, opt) {
     const sc = opt.scale || 1;
-    const set = sc >= 0.42 ? EYES_L : EYES_S;
+    const set = sc >= 0.7 ? EYES_XL : sc >= 0.36 ? EYES_L : EYES_S;
     for (const st of model.stamps) st.set = set;
     const g = clamp((model.pose && model.pose.glow) || 0, 0, 1);
     let pal = opt.pal || PAL;
@@ -10240,11 +10327,11 @@ const Lombre = (() => {
   const GREEN = 1, MINT = 2, PAD = 3, PADU = 4, RIM = 5, LIP = 6, MOUTH = 7, CLAW = 8, EYEW = 9, EYE = 10;
   const MAT = { GREEN, MINT, PAD, PADU, RIM, LIP, MOUTH, CLAW, EYEW, EYE };
   const PAL = Creature.palette({
-    [GREEN]: { r: ['#3d7628', '#579836', '#77b848', '#98d260', '#c4ec8c'], od: '#1d4012', ol: '#3a6e26', ln: '#3a6c26' },
-    [MINT]:  { r: ['#4c9684', '#6ab4a0', '#8ed0bc', '#b4e6d6', '#e0f8f0'], od: '#1c4c42', ol: '#3a7c6c', ln: '#3c7a6c' },
-    [PAD]:   { r: ['#3a8a30', '#52a83e', '#66c24c', '#80dc5e', '#a8f282'], od: '#1c4a16', ol: '#387c2a', ln: '#34742a' },
-    [PADU]:  { r: ['#28581e', '#346c26', '#40822e', '#4e9638', '#62aa48'], od: '#15300c', ol: '#2a5a1e', ln: '#2a561e' },
-    [RIM]:   { r: ['#3a8630', '#50a23e', '#62ba4a', '#7cd45c', '#a2ec7e'], od: '#1c4a16', ol: '#387c2a', ln: '#327028' },
+    [GREEN]: { r: ['#4a7a24', '#64982e', '#80b43c', '#9ccc56', '#c0e482'], od: '#223e0e', ol: '#46701e', ln: '#446c20' },
+    [MINT]:  { r: ['#6a9a86', '#8ab8a2', '#a8d2bc', '#c4e4d2', '#e4f6ec'], od: '#2a5244', ol: '#4e8270', ln: '#4e8270' },
+    [PAD]:   { r: ['#4a7e2a', '#5e9834', '#74b042', '#8ec658', '#b0de7e'], od: '#224212', ol: '#447424', ln: '#406e22' },
+    [PADU]:  { r: ['#305a1e', '#3c6c26', '#4a802e', '#5a9438', '#6ea848'], od: '#15300c', ol: '#2a5a1e', ln: '#2a561e' },
+    [RIM]:   { r: ['#44782a', '#5a9234', '#6ea840', '#88c056', '#aad87a'], od: '#224212', ol: '#447424', ln: '#3e6a20' },
     [LIP]:   { r: ['#a2324a', '#c44a60', '#e26a7a', '#f2909a', '#ffc0c4'], od: '#58101e', ol: '#922a3c', ln: '#8a2838' },
     [MOUTH]: { r: ['#3c0c14', '#54141e', '#6c2029', '#862e36', '#a24048'], od: '#26060c', ol: '#3c0c14', ln: '#3c0c14' },
     [CLAW]:  { r: ['#b4465a', '#d26276', '#ec8696', '#f8acb6', '#ffd6dc'], od: '#661426', ol: '#a0384c', ln: '#9c384a' },
@@ -10334,7 +10421,7 @@ const Lombre = (() => {
 
   /* ---------- lily-pad hat: top + underside discs, a rim wall of plates, a square notch ---------- */
   const HAT_R = 64, HAT_H = 19, RIM_N = 28;
-  const NOTCH_A = 2.25, NOTCH_IN = 0.66, NOTCH_W = 23; // notch direction (atan2(z, x) in the hat frame), depth, width
+  const NOTCH_A = -1.75, NOTCH_IN = 0.66, NOTCH_W = 23; // notch direction (atan2(z, x) in the hat frame), depth, width
   const ND = [Math.cos(NOTCH_A), Math.sin(NOTCH_A)], NP = [-ND[1], ND[0]];
   const inNotch = (x, z) => x * ND[0] + z * ND[1] > HAT_R * NOTCH_IN && Math.abs(x * NP[0] + z * NP[1]) < NOTCH_W / 2;
   const padTop = (s) => (s[1] < 0 || inNotch(HAT_R * s[0], HAT_R * s[2]) ? 0 : C_PAD);
@@ -10405,12 +10492,12 @@ const Lombre = (() => {
     // ---- beak: upper lip (centre + drooping corners), lower lip hinged, dark mouth
     const bk = chain(hf, T(...BEAK), R(M3.rz(0.1)));
     const upF = chain(bk, R(M3.rz(0.18 * mo)));
-    const upC = ellF(chain(upF, T(5.5, 3.2, 0)), [12.5, 6.4, 12.5], 4, 4, M_LIP);
+    const upC = ellF(chain(upF, T(5.5, 2.6, 0)), [12, 5.2, 16], 4, 4, M_LIP);
     prims.push(upC);
-    for (const sd of [1, -1]) prims.push(ellF(chain(upF, T(-0.5, 0.2, sd * 10.5), R(M3.ry(sd * 0.55)), R(M3.rx(-sd * 0.5))), [10, 5.6, 9.5], 4, 4, M_LIP));
+    for (const sd of [1, -1]) prims.push(ellF(chain(upF, T(-3.5, -1.2, sd * 15), R(M3.ry(sd * 0.7)), R(M3.rx(-sd * 0.55))), [10, 5, 9], 4, 4, M_LIP));
     const loF = chain(bk, R(M3.rz(-0.55 * mo)));
-    prims.push(ellF(chain(loF, T(3.5, -3.6, 0)), [10.5, 5, 11], 5, 5, (s) => (s[1] > 0.5 && mo > 0.05 ? C_LIP_D : C_LIP)));
-    for (const sd of [1, -1]) prims.push(ellF(chain(loF, T(-2, -2.6, sd * 9), R(M3.ry(sd * 0.55)), R(M3.rx(-sd * 0.45))), [8.5, 4.6, 8], 5, 5, M_LIP));
+    prims.push(ellF(chain(loF, T(3.5, -3.4, 0)), [10.5, 4.4, 14], 5, 5, (s) => (s[1] > 0.5 && mo > 0.05 ? C_LIP_D : C_LIP)));
+    for (const sd of [1, -1]) prims.push(ellF(chain(loF, T(-4, -3.6, sd * 13), R(M3.ry(sd * 0.7)), R(M3.rx(-sd * 0.5))), [8.5, 4.2, 8], 5, 5, M_LIP));
     if (mo > 0.03) prims.push(ellF(chain(bk, T(0, -1, 0)), [9, 3 + 5 * mo, 13], 6, 6, () => C_MOUTH));
     anchors.mouth = inF(bk, [14, -1, 0]);
 
@@ -10447,16 +10534,16 @@ const Lombre = (() => {
       let a = armR[k];
       if (dancing) a = clamp(a + g * (0.55 + 0.45 * sd * ds), -1, 1);
       // abduction from hanging straight down: −1 → 0.22, 0 → 0.62 (rest), 1 → 2.7 (overhead)
-      const ab = a < 0 ? lerp(0.62, 0.22, -a) : lerp(0.62, 2.7, a);
+      const ab = a < 0 ? lerp(0.74, 0.22, -a) : lerp(0.74, 2.7, a);
       let swing = walking && !swimming ? -0.34 * sd * ws : 0;
-      let bend = 0.28 + 0.1 * Math.max(0, a);
+      let bend = 0.14 + 0.1 * Math.max(0, a);
       if (swimming) {
         // breaststroke: arms reach forward, sweep out and back
         const sp = Math.sin(swp), cp = Math.cos(swp);
         swing = 1.2 + 0.7 * sp; bend = 0.4 - 0.3 * cp;
       }
       const sh = chain(torso, T(1, 82, sd * 21), R(M3.rz(swing)), R(M3.rx(-sd * ab)));
-      const L1 = 37, L2 = 37;
+      const L1 = 41, L2 = 40;
       const el = chain(sh, T(0, -L1, 0), R(M3.rz(bend)));
       const id = k ? 11 : 10;
       prims.push(seg(sh.t, el.t, 7.8, 7.4, id, id, M_MINT, dirF(sh, [1, 0, 0])));
@@ -16382,10 +16469,10 @@ const Rayquaza = (() => {
   const GREEN = 1, RING = 2, RED = 3, EYE = 4, PUPIL = 5, MOUTH = 6, TONGUE = 7, CLAW = 8, DARK = 9, FIN = 10;
   const MAT = { GREEN, RING, RED, EYE, PUPIL, MOUTH, TONGUE, CLAW, DARK, FIN };
   const PAL = Creature.palette({
-    [GREEN]:  { r: ['#12472a', '#1d6a38', '#2c8f48', '#4fb660', '#98e08e'], od: '#0a2a18', ol: '#175a30', ln: '#12482a' },
-    [FIN]:    { r: ['#10402a', '#1a6036', '#288444', '#46aa58', '#8cd684'], od: '#0a2a18', ol: '#175a30', ln: '#12482a' },
+    [GREEN]:  { r: ['#123a2a', '#1c5a3e', '#2c7c52', '#4c9e6c', '#8ccaa0'], od: '#08241a', ol: '#16493a', ln: '#10402c' },
+    [FIN]:    { r: ['#10362a', '#1a543c', '#28744e', '#469668', '#84c29a'], od: '#08241a', ol: '#16493a', ln: '#10402c' },
     [RING]:   { r: ['#b88410', '#dcaa1a', '#f8d030', '#ffe67c', '#fff6c4'], od: '#5e3c06', ol: '#8a6010', ln: '#6e4a08' },
-    [RED]:    { r: ['#7a1020', '#aa1a2a', '#dc2e3a', '#f6605e', '#ffa49a'], od: '#44060e', ol: '#7a121e', ln: '#621019' },
+    [RED]:    { r: ['#7a1a26', '#a42a36', '#c84a50', '#e67272', '#ffa8a0'], od: '#44060e', ol: '#7a121e', ln: '#621019' },
     [EYE]:    { r: ['#c89a10', '#e8bc20', '#ffd83a', '#ffe98a', '#fff6c8'], od: '#6a3a06', ol: '#8a5a10', ln: '#6a3a06' },
     [PUPIL]:  { r: ['#060a08', '#0a100c', '#0e1610', '#141c16', '#1c261e'], od: '#060a08', ol: '#060a08', ln: '#060a08' },
     [MOUTH]:  { r: ['#3a0a16', '#561222', '#741e30', '#922e40', '#b04454'], od: '#24050e', ol: '#3a0a16', ln: '#3a0a16' },
@@ -16449,12 +16536,12 @@ const Rayquaza = (() => {
 
   /* ---------- plates ---------- */
   // wing fin (u = back along the body, v = outward/up from the root): red tip
-  const WING = bakeShape(Shape2D.poly([[-30, 0], [26, -2], [62, 18], [104, 56], [124, 84], [92, 70], [52, 52], [10, 30], [-24, 14]], C_FIN, 8, (u, v) => ((u - 124) ** 2 + (v - 84) ** 2 < 36 * 36 ? C_RED : C_FIN)));
+  const WING = bakeShape(Shape2D.poly([[-34, 0], [34, 0], [58, 30], [74, 88], [70, 94], [4, 92], [-4, 86], [-26, 30]], C_FIN, 2, (u, v) => (v > 80 || u > 56 + (v - 30) * 0.25 || (v > 30 && u < -24 + (v - 30) * 0.3) ? C_RED : C_FIN)));
   // head horns: long flat blades with a yellow stripe
   const HORN = bakeShape(Shape2D.poly([[-6, -12], [40, -15], [100, -11], [150, -5], [182, 0], [150, 6], [100, 13], [40, 16], [-6, 13]], C_FIN, 8, (u, v) => (u > 12 && u < 160 && Math.abs(v - 1.5) < 4.2 - u * 0.012 ? C_RING : C_FIN)));
   const HORN_S = bakeShape(Shape2D.poly([[-6, -9], [30, -11], [70, -6], [100, 0], [70, 5], [30, 10], [-6, 9]], C_FIN, 8, (u, v) => (u > 8 && u < 84 && Math.abs(v) < 2.8 ? C_RING : C_FIN)));
   // tail fin: a pointed, arrowhead-like blade with a red tip
-  const TAILF = bakeShape(Shape2D.poly([[-10, 0], [30, 26], [70, 34], [110, 22], [150, 0], [110, -22], [70, -34], [30, -26]], C_FIN, 8, (u, v) => (u > 118 ? C_RED : Math.abs(v) < 4 && u > 20 && u < 108 ? C_RING : C_FIN)));
+  const TAILF = bakeShape(Shape2D.poly([[-10, 0], [30, 26], [70, 34], [110, 22], [150, 0], [110, -22], [70, -34], [30, -26]], C_FIN, 8, (u, v) => (u > 118 || Math.abs(v) > 26 - Math.max(0, u - 70) * 0.2 ? C_RED : Math.abs(v) < 4 && u > 20 && u < 108 ? C_RING : C_FIN)));
 
   /* ---------- head decals ---------- */
   const HR = [70, 44, 46];
@@ -16568,9 +16655,11 @@ const Rayquaza = (() => {
           const k = Math.round((al - RING_FROM) / RING_PER);
           const da = al - (RING_FROM + k * RING_PER);
           const dv = (Math.atan2(s[1], Math.abs(s[2])) - 0.12) * r;
-          const d = Math.hypot(da, dv);
+          const d = Math.hypot(da / 1.7, dv);
           if (k >= 0 && Math.abs(d - rr) < wv) m = RING;
+          else if (k >= 0 && d > rr && Math.abs(dv) < wv * 0.9) m = RING;
         }
+        if (m === GREEN && Math.abs(s[2]) > 0.3 && s[1] < -0.5 && s[1] > -0.5 - Math.max(0.12, wv / r * 1.6)) m = RED;
         return tube(prim, s, m);
       };
       prims.push(prim);
@@ -16659,7 +16748,7 @@ const Rayquaza = (() => {
     const sway = 0.08 * Math.sin(ph - 0.6);
     for (const sd of [1, -1]) {
       for (const [id, shp, root, dir, k] of [
-        [13, HORN, [-22, 32, sd * 20], [-1, 0.55 + sway + 0.45 * ro, sd * 0.45], 1.05],
+        [13, HORN, [-22, 32, sd * 20], [-1, 0.8 + sway + 0.45 * ro, sd * 0.4], 1.45],
         [15, HORN_S, [-22, -18, sd * 30], [-1, -0.06 + sway + 0.45 * ro, sd * 0.5], 1],
       ]) {
         const U = nrm(add(add(sc(HX, dir[0]), sc(HY, dir[1])), sc(HZ, dir[2])));
@@ -16668,7 +16757,7 @@ const Rayquaza = (() => {
         const o = inB(hb, root);
         const gid = id + (sd > 0 ? 0 : 1);
         prims.push(PL(o, M3.cols(sc(U, k), sc(V, k), cross(U, V)), gid, gid, shp, 5));
-        if (shp === HORN) { const tp = add(o, sc(U, 180)); if (tp[1] > top[1]) top = tp; }
+        if (shp === HORN) { const tp = add(o, sc(U, 180 * 1.45)); if (tp[1] > top[1]) top = tp; }
       }
     }
     anchors.top = top;
@@ -19561,14 +19650,15 @@ const Slugma = (() => {
   const LAVA = 1, HOT = 2, EYE = 3, PUPIL = 4, MOUTH = 5, TONGUE = 6;
   const MAT = { LAVA, HOT, EYE, PUPIL, MOUTH, TONGUE };
   const PAL = Creature.palette({
-    [LAVA]:   { r: ['#b0240e', '#d63a12', '#f25a1a', '#ff8a2e', '#ffc45a'], od: '#5e0c04', ol: '#9a1e08', ln: '#a82408' },
-    [HOT]:    { r: ['#e87a1c', '#fa9a26', '#ffbe3c', '#ffdc6e', '#fff4b0'], od: '#7a2a06', ol: '#b8500c', ln: '#c85a10' },
-    [EYE]:    { r: ['#e0a414', '#f4c424', '#ffe048', '#fff080', '#fffcc0'], od: '#5a1a04', ol: '#7a2a06', ln: '#7a2a06' },
-    [PUPIL]:  { r: ['#1a0604', '#220806', '#2a0c08', '#34100a', '#3e140c'], od: '#100302', ol: '#1a0604', ln: '#1a0604' },
+    [LAVA]:   { r: ['#9a2822', '#bc3a30', '#d85244', '#ea6e5c', '#f89682'], od: '#541010', ol: '#8a2018', ln: '#8e241c' },
+    [HOT]:    { r: ['#c4483a', '#dc5e4c', '#ee7a66', '#f89a84', '#ffbca8'], od: '#6a1a14', ol: '#9a2a20', ln: '#9a2a20' },
+    [EYE]:    { r: ['#d8b020', '#ecd038', '#f8e45a', '#fff08a', '#fffcc8'], od: '#5a1a04', ol: '#7a2a06', ln: '#7a2a06' },
+    [PUPIL]:  { r: ['#4a0c0a', '#5a120e', '#6a1812', '#7a2016', '#8a281c'], od: '#300604', ol: '#4a0c0a', ln: '#3a0806' },
     [MOUTH]:  { r: ['#4a0806', '#620e08', '#7c160c', '#962012', '#b02c16'], od: '#2a0402', ol: '#4a0806', ln: '#3a0604' },
     [TONGUE]: { r: ['#e04a1c', '#f46626', '#ff8a36', '#ffb050', '#ffd880'], od: '#7a1a06', ol: '#a02a0a', ln: '#a02a0a' },
   });
-  const GLOSSY = { [LAVA]: 1, [HOT]: 1 };
+  const GLOSSY = { [EYE]: 1 };
+  const C_CRATER = code(LAVA, -1);
   const C_LAVA = code(LAVA), C_LAVA_B = code(LAVA, 1), C_HOT = code(HOT), C_EYE = code(EYE), C_EYE_L = code(EYE, 1), C_PUPIL = code(PUPIL);
   const C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE);
   const M_LAVA = () => C_LAVA;
@@ -19594,19 +19684,20 @@ const Slugma = (() => {
   const inSpot = (S, s) => { for (const q of S) if (s[0] * q.d[0] + s[1] * q.d[1] + s[2] * q.d[2] > q.c) return true; return false; };
 
   // ---- geometry (pre-SIZE units)
-  const HEAD_C = [4, 76, 0], HEAD_R = [29, 26, 29];
+  const HEAD_C = [6, 62, 0], HEAD_R = [26, 24, 28];
   const FOOT = [ // slug foot / tail pool from front to back: centre x, y, radii
-    { x: 12, y: 9, r: [22, 9, 24] },
-    { x: -6, y: 8, r: [20, 8.5, 22] },
-    { x: -24, y: 6.5, r: [17, 7, 18] },
-    { x: -40, y: 5, r: [13, 5.5, 13.5] },
-    { x: -53, y: 3.5, r: [8, 4, 8.5] },
+    { x: 14, y: 9, r: [30, 11, 34] },
+    { x: -8, y: 9, r: [28, 11, 34] },
+    { x: -28, y: 7, r: [20, 8, 26] },
+    { x: -42, y: 5, r: [13, 6, 17] },
+    { x: -52, y: 3.5, r: [8, 4, 10] },
   ];
   const HEAD_SPOTS = spots([[2.4, 0.55, 0.16], [-2.2, 0.35, 0.13], [1.6, -0.1, 0.12], [-1.4, 0.6, 0.11], [3.14, 0.1, 0.14], [0.9, 0.82, 0.1]]);
   const BODY_SPOTS = spots([[1.9, 0.2, 0.2], [-2.3, -0.1, 0.18], [2.9, 0.4, 0.15]]);
-  const FOOT_SPOTS = spots([[1.2, 0.7, 0.22], [-2.0, 0.75, 0.2]]);
+  const FOOT_SPOTS = spots([[0.9, 0.55, 0.2], [-1.3, 0.6, 0.17], [2.1, 0.5, 0.15], [-2.4, 0.45, 0.19], [0.1, 0.8, 0.12]]);
+  const CRATER_IN = spots([[0.9, 0.55, 0.12], [-1.3, 0.6, 0.1], [2.1, 0.5, 0.08], [-2.4, 0.45, 0.11], [0.1, 0.8, 0.06]]);
   // eyes (head unit-sphere): big round yellow eyes set wide on the front of the head
-  const EYE_AZ = 0.42, EYE_V = 0.14, EYE_RA = 0.2, EYE_RV = 0.25;
+  const EYE_AZ = 0.46, EYE_V = 0.16, EYE_RA = 0.4, EYE_RV = 0.34;
   const PRI = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 3, 6: 3, 7: 2 };
   const SIZE = 1.14;
   const DEFAULT = { ooze: 0, walk: 0, mouth: 0, eyes: 'open', side: 1 };
@@ -19623,7 +19714,7 @@ const Slugma = (() => {
     FOOT.forEach((f, i) => {
       const k = 1 + 0.12 * w(i * 1.1);
       const fx = f.x + 2.5 * w(i * 1.1 + 1.2);
-      const mat = (s) => (s[1] > 0.2 && inSpot(FOOT_SPOTS, s) ? C_HOT : s[1] < -0.2 ? 0 : C_LAVA);
+      const mat = (s) => (s[1] < -0.2 ? 0 : s[1] > 0.2 && inSpot(FOOT_SPOTS, s) ? (inSpot(CRATER_IN, s) ? C_CRATER : C_HOT) : C_LAVA);
       prims.push(ellF(T(fx, f.y * (1 + 0.15 * w(i * 1.1)), 0), [f.r[0] * (2 - k) * 1.05, f.r[1] * k, f.r[2] * k], 1, 1, mat));
     });
     anchors.tail = [FOOT[4].x - FOOT[4].r[0], 2, 0];
@@ -19632,7 +19723,7 @@ const Slugma = (() => {
     const sway = 0.06 * w(0.5), wob = 0.05 * w(1.4);
     const neck = chain(T(4, 10, 0), R(M3.rz(sway)), R(M3.rx(wob * 0.5)));
     const bodyMat = (s) => (inSpot(BODY_SPOTS, s) ? C_HOT : C_LAVA);
-    prims.push(ellF(chain(neck, T(0, 26, 0)), [25, 30, 25], 2, 2, bodyMat));
+    prims.push(ellF(chain(neck, T(0, 20, 0)), [26, 24, 28], 2, 2, M_LAVA));
     anchors.body = inF(neck, [0, 26, 0]);
 
     /* --- head: big round magma blob with eyes, mouth and hot spots --- */
@@ -19647,9 +19738,8 @@ const Slugma = (() => {
           const da = (az - sd * EYE_AZ) / EYE_RA, dv = (v - EYE_V) / EYE_RV, r2 = da * da + dv * dv;
           if (kind === 'open') {
             if (r2 < 1) {
-              const pa = da - 0.12 * sd, pv = dv + 0.05;
-              if (pa * pa + pv * pv < 0.2) return C_PUPIL;
-              return r2 < 0.5 && dv > 0.2 ? C_EYE_L : C_EYE;
+              if (r2 > 0.72) return C_PUPIL; // dark rim, no pupil (official art)
+              return r2 < 0.25 && dv > 0.1 ? C_EYE_L : C_EYE;
             }
           } else if (kind === 'happy') {
             // ^ arc
@@ -19665,10 +19755,9 @@ const Slugma = (() => {
         }
         // mouth: a wide dark oval below the eyes, opening downward
         const ma = az / mouthW, mv = (v - (mouthV - mouthH * 0.6)) / mouthH;
-        if (ma * ma + mv * mv < 1) return mo > 0.35 && mv < -0.2 && Math.abs(ma) < 0.6 ? C_TONGUE : C_MOUTH;
+        if (mo > 0.05 && ma * ma + mv * mv < 1) return mo > 0.35 && mv < -0.2 && Math.abs(ma) < 0.6 ? C_TONGUE : C_MOUTH;
       }
-      if (inSpot(HEAD_SPOTS, s)) return C_HOT;
-      return v > 0.55 ? C_LAVA_B : C_LAVA;
+      return C_LAVA;
     };
     const headPrim = ellF(head, HEAD_R, 3, 3, headMat);
     prims.push(headPrim);
@@ -19679,24 +19768,31 @@ const Slugma = (() => {
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = inF(head, [s[0] * HEAD_R[0], s[1] * HEAD_R[1], s[2] * HEAD_R[2]]);
     }
 
-    /* --- crown blobs bubbling on top --- */
-    const CROWN = [[-4, 24, 0, 9], [8, 22, -9, 6], [-12, 20, 10, 6.5], [4, 23, 11, 5]];
-    CROWN.forEach(([x, y, z, r], i) => {
-      const k = 1 + 0.15 * w(i * 1.7 + 0.5);
-      prims.push(ellF(chain(head, T(x, y + (k - 1) * 6, z)), [r * k, r * k * 0.9, r * k], 4, 4, (s) => (s[1] > 0.4 && i === 0 ? C_HOT : C_LAVA)));
+    /* --- crown: flame-like lava tendrils licking up and back from the head --- */
+    const FLAMES = [[-6, 16, 0, 0.4, 30, 10], [0, 14, -15, 0.15, 24, 8], [0, 14, 15, 0.15, 24, 8]];
+    FLAMES.forEach(([x, y, z, back, len, r], i) => {
+      const k = 1 + 0.12 * w(i * 1.7 + 0.5);
+      const p0 = inF(head, [x, y, z]);
+      const d = nrm([-Math.sin(back), Math.cos(back), z * 0.045]);
+      const p1 = add(p0, sc(d, len * 0.55 * k));
+      const d2 = nrm(add(d, [-0.45, 0.05, z * 0.05]));
+      const p2 = add(p1, sc(d2, len * 0.5 * k));
+      prims.push(seg(p0, p1, r, r, 4, 4, M_LAVA));
+      prims.push(seg(sub(p1, sc(d, 2)), p2, r * 0.62, r * 0.62, 4, 4, M_LAVA));
+      prims.push(seg(sub(p2, sc(d2, 3)), add(p2, sc(nrm(add(d2, [-0.6, 0.4, 0])), len * 0.3)), r * 0.3, r * 0.3, 4, 4, M_LAVA));
     });
-    anchors.top = inF(head, [-4, 24 + 9, 0]);
+    anchors.top = inF(head, [-4, 18 + 26, 0]);
 
     /* --- molten drips hanging off the head's rim --- */
-    const DRIPS = [[1.45, 1.2, 5], [-1.45, 1.2, 5], [2.35, 0.9, 4.6], [-2.4, 1, 4.6], [3.14, 0.7, 4.4]];
+    const DRIPS = [[0.5, 0.55, 3.6], [-0.5, 0.45, 3.6], [1.15, 0.3, 3.2]];
     DRIPS.forEach(([az, len, r], i) => {
-      const s = Creature.sph(az, -0.18);
+      const s = Creature.sph(az, -0.22);
       const root = inF(head, [s[0] * HEAD_R[0] * 0.92, s[1] * HEAD_R[1] * 0.92, s[2] * HEAD_R[2] * 0.92]);
       const L = (8 + 12 * len) * (1 + 0.25 * w(i * 1.3 + 2));
       const out = nrm([s[0], 0, s[2]]);
       const tip = add(root, add(sc(out, 2.5), [0, -L, 0]));
       prims.push(seg(root, tip, r, r, 5 + (i % 2), 5, M_LAVA));
-      prims.push(ellF(T(...add(tip, [0, 1, 0])), [r * 1.1, r * 1.2, r * 1.1], 5 + (i % 2), 5, (q) => (q[1] < -0.3 ? C_HOT : C_LAVA)));
+      prims.push(ellF(T(...add(tip, [0, 1, 0])), [r * 1.1, r * 1.2, r * 1.1], 5 + (i % 2), 5, M_LAVA));
     });
 
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
@@ -19739,11 +19835,12 @@ const Snorunt = (() => {
   const { chain, T, R, F, code, sph } = Creature;
 
   // material ids
-  const HOOD = 1, LINING = 2, BLACK = 3, EYE = 4, MOUTH = 5;
-  const MAT = { HOOD, LINING, BLACK, EYE, MOUTH };
+  const HOOD = 1, LINING = 2, BLACK = 3, EYE = 4, MOUTH = 5, TOOTH_W = 6;
+  const MAT = { HOOD, LINING, BLACK, EYE, MOUTH, TOOTH_W };
   const PAL = Creature.palette({
-    [HOOD]:   { r: ['#a86c16', '#d0962a', '#eec244', '#f9dc78', '#fff4c4'], od: '#563406', ol: '#946212', ln: '#86580e' },
-    [LINING]: { r: ['#6e440a', '#8e5c12', '#b07a1c', '#c8922a', '#dcac44'], od: '#3e2604', ol: '#704608', ln: '#603c08' },
+    [HOOD]:   { r: ['#a8844a', '#c8a866', '#e6cc8c', '#f6e2ae', '#fff6dc'], od: '#4e3814', ol: '#8a6a34', ln: '#8a6a34' },
+    [TOOTH_W]: { r: ['#b8bcc4', '#d4d8de', '#eceef2', '#f8f9fb', '#ffffff'], od: '#303038', ol: '#606070', ln: '#1a1a22' },
+    [LINING]: { r: ['#7a3a10', '#9a4e16', '#bc6620', '#d6802e', '#eca048'], od: '#3e1a04', ol: '#6a3008', ln: '#5a2808' },
     [BLACK]:  { r: ['#0b0c13', '#14151f', '#1f212e', '#2d3042', '#43485e'], od: '#050509', ol: '#16182a', ln: '#050508' },
     [EYE]:    { r: ['#3a96c4', '#5ebce6', '#98e2fa', '#d2f6ff', '#ffffff'], od: '#12405c', ol: '#2a6688', ln: '#2a6688' },
     [MOUTH]:  { r: ['#521020', '#741a2e', '#962a40', '#b84458', '#d46a78'], od: '#2a0610', ol: '#521020', ln: '#3a0a18' },
@@ -19785,7 +19882,7 @@ const Snorunt = (() => {
   const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
 
   /* ---------- hood profile: radius by height (surface of revolution about the hood's y axis) ---------- */
-  const PROF = [[40, 42.6], [45, 43], [50, 42.8], [58, 41.8], [66, 39.9], [74, 37.1], [82, 33.3], [90, 28.5], [98, 22.8], [105, 17.1], [111, 11.6], [116, 6.8], [119.5, 3.4], [121.5, 1.2]];
+  const PROF = [[18, 47], [26, 46.8], [36, 45.6], [46, 43.6], [54, 41.5], [64, 37], [74, 32], [84, 26.8], [94, 21.4], [104, 15.8], [113, 10.4], [121, 5.6], [126, 2.4], [128.5, 0.8]];
   const PR = (() => {
     const out = new Float32Array(260); // r at y = 0..129.5 in 0.5 steps
     const S = Shape2D.catmull(PROF, false, 10);
@@ -19800,24 +19897,24 @@ const Snorunt = (() => {
   })();
   const rAt = (y) => PR[clamp(Math.round(y * 2), 0, PR.length - 1)];
   const slopeAt = (y) => (rAt(y + 1.5) - rAt(y - 1.5)) / 3; // dr/dy
-  const Y_HEM = 47, Y_TOP = 122;
+  const Y_HEM = 24, Y_TOP = 128;
   // backward bend of the hood's upper part (x offset of the axis by height)
   const bendAt = (y, b) => (y > 70 ? -b * ((y - 70) / 52) ** 2 : 0);
 
   // head layout (hood-local coordinates, before K)
-  const HEAD_C = [0, 66, 0], HEAD_R = [36, 32, 36];
+  const HEAD_C = [2, 63, 0], HEAD_R = [30, 29, 30];
   // face opening: a tunnel along +x through the hood (oval in y-z)
-  const FACE_Y = 69, FACE_H = 22, FACE_W = 27.5;
+  const FACE_Y = 69, FACE_H = 22, FACE_W = 30;
 
   // eyes: tangent frames on the head ellipsoid (unit-sphere space)
-  const EC = sph(0.39, 0.12);
+  const EC = sph(0.3, 0.26);
   const ETY = V3.norm(V3.sub([0, 1, 0], V3.scale(EC, EC[1])));
   const ETX = V3.cross(ETY, EC); // toward the face centre on the near side
   let curScale = 1;
 
   // hem points: azimuths (radians from +x toward +z) and tooth outline (U across, V down the tooth, both -1..1)
-  const TEETH = [Math.PI / 4, -Math.PI / 4, (3 * Math.PI) / 4, (-3 * Math.PI) / 4];
-  const TOOTH = { yc: 40, ru: 24, rv: 14.5, rw: 6, rho: 40, flare: 0.36 };
+  const TEETH = [0.56 * Math.PI, -0.56 * Math.PI, 0.86 * Math.PI, -0.86 * Math.PI];
+  const TOOTH = { yc: 17, ru: 24, rv: 12, rw: 6, rho: 42, flare: 0.3 };
   const toothHW = (V) => { const t = clamp((V + 1) / 1.93, 0, 1); return 0.98 * Math.pow(Math.max(0, 1 - Math.pow(t, 1.7)), 0.62); };
 
   const K = 1; // overall size: ~122 units from the soles to the hood tip
@@ -19851,18 +19948,18 @@ const Snorunt = (() => {
     }
 
     /* --- round black body under the hood --- */
-    const bodyC = [1, 34, 0];
-    prims.push(shell(body, bodyC, I3, [28, 27, 28], 1, 1, mBLACK));
+    const bodyC = [1, 32, 0];
+    prims.push(shell(body, bodyC, I3, [26, 25, 26], 1, 1, mBLACK));
     anchors.body = pt(body, bodyC);
 
     /* --- little black arm nubs between the hem points --- */
     for (const sd of [1, -1]) {
       const sw = walking ? 0.3 * Math.sin(wk + (sd > 0 ? Math.PI : 0)) : 0;
       const hug = sa;
-      const a = chain(body, T(2 + 6 * hug, 43, sd * (30 - 5 * hug)), R(M3.ry(sd * 0.9 * hug)), R(M3.rz(sw)), R(M3.rx(-sd * (0.95 - 0.4 * hug))), T(0, -6, 0));
+      const a = chain(body, T(27 + 2 * hug, 40 + 2 * sw, sd * (9.5 - 2 * hug)), R(M3.rz(sw)), T(0, -3, 0));
       const id = sd > 0 ? 4 : 5;
-      prims.push(shell(a, [0, 0, 0], I3, [6.5, 9.5, 6], id, id, mBLACK));
-      anchors[sd > 0 ? 'handN' : 'handF'] = pt(a, [0, -9, 0]);
+      prims.push(shell(a, [0, 0, 0], I3, [8, 8.5, 8], id, id, mBLACK));
+      anchors[sd > 0 ? 'handN' : 'handF'] = pt(a, [0, 0, 0]);
     }
 
     /* --- head: black, inside the hood (only the face shows through the opening) --- */
@@ -19875,7 +19972,7 @@ const Snorunt = (() => {
       const ex = dx * ETX[0] + dy * ETX[1] + dz * ETX[2], ey = dx * ETY[0] + dy * ETY[1] + dz * ETY[2];
       const px = 1 / (curScale * K * HEAD_R[1]); // one pixel in unit-sphere units
       const th = Math.max(0.045, 0.9 * px);
-      const AX = 0.18, AY = 0.25;
+      const AX = 0.11, AY = 0.15;
       const q = (ex / AX) ** 2 + (ey / AY) ** 2;
       if (kind === 'blink') return Math.abs(ey + 0.03) < th && Math.abs(ex) < AX * 0.95 ? code(EYE, 1) : 0;
       if (kind === 'closed' || kind === 'happy') {
@@ -19893,26 +19990,38 @@ const Snorunt = (() => {
     const headPrim = shell(chain(headF, T(...HEAD_C)), [0, 0, 0], I3, HEAD_R, 6, 6, (s) => {
       const e = eyeMat(s);
       if (e) return e;
-      // mouth: a small oval under the eyes
-      if (mouth > 0.05 && s[0] > 0.6) {
-        const mu = s[2] / 0.13, mv = (s[1] + 0.3) / (0.03 + 0.1 * mouth);
-        if (mu * mu + mv * mv < 1) return code(MOUTH, mv > 0.35 ? -1 : 0);
+      // big toothy grin: a wide white band of teeth under the eyes (opens with `mouth`)
+      if (s[0] > 0.3) {
+        const az = Math.atan2(s[2], s[0]);
+        const mid = -0.12 - 0.06 * (az / 0.62) ** 2, hh = 0.13 + 0.07 * mouth;
+        if (Math.abs(az) < 0.62 && Math.abs(s[1] - mid) < hh * (1 - 0.35 * (az / 0.62) ** 2)) {
+          if (mouth > 0.1 && Math.abs(s[1] - mid) < 0.09 * mouth) return code(MOUTH, -1);
+          const px = 1 / (curScale * K * HEAD_R[1]);
+          const g = (az / 0.62) * 3.5 + 0.5; // tooth gaps
+          if (Math.abs(g - Math.round(g)) * 0.62 / 3.5 < Math.max(0.012, 0.5 * px)) return cBLACK;
+          return code(TOOTH_W, s[1] > mid ? 1 : 0);
+        }
       }
       return cBLACK;
     });
     prims.push(headPrim);
 
     /* --- hood: stacked beads following the profile, open in front for the face --- */
-    const bend = 7 + 2 * rock;
+    const bend = 1 + 2 * rock;
     const hoodF = headF;
-    const inFace = (X, Y, Z) => X > 6 && (Z / FACE_W) ** 2 + ((Y - FACE_Y) / FACE_H) ** 2 < 1;
+    // triangular face opening following the cone (apex up), open down to the hem
+    const faceHW = (Y, m) => (Y > 104 + m ? -1 : Math.min(40, ((104 + m - Y) / 57) * (FACE_W + m)));
+    const inFace = (X, Y, Z) => X > 6 && Math.abs(Z) < faceHW(Y, 0);
     const beadMat = (s, X, Y, Z, prim, Q) => {
       if (Y < Y_HEM || inFace(X, Y, Z)) return 0;
       const bx = bendAt(Y, bend);
       const rx = X - bx, rl = Math.hypot(rx, Z) || 1;
       // rim just inside the face opening: a darker lip
-      const lip = X > 4 && (Z / (FACE_W + 3)) ** 2 + ((Y - FACE_Y) / (FACE_H + 3)) ** 2 < 1;
-      return shadeCode(prim, Q, s, rx / rl, -slopeAt(Y), Z / rl, HOOD, !lip, lip ? -1 : 0);
+      const lip = X > 4 && Math.abs(Z) < faceHW(Y, 4);
+      if (lip) return shadeCode(prim, Q, s, rx / rl, -slopeAt(Y), Z / rl, LINING, false, 0);
+      // straw fringe: fine vertical strands just above the hem
+      const strand = Y < Y_HEM + 9 && Math.abs(((Math.atan2(Z, rx) * 9) / Math.PI) % 1) < 0.22;
+      return shadeCode(prim, Q, s, rx / rl, -slopeAt(Y), Z / rl, HOOD, !strand, strand ? -1 : 0);
     };
     for (let y = Y_HEM + 1; y < Y_TOP; y += 2.6) {
       const r = rAt(y);
@@ -22246,10 +22355,10 @@ const Swellow = (() => {
     const hop = walking ? 3.5 * Math.abs(Math.sin(st)) : 0;
     // body pitch: perched upright, level in flight, nose down in a dive
     const pitch = lerp(0.05, 0.42, pe) * (1 - dv) - 0.95 * dv;
-    const root = chain(T(0, lerp(55, 44, pe) + hop, 0), R(M3.rz(pitch)));
+    const root = chain(T(0, lerp(55, 40, pe) + hop, 0), R(M3.rz(pitch)));
 
     /* --- body --- */
-    prims.push(ellF(root, [39, 24.5, 22.5], 1, 1, bodyMat));
+    prims.push(ellF(root, [40, 26.5, 24], 1, 1, bodyMat));
     anchors.body = root.t;
 
     /* --- neck + head (the head stays level-ish when perched) --- */
@@ -22272,7 +22381,7 @@ const Swellow = (() => {
     anchors.mouth = inF(hinge, [4, -1.5, 0]);
     // crest: three navy spikes swept back from the back of the head
     const cb = inF(head, [-15, 8, 0]);
-    for (const [a, z, l] of [[0.4, 0, 1.6], [0.1, 5, 1.35], [0.1, -5, 1.35], [-0.2, 0, 1.1]]) {
+    for (const [a, z, l] of [[0.35, 0, 1.9], [0.12, 5, 1.6], [0.12, -5, 1.6], [-0.15, 0, 1.3]]) {
       const U = dirF(head, [-Math.cos(a), Math.sin(a), z * 0.03]);
       const L = M3.mul(frameUV(U, dirF(head, [0, 1, 0.2 * Math.sign(z || 1)])), M3.diag(l, 1, 1));
       prims.push(plate(add(cb, dirF(head, [0, 0, z])), L, 11, 11, CREST_G, 2.2));
@@ -23841,13 +23950,12 @@ const Tropius = (() => {
    Model space: x = forward, y = up, z = near side at yaw 0, ground at y = 0
    (the tips of its feet; the game lifts it when it hovers).
 
-   Design (official art): a dragonfly-like larva. A broad yellow head with
-   two huge bulging green compound eyes with black oval pupils, two thin
-   yellow antennae swept back, and two big white fangs jutting down from the
-   sides of the mouth. A small yellow thorax on four skinny black legs; a
-   long, thin, yellow segmented abdomen (thin green bands) ending in two
-   green rhombus fins. Four green rhombus wings with black edges (a paler
-   green band inside), held out to the sides and buzzing.
+   Design (official art): a dragonfly-like larva. A pale cream, tapered
+   head with round green eyes (black pupils) on its sides, two white bumps
+   on top, and two long cream mandibles jutting forward from the snout. A
+   small cream thorax on four long, jointed dark-grey legs; a short
+   segmented abdomen curving up behind, ending in two green rhombus fins.
+   Four big green rhombus wings with thick dark-grey frames, raised in a V.
 
    Pose parameters (all optional):
      eyes    'open' (default) | 'happy' | 'blink' | 'closed'
@@ -23871,21 +23979,21 @@ const Vibrava = (() => {
   const BODY = 1, EYE = 2, PUPIL = 3, LEG = 4, WING = 5, EDGE = 6, FANG = 7, MOUTH = 8, BAND = 9, WINGL = 10;
   const MAT = { BODY, EYE, PUPIL, LEG, WING, EDGE, FANG, MOUTH, BAND, WINGL };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#a6922a', '#c8b53c', '#e4d25a', '#f2e684', '#fdf6bc'], od: '#5a4a10', ol: '#948220', ln: '#8e7c22' },
-    [EYE]:   { r: ['#2c8a3a', '#3eaa4a', '#5cc85e', '#8ae088', '#c4f6bc'], od: '#12501e', ol: '#2a8038', ln: '#1e6a2c' },
+    [BODY]:  { r: ['#a8a070', '#c8c08c', '#e2dca8', '#f0ecc4', '#fcfae2'], od: '#5a5434', ol: '#8a8258', ln: '#8a8258' },
+    [EYE]:   { r: ['#1e7a34', '#2c9a42', '#44b856', '#74d27c', '#b0eeb0'], od: '#0e401a', ol: '#1e6a2c', ln: '#1e6a2c' },
     [PUPIL]: { r: ['#08100a', '#0e1810', '#142016', '#1e2c20', '#2c3c2e'], od: '#040806', ol: '#08100a', ln: '#08100a' },
-    [LEG]:   { r: ['#16181c', '#202328', '#2c3036', '#3e434c', '#585e68'], od: '#08090c', ol: '#16181c', ln: '#101216' },
-    [WING]:  { r: ['#3a8e3a', '#4eaa48', '#6cc45a', '#94dc7a', '#c6f2aa'], od: '#15501a', ol: '#2e7a30', ln: '#2a6e2c' },
+    [LEG]:   { r: ['#2a2c2e', '#3a3c40', '#4c4f54', '#62666c', '#80848a'], od: '#121314', ol: '#26282a', ln: '#26282a' },
+    [WING]:  { r: ['#246e30', '#2e8a3a', '#3ea44a', '#5cbc62', '#8ad68a'], od: '#103c16', ol: '#1e5e26', ln: '#1e5e26' },
     [WINGL]: { r: ['#6aaa5a', '#86c46e', '#a6dc88', '#c6eca6', '#e6fad0'], od: '#2a6a2a', ol: '#4a8e44', ln: '#4a8e44' },
-    [EDGE]:  { r: ['#101a12', '#16221a', '#1e2c22', '#2a3a2e', '#3a4c3e'], od: '#060a08', ol: '#101a12', ln: '#0c140e' },
+    [EDGE]:  { r: ['#26282a', '#323436', '#404346', '#54585c', '#6c7074'], od: '#101112', ol: '#222426', ln: '#222426' },
     [FANG]:  { r: ['#b8b4a8', '#d8d4c8', '#f4f2ea', '#fcfbf6', '#ffffff'], od: '#5a5648', ol: '#8a8676', ln: '#8a8676' },
     [MOUTH]: { r: ['#3e0e14', '#5a1820', '#76262c', '#90383a', '#a84c4a'], od: '#26060a', ol: '#3e0e14', ln: '#3e0e14' },
-    [BAND]:  { r: ['#3c7a2c', '#4e9434', '#64ac42', '#80c456', '#a4dc78'], od: '#1a4412', ol: '#3a7028', ln: '#2e6020' },
+    [BAND]:  { r: ['#8e8660', '#a8a076', '#c2ba8e', '#d6d0a6', '#e8e4c2'], od: '#4a4630', ol: '#726c4c', ln: '#726c4c' },
   });
   const GLOSSY = { [EYE]: 1 };
   const C_BODY = code(BODY), C_EYE = code(EYE), C_EYE_L = code(EYE, 1), C_PUPIL = code(PUPIL), C_GLINT = code(FANG, 1), C_LEG = code(LEG);
-  const C_WING = code(WING), C_WINGL = code(WINGL), C_EDGE = code(EDGE), C_FANG = code(FANG), C_MOUTH = code(MOUTH), C_BAND = code(BAND);
-  const M_BODY = () => C_BODY, M_LEG = () => C_LEG, M_FANG = () => C_FANG;
+  const C_EYE_D = code(EYE, -2), C_WING = code(WING), C_WINGL = code(WINGL), C_EDGE = code(EDGE), C_FANG = code(FANG), C_MOUTH = code(MOUTH), C_BAND = code(BAND);
+  const M_BODY = () => C_BODY, M_LEG = () => C_LEG, M_FANG = () => C_FANG, M_BUMP = () => C_FANG;
 
   // ---- helpers
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -23936,13 +24044,13 @@ const Vibrava = (() => {
       },
     });
   }
-  const WING_F = rhombus(80, 23, 0.4, C_WING, C_WINGL, 2.6, 5);
-  const WING_H = rhombus(68, 20, 0.4, C_WING, C_WINGL, 2.6, 4.5);
-  const FIN_G = rhombus(30, 11, 0.45, C_WING, C_WINGL, 2.2, 0);
+  const WING_F = rhombus(100, 34, 0.45, C_WING, C_WINGL, 5, 0);
+  const WING_H = rhombus(86, 30, 0.45, C_WING, C_WINGL, 4.5, 0);
+  const FIN_G = rhombus(30, 12, 0.5, C_WING, C_WINGL, 2.6, 0);
 
   /* ---------- head, eyes ---------- */
-  const HR = [24, 19, 25];
-  const ER = [15, 16, 13];
+  const HR = [26, 15, 17];
+  const ER = [11, 12, 6.5];
   function eyeMat(kind, sd) {
     return (s) => {
       // s: eye-local unit sphere; its outward face is +z·sd, looking a little forward
@@ -23951,12 +24059,14 @@ const Vibrava = (() => {
       if (out < 0.1) return C_EYE;
       const lw = Math.max(0.09, 0.8 * px);
       if (kind === 'open') {
-        const pu = (u - 0.18) / Math.max(0.24, 1.3 * px), pv = (v - 0.02) / Math.max(0.4, 2 * px);
-        if (pu * pu + pv * pv < 1) {
-          if (pv > 0.2 && pu < -0.1 && pu * pu + (pv - 0.45) ** 2 < 0.2 && px < 0.12) return C_GLINT;
+        const r = Math.hypot(u - 0.05, v);
+        const pr = Math.max(0.36, 1.4 * px);
+        if (r < pr) {
+          if ((u + 0.1) ** 2 + (v - 0.14) ** 2 < 0.02 && px < 0.12) return C_GLINT;
           return C_PUPIL;
         }
-        if (v > 0.45 && u < -0.1 && out > 0.5) return C_EYE_L;
+        if (r < pr + Math.max(0.14, 0.9 * px)) return C_EYE_D;
+        if (r > 0.86) return C_PUPIL;
         return C_EYE;
       }
       if (Math.abs(u - 0.1) > 0.55) return C_EYE;
@@ -23983,7 +24093,7 @@ const Vibrava = (() => {
     const bob = walking ? 1.5 * Math.abs(Math.sin(wk)) : 0;
 
     // --- thorax
-    const tf = chain(T(0, 40 + bob, 0), R(M3.rz(0.1)));
+    const tf = chain(T(0, 34 + bob, 0), R(M3.rz(0.1)));
     prims.push(ellF(tf, [19, 15, 14], 1, 1, M_BODY));
     anchors.body = tf.t;
     anchors.back = inF(tf, [0, 15, 0]);
@@ -24003,36 +24113,35 @@ const Vibrava = (() => {
     anchors.mouth = inF(hf, [HR[0] - 2, -12, 0]);
     // huge bulging green eyes on the sides of the head
     for (const sd of [1, -1]) {
-      const ef = chain(hf, T(8, 6, 18 * sd), R(M3.ry(-sd * 0.35)));
+      // big round green eyes set on the sides of the head
+      const ef = chain(hf, T(4, 1, 14.5 * sd), R(M3.ry(-sd * 0.15)));
       prims.push(ellF(ef, ER, sd > 0 ? 3 : 4, sd > 0 ? 3 : 4, eyeMat(kind, sd)));
-      anchors[sd > 0 ? 'eyeN' : 'eyeF'] = inF(ef, [2, 0, ER[2] * sd]);
-      // big white fangs jutting down from the sides of the mouth
-      const fb = inF(hf, [18, -12, 9 * sd]);
-      const fd = dirF(hf, [0.35, -1, 0.1 * sd]);
-      prims.push(seg(fb, add(fb, sc(fd, 9)), 3.6, 3.2, M3.v(hf.L, [1, 0, 0]), 5, 5, M_FANG, 1.2));
-      prims.push(seg(add(fb, sc(fd, 8)), add(fb, sc(nrm(add(fd, dirF(hf, [-0.4, 0, 0]))), 15)), 2.2, 2, M3.v(hf.L, [1, 0, 0]), 5, 5, M_FANG, 1.2));
-      // thin yellow antennae swept back from the top of the head
-      const a0 = inF(hf, [4, 17, 6 * sd]);
-      const ap = [a0, inF(hf, [-4, 30, 10 * sd]), inF(hf, [-18, 38, 14 * sd]), inF(hf, [-32, 40, 17 * sd])];
-      for (let i = 0; i < 6; i++) prims.push(seg(crPt(ap, (i / 6) * 3), crPt(ap, ((i + 1) / 6) * 3), 1.8, 1.8, [0, 1, 0], 6, 6, M_BODY, 1.3));
+      anchors[sd > 0 ? 'eyeN' : 'eyeF'] = inF(ef, [0, 0, ER[2] * sd]);
+      // two long pale mandibles jutting forward and down from the snout, diverging
+      const fb = inF(hf, [22, -4, 5 * sd]);
+      const fd = dirF(hf, [1, -0.35, 0.28 * sd]);
+      prims.push(seg(fb, add(fb, sc(fd, 20)), 3.4, 3, M3.v(hf.L, [0, 1, 0]), 5, 5, M_BODY, 1.1));
+      prims.push(seg(add(fb, sc(fd, 18)), add(fb, sc(fd, 40)), 2, 1.8, M3.v(hf.L, [0, 1, 0]), 5, 5, M_BODY, 1.15));
+      // white bumps on top of the head
+      prims.push(E(inF(hf, [-2, 13, 7 * sd]), M3.mul(hf.L, M3.diag(6, 4.5, 5)), 6, 6, M_BUMP));
     }
-    anchors.top = inF(hf, [-12, 40, 0]);
+    anchors.top = inF(hf, [-2, 18, 0]);
 
     // --- long thin segmented abdomen, curving up a little at the end, two rhombus fins
     const sway = walking ? 0.12 * Math.sin(wk) : 0;
-    const tp = [inF(tf, [-12, -2, 0]), inF(tf, [-40, -6, 0]), inF(tf, [-72, -4, 18 * sway]), inF(tf, [-102, 4, 34 * sway]), inF(tf, [-126, 16, 50 * sway])];
+    const tp = [inF(tf, [-12, -2, 0]), inF(tf, [-36, -2, 0]), inF(tf, [-58, 6, 14 * sway]), inF(tf, [-70, 20, 26 * sway]), inF(tf, [-74, 38, 36 * sway])];
     const NS = 12;
     for (let i = 0; i < NS; i++) {
       const a = crPt(tp, (i / NS) * 4), b = crPt(tp, ((i + 1) / NS) * 4);
-      const r = lerp(8.5, 4.6, i / (NS - 1));
+      const r = lerp(9.5, 3.4, i / (NS - 1));
       const banded = i % 2 === 1 && i < NS - 1;
       const hl = len3(sub(b, a)) * 0.75;
       prims.push(seg(a, b, r, r, [0, 1, 0], 7, 7, banded ? (q) => (Math.abs(q[0]) < Math.max(0.2, 1.1 / (curScale * hl)) ? C_BAND : C_BODY) : M_BODY, 1.5));
     }
     const tEnd = tp[4], tD = nrm(sub(tEnd, crPt(tp, 3.7)));
     for (const sd of [1, -1]) {
-      const U = nrm(add(sc(tD, 0.75), dirF(tf, [0, 0.1, 0.62 * sd])));
-      const N = nrm(cross(U, [0, 1, 0]));
+      const U = nrm(add(sc(tD, 0.8), dirF(tf, [0.1, 0, 0.7 * sd])));
+      const N = nrm(cross(U, [1, 0, 0]));
       const Vv = cross(N, U);
       prims.push(PL(tEnd, M3.cols(U, Vv, N), 8, 8, FIN_G, 1.2));
     }
@@ -24044,14 +24153,14 @@ const Vibrava = (() => {
       const id = 10 + (hind ? 2 : 0) + (sd > 0 ? 0 : 1);
       const root = inF(tf, [hind ? -8 : 4, 12, 7 * sd]);
       const beat = 0.5 * Math.sin(fl + (hind ? Math.PI * 0.7 : 0));
-      const elev = lerp(0.2, hind ? 0.38 : 0.62, spread) + (fl ? beat : 0);          // up from horizontal
+      const elev = lerp(0.2, hind ? 0.5 : 0.85, spread) + (fl ? beat : 0);          // up from horizontal
       const sweep = lerp(1.35, hind ? -0.1 : 0.2, spread) * (hind ? 1 : 0.8) + (hind ? 0.15 : 0); // back from straight out
       // span direction: out to the side, swept back, raised
       const U = nrm([-Math.sin(sweep) * Math.cos(elev), Math.sin(elev), sd * Math.cos(sweep) * Math.cos(elev)]);
       const back = nrm(cross([0, 1, 0], U)); // chord axis, roughly along the body
       const N = nrm(cross(U, back));
       prims.push(PL(root, M3.cols(U, back, N), id, id, hind ? WING_H : WING_F, 1.1));
-      if (!hind) tipsF.push(add(root, sc(U, 80)));
+      if (!hind) tipsF.push(add(root, sc(U, 100)));
     }
     anchors.wingN = tipsF[0]; anchors.wingF = tipsF[1];
 
@@ -24063,17 +24172,17 @@ const Vibrava = (() => {
       const lift = walking ? 5 * Math.max(0, Math.sin(ph)) : 0;
       const swing = walking ? 6 * Math.cos(ph) : 0;
       const hip = inF(tf, [x, -8, 9 * sd]);
-      const knee = [hip[0] + (x > 0 ? 8 : -6) + swing * 0.5, 30 + lift, 24 * sd];
-      const foot = [hip[0] + (x > 0 ? 14 : -12) + swing, 1.8 + lift, 32 * sd];
+      const knee = [hip[0] + (x > 0 ? 14 : -10) + swing * 0.5, 44 + lift, 28 * sd];
+      const foot = [hip[0] + (x > 0 ? 24 : -18) + swing, 1.8 + lift, 36 * sd];
       prims.push(seg(hip, knee, 2.4, 2.4, [0, 1, 0], id, id, M_LEG, 1.15));
       prims.push(seg(knee, foot, 2, 2, [0, 1, 0], id, id, M_LEG, 1.12));
-      prims.push(E(foot, M3.diag(4.2, 1.8, 2.6), id, id, M_LEG));
+      prims.push(E(add(foot, [3, 0, 0]), M3.diag(6, 1.8, 3), id, id, M_LEG));
       if (i < 2) anchors[sd > 0 ? 'footN' : 'footF'] = [foot[0], 0, foot[2]];
     });
 
     // centre the long body (head to tail tip) on the origin
-    for (const q of prims) q.c = add(q.c, [40, 0, 0]);
-    for (const k in anchors) anchors[k] = add(anchors[k], [40, 0, 0]);
+    for (const q of prims) q.c = add(q.c, [10, 0, 0]);
+    for (const k in anchors) anchors[k] = add(anchors[k], [10, 0, 0]);
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
     for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
     return { prims, stamps: [], dots: [], anchors, pose: P, headPrim, pri: PRI, glossy: GLOSSY, baseMat: BODY, shadowSteps: 12 };
@@ -30850,12 +30959,11 @@ const Breloom = (() => {
    art by the shared Creature pipeline (src/creature.js, dev/CREATURE_GUIDE.md).
    Model space: x = forward, y = up, z = near side at yaw 0, ground at y = 0.
 
-   Design (official art / HOME model): a tiny green Pokémon whose head is
-   wrapped in a big closed flower bud: a pale yellow-green "hood" that
-   frames the round green face like a bonnet and rises to a pointed tip
-   leaning back, with faint darker seams where the bud's petals overlap.
-   Big dark glossy eyes, a small smile, a small round green body and two
-   stubby feet.
+   Design (official art): one green pear-shaped bud. The lower bulb holds
+   a round pale-yellow face (tiny vertical-dash eyes, a small smile) above
+   a dark green four-lobed leaf collar; a leaf band wraps diagonally up the
+   narrowing top and ends in a closed bud with a pale mint scalloped cap.
+   Two tiny pointed yellow-green feet.
    Built at 2× in design units and scaled down (SIZE) at the end.
 
    Pose parameters (all optional):
@@ -30874,116 +30982,109 @@ const Budew = (() => {
   const { chain, T, R, code, sph } = Creature;
 
   // ---- materials
-  const GREEN = 1, BUD = 2, SEAM = 3, MOUTH = 4, HEART = 5, POLLEN = 6, EYE = 7, GLINT = 8, FOOT = 9;
-  const MAT = { GREEN, BUD, SEAM, MOUTH, HEART, POLLEN, EYE, GLINT, FOOT };
+  const GREEN = 1, BUD = 2, SEAM = 3, MOUTH = 4, HEART = 5, POLLEN = 6, EYE = 7, GLINT = 8, FOOT = 9, FACE = 10, COLLAR = 11;
+  const MAT = { GREEN, BUD, SEAM, MOUTH, HEART, POLLEN, EYE, GLINT, FOOT, FACE, COLLAR };
   const PAL = Creature.palette({
-    [GREEN]:  { r: ['#347a2e', '#4a9a3c', '#64b64c', '#86d066', '#b2e890'], od: '#163e14', ol: '#2e6a26', ln: '#2c6424' },
-    [FOOT]:   { r: ['#2c6a28', '#3e8834', '#56a444', '#74c05c', '#9ad882'], od: '#123612', ol: '#285e22', ln: '#245620' },
-    [BUD]:    { r: ['#a2b448', '#c0d05c', '#dce878', '#eff5a4', '#fbfdd8'], od: '#4a5a1a', ol: '#82962e', ln: '#7a8c2a' },
-    [SEAM]:   { r: ['#7c9a36', '#94b240', '#aac852', '#c2da6e', '#d8ea90'], od: '#3a4c14', ol: '#6c8428', ln: '#627a24' },
-    [MOUTH]:  { r: ['#4a1a1c', '#662628', '#843636', '#a04a48', '#bc6460'], od: '#2c0c0e', ol: '#4a1a1c', ln: '#4a1a1c' },
+    [GREEN]:  { r: ['#3a7e2c', '#4e9a3a', '#66b44a', '#84cc60', '#aee288'], od: '#163e14', ol: '#2e6a26', ln: '#2c6424' },
+    [FOOT]:   { r: ['#8aa832', '#a6c440', '#c0dc56', '#d8ec7a', '#eef8a8'], od: '#3e5010', ol: '#6c8424', ln: '#627a20' },
+    [BUD]:    { r: ['#88b878', '#a2cc8e', '#bcdea6', '#d2ecc0', '#ecf8e0'], od: '#2e5a26', ol: '#5a8a4a', ln: '#4e7e40' },
+    [SEAM]:   { r: ['#3a6a2a', '#487c34', '#58903e', '#6ca44e', '#84b866'], od: '#1a3a12', ol: '#305e22', ln: '#2a5a20' },
+    [MOUTH]:  { r: ['#3a2a10', '#4a3616', '#5a441e', '#6a5428', '#7a6434'], od: '#2c1c08', ol: '#3a2a10', ln: '#3a2a10' },
     [HEART]:  { r: ['#c89a20', '#e4bc30', '#f6d84a', '#fdec84', '#fffbd0'], od: '#6a4c08', ol: '#a47c18', ln: '#9a7416' },
     [POLLEN]: { r: ['#d6b830', '#ecd246', '#fae466', '#fff29a', '#fffde0'], od: '#7a6214', ol: '#b09426', ln: '#b09426' },
-    [EYE]:    { r: ['#0e1812', '#121e16', '#16241a', '#1e2e22', '#2a3c2e'], od: '#08100a', ol: '#0e1812', ln: '#0e1812' },
+    [EYE]:    { r: ['#1a1a0e', '#222212', '#2a2a16', '#34341c', '#404024'], od: '#0e0e06', ol: '#1a1a0e', ln: '#1a1a0e' },
     [GLINT]:  { r: ['#e6ece8', '#f4f8f4', '#ffffff', '#ffffff', '#ffffff'], od: '#16241a', ol: '#16241a', ln: '#16241a' },
+    [FACE]:   { r: ['#b8c04a', '#d0d85c', '#e4ea74', '#f2f49a', '#fcfcd0'], od: '#5a5a14', ol: '#8a9028', ln: '#7a8024' },
+    [COLLAR]: { r: ['#244e1e', '#2e6226', '#3a762e', '#4a8a3a', '#5e9e4a'], od: '#10280c', ol: '#1e4218', ln: '#183a14' },
   });
   const GLOSSY = {};
-  const C_GREEN = code(GREEN), C_BUD = code(BUD), C_BUD_D = code(BUD, -1), C_SEAM = code(SEAM), C_MOUTH = code(MOUTH), C_HEART = code(HEART), C_POLLEN = code(POLLEN);
-  const C_EYE = code(EYE), C_GLINT = code(GLINT), C_FOOT = code(FOOT);
-  const M_GREEN = () => C_GREEN, M_FOOT = () => C_FOOT, M_HEART = () => C_HEART, M_POLLEN = () => C_POLLEN, M_LINING = () => C_BUD_D;
+  const C_GREEN = code(GREEN), C_BUD = code(BUD), C_SEAM = code(SEAM), C_HEART = code(HEART), C_POLLEN = code(POLLEN);
+  const C_EYE = code(EYE), C_FOOT = code(FOOT), C_FACE = code(FACE), C_COLLAR = code(COLLAR);
+  const M_GREEN = () => C_GREEN, M_FOOT = () => C_FOOT, M_HEART = () => C_HEART, M_POLLEN = () => C_POLLEN, M_COLLAR = () => C_COLLAR, M_BUD = () => C_BUD;
 
   // ---- helpers
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-  const add = V3.add, sc = V3.scale;
+  const add = V3.add, sub = V3.sub, sc = V3.scale, cross = V3.cross, nrm = V3.norm, dot = V3.dot;
+  const len3 = (a) => Math.hypot(a[0], a[1], a[2]);
   const inF = (f, p) => add(f.t, M3.v(f.L, p));
   const E = (c, L, part, grp, mat) => ({ kind: 'ell', part, grp, c, L, mat });
   const ellF = (f, r, part, grp, mat) => E(f.t, M3.mul(f.L, M3.diag(r[0], r[1], r[2])), part, grp, mat);
+  function seg(p0, p1, rx, rz, part, grp, mat, fwd = [1, 0, 0]) {
+    const d = sub(p1, p0), l = len3(d);
+    const Y = nrm(d);
+    let X = sub(fwd, sc(Y, dot(fwd, Y)));
+    if (len3(X) < 1e-4) X = cross(Y, [0, 0, 1]);
+    X = nrm(X);
+    const Z = cross(X, Y);
+    return E(sc(add(p0, p1), 0.5), M3.cols(sc(X, rx), sc(Y, l / 2), sc(Z, rz)), part, grp, mat);
+  }
 
   /* ---------- layout (design units, 2× the final size) ---------- */
-  const BODY_C = [0, 14, 0], BODY_R = [9.6, 10.6, 10.2];
-  const HEAD_C = [0.4, 35, 0], HEAD_R = [14, 14.2, 14.8];
-  const HOOD_C = [-1.2, 38, 0], HOOD_R = [15.6, 17, 16.6];
+  const BODY_C = [0, 22, 0], BODY_R = [17, 19, 17.5];
+  const HEAD_C = [7.5, 25.5, 0], HEAD_R = [11, 12, 14.5]; // the yellow face dome
+  const TOP_C = [1.5, 58, 0], TOP_R = [11, 9.5, 11]; // closed bud at the top
   const SIZE = 0.5;
-  // render-time state (set by render(): the renderer calls the material functions)
   let curScale = 1, MO = 0, EYEK = 'open', DECAL = false;
-  const px1 = (r) => 0.55 / (curScale * SIZE * r); // about one pixel on a unit sphere of radius r
+  const px1 = (r) => 0.55 / (curScale * SIZE * r);
 
-  // seams on the bud: meridians from the tip, thin at any scale
-  function seam(s, n, ph, r) {
-    const az = Math.atan2(s[2], s[0]);
-    const k = (az / (2 * Math.PI)) * n + ph;
-    const w = (Math.max(0.03, px1(r)) * n) / (2 * Math.PI) / Math.max(0.35, Math.sqrt(1 - s[1] * s[1]));
-    return Math.abs(k - Math.round(k)) < w;
-  }
-  // hood: open in front (the face window) and underneath (the neck); darker seams toward the back
-  const WIN_Z = 0.64, WIN_V = -0.14, WIN_H = 0.6;
-  function hoodMat(s) {
-    if (s[1] < -0.74) return 0;
-    if (s[0] > 0) {
-      const a = s[2] / WIN_Z, b = (s[1] - WIN_V) / WIN_H;
-      if (a * a + b * b < 1) return 0;
-    }
-    if (s[0] < 0.62 && s[1] > -0.5 && seam(s, 5, 0.5, HOOD_R[0])) return C_SEAM;
-    return C_BUD;
-  }
-  function tipMat(s) { return s[1] < 0.75 && seam(s, 5, 0.5, 7) ? C_SEAM : C_BUD; }
-
-  // face: eyes (surface decals when the head is big on screen) and a small smile
-  const EYE_AZ = 0.44, EYE_V = 0.1, EW = 0.22, EH = 0.3;
-  function eyeDecal(s) {
-    const az = Math.atan2(s[2], s[0]);
-    for (const sd of [1, -1]) {
-      const du = (az - sd * EYE_AZ) / EW, dv = (s[1] - EYE_V) / EH;
-      if (du * du + dv * dv > 1.6) continue;
-      const lw = Math.max(0.22, px1(HEAD_R[1]) * 1.3 / EH);
-      if (EYEK === 'open') {
-        if (du * du + dv * dv >= 1) continue;
-        const gu = (du - 0.3) / 0.36, gv = (dv - 0.36) / 0.32;
-        if (gu * gu + gv * gv < 1) return C_GLINT;
-        const hu = (du + 0.28) / 0.2, hv = (dv + 0.5) / 0.16;
-        if (hu * hu + hv * hv < 1) return code(EYE, 3);
-        return C_EYE;
-      }
-      if (Math.abs(du) > 0.95) continue;
-      if (EYEK === 'happy') { if (Math.abs(dv - (0.05 + 0.45 * (1 - du * du))) < lw) return C_EYE; }
-      else if (EYEK === 'closed') { if (Math.abs(dv - (-0.1 - 0.4 * (1 - du * du))) < lw) return C_EYE; }
-      else if (Math.abs(dv + 0.35 - 0.12 * du * du) < lw) return C_EYE; // blink: a flat lash line
-    }
-    return 0;
-  }
+  // face: tiny vertical-dash eyes and a small smile (surface decals when big on screen)
+  const EYE_AZ = 0.42, EYE_V = 0.18;
   function faceMat(s) {
-    if (DECAL && s[0] > 0.3) { const e = eyeDecal(s); if (e) return e; }
-    if (s[0] > 0.6 && Math.abs(s[2]) < 0.32) {
-      const u = s[2] / 0.32, v = s[1] + 0.36;
-      if (MO > 0.05) {
-        if (Math.abs(u) < 0.72 && v < 0.05 - 0.04 * u * u && v > -0.04 - 0.22 * MO * (1 - u * u)) return C_MOUTH;
-      } else if (Math.abs(u) < 0.62) {
-        if (Math.abs(v - 0.12 * u * u) < Math.max(0.045, px1(HEAD_R[1]))) return code(MOUTH, 1);
+    if (s[0] < 0.1) return C_FACE;
+    const az = Math.atan2(s[2], s[0]), v = s[1];
+    if (DECAL) {
+      const lw = Math.max(0.06, px1(HEAD_R[2]) * 0.8);
+      for (const sd of [1, -1]) {
+        const du = az - sd * EYE_AZ;
+        if (EYEK === 'open') { if (Math.abs(du) < lw && Math.abs(v - EYE_V) < 0.16) return C_EYE; }
+        else if (Math.abs(du) < 0.16) {
+          const u = du / 0.16;
+          if (EYEK === 'happy' && Math.abs(v - EYE_V - 0.08 * (1 - u * u)) < lw) return C_EYE;
+          if (EYEK === 'closed' && Math.abs(v - EYE_V + 0.08 * (1 - u * u)) < lw) return C_EYE;
+          if (EYEK === 'blink' && Math.abs(v - EYE_V + 0.08) < lw) return C_EYE;
+        }
       }
+    }
+    // smile: a small V/U curve under the eyes
+    const u = az / 0.26, mv = v + 0.22;
+    if (Math.abs(u) < 1) {
+      if (MO > 0.05) { if (mv < 0.02 && mv > -0.04 - 0.2 * MO * (1 - u * u)) return code(MOUTH); }
+      else if (Math.abs(mv + 0.07 * (1 - u * u)) < Math.max(0.04, px1(HEAD_R[1]) * 0.8)) return code(MOUTH);
+    }
+    return C_FACE;
+  }
+  // top bud: green bulb with a pale mint cap whose lower edge is scalloped
+  function topMat(s) {
+    const az = Math.atan2(s[2], s[0]);
+    const edge = -0.05 + 0.14 * Math.abs(Math.cos(az * 2));
+    if (s[1] > edge) {
+      // two seam ticks on the cap front
+      if (s[0] > 0.2 && s[1] > 0.3 && s[1] < 0.6 && Math.abs(Math.abs(s[2]) - 0.28) < Math.max(0.05, px1(TOP_R[0]))) return C_SEAM;
+      return C_BUD;
     }
     return C_GREEN;
   }
 
-  /* ---------- eye stamps for small sizes (k = eye, w = white glint) ---------- */
+  /* ---------- eye stamps for small sizes: vertical dashes ---------- */
   const EYES_S = {
-    open: ['kk', 'wk', 'kk'], openN: ['kk', 'wk', 'kk'], openF: ['k', 'k'],
-    happy: ['.k.', 'k.k'], happyN: ['.k', 'k.'], happyF: ['k', 'k'],
+    open: ['k', 'k'], openN: ['k', 'k'], openF: ['k'],
+    happy: ['.k.', 'k.k'], happyN: ['.k', 'k.'], happyF: ['k'],
     closed: ['k.k', '.k.'], closedN: ['k.', '.k'], closedF: ['k'],
     blink: ['kk'], blinkN: ['kk'], blinkF: ['k'],
   };
   const EYES_M = {
-    open: ['.kk.', 'wwkk', 'wkkk', 'kkkk', '.kk.'], openN: ['.k.', 'wkk', 'kkk', 'kkk', '.k.'], openF: ['k.', 'wk', 'kk', 'k.'],
+    open: ['k', 'k', 'k'], openN: ['k', 'k', 'k'], openF: ['k', 'k'],
     happy: ['.kk.', 'k..k'], happyN: ['.k.', 'k.k'], happyF: ['.k', 'k.'],
     closed: ['k..k', '.kk.'], closedN: ['k.k', '.k.'], closedF: ['k.', '.k'],
-    blink: ['....', 'kkkk', '.kk.'], blinkN: ['...', 'kkk', '.k.'], blinkF: ['..', 'kk'],
+    blink: ['kkk'], blinkN: ['kk'], blinkF: ['k'],
   };
-  const EYEC = { k: '#16201a', w: '#ffffff' };
+  const EYEC = { k: '#1a1a0e', w: '#ffffff' };
 
   const DEFAULT = { walk: 0, bloom: 0, eyes: 'open', mouth: 0, tilt: 0, side: 1 };
   const PRI = {};
   for (let i = 1; i < 64; i++) PRI[i] = 0;
-  // 1 body, 2 head, 3 hood (+ tip), 4 lining, 5..7 petals, 8 heart, 10/11 feet, 20+ pollen
-  Object.assign(PRI, { 2: 1, 3: 2, 4: -1, 5: 3, 6: 3, 7: 3, 8: 2 });
+  // 1 body, 2 face, 3 wrap band, 4 top bud, 5..7 petals, 8 heart, 10/11 feet, 12..15 collar, 20+ pollen
+  Object.assign(PRI, { 2: 2, 3: 1, 4: 2, 5: 3, 6: 3, 7: 3, 8: 2, 12: 3, 13: 3, 14: 3, 15: 3 });
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -30994,41 +31095,43 @@ const Budew = (() => {
     const roll = moving ? 0.08 * Math.sin(wk) : 0;
     const root = chain(T(0, bob, 0), T(0, 4, 0), R(M3.rx(roll)), T(0, -4, 0));
 
-    // --- body
+    // --- pear body: round lower bulb narrowing into the neck
     prims.push(ellF(chain(root, T(...BODY_C)), BODY_R, 1, 1, M_GREEN));
+    prims.push(ellF(chain(root, T(-1, 40, 0)), [11.5, 15, 12], 1, 1, M_GREEN));
     anchors.body = inF(root, BODY_C);
 
-    // --- head (face) inside the hood; the head tilt pivots at the neck
-    const neck = chain(root, T(0, 22, 0), R(M3.rx(-0.2 * tilt)), T(0, -22, 0));
+    // --- face dome and the dark four-lobed collar under it (tilt rolls the upper body)
+    const neck = chain(root, T(0, 24, 0), R(M3.rx(-0.15 * tilt)), T(0, -24, 0));
     const head = chain(neck, T(...HEAD_C));
     const headPrim = ellF(head, HEAD_R, 2, 2, faceMat);
     prims.push(headPrim);
-    const hood = chain(neck, T(...HOOD_C));
-    prims.push(ellF(hood, HOOD_R, 3, 3, hoodMat));
-    prims.push(ellF(hood, [HOOD_R[0] * 0.94, HOOD_R[1] * 0.94, HOOD_R[2] * 0.94], 4, 4, M_LINING));
+    [[-0.55, 0], [-0.18, 1], [0.18, 2], [0.55, 3]].forEach(([az, i]) => {
+      const c = [BODY_C[0] + 14 * Math.cos(az), 12 - 2 * Math.abs(az), 17 * Math.sin(az)];
+      prims.push(ellF(chain(neck, T(...c), R(M3.ry(-az))), [5, 6.2, 7], 12 + i, 12 + i, M_COLLAR));
+    });
 
-    // --- bud tip: a tapering point leaning back; parts into three petals when blooming
-    const tipBase = chain(hood, T(-1.2, HOOD_R[1] - 4.5, 0), R(M3.rz(0.3)));
-    // lower bud swell (same group as the hood: no contour line)
-    prims.push(ellF(chain(tipBase, T(0, 3.2, 0)), [8.6, 8.4, 8.6], 3, 3, tipMat));
+    // --- leaf band wrapping diagonally up from the near side to the top bud
+    prims.push(seg(inF(neck, [2, 26, 15]), inF(neck, [4, 44, -3]), 5.5, 5, 3, 3, M_GREEN));
+    prims.push(seg(inF(neck, [4, 42, -4]), inF(neck, [1, 54, -1]), 5.5, 5.5, 3, 3, M_GREEN));
+
+    // --- top bud; parts into petals when blooming
+    const tipBase = chain(neck, T(...TOP_C), R(M3.rz(-0.15)));
+    prims.push(ellF(tipBase, TOP_R, 4, 4, topMat));
     if (bloom < 0.04) {
-      prims.push(ellF(chain(tipBase, T(-0.4, 10, 0), R(M3.rz(0.1))), [4.2, 7.2, 4.2], 3, 3, tipMat));
-      anchors.top = inF(tipBase, [-1.6, 17, 0]);
+      anchors.top = inF(tipBase, [0, TOP_R[1], 0]);
     } else {
-      // flower heart and four broad petals parting round it
-      prims.push(ellF(chain(tipBase, T(0, 9 + 2.5 * bloom, 0)), [3.8 + 1.2 * bloom, 3.4 + bloom, 3.8 + 1.2 * bloom], 8, 8, M_HEART));
+      prims.push(ellF(chain(tipBase, T(0, 7 + 2.5 * bloom, 0)), [3.8 + 1.2 * bloom, 3.4 + bloom, 3.8 + 1.2 * bloom], 8, 8, M_HEART));
       for (let k = 0; k < 4; k++) {
         const az = (k / 4) * Math.PI * 2 + Math.PI / 4;
-        const pf = chain(tipBase, T(0, 7, 0), R(M3.ry(-az)), R(M3.rz(-0.12 - 0.5 * bloom)), T(2.6, 4.6, 0), R(M3.rz(0.28)));
-        prims.push(ellF(pf, [2.2, 5.6, 5.4], 5 + (k % 3), 5 + (k % 3), tipMat));
+        const pf = chain(tipBase, T(0, 5, 0), R(M3.ry(-az)), R(M3.rz(-0.12 - 0.5 * bloom)), T(2.6, 4.6, 0), R(M3.rz(0.28)));
+        prims.push(ellF(pf, [2.2, 5.6, 5.4], 5 + (k % 3), 5 + (k % 3), M_BUD));
       }
-      anchors.top = inF(tipBase, [0, 16, 0]);
-      // pollen specks puffing up over the open bud
+      anchors.top = inF(tipBase, [0, 14, 0]);
       if (bloom > 0.3) {
         const n = 6, g = Math.min(1, (bloom - 0.3) / 0.4);
         for (let k = 0; k < n; k++) {
           const a = k * 2.4 + 0.6, f = ((k * 37) % 7) / 7;
-          const rr = (2 + 7 * bloom) * (0.4 + 0.6 * f), hgt = 17 + 11 * bloom * (0.2 + 0.8 * (((k * 53) % 7) / 7));
+          const rr = (2 + 7 * bloom) * (0.4 + 0.6 * f), hgt = 15 + 11 * bloom * (0.2 + 0.8 * (((k * 53) % 7) / 7));
           const c = add(inF(tipBase, [0, 0, 0]), [rr * Math.cos(a) - 1.5, hgt, rr * Math.sin(a)]);
           const r = (1 + 0.9 * (((k * 29) % 5) / 5)) * g;
           prims.push(ellF(T(...c), [r, r, r], 20 + k, 20 + k, M_POLLEN));
@@ -31038,23 +31141,23 @@ const Budew = (() => {
     anchors.bud = add(anchors.top, [0, 3, 0]);
     anchors.head = head.t;
 
-    // --- eyes (stamps at small sizes; render() swaps in surface decals when the head is big)
+    // --- eyes (stamps at small sizes; render() swaps in surface decals when the face is big)
     const kind = ['open', 'happy', 'blink', 'closed'].includes(P.eyes) ? P.eyes : 'open';
     for (const sd of [1, -1]) {
       const s = sph(sd * EYE_AZ, EYE_V);
       const at = { prim: headPrim, p: inF(head, [HEAD_R[0] * s[0], HEAD_R[1] * s[1], HEAD_R[2] * s[2]]), s };
-      stamps.push({ at, set: EYES_M, colors: EYEC, kind, near: 0.72, far: 0.42 });
+      stamps.push({ at, set: EYES_M, colors: EYEC, kind, near: 0.5, far: 0.2, minFacing: 0.08 });
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = at.p;
     }
-    anchors.mouth = inF(head, [HEAD_R[0] * 0.92, -HEAD_R[1] * 0.38, 0]);
+    anchors.mouth = inF(head, [HEAD_R[0] * 0.95, -HEAD_R[1] * 0.25, 0]);
 
-    // --- feet: stubby, alternate when walking
+    // --- feet: tiny pointed yellow-green nubs, alternate when walking
     [[1, 0], [-1, Math.PI]].forEach(([sd, ph], i) => {
       const lift = moving ? Math.max(0, Math.sin(wk + ph)) * 3 : 0;
       const sw = moving ? Math.cos(wk + ph) * 2.8 : 0;
-      const c = [2.4 + sw, 3.4 + lift, sd * 5.8];
-      prims.push(ellF(chain(T(...c), R(M3.ry(-sd * 0.25))), [5.8, 3.5, 4.6], 10 + i, 10 + i, M_FOOT));
-      anchors[sd > 0 ? 'footN' : 'footF'] = [c[0], c[1] - 3.4, c[2]];
+      const c = [3 + sw, 3 + lift, sd * 8];
+      prims.push(seg([c[0] - 1, c[1] + 4, c[2] * 0.85], [c[0] + 2, c[1] - 3, c[2] * 1.1], 3.2, 3.6, 10 + i, 10 + i, M_FOOT));
+      anchors[sd > 0 ? 'footN' : 'footF'] = [c[0], 0, c[2]];
     });
 
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
@@ -31067,10 +31170,10 @@ const Budew = (() => {
     curScale = opt.scale || 1;
     MO = clamp(+model.pose.mouth || 0, 0, 1);
     EYEK = ['open', 'happy', 'blink', 'closed'].includes(model.pose.eyes) ? model.pose.eyes : 'open';
-    const px = HEAD_R[0] * SIZE * curScale; // head radius in pixels
+    const px = HEAD_R[0] * SIZE * curScale; // face radius in pixels
     DECAL = px >= 10.5;
     model.stamps = DECAL ? [] : model.eyeStamps;
-    for (const st of model.eyeStamps) st.set = px >= 6 ? EYES_M : EYES_S;
+    for (const st of model.eyeStamps) st.set = px >= 5 ? EYES_M : EYES_S;
     return Creature.render(model, opt);
   }
 
@@ -34532,12 +34635,12 @@ const Flygon = (() => {
   const BODY = 1, BELLY = 2, DARK = 3, COVER = 4, WING = 5, TRIM = 6, VEIN = 7, CLAW = 8, MOUTH = 9, INK = 10;
   const MAT = { BODY, BELLY, DARK, COVER, WING, TRIM, VEIN, CLAW, MOUTH, INK };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#4c8a3a', '#62a64a', '#82c460', '#a6dc80', '#d4f4b4'], od: '#1f4a1a', ol: '#3e7a32', ln: '#3c7430' },
+    [BODY]:  { r: ['#5e9a52', '#78b468', '#98cc82', '#b8e2a2', '#dcf4cc'], od: '#284e22', ol: '#4a803e', ln: '#4a803e' },
     [BELLY]: { r: ['#9eae62', '#bccc7c', '#dae69c', '#eaf2bc', '#f8fce0'], od: '#4a5a22', ol: '#7a8a44', ln: '#86984a' },
-    [DARK]:  { r: ['#244e22', '#2e622a', '#3a7834', '#4a8e42', '#5ea654'], od: '#10280e', ol: '#224a20', ln: '#1c401a' },
-    [COVER]: { r: ['#8c1420', '#b4202a', '#d8363a', '#ee6660', '#ffa69a'], od: '#4e0810', ol: '#861420', ln: '#7e1420' },
-    [WING]:  { r: ['#8ab852', '#a4d064', '#c2e67e', '#daf2a2', '#f0fcd2'], od: '#3e6a1e', ol: '#6a9a3a', ln: '#6a9a3a' },
-    [TRIM]:  { r: ['#8c1420', '#b01e28', '#d23234', '#e85a52', '#fa9486'], od: '#4e0810', ol: '#861420', ln: '#7e1420' },
+    [DARK]:  { r: ['#2e6030', '#3a7a3c', '#4a9248', '#60a85a', '#7cc074'], od: '#143016', ol: '#2a562a', ln: '#2a562a' },
+    [COVER]: { r: ['#6e1018', '#921a26', '#b42a34', '#d2504e', '#f08a80'], od: '#3e060c', ol: '#6e1018', ln: '#6e1018' },
+    [WING]:  { r: ['#86b872', '#a0d08a', '#bce4a4', '#d4f0c0', '#ecfae0'], od: '#3e6a30', ol: '#6a9a58', ln: '#6a9a58' },
+    [TRIM]:  { r: ['#a8343e', '#c84a52', '#e06a6c', '#f08c88', '#fcb4ac'], od: '#5a141c', ol: '#962c36', ln: '#962c36' },
     [VEIN]:  { r: ['#3a7a2e', '#4a9038', '#5ca646', '#76bc5a', '#98d47a'], od: '#1a4412', ol: '#346e28', ln: '#346e28' },
     [CLAW]:  { r: ['#a8a8a0', '#cacac2', '#ecece6', '#f8f8f4', '#ffffff'], od: '#50504a', ol: '#80807a', ln: '#86867e' },
     [MOUTH]: { r: ['#3e0e14', '#5a1820', '#76262c', '#90383a', '#a84c4a'], od: '#26060a', ol: '#3e0e14', ln: '#3e0e14' },
@@ -34609,7 +34712,7 @@ const Flygon = (() => {
       const rr = r((i + 0.5) / n);
       const d = sub(b, a), hl = (len3(d) / 2) * over;
       const Rm = axesAlong(d, up);
-      prims.push(E(sc(add(a, b), 0.5), M3.mul(Rm, M3.diag(hl, rr, rr)), part, grp, tubeMat(Rm, hl, rr, m)));
+      prims.push(E(sc(add(a, b), 0.5), M3.mul(Rm, M3.diag(hl, rr, rr)), part, grp, tubeMat(Rm, hl, rr, typeof m === 'function' ? m(i) : m)));
     }
   }
 
@@ -34627,13 +34730,13 @@ const Flygon = (() => {
         const d = (a - q) * Math.min(mid * len, w);
         if (d < trim) return C_TRIM;
         // a darker green vein: an inner diamond outline
-        if (vein && Math.abs(d - vein) < 1.3) return C_VEIN;
+        if (vein && d > vein && (u - v * 0.4) % 40 < 7 && u > len * 0.2) return code(WING, 1);
         return C_WING;
       },
     });
   }
-  const WING_G = rhombus(168, 52, 0.36, 4.5, 16);
-  const FAN_G = rhombus(30, 10, 0.45, 2.6, 0);
+  const WING_G = rhombus(168, 56, 0.36, 7.5, 18);
+  const FAN_G = rhombus(34, 12, 0.5, 3.6, 0);
 
   /* ---------- head, eye covers ---------- */
   const HR = [24, 20, 21];
@@ -34754,10 +34857,11 @@ const Flygon = (() => {
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = inF(ef, [0, 0, CR[2] * sd]);
       // long antennae swept back from the top of the head, with a kink
       const a0 = inF(hf, [-2, 17, 6 * sd]);
-      const ap = [a0, inF(hf, [-14, 30, 9 * sd]), inF(hf, [-32, 38, 14 * sd]), inF(hf, [-52, 38, 18 * sd]), inF(hf, [-70, 44, 22 * sd])];
-      tube(prims, ap, 7, (t) => lerp(3.4, 2, t), 7, 7, DARK, [0, 1, 0], 1.7);
+      const a0b = inF(hf, [8, 16, 4 * sd]);
+      const ap = [a0b, inF(hf, [-4, 34, 7 * sd]), inF(hf, [-26, 50, 11 * sd]), inF(hf, [-58, 58, 16 * sd]), inF(hf, [-96, 58, 22 * sd]), inF(hf, [-126, 50, 27 * sd])];
+      tube(prims, ap, 12, (t) => lerp(6, 2, t), 7, 7, (i) => (i < 3 ? BODY : DARK), [0, 1, 0], 1.7);
     }
-    anchors.top = inF(hf, [-40, 44, 0]);
+    anchors.top = inF(hf, [-58, 60, 0]);
 
     // --- the big rhombus wings: roots on the upper back, a V up and out; flap buzzes them
     for (const sd of [1, -1]) {
@@ -34770,7 +34874,7 @@ const Flygon = (() => {
       const back = nrm(cross([0, 1, 0], U));
       // chord axis pointing forward, its leading edge twisted up so the broad face shows in 3/4 views
       const fwdC = sd > 0 ? back : sc(back, -1);
-      const chord = nrm(sub(add(fwdC, [0, 0.55, 0]), sc(U, dot(add(fwdC, [0, 0.55, 0]), U))));
+      const chord = nrm(sub(add(fwdC, [0, 1.0, 0]), sc(U, dot(add(fwdC, [0, 1.0, 0]), U))));
       const N = nrm(cross(U, chord));
       prims.push(PL(root, M3.cols(U, cross(N, U), N), id, id, WING_G, 1.4));
       anchors[sd > 0 ? 'wingN' : 'wingF'] = add(root, sc(U, 168));
@@ -34815,7 +34919,7 @@ const Flygon = (() => {
     const sway = (walking ? 0.25 * Math.sin(wk) : 0);
     const tb = inF(tf, [-24, 14, 0]);
     const tp = [inF(tf, [-10, 24, 0]), tb, add(tb, [-38, -22, 10 * sway]), add(tb, [-84, -32, 26 * sway + 8 * side]), add(tb, [-128, -26, 40 * sway + 16 * side]), add(tb, [-160, -8, 50 * sway + 22 * side])];
-    tube(prims, tp, 16, (t) => lerp(17, 5, Math.pow(t, 0.8)), 14, 14, BODY, [0, 1, 0], 1.8);
+    tube(prims, tp, 16, (t) => lerp(17, 5, Math.pow(t, 0.8)), 14, 14, (i) => (i >= 3 && i % 3 === 0 ? DARK : BODY), [0, 1, 0], 1.8);
     const tEnd = tp[5], tD = nrm(sub(tEnd, crPt(tp, 4.7)));
     const fanN = nrm(cross(tD, [0, 0, 1]).map((x, i) => x + (i === 2 ? 0.5 * side : 0)));
     for (const a of [-0.75, 0, 0.75]) {
@@ -34919,9 +35023,9 @@ const Groudon = (() => {
   const RED = 1, GREY = 2, LINE = 3, CLAW = 4, EYE = 5, PUPIL = 6, MOUTH = 7, TONGUE = 8, TOOTH = 9, PLATE = 10;
   const MAT = { RED, GREY, LINE, CLAW, EYE, PUPIL, MOUTH, TONGUE, TOOTH, PLATE };
   const PAL = Creature.palette({
-    [RED]:    { r: ['#6e121e', '#a01e2a', '#d2323a', '#ec5a54', '#ff9a88'], od: '#420812', ol: '#7e141e', ln: '#621019' },
-    [GREY]:   { r: ['#5e5a5e', '#88848a', '#b0acae', '#d4d0cc', '#f2f0ea'], od: '#2e2a30', ol: '#5a565c', ln: '#4a464c' },
-    [PLATE]:  { r: ['#66626a', '#8e8a90', '#b8b4b4', '#dcd8d2', '#f6f4ee'], od: '#2e2a30', ol: '#5a565c', ln: '#4a464c' },
+    [RED]:    { r: ['#6a1410', '#9e2618', '#ca3c22', '#ea643e', '#ffa07c'], od: '#3e0a08', ol: '#7a1a12', ln: '#5e120e' },
+    [GREY]:   { r: ['#4e4442', '#6e6260', '#8e8280', '#b0a6a2', '#d4ccc6'], od: '#2e2a30', ol: '#5a565c', ln: '#4a464c' },
+    [PLATE]:  { r: ['#5e120e', '#8e2216', '#bc361e', '#e05838', '#fa9070'], od: '#300806', ol: '#6a160e', ln: '#200806' },
     [LINE]:   { r: ['#170e12', '#1e1418', '#261a1e', '#302226', '#3c2a30'], od: '#10080c', ol: '#1e1418', ln: '#10080c' },
     [CLAW]:   { r: ['#8e8a88', '#bcb8b4', '#e2e0da', '#f6f4f0', '#ffffff'], od: '#3e3a3a', ol: '#6a6664', ln: '#6a6664' },
     [EYE]:    { r: ['#c8920e', '#e8b41c', '#ffd23a', '#ffe684', '#fff6c8'], od: '#6a3a06', ol: '#8a5a10', ln: '#6a3a06' },
@@ -34963,6 +35067,45 @@ const Groudon = (() => {
   };
 
   let curScale = 1;
+
+  /* ---------- white spikes: faceted cones (flat plates) ---------- */
+  const PAD = 0.5;
+  function convexShape(pts, m) {
+    let area = 0;
+    for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; area += a[0] * b[1] - b[0] * a[1]; }
+    const P = area < 0 ? pts.slice().reverse() : pts;
+    const n = P.length, EQ = new Float64Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const a = P[i], b = P[(i + 1) % n];
+      const ex = b[0] - a[0], ey = b[1] - a[1], l = Math.hypot(ex, ey) || 1;
+      const nx = -ey / l, ny = ex / l;
+      EQ[i * 3] = nx; EQ[i * 3 + 1] = ny; EQ[i * 3 + 2] = PAD - (nx * a[0] + ny * a[1]);
+    }
+    return { bb: Shape2D.bbox(P, PAD + 0.3), test(u, v) { for (let i = 0; i < n * 3; i += 3) if (EQ[i] * u + EQ[i + 1] * v + EQ[i + 2] < 0) return 0; return m; } };
+  }
+  function tri(a, b, c, part, m) {
+    const e1 = sub(b, a), e2 = sub(c, a), nz = nrm(cross(e1, e2)), u = nrm(e1), v = cross(nz, u);
+    const pts = [a, b, c].map((p) => { const d = sub(p, a); return [dot(d, u), dot(d, v)]; });
+    return { kind: 'plate', part, grp: part, c: a, L: M3.cols(u, v, nz), shape: convexShape(pts, m), thick: 1.4 };
+  }
+  // cone from base centre b along direction d (length l, base radius r), 7 facets + a round base cap
+  function cone(out, b, d, l, r, part, curve = 0) {
+    d = nrm(d);
+    let U = cross(d, [0, 1, 0]); if (len3(U) < 1e-3) U = [1, 0, 0]; U = nrm(U); const V = cross(d, U);
+    const tip = add(b, sc(d, l)), n = 7, ring = [];
+    for (let k = 0; k < n; k++) { const a = (k * 2 * Math.PI) / n; ring.push(add(b, add(sc(U, r * Math.cos(a)), sc(V, r * Math.sin(a))))); }
+    // a slightly curved spike: bend the tip half way
+    const mid = add(b, sc(d, l * 0.5));
+    for (let k = 0; k < n; k++) {
+      const a = ring[k], c = ring[(k + 1) % n];
+      if (curve) {
+        const am = add(add(sc(a, 0.5), sc(mid, 0.5)), [0, 0, 0]), cm = add(sc(c, 0.5), sc(mid, 0.5));
+        out.push(tri(a, c, cm, part, C_CLAW)); out.push(tri(a, cm, am, part, C_CLAW)); out.push(tri(am, cm, add(tip, sc(V, curve)), part, C_CLAW));
+      } else out.push(tri(a, c, tip, part, C_CLAW));
+    }
+    out.push(E(b, M3.mul(M3.cols(U, V, d), M3.diag(r, r, r * 0.3)), part, part, M_CLAW_F));
+    return tip;
+  }
   // half line width in unit-sphere units for an ellipsoid of radius r (at least ~1 px)
   const lw = (r, base) => Math.max(base, 0.62 / (curScale * r));
 
@@ -35053,7 +35196,7 @@ const Groudon = (() => {
     };
   }
   const JAWR = [70, 26, 46];
-  const jawMat = (s) => (s[1] < -0.2 ? C_GREY : s[1] > 0.55 && s[0] > -0.1 && Math.abs(s[2]) < 0.8 ? C_TONGUE : C_RED);
+  const jawMat = (s) => (s[1] > 0.55 && s[0] > -0.1 && Math.abs(s[2]) < 0.8 ? C_TONGUE : s[1] > 0.25 && Math.abs(s[2]) > 0.55 ? C_RED : C_GREY);
 
   /* ---------- limb decals ---------- */
   // thighs: a black line ring that dips down on the outside (the "knee" chevron)
@@ -35070,17 +35213,18 @@ const Groudon = (() => {
     return Math.abs(s[0] - 0.42) < w && s[1] > -0.9 ? C_LINE : C_RED;
   };
   const M_RED = () => C_RED, M_CLAW = () => C_CLAW, M_GREY = () => C_GREY;
+  function M_CLAW_F() { return C_CLAW; }
 
   /* ---------- rock plates (flat, chunky; u = along, v = up) ---------- */
   // big shoulder slab: three blunt spikes pointing up and back
   const SHOULDER = bakeShape(Shape2D.poly([[70, 0], [96, 40], [88, 84], [64, 118], [44, 98], [22, 150], [-2, 110], [-30, 142], [-44, 92], [-72, 104], [-70, 52], [-50, 10], [-10, -12], [40, -12]], C_PLATE, 6, (u, v) => (v > 20 + 0.25 * u && (u + v * 0.35) % 42 < 5 ? C_PLATE_D : C_PLATE)));
   const SMALLPL = bakeShape(Shape2D.poly([[34, 0], [40, 30], [16, 62], [0, 40], [-22, 58], [-34, 20], [-20, -6], [10, -8]], C_PLATE, 6));
-  const TAILSP = bakeShape(Shape2D.poly([[20, 0], [8, 24], [-4, 52], [-14, 22], [-22, 0], [0, -6]], C_PLATE, 6));
+  const TAILSP = bakeShape(Shape2D.poly([[26, 0], [18, 30], [-2, 58], [-16, 50], [-10, 24], [-24, 0], [0, -6]], C_PLATE, 6, (u, v) => (v > 44 - 0.4 * u ? C_LINE : C_PLATE)));
 
   const DEFAULT = { walk: 0, roar: 0, glow: 0, sleep: 0, mouth: 0, eyes: 'open', side: 1 };
   // 1 torso, 2 head, 3 jaw, 4 mouth, 5/6 arms, 7/8 legs, 9 tail, 10.. plates
   const SIZE = 0.945;
-  const PRI = { 1: 0, 2: 2, 3: 2, 4: 1, 5: 3, 6: 1, 7: 2, 8: 1, 9: 0, 10: 3, 11: 1, 12: 2, 13: 2 };
+  const PRI = { 1: 0, 2: 2, 3: 2, 4: 1, 5: 3, 6: 1, 7: 2, 8: 1, 9: 0, 10: 3, 11: 1, 12: 2, 13: 3 };
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -35095,7 +35239,7 @@ const Groudon = (() => {
     const bob = walking ? 6 * Math.abs(Math.cos(wk)) : 0;
     const roll = walking ? 0.045 * Math.sin(wk) : 0;
     const hipY = lerp(212, 92, ssl) - bob;
-    const lean = lerp(-0.26, -0.95, ssl) + 0.2 * ro;
+    const lean = lerp(-0.78, -0.95, ssl) + 0.45 * ro;
     const B = chain(T(lerp(0, 40, ssl), hipY, 0), R(M3.rx(roll)), R(M3.rz(lean)));
 
     /* --- torso --- */
@@ -35120,27 +35264,31 @@ const Groudon = (() => {
     prims.push(ellF(jawF, JAWR, 3, 3, jawMat));
     if (mo > 0.04) prims.push(ellF(chain(H, T(48, -30, 0)), [58, 22 + 18 * mo, 38], 4, 4, (s) => (s[1] < -0.2 && Math.abs(s[2]) < 0.6 ? C_TONGUE : C_MOUTH)));
     // grey horn-plates at the back of the head
-    for (const sd of [1, -1]) prims.push(seg(inF(H, [-20, 30, sd * 34]), inF(H, [-92, 52, sd * 44]), 13, 10, 2, 2, M_GREY, [0, 1, 0], 0.4));
+    for (const [x, y, l, r] of [[34, 44, 58, 11], [8, 50, 74, 12], [-22, 50, 84, 12], [-50, 42, 80, 11]])
+      for (const sd of [1, -1]) prims.push(seg(inF(H, [x, y - 10, sd * 26]), inF(H, [x - l * 0.55, y + l * 0.62, sd * 32]), r, 9, 2, 2, (q) => (q[1] < -0.2 ? C_LINE : C_RED), [1, 0, 0], 0.3));
     anchors.head = H.t;
     anchors.mouth = inF(H, [96, -34, 0]);
     const eyeP = (sd) => inF(H, [HR[0] * EC[0], HR[1] * EC[1], sd * HR[2] * EC[2]]);
     anchors.eyeN = eyeP(1); anchors.eyeF = eyeP(-1);
 
-    /* --- shoulder plates: big grey slabs rising up and back behind the head --- */
+    /* --- shoulder armour: red domes cut by black lines, a row of white spikes along each side of the back --- */
     let top = [0, -1e9, 0];
+    const armMatS = (s) => {
+      const w = lw(80, 0.03);
+      // plate seams: a ring round the dome and two cross seams
+      if (Math.abs(s[1] - 0.15 + 0.2 * s[0]) < w || Math.abs(s[0] - 0.35) < w * 1.2 || Math.abs(s[0] + 0.3) < w * 1.2) return C_LINE;
+      return C_RED;
+    };
     for (const sd of [1, -1]) {
-      const base = inF(B, [-6, 262, sd * 118]);
-      const U = dirF(B, [1, 0.05, 0]);
-      const Vv = dirF(B, [0.18 * 0, 1, sd * 0.22]);
-      const Vp = nrm(sub(Vv, sc(U, dot(Vv, U))));
-      const W = cross(U, Vp);
-      const k = 1.02;
-      prims.push(PL(base, M3.cols(sc(U, -k), sc(Vp, k), W), sd > 0 ? 10 : 11, sd > 0 ? 10 : 11, SHOULDER, 16));
-      const pk = add(base, add(sc(U, 2), sc(Vp, 150 * k)));
-      if (pk[1] > top[1]) top = pk;
-      // small front plate
-      const b2 = inF(B, [60, 232, sd * 128]);
-      prims.push(PL(b2, M3.cols(sc(U, -0.9), sc(Vp, 0.9), W), sd > 0 ? 10 : 11, sd > 0 ? 10 : 11, SMALLPL, 12));
+      const id = sd > 0 ? 10 : 11;
+      const dF = chain(B, T(10, 262, sd * 92), R(M3.rx(-sd * 0.35)), R(M3.rz(0.1)));
+      prims.push(ellF(dF, [128, 64, 70], id, id, armMatS));
+      // back spikes: four cones pointing up, out and back
+      for (const [x, h, l] of [[74, 292, 92], [20, 316, 120], [-36, 316, 124], [-92, 292, 100]]) {
+        const bp = inF(B, [x, h - 6, sd * 108]);
+        const tip = cone(prims, bp, dirF(B, [-0.45, 0.8, sd * 0.5]), l, 21, id);
+        if (tip[1] > top[1]) top = tip;
+      }
     }
     anchors.top = top;
 
@@ -35158,6 +35306,7 @@ const Groudon = (() => {
       const wr = add(el, sc(d2, 62));
       prims.push(seg(sh, el, 46, 44, id, id, M_RED));
       prims.push(seg(el, wr, 38, 36, id, id, armMat(38)));
+      cone(prims, add(el, [-8, 0, sd * 26]), [-0.55, -0.2, sd * 0.8], 66, 17, id);
       prims.push(E(wr, M3.diag(34, 32, 34), id, id, M_RED));
       for (const k of [-1, 0, 1]) {
         const cd = nrm(add(d2, [0.2, -0.25, sd * 0.3 * k + sd * 0.05]));
@@ -35180,6 +35329,7 @@ const Groudon = (() => {
       void thF;
       prims.push(seg(add(hip, [0, 28, 0]), kneeP, THR[1] * 0.78, THR[2], id, id, thighMat, [1, 0, 0], 0.5));
       prims.push(seg(kneeP, add(ft, [0, 30, 0]), 50, 50, id, id, M_RED));
+      cone(prims, add(kneeP, [20, 20, sd * 50]), [0.55, 0.3, sd * 0.8], 72, 18, id);
       const foot = chain(T(ft[0] + 22, ft[1] + 22, ft[2]), R(M3.ry(-sd * 0.12)));
       prims.push(ellF(foot, [66, 26, 52], id, id, M_RED));
       for (const k of [-1, 0, 1]) {
@@ -35190,7 +35340,7 @@ const Groudon = (() => {
     }
 
     /* --- tail: a thick tapering tube on a spline, dragging on the ground; grey spikes near the tip --- */
-    const ctrl0 = [[-96, 150, 0, 104], [-210, 128, 0, 92], [-360, 76, 0, 68], [-500, 36, 0, 46], [-620, 24, 0, 28], [-700, 22, 0, 14]];
+    const ctrl0 = [[-96, 150, 0, 106], [-210, 120, 0, 94], [-330, 104, 0, 76], [-440, 118, 0, 58], [-520, 150, 0, 42], [-570, 180, 0, 26]];
     const ctrl = ctrl0.map((q, i) => {
       let p = [q[0], q[1], q[2]];
       const t = i / (ctrl0.length - 1);
@@ -35246,15 +35396,24 @@ const Groudon = (() => {
       prims.push(prim);
       if (j === nBead - 1) tailTip = add(Bq.p, sc(X, r));
     }
-    // grey spikes on top of the tail toward the tip
-    for (const [fr, h] of [[0.62, 0.95], [0.72, 0.85], [0.82, 0.72], [0.9, 0.6]]) {
+    // red fins stacked on top toward the tip, white spikes jutting from the sides
+    for (const [fr, h] of [[0.6, 1.2], [0.7, 1.15], [0.8, 1.05], [0.9, 0.9]]) {
       const i = Math.floor(fr * (dense.length - 1));
       const a = dense[i], b = dense[Math.min(dense.length - 1, i + 1)];
       const X = nrm(sub(b.p, a.p));
       let Y = nrm(sub([0, 1, 0], sc(X, X[1])));
       const Z = cross(X, Y);
       const base = add(a.p, sc(Y, a.r * 0.7));
-      prims.push(PL(base, M3.cols(sc(X, -h * 1.4), sc(Y, h * 1.4), Z), 12, 12, TAILSP, 10));
+      prims.push(PL(base, M3.cols(sc(X, -h * 1.4), sc(Y, h * 1.4), Z), 12, 12, TAILSP, 14));
+    }
+    for (const fr of [0.3, 0.48, 0.66]) {
+      const i = Math.floor(fr * (dense.length - 1));
+      const a = dense[i], b = dense[Math.min(dense.length - 1, i + 1)];
+      const X = nrm(sub(b.p, a.p));
+      for (const sd of [1, -1]) {
+        const Z = nrm(cross(X, [0, 1, 0])), o = sc(Z, -sd);
+        cone(prims, add(a.p, sc(o, a.r * 0.8)), add(add(o, sc(X, 0.55)), [0, -0.15, 0]), 34 + a.r * 0.45, 13, 13);
+      }
     }
     anchors.tail = ctrl[0].p;
     anchors.tailTip = tailTip;
@@ -36725,8 +36884,8 @@ const Latias = (() => {
   const MAIN = 1, WHITE = 2, MARK = 3, MOUTH = 4, TONGUE = 5;
   const MAT = { RED: MAIN, WHITE, MARK, MOUTH, TONGUE };
   const PAL = Creature.palette({
-    [MAIN]:   { r: ['#962236', '#c23648', '#e2525c', '#f47c80', '#ffb4b2'], od: '#560e22', ol: '#9c2a3c', ln: '#8a2032' },
-    [WHITE]:  { r: ['#aaa8c2', '#cfcee0', '#edeef6', '#fcfcff', '#ffffff'], od: '#4a4866', ol: '#8886a6', ln: '#9492b0' },
+    [MAIN]:   { r: ['#8c2c3a', '#b64652', '#d6646a', '#ee8c8c', '#fcc0bc'], od: '#541020', ol: '#9a3242', ln: '#8a2a38' },
+    [WHITE]:  { r: ['#98a0c2', '#bac4de', '#dae2f2', '#f0f4fc', '#ffffff'], od: '#464c72', ol: '#8088ac', ln: '#8e96b8' },
     [MARK]:   { r: ['#2654aa', '#3670cc', '#5290e8', '#80b4f8', '#bcdafe'], od: '#122c66', ol: '#2a56a6', ln: '#244a96' },
     [MOUTH]:  { r: ['#4a1020', '#66182c', '#84263c', '#a2384e', '#bc5264'], od: '#2c0612', ol: '#4a1020', ln: '#3c0c1a' },
     [TONGUE]: { r: ['#b8485e', '#d66276', '#ee8290', '#ffa8b0', '#ffd0d2'], od: '#6a1a2e', ol: '#8e2a40', ln: '#8e2a40' },
@@ -36827,24 +36986,25 @@ const Latias = (() => {
   // spine from the tail tip to the top of the neck: hover (h) and jet (j) positions in the x-y plane,
   // half thickness rn (back ↔ belly), half width rw, white-belly threshold wk (white where s·dorsal < wk)
   const SPINE = [
-    { h: [-104, 9], j: [-146, 104], rn: 4.5, rw: 5, wk: -0.35 },
-    { h: [-79, 18], j: [-114, 104], rn: 9, rw: 10, wk: -0.32 },
-    { h: [-52, 37], j: [-80, 105], rn: 15, rw: 16, wk: -0.22 },
-    { h: [-28, 64], j: [-46, 106], rn: 21.5, rw: 22.5, wk: -0.1 },
-    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: 0.02 },
-    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: 0.08 },
-    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 0.12 },
-    { h: [20, 170], j: [70, 113], rn: 12, rw: 12, wk: 0.14 },
-    { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 0.14 },
+    { h: [-104, 9], j: [-146, 104], rn: 4.5, rw: 5, wk: -2 },
+    { h: [-79, 18], j: [-114, 104], rn: 9, rw: 10, wk: -2 },
+    { h: [-52, 37], j: [-80, 105], rn: 15, rw: 16, wk: -2 },
+    { h: [-28, 64], j: [-46, 106], rn: 21.5, rw: 22.5, wk: -2 },
+    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: -0.55 },
+    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: 0.3 },
+    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 2 },
+    { h: [20, 170], j: [70, 113], rn: 12, rw: 12, wk: 2 },
+    { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 2 },
   ];
-  const TRI = { t0: 4.55, t1: 5.5, w: 10 };          // chest triangle (spline param range, top half-width)
+  const TRI = { t0: 3.55, t1: 4.55, w: 12 };          // belly triangle (spline param range, top half-width)
+  const PATCH = { t: 3.45, dt: 0.62, z: 0.8, dz: 0.3, y: -0.15, dy: 0.5 };
   const HEAD = { h: [48, 203, 0], j: [112, 125, 0], ph: -0.06, pj: 0.06 };
   const CRAN_R = [25, 21, 20.5], SNOUT_C = [14.5, -6, 0], SNOUT_R = [17, 13, 14.5], SNOUT_TILT = -0.08;
   const jawLine = (x) => (x > 8 ? -3 - (x - 8) * 0.1 : -3 - (8 - x) * 0.26);
   const EYE_S = nrm([0.62, 0.2, 0.76]);                // eye position on the cranium (unit sphere, near side)
 
   // wing (u = span out from the root, v = chord: + toward the leading edge)
-  const WING = outline([[-8, 25], [18, 24], [48, 18], [78, 8], [100, -5], [107, -14], [97, -21], [74, -23], [48, -29], [24, -39], [5, -44], [-8, -34]], 16, 6.5);
+  const WING = outline([[-8, 20], [20, 15], [52, 9], [84, 4], [112, 1], [124, -3], [114, -8], [110, -13], [104, -9], [84, -11], [54, -16], [26, -25], [6, -32], [-8, -24]], 16, 6);
   const EAR = outline([[-6, 10], [12, 10.5], [28, 7], [44, 0.5], [31, -4], [14, -7.5], [-6, -7.5]], 6, 3.2);
   const TFIN = outline([[-5, 12], [10, 10], [22, 3], [32, -7], [22, -9], [9, -7], [-5, -8]], 2, 2.6);
 
@@ -36860,6 +37020,12 @@ const Latias = (() => {
     happy: ['.kkk.', 'k...k', 'k...k'], happyN: ['.kk.', 'k..k', 'k..k'], happyF: ['.k.', 'k.k'],
     closed: ['k...k', '.kkk.'], closedN: ['k..k', '.kk.'], closedF: ['k.', '.k'],
     blink: ['.....', 'kkkkk', '.kkk.'], blinkN: ['....', 'kkkk', '.kk.'], blinkF: ['kkk'],
+  };
+  const EYES_XL = {
+    open: ['.kkkk.', 'kwwyyk', 'kwyppk', 'kyyppk', 'koyyok', '.kkkk.'], openN: ['.kkk.', 'kwyyk', 'kyppk', 'kyppk', 'koyok', '.kkk.'], openF: ['.kk.', 'kwpk', 'kypk', 'kook', '.kk.'],
+    happy: ['.kkkk.', 'k....k', 'k....k'], happyN: ['.kkk.', 'k...k', 'k...k'], happyF: ['.kk.', 'k..k'],
+    closed: ['k....k', '.kkkk.'], closedN: ['k...k', '.kkk.'], closedF: ['k..k', '.kk.'],
+    blink: ['......', 'kkkkkk', '.kkkk.'], blinkN: ['.....', 'kkkkk', '.kkk.'], blinkF: ['kkkk'],
   };
   const EYEC = { k: '#3a0c1a', y: '#ffd23c', o: '#e0961c', p: '#2a0c14', w: '#ffffff' };
 
@@ -36882,10 +37048,14 @@ const Latias = (() => {
     };
     // body material: white belly below the dorsal threshold, blue triangle on the chest
     const bodyMat = (tm, rlT, rw, wk) => (s) => {
-      if (s[1] < -0.3) {
-        const t = tm + s[0] * rlT;
-        if (t > TRI.t0 && t < TRI.t1 && Math.abs(s[2] * rw) < (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0)) return C_MARK;
+      const t = tm + s[0] * rlT;
+      if (s[1] < -0.2 && t > TRI.t0 && t < TRI.t1) {
+        const hw = (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0), z = Math.abs(s[2] * rw);
+        if (z < hw) return (z < hw - 2.6 && t < TRI.t1 - 0.22 && t > TRI.t0 + 0.28 ? C_MAIN : C_MARK);
       }
+      // white jet-intake patches low on the flanks
+      const pt = (t - PATCH.t) / PATCH.dt, pz = (Math.abs(s[2]) - PATCH.z) / PATCH.dz, py = (s[1] - PATCH.y) / PATCH.dy;
+      if (pt * pt + pz * pz + py * py < 1) return C_WHITE;
       return s[1] < wk ? C_WHITE : C_MAIN;
     };
     const NS = 56;
@@ -36908,7 +37078,9 @@ const Latias = (() => {
         const open = mouth * 0.34 * (p[0] - 15);
         if (p[1] < yb + 0.9 && p[1] > yb - open) return p[1] < yb - open * 0.5 && Math.abs(p[2]) < 8.5 ? C_TONGUE : C_MOUTH;
       }
-      return p[1] < yb ? C_WHITE : C_MAIN;
+      // white head; a red band across the face through the eyes and back over the crown
+      if (!snout || p[0] < 26) { if (p[1] > yb + 3.5 && p[1] < yb + 16 - 0.1 * p[0]) return C_MAIN; }
+      return C_WHITE;
     };
     const crL = M3.diag(...CRAN_R);
     const cran = E(add(hc, M3.v(HL, [0, 0, 0])), M3.mul(HL, crL), 20, 2, headMat([0, 0, 0], crL, false));
@@ -36923,9 +37095,9 @@ const Latias = (() => {
     // ear fins: swept back from the back of the head, tilted outward
     for (const sd of [1, -1]) {
       const root = HP([-12, 8.5, sd * 9]);
-      const dir = HD(nrm([-1, -0.08 + 0.1 * k, sd * 0.42]));
+      const dir = HD(nrm([-1, 0.42 - 0.3 * k, sd * 0.42]));
       const L = frameUV(dir, HD([0, 1, sd * 0.7]), sd < 0);
-      prims.push(shell(root, L, EAR, sd > 0 ? 22 : 23, sd > 0 ? 3 : 4, MAIN, 1.6));
+      prims.push(shell(root, L, EAR, sd > 0 ? 22 : 23, sd > 0 ? 3 : 4, WHITE, 1.6));
     }
 
     /* --- eyes --- */
@@ -36965,9 +37137,15 @@ const Latias = (() => {
       const fo = nrm(lerpV(dir(0.28, -0.95, -0.02), dir(-0.97, 0.06, -0.06), k));
       const el = add(sh, scl(up, 19)), ha = add(el, scl(fo, 16));
       const id = sd > 0 ? 7 : 8;
-      prims.push(segE(sh, el, 7.2, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
-      prims.push(segE(el, ha, 6.4, SH.n, 41 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
-      prims.push(E(add(ha, scl(fo, 1.5)), M3.diag(7, 6.6, 6.6), 42 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
+      prims.push(segE(sh, el, 7.6, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      prims.push(segE(el, ha, 6.8, SH.n, 41 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      prims.push(E(add(ha, scl(fo, 1.5)), M3.diag(7.4, 7, 7), 42 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      // three small white claws
+      for (const c of [-1, 0, 1]) {
+        const cd = nrm(add(add(fo, scl(SH.t, 0.5)), scl(z, c * 0.55)));
+        const cb = add(ha, scl(fo, 4));
+        prims.push(segE(cb, add(cb, scl(cd, 9)), 2.4, SH.n, 42 + (sd > 0 ? 0 : 3), id, () => C_WHITE, 1));
+      }
       anchors[sd > 0 ? 'handN' : 'handF'] = ha;
     }
 
@@ -36999,7 +37177,7 @@ const Latias = (() => {
   /* ---------- render: eye set by scale, glow lift + aura, tight ray-cast box ---------- */
   function render(model, opt) {
     const sc = opt.scale || 1;
-    const set = sc >= 0.42 ? EYES_L : EYES_S;
+    const set = sc >= 0.7 ? EYES_XL : sc >= 0.36 ? EYES_L : EYES_S;
     for (const st of model.stamps) st.set = set;
     const g = clamp((model.pose && model.pose.glow) || 0, 0, 1);
     let pal = opt.pal || PAL;
@@ -37089,8 +37267,8 @@ const Latios = (() => {
   const MAIN = 1, WHITE = 2, MARK = 3, MOUTH = 4, TONGUE = 5;
   const MAT = { BLUE: MAIN, WHITE, MARK, MOUTH, TONGUE };
   const PAL = Creature.palette({
-    [MAIN]:   { r: ['#28388e', '#3a52b4', '#5474d6', '#7c9cec', '#b4c8fc'], od: '#141e5a', ol: '#2c3f96', ln: '#26378a' },
-    [WHITE]:  { r: ['#a4a6c0', '#c8cadc', '#e8eaf4', '#f8f9ff', '#ffffff'], od: '#40426a', ol: '#7e82a6', ln: '#8a8eb0' },
+    [MAIN]:   { r: ['#1a4a82', '#2a68a6', '#4a8cc6', '#76b0de', '#b0d4f2'], od: '#0e2a54', ol: '#285a90', ln: '#225488' },
+    [WHITE]:  { r: ['#868a9c', '#a6aabc', '#c6cad8', '#e2e6ee', '#fafbff'], od: '#3c4058', ol: '#747a94', ln: '#7e849c' },
     [MARK]:   { r: ['#9a1c2c', '#c42c3c', '#e44a52', '#f67a7a', '#ffb0aa'], od: '#5a0c18', ol: '#9a2230', ln: '#8a1c2a' },
     [MOUTH]:  { r: ['#3a1030', '#521840', '#6c2452', '#883466', '#a24c7e'], od: '#220618', ol: '#3a1030', ln: '#2e0c24' },
     [TONGUE]: { r: ['#b8485e', '#d66276', '#ee8290', '#ffa8b0', '#ffd0d2'], od: '#6a1a2e', ol: '#8e2a40', ln: '#8e2a40' },
@@ -37191,24 +37369,25 @@ const Latios = (() => {
   // spine from the tail tip to the top of the neck: hover (h) and jet (j) positions in the x-y plane,
   // half thickness rn (back ↔ belly), half width rw, white-belly threshold wk (white where s·dorsal < wk)
   const SPINE = [
-    { h: [-104, 9], j: [-146, 104], rn: 4.5, rw: 5, wk: -0.35 },
-    { h: [-79, 18], j: [-114, 104], rn: 9, rw: 10, wk: -0.32 },
-    { h: [-52, 37], j: [-80, 105], rn: 15, rw: 16, wk: -0.22 },
-    { h: [-28, 64], j: [-46, 106], rn: 21.5, rw: 22.5, wk: -0.1 },
-    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: 0.02 },
-    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: 0.08 },
-    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 0.12 },
-    { h: [20, 170], j: [70, 113], rn: 12, rw: 12, wk: 0.14 },
-    { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 0.14 },
+    { h: [-104, 9], j: [-146, 104], rn: 4.5, rw: 5, wk: -2 },
+    { h: [-79, 18], j: [-114, 104], rn: 9, rw: 10, wk: -2 },
+    { h: [-52, 37], j: [-80, 105], rn: 15, rw: 16, wk: -2 },
+    { h: [-28, 64], j: [-46, 106], rn: 21.5, rw: 22.5, wk: -2 },
+    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: -0.55 },
+    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: 0.3 },
+    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 2 },
+    { h: [20, 170], j: [70, 113], rn: 12, rw: 12, wk: 2 },
+    { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 2 },
   ];
-  const TRI = { t0: 4.55, t1: 5.5, w: 10 };          // chest triangle (spline param range, top half-width)
+  const TRI = { t0: 3.55, t1: 4.55, w: 11 };          // belly triangle (spline param range, top half-width)
+  const PATCH = { t: 3.45, dt: 0.62, z: 0.8, dz: 0.3, y: -0.15, dy: 0.5 };
   const HEAD = { h: [48, 203, 0], j: [112, 125, 0], ph: -0.06, pj: 0.06 };
   const CRAN_R = [24, 19.5, 19], SNOUT_C = [16.5, -5.5, 0], SNOUT_R = [19.5, 11.5, 13], SNOUT_TILT = -0.1;
   const jawLine = (x) => (x > 8 ? -3 - (x - 8) * 0.1 : -3 - (8 - x) * 0.26);
   const EYE_S = nrm([0.62, 0.2, 0.76]);                // eye position on the cranium (unit sphere, near side)
 
   // wing (u = span out from the root, v = chord: + toward the leading edge)
-  const WING = outline([[-8, 25], [20, 23], [50, 15], [80, 1], [104, -14], [116, -26], [100, -26], [76, -25], [50, -30], [26, -40], [6, -45], [-8, -34]], 16, 6.5);
+  const WING = outline([[-8, 22], [22, 17], [54, 9], [86, 1], [112, -8], [126, -16], [110, -18], [104, -24], [94, -19], [84, -26], [74, -21], [62, -27], [48, -24], [26, -31], [6, -36], [-8, -28]], 16, 6);
   const EAR = outline([[-6, 9.5], [14, 9.5], [32, 6], [52, 0], [34, -3.5], [14, -6.5], [-6, -7]], 6, 3.2);
   const TFIN = outline([[-5, 12], [10, 10], [22, 3], [32, -7], [22, -9], [9, -7], [-5, -8]], 2, 2.6);
 
@@ -37224,6 +37403,12 @@ const Latios = (() => {
     happy: ['.kkk.', 'k...k', 'k...k'], happyN: ['.kk.', 'k..k', 'k..k'], happyF: ['.k.', 'k.k'],
     closed: ['k...k', '.kkk.'], closedN: ['k..k', '.kk.'], closedF: ['k.', '.k'],
     blink: ['.....', 'kkkkk', '.kkk.'], blinkN: ['....', 'kkkk', '.kk.'], blinkF: ['kkk'],
+  };
+  const EYES_XL = {
+    open: ['.kkkk.', 'kwwyyk', 'kwyppk', 'kyyppk', 'koyyok', '.kkkk.'], openN: ['.kkk.', 'kwyyk', 'kyppk', 'kyppk', 'koyok', '.kkk.'], openF: ['.kk.', 'kwpk', 'kypk', 'kook', '.kk.'],
+    happy: ['.kkkk.', 'k....k', 'k....k'], happyN: ['.kkk.', 'k...k', 'k...k'], happyF: ['.kk.', 'k..k'],
+    closed: ['k....k', '.kkkk.'], closedN: ['k...k', '.kkk.'], closedF: ['k..k', '.kk.'],
+    blink: ['......', 'kkkkkk', '.kkkk.'], blinkN: ['.....', 'kkkkk', '.kkk.'], blinkF: ['kkkk'],
   };
   const EYEC = { k: '#1e0c2a', y: '#f03a44', o: '#a81c2c', p: '#2a0814', w: '#ffffff' };
 
@@ -37251,10 +37436,14 @@ const Latios = (() => {
     };
     // body material: white belly below the dorsal threshold, blue triangle on the chest
     const bodyMat = (tm, rlT, rw, wk) => (s) => {
-      if (s[1] < -0.3) {
-        const t = tm + s[0] * rlT;
-        if (t > TRI.t0 && t < TRI.t1 && Math.abs(s[2] * rw) < (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0)) return C_MARK;
+      const t = tm + s[0] * rlT;
+      if (s[1] < -0.2 && t > TRI.t0 && t < TRI.t1) {
+        const hw = (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0), z = Math.abs(s[2] * rw);
+        if (z < hw) return C_MARK;
       }
+      // white jet-intake patches low on the flanks
+      const pt = (t - PATCH.t) / PATCH.dt, pz = (Math.abs(s[2]) - PATCH.z) / PATCH.dz, py = (s[1] - PATCH.y) / PATCH.dy;
+      if (pt * pt + pz * pz + py * py < 1) return C_WHITE;
       return s[1] < wk ? C_WHITE : C_MAIN;
     };
     const NS = 56;
@@ -37278,7 +37467,8 @@ const Latios = (() => {
         const open = mouth * 0.34 * (p[0] - 15);
         if (p[1] < yb + 0.9 && p[1] > yb - open) return p[1] < yb - open * 0.5 && Math.abs(p[2]) < 8.5 ? C_TONGUE : C_MOUTH;
       }
-      return p[1] < yb ? C_WHITE : C_MAIN;
+      // blue face mask over the snout and forehead, pale grey jaw and back of the head
+      return p[1] > yb + 1 && p[0] > -9 + 0.4 * (yb + 20 - p[1]) * 0 && p[0] > -9 ? C_MAIN : C_WHITE;
     };
     const crL = M3.diag(...CRAN_R);
     const cran = E(add(hc, M3.v(HL, [0, 0, 0])), M3.mul(HL, crL), 20, 2, headMat([0, 0, 0], crL, false));
@@ -37295,7 +37485,7 @@ const Latios = (() => {
       const root = HP([-12, 8.5, sd * 9]);
       const dir = HD(nrm([-1, -0.08 + 0.1 * k, sd * 0.42]));
       const L = frameUV(dir, HD([0, 1, sd * 0.7]), sd < 0);
-      prims.push(shell(root, L, EAR, sd > 0 ? 22 : 23, sd > 0 ? 3 : 4, MAIN, 1.6));
+      prims.push(shell(root, L, EAR, sd > 0 ? 22 : 23, sd > 0 ? 3 : 4, WHITE, 1.6));
     }
 
     /* --- eyes --- */
@@ -37335,9 +37525,15 @@ const Latios = (() => {
       const fo = nrm(lerpV(dir(0.28, -0.95, -0.02), dir(-0.97, 0.06, -0.06), k));
       const el = add(sh, scl(up, 19)), ha = add(el, scl(fo, 16));
       const id = sd > 0 ? 7 : 8;
-      prims.push(segE(sh, el, 7.2, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
-      prims.push(segE(el, ha, 6.4, SH.n, 41 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
-      prims.push(E(add(ha, scl(fo, 1.5)), M3.diag(7, 6.6, 6.6), 42 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
+      prims.push(segE(sh, el, 7.6, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      prims.push(segE(el, ha, 6.8, SH.n, 41 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      prims.push(E(add(ha, scl(fo, 1.5)), M3.diag(7.4, 7, 7), 42 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      // three small white claws
+      for (const c of [-1, 0, 1]) {
+        const cd = nrm(add(add(fo, scl(SH.t, 0.5)), scl(z, c * 0.55)));
+        const cb = add(ha, scl(fo, 4));
+        prims.push(segE(cb, add(cb, scl(cd, 9)), 2.4, SH.n, 42 + (sd > 0 ? 0 : 3), id, () => C_WHITE, 1));
+      }
       anchors[sd > 0 ? 'handN' : 'handF'] = ha;
     }
 
@@ -37370,7 +37566,7 @@ const Latios = (() => {
   /* ---------- render: eye set by scale, glow lift + aura, tight ray-cast box ---------- */
   function render(model, opt) {
     const sc = opt.scale || 1;
-    const set = sc >= 0.42 ? EYES_L : EYES_S;
+    const set = sc >= 0.7 ? EYES_XL : sc >= 0.36 ? EYES_L : EYES_S;
     for (const st of model.stamps) st.set = set;
     const g = clamp((model.pose && model.pose.glow) || 0, 0, 1);
     let pal = opt.pal || PAL;
@@ -38013,11 +38209,11 @@ const Lombre = (() => {
   const GREEN = 1, MINT = 2, PAD = 3, PADU = 4, RIM = 5, LIP = 6, MOUTH = 7, CLAW = 8, EYEW = 9, EYE = 10;
   const MAT = { GREEN, MINT, PAD, PADU, RIM, LIP, MOUTH, CLAW, EYEW, EYE };
   const PAL = Creature.palette({
-    [GREEN]: { r: ['#3d7628', '#579836', '#77b848', '#98d260', '#c4ec8c'], od: '#1d4012', ol: '#3a6e26', ln: '#3a6c26' },
-    [MINT]:  { r: ['#4c9684', '#6ab4a0', '#8ed0bc', '#b4e6d6', '#e0f8f0'], od: '#1c4c42', ol: '#3a7c6c', ln: '#3c7a6c' },
-    [PAD]:   { r: ['#3a8a30', '#52a83e', '#66c24c', '#80dc5e', '#a8f282'], od: '#1c4a16', ol: '#387c2a', ln: '#34742a' },
-    [PADU]:  { r: ['#28581e', '#346c26', '#40822e', '#4e9638', '#62aa48'], od: '#15300c', ol: '#2a5a1e', ln: '#2a561e' },
-    [RIM]:   { r: ['#3a8630', '#50a23e', '#62ba4a', '#7cd45c', '#a2ec7e'], od: '#1c4a16', ol: '#387c2a', ln: '#327028' },
+    [GREEN]: { r: ['#4a7a24', '#64982e', '#80b43c', '#9ccc56', '#c0e482'], od: '#223e0e', ol: '#46701e', ln: '#446c20' },
+    [MINT]:  { r: ['#6a9a86', '#8ab8a2', '#a8d2bc', '#c4e4d2', '#e4f6ec'], od: '#2a5244', ol: '#4e8270', ln: '#4e8270' },
+    [PAD]:   { r: ['#4a7e2a', '#5e9834', '#74b042', '#8ec658', '#b0de7e'], od: '#224212', ol: '#447424', ln: '#406e22' },
+    [PADU]:  { r: ['#305a1e', '#3c6c26', '#4a802e', '#5a9438', '#6ea848'], od: '#15300c', ol: '#2a5a1e', ln: '#2a561e' },
+    [RIM]:   { r: ['#44782a', '#5a9234', '#6ea840', '#88c056', '#aad87a'], od: '#224212', ol: '#447424', ln: '#3e6a20' },
     [LIP]:   { r: ['#a2324a', '#c44a60', '#e26a7a', '#f2909a', '#ffc0c4'], od: '#58101e', ol: '#922a3c', ln: '#8a2838' },
     [MOUTH]: { r: ['#3c0c14', '#54141e', '#6c2029', '#862e36', '#a24048'], od: '#26060c', ol: '#3c0c14', ln: '#3c0c14' },
     [CLAW]:  { r: ['#b4465a', '#d26276', '#ec8696', '#f8acb6', '#ffd6dc'], od: '#661426', ol: '#a0384c', ln: '#9c384a' },
@@ -38107,7 +38303,7 @@ const Lombre = (() => {
 
   /* ---------- lily-pad hat: top + underside discs, a rim wall of plates, a square notch ---------- */
   const HAT_R = 64, HAT_H = 19, RIM_N = 28;
-  const NOTCH_A = 2.25, NOTCH_IN = 0.66, NOTCH_W = 23; // notch direction (atan2(z, x) in the hat frame), depth, width
+  const NOTCH_A = -1.75, NOTCH_IN = 0.66, NOTCH_W = 23; // notch direction (atan2(z, x) in the hat frame), depth, width
   const ND = [Math.cos(NOTCH_A), Math.sin(NOTCH_A)], NP = [-ND[1], ND[0]];
   const inNotch = (x, z) => x * ND[0] + z * ND[1] > HAT_R * NOTCH_IN && Math.abs(x * NP[0] + z * NP[1]) < NOTCH_W / 2;
   const padTop = (s) => (s[1] < 0 || inNotch(HAT_R * s[0], HAT_R * s[2]) ? 0 : C_PAD);
@@ -38178,12 +38374,12 @@ const Lombre = (() => {
     // ---- beak: upper lip (centre + drooping corners), lower lip hinged, dark mouth
     const bk = chain(hf, T(...BEAK), R(M3.rz(0.1)));
     const upF = chain(bk, R(M3.rz(0.18 * mo)));
-    const upC = ellF(chain(upF, T(5.5, 3.2, 0)), [12.5, 6.4, 12.5], 4, 4, M_LIP);
+    const upC = ellF(chain(upF, T(5.5, 2.6, 0)), [12, 5.2, 16], 4, 4, M_LIP);
     prims.push(upC);
-    for (const sd of [1, -1]) prims.push(ellF(chain(upF, T(-0.5, 0.2, sd * 10.5), R(M3.ry(sd * 0.55)), R(M3.rx(-sd * 0.5))), [10, 5.6, 9.5], 4, 4, M_LIP));
+    for (const sd of [1, -1]) prims.push(ellF(chain(upF, T(-3.5, -1.2, sd * 15), R(M3.ry(sd * 0.7)), R(M3.rx(-sd * 0.55))), [10, 5, 9], 4, 4, M_LIP));
     const loF = chain(bk, R(M3.rz(-0.55 * mo)));
-    prims.push(ellF(chain(loF, T(3.5, -3.6, 0)), [10.5, 5, 11], 5, 5, (s) => (s[1] > 0.5 && mo > 0.05 ? C_LIP_D : C_LIP)));
-    for (const sd of [1, -1]) prims.push(ellF(chain(loF, T(-2, -2.6, sd * 9), R(M3.ry(sd * 0.55)), R(M3.rx(-sd * 0.45))), [8.5, 4.6, 8], 5, 5, M_LIP));
+    prims.push(ellF(chain(loF, T(3.5, -3.4, 0)), [10.5, 4.4, 14], 5, 5, (s) => (s[1] > 0.5 && mo > 0.05 ? C_LIP_D : C_LIP)));
+    for (const sd of [1, -1]) prims.push(ellF(chain(loF, T(-4, -3.6, sd * 13), R(M3.ry(sd * 0.7)), R(M3.rx(-sd * 0.5))), [8.5, 4.2, 8], 5, 5, M_LIP));
     if (mo > 0.03) prims.push(ellF(chain(bk, T(0, -1, 0)), [9, 3 + 5 * mo, 13], 6, 6, () => C_MOUTH));
     anchors.mouth = inF(bk, [14, -1, 0]);
 
@@ -38220,16 +38416,16 @@ const Lombre = (() => {
       let a = armR[k];
       if (dancing) a = clamp(a + g * (0.55 + 0.45 * sd * ds), -1, 1);
       // abduction from hanging straight down: −1 → 0.22, 0 → 0.62 (rest), 1 → 2.7 (overhead)
-      const ab = a < 0 ? lerp(0.62, 0.22, -a) : lerp(0.62, 2.7, a);
+      const ab = a < 0 ? lerp(0.74, 0.22, -a) : lerp(0.74, 2.7, a);
       let swing = walking && !swimming ? -0.34 * sd * ws : 0;
-      let bend = 0.28 + 0.1 * Math.max(0, a);
+      let bend = 0.14 + 0.1 * Math.max(0, a);
       if (swimming) {
         // breaststroke: arms reach forward, sweep out and back
         const sp = Math.sin(swp), cp = Math.cos(swp);
         swing = 1.2 + 0.7 * sp; bend = 0.4 - 0.3 * cp;
       }
       const sh = chain(torso, T(1, 82, sd * 21), R(M3.rz(swing)), R(M3.rx(-sd * ab)));
-      const L1 = 37, L2 = 37;
+      const L1 = 41, L2 = 40;
       const el = chain(sh, T(0, -L1, 0), R(M3.rz(bend)));
       const id = k ? 11 : 10;
       prims.push(seg(sh.t, el.t, 7.8, 7.4, id, id, M_MINT, dirF(sh, [1, 0, 0])));
@@ -44174,10 +44370,10 @@ const Rayquaza = (() => {
   const GREEN = 1, RING = 2, RED = 3, EYE = 4, PUPIL = 5, MOUTH = 6, TONGUE = 7, CLAW = 8, DARK = 9, FIN = 10;
   const MAT = { GREEN, RING, RED, EYE, PUPIL, MOUTH, TONGUE, CLAW, DARK, FIN };
   const PAL = Creature.palette({
-    [GREEN]:  { r: ['#12472a', '#1d6a38', '#2c8f48', '#4fb660', '#98e08e'], od: '#0a2a18', ol: '#175a30', ln: '#12482a' },
-    [FIN]:    { r: ['#10402a', '#1a6036', '#288444', '#46aa58', '#8cd684'], od: '#0a2a18', ol: '#175a30', ln: '#12482a' },
+    [GREEN]:  { r: ['#123a2a', '#1c5a3e', '#2c7c52', '#4c9e6c', '#8ccaa0'], od: '#08241a', ol: '#16493a', ln: '#10402c' },
+    [FIN]:    { r: ['#10362a', '#1a543c', '#28744e', '#469668', '#84c29a'], od: '#08241a', ol: '#16493a', ln: '#10402c' },
     [RING]:   { r: ['#b88410', '#dcaa1a', '#f8d030', '#ffe67c', '#fff6c4'], od: '#5e3c06', ol: '#8a6010', ln: '#6e4a08' },
-    [RED]:    { r: ['#7a1020', '#aa1a2a', '#dc2e3a', '#f6605e', '#ffa49a'], od: '#44060e', ol: '#7a121e', ln: '#621019' },
+    [RED]:    { r: ['#7a1a26', '#a42a36', '#c84a50', '#e67272', '#ffa8a0'], od: '#44060e', ol: '#7a121e', ln: '#621019' },
     [EYE]:    { r: ['#c89a10', '#e8bc20', '#ffd83a', '#ffe98a', '#fff6c8'], od: '#6a3a06', ol: '#8a5a10', ln: '#6a3a06' },
     [PUPIL]:  { r: ['#060a08', '#0a100c', '#0e1610', '#141c16', '#1c261e'], od: '#060a08', ol: '#060a08', ln: '#060a08' },
     [MOUTH]:  { r: ['#3a0a16', '#561222', '#741e30', '#922e40', '#b04454'], od: '#24050e', ol: '#3a0a16', ln: '#3a0a16' },
@@ -44241,12 +44437,12 @@ const Rayquaza = (() => {
 
   /* ---------- plates ---------- */
   // wing fin (u = back along the body, v = outward/up from the root): red tip
-  const WING = bakeShape(Shape2D.poly([[-30, 0], [26, -2], [62, 18], [104, 56], [124, 84], [92, 70], [52, 52], [10, 30], [-24, 14]], C_FIN, 8, (u, v) => ((u - 124) ** 2 + (v - 84) ** 2 < 36 * 36 ? C_RED : C_FIN)));
+  const WING = bakeShape(Shape2D.poly([[-34, 0], [34, 0], [58, 30], [74, 88], [70, 94], [4, 92], [-4, 86], [-26, 30]], C_FIN, 2, (u, v) => (v > 80 || u > 56 + (v - 30) * 0.25 || (v > 30 && u < -24 + (v - 30) * 0.3) ? C_RED : C_FIN)));
   // head horns: long flat blades with a yellow stripe
   const HORN = bakeShape(Shape2D.poly([[-6, -12], [40, -15], [100, -11], [150, -5], [182, 0], [150, 6], [100, 13], [40, 16], [-6, 13]], C_FIN, 8, (u, v) => (u > 12 && u < 160 && Math.abs(v - 1.5) < 4.2 - u * 0.012 ? C_RING : C_FIN)));
   const HORN_S = bakeShape(Shape2D.poly([[-6, -9], [30, -11], [70, -6], [100, 0], [70, 5], [30, 10], [-6, 9]], C_FIN, 8, (u, v) => (u > 8 && u < 84 && Math.abs(v) < 2.8 ? C_RING : C_FIN)));
   // tail fin: a pointed, arrowhead-like blade with a red tip
-  const TAILF = bakeShape(Shape2D.poly([[-10, 0], [30, 26], [70, 34], [110, 22], [150, 0], [110, -22], [70, -34], [30, -26]], C_FIN, 8, (u, v) => (u > 118 ? C_RED : Math.abs(v) < 4 && u > 20 && u < 108 ? C_RING : C_FIN)));
+  const TAILF = bakeShape(Shape2D.poly([[-10, 0], [30, 26], [70, 34], [110, 22], [150, 0], [110, -22], [70, -34], [30, -26]], C_FIN, 8, (u, v) => (u > 118 || Math.abs(v) > 26 - Math.max(0, u - 70) * 0.2 ? C_RED : Math.abs(v) < 4 && u > 20 && u < 108 ? C_RING : C_FIN)));
 
   /* ---------- head decals ---------- */
   const HR = [70, 44, 46];
@@ -44360,9 +44556,11 @@ const Rayquaza = (() => {
           const k = Math.round((al - RING_FROM) / RING_PER);
           const da = al - (RING_FROM + k * RING_PER);
           const dv = (Math.atan2(s[1], Math.abs(s[2])) - 0.12) * r;
-          const d = Math.hypot(da, dv);
+          const d = Math.hypot(da / 1.7, dv);
           if (k >= 0 && Math.abs(d - rr) < wv) m = RING;
+          else if (k >= 0 && d > rr && Math.abs(dv) < wv * 0.9) m = RING;
         }
+        if (m === GREEN && Math.abs(s[2]) > 0.3 && s[1] < -0.5 && s[1] > -0.5 - Math.max(0.12, wv / r * 1.6)) m = RED;
         return tube(prim, s, m);
       };
       prims.push(prim);
@@ -44451,7 +44649,7 @@ const Rayquaza = (() => {
     const sway = 0.08 * Math.sin(ph - 0.6);
     for (const sd of [1, -1]) {
       for (const [id, shp, root, dir, k] of [
-        [13, HORN, [-22, 32, sd * 20], [-1, 0.55 + sway + 0.45 * ro, sd * 0.45], 1.05],
+        [13, HORN, [-22, 32, sd * 20], [-1, 0.8 + sway + 0.45 * ro, sd * 0.4], 1.45],
         [15, HORN_S, [-22, -18, sd * 30], [-1, -0.06 + sway + 0.45 * ro, sd * 0.5], 1],
       ]) {
         const U = nrm(add(add(sc(HX, dir[0]), sc(HY, dir[1])), sc(HZ, dir[2])));
@@ -44460,7 +44658,7 @@ const Rayquaza = (() => {
         const o = inB(hb, root);
         const gid = id + (sd > 0 ? 0 : 1);
         prims.push(PL(o, M3.cols(sc(U, k), sc(V, k), cross(U, V)), gid, gid, shp, 5));
-        if (shp === HORN) { const tp = add(o, sc(U, 180)); if (tp[1] > top[1]) top = tp; }
+        if (shp === HORN) { const tp = add(o, sc(U, 180 * 1.45)); if (tp[1] > top[1]) top = tp; }
       }
     }
     anchors.top = top;
@@ -47363,14 +47561,15 @@ const Slugma = (() => {
   const LAVA = 1, HOT = 2, EYE = 3, PUPIL = 4, MOUTH = 5, TONGUE = 6;
   const MAT = { LAVA, HOT, EYE, PUPIL, MOUTH, TONGUE };
   const PAL = Creature.palette({
-    [LAVA]:   { r: ['#b0240e', '#d63a12', '#f25a1a', '#ff8a2e', '#ffc45a'], od: '#5e0c04', ol: '#9a1e08', ln: '#a82408' },
-    [HOT]:    { r: ['#e87a1c', '#fa9a26', '#ffbe3c', '#ffdc6e', '#fff4b0'], od: '#7a2a06', ol: '#b8500c', ln: '#c85a10' },
-    [EYE]:    { r: ['#e0a414', '#f4c424', '#ffe048', '#fff080', '#fffcc0'], od: '#5a1a04', ol: '#7a2a06', ln: '#7a2a06' },
-    [PUPIL]:  { r: ['#1a0604', '#220806', '#2a0c08', '#34100a', '#3e140c'], od: '#100302', ol: '#1a0604', ln: '#1a0604' },
+    [LAVA]:   { r: ['#9a2822', '#bc3a30', '#d85244', '#ea6e5c', '#f89682'], od: '#541010', ol: '#8a2018', ln: '#8e241c' },
+    [HOT]:    { r: ['#c4483a', '#dc5e4c', '#ee7a66', '#f89a84', '#ffbca8'], od: '#6a1a14', ol: '#9a2a20', ln: '#9a2a20' },
+    [EYE]:    { r: ['#d8b020', '#ecd038', '#f8e45a', '#fff08a', '#fffcc8'], od: '#5a1a04', ol: '#7a2a06', ln: '#7a2a06' },
+    [PUPIL]:  { r: ['#4a0c0a', '#5a120e', '#6a1812', '#7a2016', '#8a281c'], od: '#300604', ol: '#4a0c0a', ln: '#3a0806' },
     [MOUTH]:  { r: ['#4a0806', '#620e08', '#7c160c', '#962012', '#b02c16'], od: '#2a0402', ol: '#4a0806', ln: '#3a0604' },
     [TONGUE]: { r: ['#e04a1c', '#f46626', '#ff8a36', '#ffb050', '#ffd880'], od: '#7a1a06', ol: '#a02a0a', ln: '#a02a0a' },
   });
-  const GLOSSY = { [LAVA]: 1, [HOT]: 1 };
+  const GLOSSY = { [EYE]: 1 };
+  const C_CRATER = code(LAVA, -1);
   const C_LAVA = code(LAVA), C_LAVA_B = code(LAVA, 1), C_HOT = code(HOT), C_EYE = code(EYE), C_EYE_L = code(EYE, 1), C_PUPIL = code(PUPIL);
   const C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE);
   const M_LAVA = () => C_LAVA;
@@ -47396,19 +47595,20 @@ const Slugma = (() => {
   const inSpot = (S, s) => { for (const q of S) if (s[0] * q.d[0] + s[1] * q.d[1] + s[2] * q.d[2] > q.c) return true; return false; };
 
   // ---- geometry (pre-SIZE units)
-  const HEAD_C = [4, 76, 0], HEAD_R = [29, 26, 29];
+  const HEAD_C = [6, 62, 0], HEAD_R = [26, 24, 28];
   const FOOT = [ // slug foot / tail pool from front to back: centre x, y, radii
-    { x: 12, y: 9, r: [22, 9, 24] },
-    { x: -6, y: 8, r: [20, 8.5, 22] },
-    { x: -24, y: 6.5, r: [17, 7, 18] },
-    { x: -40, y: 5, r: [13, 5.5, 13.5] },
-    { x: -53, y: 3.5, r: [8, 4, 8.5] },
+    { x: 14, y: 9, r: [30, 11, 34] },
+    { x: -8, y: 9, r: [28, 11, 34] },
+    { x: -28, y: 7, r: [20, 8, 26] },
+    { x: -42, y: 5, r: [13, 6, 17] },
+    { x: -52, y: 3.5, r: [8, 4, 10] },
   ];
   const HEAD_SPOTS = spots([[2.4, 0.55, 0.16], [-2.2, 0.35, 0.13], [1.6, -0.1, 0.12], [-1.4, 0.6, 0.11], [3.14, 0.1, 0.14], [0.9, 0.82, 0.1]]);
   const BODY_SPOTS = spots([[1.9, 0.2, 0.2], [-2.3, -0.1, 0.18], [2.9, 0.4, 0.15]]);
-  const FOOT_SPOTS = spots([[1.2, 0.7, 0.22], [-2.0, 0.75, 0.2]]);
+  const FOOT_SPOTS = spots([[0.9, 0.55, 0.2], [-1.3, 0.6, 0.17], [2.1, 0.5, 0.15], [-2.4, 0.45, 0.19], [0.1, 0.8, 0.12]]);
+  const CRATER_IN = spots([[0.9, 0.55, 0.12], [-1.3, 0.6, 0.1], [2.1, 0.5, 0.08], [-2.4, 0.45, 0.11], [0.1, 0.8, 0.06]]);
   // eyes (head unit-sphere): big round yellow eyes set wide on the front of the head
-  const EYE_AZ = 0.42, EYE_V = 0.14, EYE_RA = 0.2, EYE_RV = 0.25;
+  const EYE_AZ = 0.46, EYE_V = 0.16, EYE_RA = 0.4, EYE_RV = 0.34;
   const PRI = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 3, 6: 3, 7: 2 };
   const SIZE = 1.14;
   const DEFAULT = { ooze: 0, walk: 0, mouth: 0, eyes: 'open', side: 1 };
@@ -47425,7 +47625,7 @@ const Slugma = (() => {
     FOOT.forEach((f, i) => {
       const k = 1 + 0.12 * w(i * 1.1);
       const fx = f.x + 2.5 * w(i * 1.1 + 1.2);
-      const mat = (s) => (s[1] > 0.2 && inSpot(FOOT_SPOTS, s) ? C_HOT : s[1] < -0.2 ? 0 : C_LAVA);
+      const mat = (s) => (s[1] < -0.2 ? 0 : s[1] > 0.2 && inSpot(FOOT_SPOTS, s) ? (inSpot(CRATER_IN, s) ? C_CRATER : C_HOT) : C_LAVA);
       prims.push(ellF(T(fx, f.y * (1 + 0.15 * w(i * 1.1)), 0), [f.r[0] * (2 - k) * 1.05, f.r[1] * k, f.r[2] * k], 1, 1, mat));
     });
     anchors.tail = [FOOT[4].x - FOOT[4].r[0], 2, 0];
@@ -47434,7 +47634,7 @@ const Slugma = (() => {
     const sway = 0.06 * w(0.5), wob = 0.05 * w(1.4);
     const neck = chain(T(4, 10, 0), R(M3.rz(sway)), R(M3.rx(wob * 0.5)));
     const bodyMat = (s) => (inSpot(BODY_SPOTS, s) ? C_HOT : C_LAVA);
-    prims.push(ellF(chain(neck, T(0, 26, 0)), [25, 30, 25], 2, 2, bodyMat));
+    prims.push(ellF(chain(neck, T(0, 20, 0)), [26, 24, 28], 2, 2, M_LAVA));
     anchors.body = inF(neck, [0, 26, 0]);
 
     /* --- head: big round magma blob with eyes, mouth and hot spots --- */
@@ -47449,9 +47649,8 @@ const Slugma = (() => {
           const da = (az - sd * EYE_AZ) / EYE_RA, dv = (v - EYE_V) / EYE_RV, r2 = da * da + dv * dv;
           if (kind === 'open') {
             if (r2 < 1) {
-              const pa = da - 0.12 * sd, pv = dv + 0.05;
-              if (pa * pa + pv * pv < 0.2) return C_PUPIL;
-              return r2 < 0.5 && dv > 0.2 ? C_EYE_L : C_EYE;
+              if (r2 > 0.72) return C_PUPIL; // dark rim, no pupil (official art)
+              return r2 < 0.25 && dv > 0.1 ? C_EYE_L : C_EYE;
             }
           } else if (kind === 'happy') {
             // ^ arc
@@ -47467,10 +47666,9 @@ const Slugma = (() => {
         }
         // mouth: a wide dark oval below the eyes, opening downward
         const ma = az / mouthW, mv = (v - (mouthV - mouthH * 0.6)) / mouthH;
-        if (ma * ma + mv * mv < 1) return mo > 0.35 && mv < -0.2 && Math.abs(ma) < 0.6 ? C_TONGUE : C_MOUTH;
+        if (mo > 0.05 && ma * ma + mv * mv < 1) return mo > 0.35 && mv < -0.2 && Math.abs(ma) < 0.6 ? C_TONGUE : C_MOUTH;
       }
-      if (inSpot(HEAD_SPOTS, s)) return C_HOT;
-      return v > 0.55 ? C_LAVA_B : C_LAVA;
+      return C_LAVA;
     };
     const headPrim = ellF(head, HEAD_R, 3, 3, headMat);
     prims.push(headPrim);
@@ -47481,24 +47679,31 @@ const Slugma = (() => {
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = inF(head, [s[0] * HEAD_R[0], s[1] * HEAD_R[1], s[2] * HEAD_R[2]]);
     }
 
-    /* --- crown blobs bubbling on top --- */
-    const CROWN = [[-4, 24, 0, 9], [8, 22, -9, 6], [-12, 20, 10, 6.5], [4, 23, 11, 5]];
-    CROWN.forEach(([x, y, z, r], i) => {
-      const k = 1 + 0.15 * w(i * 1.7 + 0.5);
-      prims.push(ellF(chain(head, T(x, y + (k - 1) * 6, z)), [r * k, r * k * 0.9, r * k], 4, 4, (s) => (s[1] > 0.4 && i === 0 ? C_HOT : C_LAVA)));
+    /* --- crown: flame-like lava tendrils licking up and back from the head --- */
+    const FLAMES = [[-6, 16, 0, 0.4, 30, 10], [0, 14, -15, 0.15, 24, 8], [0, 14, 15, 0.15, 24, 8]];
+    FLAMES.forEach(([x, y, z, back, len, r], i) => {
+      const k = 1 + 0.12 * w(i * 1.7 + 0.5);
+      const p0 = inF(head, [x, y, z]);
+      const d = nrm([-Math.sin(back), Math.cos(back), z * 0.045]);
+      const p1 = add(p0, sc(d, len * 0.55 * k));
+      const d2 = nrm(add(d, [-0.45, 0.05, z * 0.05]));
+      const p2 = add(p1, sc(d2, len * 0.5 * k));
+      prims.push(seg(p0, p1, r, r, 4, 4, M_LAVA));
+      prims.push(seg(sub(p1, sc(d, 2)), p2, r * 0.62, r * 0.62, 4, 4, M_LAVA));
+      prims.push(seg(sub(p2, sc(d2, 3)), add(p2, sc(nrm(add(d2, [-0.6, 0.4, 0])), len * 0.3)), r * 0.3, r * 0.3, 4, 4, M_LAVA));
     });
-    anchors.top = inF(head, [-4, 24 + 9, 0]);
+    anchors.top = inF(head, [-4, 18 + 26, 0]);
 
     /* --- molten drips hanging off the head's rim --- */
-    const DRIPS = [[1.45, 1.2, 5], [-1.45, 1.2, 5], [2.35, 0.9, 4.6], [-2.4, 1, 4.6], [3.14, 0.7, 4.4]];
+    const DRIPS = [[0.5, 0.55, 3.6], [-0.5, 0.45, 3.6], [1.15, 0.3, 3.2]];
     DRIPS.forEach(([az, len, r], i) => {
-      const s = Creature.sph(az, -0.18);
+      const s = Creature.sph(az, -0.22);
       const root = inF(head, [s[0] * HEAD_R[0] * 0.92, s[1] * HEAD_R[1] * 0.92, s[2] * HEAD_R[2] * 0.92]);
       const L = (8 + 12 * len) * (1 + 0.25 * w(i * 1.3 + 2));
       const out = nrm([s[0], 0, s[2]]);
       const tip = add(root, add(sc(out, 2.5), [0, -L, 0]));
       prims.push(seg(root, tip, r, r, 5 + (i % 2), 5, M_LAVA));
-      prims.push(ellF(T(...add(tip, [0, 1, 0])), [r * 1.1, r * 1.2, r * 1.1], 5 + (i % 2), 5, (q) => (q[1] < -0.3 ? C_HOT : C_LAVA)));
+      prims.push(ellF(T(...add(tip, [0, 1, 0])), [r * 1.1, r * 1.2, r * 1.1], 5 + (i % 2), 5, M_LAVA));
     });
 
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
@@ -47542,11 +47747,12 @@ const Snorunt = (() => {
   const { chain, T, R, F, code, sph } = Creature;
 
   // material ids
-  const HOOD = 1, LINING = 2, BLACK = 3, EYE = 4, MOUTH = 5;
-  const MAT = { HOOD, LINING, BLACK, EYE, MOUTH };
+  const HOOD = 1, LINING = 2, BLACK = 3, EYE = 4, MOUTH = 5, TOOTH_W = 6;
+  const MAT = { HOOD, LINING, BLACK, EYE, MOUTH, TOOTH_W };
   const PAL = Creature.palette({
-    [HOOD]:   { r: ['#a86c16', '#d0962a', '#eec244', '#f9dc78', '#fff4c4'], od: '#563406', ol: '#946212', ln: '#86580e' },
-    [LINING]: { r: ['#6e440a', '#8e5c12', '#b07a1c', '#c8922a', '#dcac44'], od: '#3e2604', ol: '#704608', ln: '#603c08' },
+    [HOOD]:   { r: ['#a8844a', '#c8a866', '#e6cc8c', '#f6e2ae', '#fff6dc'], od: '#4e3814', ol: '#8a6a34', ln: '#8a6a34' },
+    [TOOTH_W]: { r: ['#b8bcc4', '#d4d8de', '#eceef2', '#f8f9fb', '#ffffff'], od: '#303038', ol: '#606070', ln: '#1a1a22' },
+    [LINING]: { r: ['#7a3a10', '#9a4e16', '#bc6620', '#d6802e', '#eca048'], od: '#3e1a04', ol: '#6a3008', ln: '#5a2808' },
     [BLACK]:  { r: ['#0b0c13', '#14151f', '#1f212e', '#2d3042', '#43485e'], od: '#050509', ol: '#16182a', ln: '#050508' },
     [EYE]:    { r: ['#3a96c4', '#5ebce6', '#98e2fa', '#d2f6ff', '#ffffff'], od: '#12405c', ol: '#2a6688', ln: '#2a6688' },
     [MOUTH]:  { r: ['#521020', '#741a2e', '#962a40', '#b84458', '#d46a78'], od: '#2a0610', ol: '#521020', ln: '#3a0a18' },
@@ -47588,7 +47794,7 @@ const Snorunt = (() => {
   const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
 
   /* ---------- hood profile: radius by height (surface of revolution about the hood's y axis) ---------- */
-  const PROF = [[40, 42.6], [45, 43], [50, 42.8], [58, 41.8], [66, 39.9], [74, 37.1], [82, 33.3], [90, 28.5], [98, 22.8], [105, 17.1], [111, 11.6], [116, 6.8], [119.5, 3.4], [121.5, 1.2]];
+  const PROF = [[18, 47], [26, 46.8], [36, 45.6], [46, 43.6], [54, 41.5], [64, 37], [74, 32], [84, 26.8], [94, 21.4], [104, 15.8], [113, 10.4], [121, 5.6], [126, 2.4], [128.5, 0.8]];
   const PR = (() => {
     const out = new Float32Array(260); // r at y = 0..129.5 in 0.5 steps
     const S = Shape2D.catmull(PROF, false, 10);
@@ -47603,24 +47809,24 @@ const Snorunt = (() => {
   })();
   const rAt = (y) => PR[clamp(Math.round(y * 2), 0, PR.length - 1)];
   const slopeAt = (y) => (rAt(y + 1.5) - rAt(y - 1.5)) / 3; // dr/dy
-  const Y_HEM = 47, Y_TOP = 122;
+  const Y_HEM = 24, Y_TOP = 128;
   // backward bend of the hood's upper part (x offset of the axis by height)
   const bendAt = (y, b) => (y > 70 ? -b * ((y - 70) / 52) ** 2 : 0);
 
   // head layout (hood-local coordinates, before K)
-  const HEAD_C = [0, 66, 0], HEAD_R = [36, 32, 36];
+  const HEAD_C = [2, 63, 0], HEAD_R = [30, 29, 30];
   // face opening: a tunnel along +x through the hood (oval in y-z)
-  const FACE_Y = 69, FACE_H = 22, FACE_W = 27.5;
+  const FACE_Y = 69, FACE_H = 22, FACE_W = 30;
 
   // eyes: tangent frames on the head ellipsoid (unit-sphere space)
-  const EC = sph(0.39, 0.12);
+  const EC = sph(0.3, 0.26);
   const ETY = V3.norm(V3.sub([0, 1, 0], V3.scale(EC, EC[1])));
   const ETX = V3.cross(ETY, EC); // toward the face centre on the near side
   let curScale = 1;
 
   // hem points: azimuths (radians from +x toward +z) and tooth outline (U across, V down the tooth, both -1..1)
-  const TEETH = [Math.PI / 4, -Math.PI / 4, (3 * Math.PI) / 4, (-3 * Math.PI) / 4];
-  const TOOTH = { yc: 40, ru: 24, rv: 14.5, rw: 6, rho: 40, flare: 0.36 };
+  const TEETH = [0.56 * Math.PI, -0.56 * Math.PI, 0.86 * Math.PI, -0.86 * Math.PI];
+  const TOOTH = { yc: 17, ru: 24, rv: 12, rw: 6, rho: 42, flare: 0.3 };
   const toothHW = (V) => { const t = clamp((V + 1) / 1.93, 0, 1); return 0.98 * Math.pow(Math.max(0, 1 - Math.pow(t, 1.7)), 0.62); };
 
   const K = 1; // overall size: ~122 units from the soles to the hood tip
@@ -47654,18 +47860,18 @@ const Snorunt = (() => {
     }
 
     /* --- round black body under the hood --- */
-    const bodyC = [1, 34, 0];
-    prims.push(shell(body, bodyC, I3, [28, 27, 28], 1, 1, mBLACK));
+    const bodyC = [1, 32, 0];
+    prims.push(shell(body, bodyC, I3, [26, 25, 26], 1, 1, mBLACK));
     anchors.body = pt(body, bodyC);
 
     /* --- little black arm nubs between the hem points --- */
     for (const sd of [1, -1]) {
       const sw = walking ? 0.3 * Math.sin(wk + (sd > 0 ? Math.PI : 0)) : 0;
       const hug = sa;
-      const a = chain(body, T(2 + 6 * hug, 43, sd * (30 - 5 * hug)), R(M3.ry(sd * 0.9 * hug)), R(M3.rz(sw)), R(M3.rx(-sd * (0.95 - 0.4 * hug))), T(0, -6, 0));
+      const a = chain(body, T(27 + 2 * hug, 40 + 2 * sw, sd * (9.5 - 2 * hug)), R(M3.rz(sw)), T(0, -3, 0));
       const id = sd > 0 ? 4 : 5;
-      prims.push(shell(a, [0, 0, 0], I3, [6.5, 9.5, 6], id, id, mBLACK));
-      anchors[sd > 0 ? 'handN' : 'handF'] = pt(a, [0, -9, 0]);
+      prims.push(shell(a, [0, 0, 0], I3, [8, 8.5, 8], id, id, mBLACK));
+      anchors[sd > 0 ? 'handN' : 'handF'] = pt(a, [0, 0, 0]);
     }
 
     /* --- head: black, inside the hood (only the face shows through the opening) --- */
@@ -47678,7 +47884,7 @@ const Snorunt = (() => {
       const ex = dx * ETX[0] + dy * ETX[1] + dz * ETX[2], ey = dx * ETY[0] + dy * ETY[1] + dz * ETY[2];
       const px = 1 / (curScale * K * HEAD_R[1]); // one pixel in unit-sphere units
       const th = Math.max(0.045, 0.9 * px);
-      const AX = 0.18, AY = 0.25;
+      const AX = 0.11, AY = 0.15;
       const q = (ex / AX) ** 2 + (ey / AY) ** 2;
       if (kind === 'blink') return Math.abs(ey + 0.03) < th && Math.abs(ex) < AX * 0.95 ? code(EYE, 1) : 0;
       if (kind === 'closed' || kind === 'happy') {
@@ -47696,26 +47902,38 @@ const Snorunt = (() => {
     const headPrim = shell(chain(headF, T(...HEAD_C)), [0, 0, 0], I3, HEAD_R, 6, 6, (s) => {
       const e = eyeMat(s);
       if (e) return e;
-      // mouth: a small oval under the eyes
-      if (mouth > 0.05 && s[0] > 0.6) {
-        const mu = s[2] / 0.13, mv = (s[1] + 0.3) / (0.03 + 0.1 * mouth);
-        if (mu * mu + mv * mv < 1) return code(MOUTH, mv > 0.35 ? -1 : 0);
+      // big toothy grin: a wide white band of teeth under the eyes (opens with `mouth`)
+      if (s[0] > 0.3) {
+        const az = Math.atan2(s[2], s[0]);
+        const mid = -0.12 - 0.06 * (az / 0.62) ** 2, hh = 0.13 + 0.07 * mouth;
+        if (Math.abs(az) < 0.62 && Math.abs(s[1] - mid) < hh * (1 - 0.35 * (az / 0.62) ** 2)) {
+          if (mouth > 0.1 && Math.abs(s[1] - mid) < 0.09 * mouth) return code(MOUTH, -1);
+          const px = 1 / (curScale * K * HEAD_R[1]);
+          const g = (az / 0.62) * 3.5 + 0.5; // tooth gaps
+          if (Math.abs(g - Math.round(g)) * 0.62 / 3.5 < Math.max(0.012, 0.5 * px)) return cBLACK;
+          return code(TOOTH_W, s[1] > mid ? 1 : 0);
+        }
       }
       return cBLACK;
     });
     prims.push(headPrim);
 
     /* --- hood: stacked beads following the profile, open in front for the face --- */
-    const bend = 7 + 2 * rock;
+    const bend = 1 + 2 * rock;
     const hoodF = headF;
-    const inFace = (X, Y, Z) => X > 6 && (Z / FACE_W) ** 2 + ((Y - FACE_Y) / FACE_H) ** 2 < 1;
+    // triangular face opening following the cone (apex up), open down to the hem
+    const faceHW = (Y, m) => (Y > 104 + m ? -1 : Math.min(40, ((104 + m - Y) / 57) * (FACE_W + m)));
+    const inFace = (X, Y, Z) => X > 6 && Math.abs(Z) < faceHW(Y, 0);
     const beadMat = (s, X, Y, Z, prim, Q) => {
       if (Y < Y_HEM || inFace(X, Y, Z)) return 0;
       const bx = bendAt(Y, bend);
       const rx = X - bx, rl = Math.hypot(rx, Z) || 1;
       // rim just inside the face opening: a darker lip
-      const lip = X > 4 && (Z / (FACE_W + 3)) ** 2 + ((Y - FACE_Y) / (FACE_H + 3)) ** 2 < 1;
-      return shadeCode(prim, Q, s, rx / rl, -slopeAt(Y), Z / rl, HOOD, !lip, lip ? -1 : 0);
+      const lip = X > 4 && Math.abs(Z) < faceHW(Y, 4);
+      if (lip) return shadeCode(prim, Q, s, rx / rl, -slopeAt(Y), Z / rl, LINING, false, 0);
+      // straw fringe: fine vertical strands just above the hem
+      const strand = Y < Y_HEM + 9 && Math.abs(((Math.atan2(Z, rx) * 9) / Math.PI) % 1) < 0.22;
+      return shadeCode(prim, Q, s, rx / rl, -slopeAt(Y), Z / rl, HOOD, !strand, strand ? -1 : 0);
     };
     for (let y = Y_HEM + 1; y < Y_TOP; y += 2.6) {
       const r = rAt(y);
@@ -50058,10 +50276,10 @@ const Swellow = (() => {
     const hop = walking ? 3.5 * Math.abs(Math.sin(st)) : 0;
     // body pitch: perched upright, level in flight, nose down in a dive
     const pitch = lerp(0.05, 0.42, pe) * (1 - dv) - 0.95 * dv;
-    const root = chain(T(0, lerp(55, 44, pe) + hop, 0), R(M3.rz(pitch)));
+    const root = chain(T(0, lerp(55, 40, pe) + hop, 0), R(M3.rz(pitch)));
 
     /* --- body --- */
-    prims.push(ellF(root, [39, 24.5, 22.5], 1, 1, bodyMat));
+    prims.push(ellF(root, [40, 26.5, 24], 1, 1, bodyMat));
     anchors.body = root.t;
 
     /* --- neck + head (the head stays level-ish when perched) --- */
@@ -50084,7 +50302,7 @@ const Swellow = (() => {
     anchors.mouth = inF(hinge, [4, -1.5, 0]);
     // crest: three navy spikes swept back from the back of the head
     const cb = inF(head, [-15, 8, 0]);
-    for (const [a, z, l] of [[0.4, 0, 1.6], [0.1, 5, 1.35], [0.1, -5, 1.35], [-0.2, 0, 1.1]]) {
+    for (const [a, z, l] of [[0.35, 0, 1.9], [0.12, 5, 1.6], [0.12, -5, 1.6], [-0.15, 0, 1.3]]) {
       const U = dirF(head, [-Math.cos(a), Math.sin(a), z * 0.03]);
       const L = M3.mul(frameUV(U, dirF(head, [0, 1, 0.2 * Math.sign(z || 1)])), M3.diag(l, 1, 1));
       prims.push(plate(add(cb, dirF(head, [0, 0, z])), L, 11, 11, CREST_G, 2.2));
@@ -51659,13 +51877,12 @@ const Tropius = (() => {
    Model space: x = forward, y = up, z = near side at yaw 0, ground at y = 0
    (the tips of its feet; the game lifts it when it hovers).
 
-   Design (official art): a dragonfly-like larva. A broad yellow head with
-   two huge bulging green compound eyes with black oval pupils, two thin
-   yellow antennae swept back, and two big white fangs jutting down from the
-   sides of the mouth. A small yellow thorax on four skinny black legs; a
-   long, thin, yellow segmented abdomen (thin green bands) ending in two
-   green rhombus fins. Four green rhombus wings with black edges (a paler
-   green band inside), held out to the sides and buzzing.
+   Design (official art): a dragonfly-like larva. A pale cream, tapered
+   head with round green eyes (black pupils) on its sides, two white bumps
+   on top, and two long cream mandibles jutting forward from the snout. A
+   small cream thorax on four long, jointed dark-grey legs; a short
+   segmented abdomen curving up behind, ending in two green rhombus fins.
+   Four big green rhombus wings with thick dark-grey frames, raised in a V.
 
    Pose parameters (all optional):
      eyes    'open' (default) | 'happy' | 'blink' | 'closed'
@@ -51689,21 +51906,21 @@ const Vibrava = (() => {
   const BODY = 1, EYE = 2, PUPIL = 3, LEG = 4, WING = 5, EDGE = 6, FANG = 7, MOUTH = 8, BAND = 9, WINGL = 10;
   const MAT = { BODY, EYE, PUPIL, LEG, WING, EDGE, FANG, MOUTH, BAND, WINGL };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#a6922a', '#c8b53c', '#e4d25a', '#f2e684', '#fdf6bc'], od: '#5a4a10', ol: '#948220', ln: '#8e7c22' },
-    [EYE]:   { r: ['#2c8a3a', '#3eaa4a', '#5cc85e', '#8ae088', '#c4f6bc'], od: '#12501e', ol: '#2a8038', ln: '#1e6a2c' },
+    [BODY]:  { r: ['#a8a070', '#c8c08c', '#e2dca8', '#f0ecc4', '#fcfae2'], od: '#5a5434', ol: '#8a8258', ln: '#8a8258' },
+    [EYE]:   { r: ['#1e7a34', '#2c9a42', '#44b856', '#74d27c', '#b0eeb0'], od: '#0e401a', ol: '#1e6a2c', ln: '#1e6a2c' },
     [PUPIL]: { r: ['#08100a', '#0e1810', '#142016', '#1e2c20', '#2c3c2e'], od: '#040806', ol: '#08100a', ln: '#08100a' },
-    [LEG]:   { r: ['#16181c', '#202328', '#2c3036', '#3e434c', '#585e68'], od: '#08090c', ol: '#16181c', ln: '#101216' },
-    [WING]:  { r: ['#3a8e3a', '#4eaa48', '#6cc45a', '#94dc7a', '#c6f2aa'], od: '#15501a', ol: '#2e7a30', ln: '#2a6e2c' },
+    [LEG]:   { r: ['#2a2c2e', '#3a3c40', '#4c4f54', '#62666c', '#80848a'], od: '#121314', ol: '#26282a', ln: '#26282a' },
+    [WING]:  { r: ['#246e30', '#2e8a3a', '#3ea44a', '#5cbc62', '#8ad68a'], od: '#103c16', ol: '#1e5e26', ln: '#1e5e26' },
     [WINGL]: { r: ['#6aaa5a', '#86c46e', '#a6dc88', '#c6eca6', '#e6fad0'], od: '#2a6a2a', ol: '#4a8e44', ln: '#4a8e44' },
-    [EDGE]:  { r: ['#101a12', '#16221a', '#1e2c22', '#2a3a2e', '#3a4c3e'], od: '#060a08', ol: '#101a12', ln: '#0c140e' },
+    [EDGE]:  { r: ['#26282a', '#323436', '#404346', '#54585c', '#6c7074'], od: '#101112', ol: '#222426', ln: '#222426' },
     [FANG]:  { r: ['#b8b4a8', '#d8d4c8', '#f4f2ea', '#fcfbf6', '#ffffff'], od: '#5a5648', ol: '#8a8676', ln: '#8a8676' },
     [MOUTH]: { r: ['#3e0e14', '#5a1820', '#76262c', '#90383a', '#a84c4a'], od: '#26060a', ol: '#3e0e14', ln: '#3e0e14' },
-    [BAND]:  { r: ['#3c7a2c', '#4e9434', '#64ac42', '#80c456', '#a4dc78'], od: '#1a4412', ol: '#3a7028', ln: '#2e6020' },
+    [BAND]:  { r: ['#8e8660', '#a8a076', '#c2ba8e', '#d6d0a6', '#e8e4c2'], od: '#4a4630', ol: '#726c4c', ln: '#726c4c' },
   });
   const GLOSSY = { [EYE]: 1 };
   const C_BODY = code(BODY), C_EYE = code(EYE), C_EYE_L = code(EYE, 1), C_PUPIL = code(PUPIL), C_GLINT = code(FANG, 1), C_LEG = code(LEG);
-  const C_WING = code(WING), C_WINGL = code(WINGL), C_EDGE = code(EDGE), C_FANG = code(FANG), C_MOUTH = code(MOUTH), C_BAND = code(BAND);
-  const M_BODY = () => C_BODY, M_LEG = () => C_LEG, M_FANG = () => C_FANG;
+  const C_EYE_D = code(EYE, -2), C_WING = code(WING), C_WINGL = code(WINGL), C_EDGE = code(EDGE), C_FANG = code(FANG), C_MOUTH = code(MOUTH), C_BAND = code(BAND);
+  const M_BODY = () => C_BODY, M_LEG = () => C_LEG, M_FANG = () => C_FANG, M_BUMP = () => C_FANG;
 
   // ---- helpers
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -51754,13 +51971,13 @@ const Vibrava = (() => {
       },
     });
   }
-  const WING_F = rhombus(80, 23, 0.4, C_WING, C_WINGL, 2.6, 5);
-  const WING_H = rhombus(68, 20, 0.4, C_WING, C_WINGL, 2.6, 4.5);
-  const FIN_G = rhombus(30, 11, 0.45, C_WING, C_WINGL, 2.2, 0);
+  const WING_F = rhombus(100, 34, 0.45, C_WING, C_WINGL, 5, 0);
+  const WING_H = rhombus(86, 30, 0.45, C_WING, C_WINGL, 4.5, 0);
+  const FIN_G = rhombus(30, 12, 0.5, C_WING, C_WINGL, 2.6, 0);
 
   /* ---------- head, eyes ---------- */
-  const HR = [24, 19, 25];
-  const ER = [15, 16, 13];
+  const HR = [26, 15, 17];
+  const ER = [11, 12, 6.5];
   function eyeMat(kind, sd) {
     return (s) => {
       // s: eye-local unit sphere; its outward face is +z·sd, looking a little forward
@@ -51769,12 +51986,14 @@ const Vibrava = (() => {
       if (out < 0.1) return C_EYE;
       const lw = Math.max(0.09, 0.8 * px);
       if (kind === 'open') {
-        const pu = (u - 0.18) / Math.max(0.24, 1.3 * px), pv = (v - 0.02) / Math.max(0.4, 2 * px);
-        if (pu * pu + pv * pv < 1) {
-          if (pv > 0.2 && pu < -0.1 && pu * pu + (pv - 0.45) ** 2 < 0.2 && px < 0.12) return C_GLINT;
+        const r = Math.hypot(u - 0.05, v);
+        const pr = Math.max(0.36, 1.4 * px);
+        if (r < pr) {
+          if ((u + 0.1) ** 2 + (v - 0.14) ** 2 < 0.02 && px < 0.12) return C_GLINT;
           return C_PUPIL;
         }
-        if (v > 0.45 && u < -0.1 && out > 0.5) return C_EYE_L;
+        if (r < pr + Math.max(0.14, 0.9 * px)) return C_EYE_D;
+        if (r > 0.86) return C_PUPIL;
         return C_EYE;
       }
       if (Math.abs(u - 0.1) > 0.55) return C_EYE;
@@ -51801,7 +52020,7 @@ const Vibrava = (() => {
     const bob = walking ? 1.5 * Math.abs(Math.sin(wk)) : 0;
 
     // --- thorax
-    const tf = chain(T(0, 40 + bob, 0), R(M3.rz(0.1)));
+    const tf = chain(T(0, 34 + bob, 0), R(M3.rz(0.1)));
     prims.push(ellF(tf, [19, 15, 14], 1, 1, M_BODY));
     anchors.body = tf.t;
     anchors.back = inF(tf, [0, 15, 0]);
@@ -51821,36 +52040,35 @@ const Vibrava = (() => {
     anchors.mouth = inF(hf, [HR[0] - 2, -12, 0]);
     // huge bulging green eyes on the sides of the head
     for (const sd of [1, -1]) {
-      const ef = chain(hf, T(8, 6, 18 * sd), R(M3.ry(-sd * 0.35)));
+      // big round green eyes set on the sides of the head
+      const ef = chain(hf, T(4, 1, 14.5 * sd), R(M3.ry(-sd * 0.15)));
       prims.push(ellF(ef, ER, sd > 0 ? 3 : 4, sd > 0 ? 3 : 4, eyeMat(kind, sd)));
-      anchors[sd > 0 ? 'eyeN' : 'eyeF'] = inF(ef, [2, 0, ER[2] * sd]);
-      // big white fangs jutting down from the sides of the mouth
-      const fb = inF(hf, [18, -12, 9 * sd]);
-      const fd = dirF(hf, [0.35, -1, 0.1 * sd]);
-      prims.push(seg(fb, add(fb, sc(fd, 9)), 3.6, 3.2, M3.v(hf.L, [1, 0, 0]), 5, 5, M_FANG, 1.2));
-      prims.push(seg(add(fb, sc(fd, 8)), add(fb, sc(nrm(add(fd, dirF(hf, [-0.4, 0, 0]))), 15)), 2.2, 2, M3.v(hf.L, [1, 0, 0]), 5, 5, M_FANG, 1.2));
-      // thin yellow antennae swept back from the top of the head
-      const a0 = inF(hf, [4, 17, 6 * sd]);
-      const ap = [a0, inF(hf, [-4, 30, 10 * sd]), inF(hf, [-18, 38, 14 * sd]), inF(hf, [-32, 40, 17 * sd])];
-      for (let i = 0; i < 6; i++) prims.push(seg(crPt(ap, (i / 6) * 3), crPt(ap, ((i + 1) / 6) * 3), 1.8, 1.8, [0, 1, 0], 6, 6, M_BODY, 1.3));
+      anchors[sd > 0 ? 'eyeN' : 'eyeF'] = inF(ef, [0, 0, ER[2] * sd]);
+      // two long pale mandibles jutting forward and down from the snout, diverging
+      const fb = inF(hf, [22, -4, 5 * sd]);
+      const fd = dirF(hf, [1, -0.35, 0.28 * sd]);
+      prims.push(seg(fb, add(fb, sc(fd, 20)), 3.4, 3, M3.v(hf.L, [0, 1, 0]), 5, 5, M_BODY, 1.1));
+      prims.push(seg(add(fb, sc(fd, 18)), add(fb, sc(fd, 40)), 2, 1.8, M3.v(hf.L, [0, 1, 0]), 5, 5, M_BODY, 1.15));
+      // white bumps on top of the head
+      prims.push(E(inF(hf, [-2, 13, 7 * sd]), M3.mul(hf.L, M3.diag(6, 4.5, 5)), 6, 6, M_BUMP));
     }
-    anchors.top = inF(hf, [-12, 40, 0]);
+    anchors.top = inF(hf, [-2, 18, 0]);
 
     // --- long thin segmented abdomen, curving up a little at the end, two rhombus fins
     const sway = walking ? 0.12 * Math.sin(wk) : 0;
-    const tp = [inF(tf, [-12, -2, 0]), inF(tf, [-40, -6, 0]), inF(tf, [-72, -4, 18 * sway]), inF(tf, [-102, 4, 34 * sway]), inF(tf, [-126, 16, 50 * sway])];
+    const tp = [inF(tf, [-12, -2, 0]), inF(tf, [-36, -2, 0]), inF(tf, [-58, 6, 14 * sway]), inF(tf, [-70, 20, 26 * sway]), inF(tf, [-74, 38, 36 * sway])];
     const NS = 12;
     for (let i = 0; i < NS; i++) {
       const a = crPt(tp, (i / NS) * 4), b = crPt(tp, ((i + 1) / NS) * 4);
-      const r = lerp(8.5, 4.6, i / (NS - 1));
+      const r = lerp(9.5, 3.4, i / (NS - 1));
       const banded = i % 2 === 1 && i < NS - 1;
       const hl = len3(sub(b, a)) * 0.75;
       prims.push(seg(a, b, r, r, [0, 1, 0], 7, 7, banded ? (q) => (Math.abs(q[0]) < Math.max(0.2, 1.1 / (curScale * hl)) ? C_BAND : C_BODY) : M_BODY, 1.5));
     }
     const tEnd = tp[4], tD = nrm(sub(tEnd, crPt(tp, 3.7)));
     for (const sd of [1, -1]) {
-      const U = nrm(add(sc(tD, 0.75), dirF(tf, [0, 0.1, 0.62 * sd])));
-      const N = nrm(cross(U, [0, 1, 0]));
+      const U = nrm(add(sc(tD, 0.8), dirF(tf, [0.1, 0, 0.7 * sd])));
+      const N = nrm(cross(U, [1, 0, 0]));
       const Vv = cross(N, U);
       prims.push(PL(tEnd, M3.cols(U, Vv, N), 8, 8, FIN_G, 1.2));
     }
@@ -51862,14 +52080,14 @@ const Vibrava = (() => {
       const id = 10 + (hind ? 2 : 0) + (sd > 0 ? 0 : 1);
       const root = inF(tf, [hind ? -8 : 4, 12, 7 * sd]);
       const beat = 0.5 * Math.sin(fl + (hind ? Math.PI * 0.7 : 0));
-      const elev = lerp(0.2, hind ? 0.38 : 0.62, spread) + (fl ? beat : 0);          // up from horizontal
+      const elev = lerp(0.2, hind ? 0.5 : 0.85, spread) + (fl ? beat : 0);          // up from horizontal
       const sweep = lerp(1.35, hind ? -0.1 : 0.2, spread) * (hind ? 1 : 0.8) + (hind ? 0.15 : 0); // back from straight out
       // span direction: out to the side, swept back, raised
       const U = nrm([-Math.sin(sweep) * Math.cos(elev), Math.sin(elev), sd * Math.cos(sweep) * Math.cos(elev)]);
       const back = nrm(cross([0, 1, 0], U)); // chord axis, roughly along the body
       const N = nrm(cross(U, back));
       prims.push(PL(root, M3.cols(U, back, N), id, id, hind ? WING_H : WING_F, 1.1));
-      if (!hind) tipsF.push(add(root, sc(U, 80)));
+      if (!hind) tipsF.push(add(root, sc(U, 100)));
     }
     anchors.wingN = tipsF[0]; anchors.wingF = tipsF[1];
 
@@ -51881,17 +52099,17 @@ const Vibrava = (() => {
       const lift = walking ? 5 * Math.max(0, Math.sin(ph)) : 0;
       const swing = walking ? 6 * Math.cos(ph) : 0;
       const hip = inF(tf, [x, -8, 9 * sd]);
-      const knee = [hip[0] + (x > 0 ? 8 : -6) + swing * 0.5, 30 + lift, 24 * sd];
-      const foot = [hip[0] + (x > 0 ? 14 : -12) + swing, 1.8 + lift, 32 * sd];
+      const knee = [hip[0] + (x > 0 ? 14 : -10) + swing * 0.5, 44 + lift, 28 * sd];
+      const foot = [hip[0] + (x > 0 ? 24 : -18) + swing, 1.8 + lift, 36 * sd];
       prims.push(seg(hip, knee, 2.4, 2.4, [0, 1, 0], id, id, M_LEG, 1.15));
       prims.push(seg(knee, foot, 2, 2, [0, 1, 0], id, id, M_LEG, 1.12));
-      prims.push(E(foot, M3.diag(4.2, 1.8, 2.6), id, id, M_LEG));
+      prims.push(E(add(foot, [3, 0, 0]), M3.diag(6, 1.8, 3), id, id, M_LEG));
       if (i < 2) anchors[sd > 0 ? 'footN' : 'footF'] = [foot[0], 0, foot[2]];
     });
 
     // centre the long body (head to tail tip) on the origin
-    for (const q of prims) q.c = add(q.c, [40, 0, 0]);
-    for (const k in anchors) anchors[k] = add(anchors[k], [40, 0, 0]);
+    for (const q of prims) q.c = add(q.c, [10, 0, 0]);
+    for (const k in anchors) anchors[k] = add(anchors[k], [10, 0, 0]);
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
     for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
     return { prims, stamps: [], dots: [], anchors, pose: P, headPrim, pri: PRI, glossy: GLOSSY, baseMat: BODY, shadowSteps: 12 };
