@@ -20,7 +20,7 @@ const Progress = (() => {
   const { clamp } = U;
   const INK = 0xff1b2240, WHITE = 0xffffffff, GOLD = 0xffffd23a, CYAN = 0xff3ad8ff;
   const qs = new URLSearchParams(location.search);
-  const P = { all: qs.get('unlock') === 'all', ready: false, pollT: 0, fl: [], cards: [], lvUp: null, pings: [], log: null, noFlagT: 0, scanHit: 0, deepT: 0 };
+  const P = { all: qs.get('unlock') === 'all', ready: false, pollT: 0, fl: [], cards: [], lvUp: null, pings: [], log: null, noFlagT: 0, scanHit: 0, deepT: 0, sp: [], stars: [], bar: null, geo: null, toastY: 62 };
   // XP needed to reach each level (index = level)
   const XP = [0, 0, 100, 260, 480, 760, 1100, 1500, 1960, 2480, 3060, 3700, 4400, 5160, 5980, 6860, 7800, 8800, 9900, 11100, 12400];
   const MAXLV = XP.length - 1;
@@ -64,19 +64,35 @@ const Progress = (() => {
   function gain(n, why, silent) {
     const D = L(), l0 = levelOf(D.xp);
     D.xp += n; Save.save();
-    if (silent) return;
-    P.fl.push({ t: 0, text: '+' + n + ' XP' + (why ? ' ' + why : '') });
-    if (P.fl.length > 4) P.fl.shift();
+    if (silent) { P.bar = null; return; }
+    P.fl.push({ t: 0, n, why: why || '' });
+    if (P.fl.length > 3) P.fl.shift();
+    // the bar pauses a beat (the new XP shows as a flickering ghost), then fills
+    if (P.bar && !P.bar.moving) P.bar.hold = 0.28;
     const l1 = levelOf(D.xp);
     if (l1 > l0) levelUp(l1);
   }
   function award(key, n, why, silent) { const D = L(); if (D.got[key]) return false; D.got[key] = 1; gain(n, why, silent); return true; }
+  // the celebration starts once the XP bar has filled up (see barUpdate)
   function levelUp(l) {
-    P.lvUp = { t: 0, lv: l };
-    try { Game.sfx('reward'); if (SFX.unlock) SFX.unlock(); } catch (e) { /* audio */ }
+    if (P.all) { checkFeats(); return; }
+    if (P.lvUp) P.lvUp.lv = l; else P.lvUp = { t: -1.4, lv: l, from: P.bar ? P.bar.lv : l - 1 };
+    checkFeats();
+  }
+  function lvStart() {
+    try { Game.sfx('unlock'); } catch (e) { /* audio */ }
     const mk = Game.mudkip; if (mk && typeof FX !== 'undefined' && FX.confetti) FX.confetti(mk.x, mk.y - 24, 50);
     if (mk && mk.emote) mk.emote('heart', 1.5);
-    checkFeats();
+  }
+  function lvFlip() {
+    try { Game.sfx('reward'); } catch (e) { /* audio */ }
+    const c = lvPos(); if (!c) return;
+    for (let i = 0; i < 18; i++) { const a = (i / 18) * Math.PI * 2 + Math.random() * 0.3, v = 70 + Math.random() * 80; P.stars.push({ x: c.x, y: c.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 30, t: 0, life: 0.9 + Math.random() * 0.6, big: i % 2 === 0 }); }
+  }
+  function lvLand() {
+    try { Game.sfx('sparkle'); } catch (e) { /* audio */ }
+    if (P.bar) { P.bar.bump = 1; P.bar.flash = 0.6; }
+    burst(HB.x + BCX, HB.y + BCY, 14, 1);
   }
   function checkFeats(silent) {
     const D = L();
@@ -107,6 +123,7 @@ const Progress = (() => {
     const D = L();
     // existing journals: count everything already done, silently (grants a sensible level)
     if (!D.init) { poll(true); D.init = 1; checkFeats(true); Save.save(); }
+    stampAccepted(true);
     wrapGame();
   }
 
@@ -212,26 +229,38 @@ const Progress = (() => {
     if (q.progress === 'census') for (const k of DexData.ORDER) if (!Save.data.seen[k] && (DexData.S[k].area || []).includes(q.area) && l.length < 6) l.push(k);
     return [...new Set(l)].filter((k) => DexData.S[k] && !DexData.S[k].player);
   }
-  // Birch's requests show up as quests too
-  const birch = () => { let open = 0; return (Quests.BIRCH || []).filter((b) => Save.data.quests[b.id] || open++ < 2).map((b) => ({ id: b.id, birch: b, title: star(b.t), giver: 'birch', area: null })); };
+  // only jobs the player has taken on (talked to the giver and accepted) show up anywhere;
+  // Birch's requests are never "accepted", so only finished ones join the log
+  const birch = () => (Quests.BIRCH || []).filter((b) => Save.data.quests[b.id]).map((b) => ({ id: b.id, birch: b, title: star(b.t), giver: 'birch', area: null }));
+  const isOpen = (q) => { const s = st(q); return !!s && s.s === 'active'; };
+  const at = (q) => { const s = st(q); return (s && s.at) || 0; };
+  // number every accepted job in the order it was taken; a newly accepted job becomes the tracked one
+  function stampAccepted(quiet) {
+    const D = L(); let ch = 0;
+    for (const q of QS()) {
+      const s = st(q); if (!s || s.at) continue;
+      s.at = D.seq = (D.seq || 0) + 1; ch = 1;
+      if (!quiet && s.s === 'active') D.track = q.id;
+    }
+    if (ch) Save.save();
+  }
   function entries() {
     const out = [];
-    for (const q of QS()) { const s = status(q); if (s !== 'hidden') out.push({ q, s }); }
-    for (const b of birch()) out.push({ q: b, s: Save.data.quests[b.id] ? 'done' : 'active' });
-    const ord = { ready: 0, active: 1, avail: 2, lvl: 3, done: 4 }, rk = (e) => ord[e.s] + (e.q.birch ? 0.5 : 0);
-    const tr = L().track;
-    out.sort((a, b) => (a.q.id === tr ? -1 : b.q.id === tr ? 1 : 0) || rk(a) - rk(b) || (a.q.area === Game.areaId ? -1 : 0) - (b.q.area === Game.areaId ? -1 : 0));
+    for (const q of QS()) if (st(q)) out.push({ q, s: status(q) });
+    for (const b of birch()) out.push({ q: b, s: 'done' });
+    const ord = { ready: 0, active: 1, done: 4 }, rk = (e) => (ord[e.s] ?? 2) + (e.q.birch ? 0.5 : 0);
+    const tr = tracked();
+    out.sort((a, b) => (tr && a.q === tr ? -1 : tr && b.q === tr ? 1 : 0) || rk(a) - rk(b) || at(b.q) - at(a.q));
     return out;
   }
   function tracked() {
     const tr = L().track;
-    let q = tr && QS().find((x) => x.id === tr);
-    if (q && status(q) !== 'done' && status(q) !== 'hidden') return q;
-    // automatic: the nearest job in this area (ready > active > available), then anywhere
-    const here = QS().filter((x) => x.area === Game.areaId);
-    for (const want of ['ready', 'active', 'avail']) { q = here.find((x) => status(x) === want); if (q) return q; }
-    for (const want of ['ready', 'active']) { q = QS().find((x) => status(x) === want); if (q) return q; }
-    return null;
+    const q = tr && QS().find((x) => x.id === tr);
+    if (q && isOpen(q)) return q;
+    // automatic: the newest accepted job that is still open
+    let best = null;
+    for (const x of QS()) if (isOpen(x) && (!best || at(x) > at(best))) best = x;
+    return best;
   }
   function nearestMon(kind) {
     const mk = Game.mudkip; let best = null, bd = 1e9;
@@ -306,9 +335,22 @@ const Progress = (() => {
     P.noFlagT = Math.max(0, P.noFlagT - dt); P.deepT = Math.max(0, P.deepT - dt);
     P.pollT += dt;
     if (P.pollT > 0.5) { P.pollT = 0; poll(false); }
+    stampAccepted(false);
     for (const f of P.fl) f.t += dt; P.fl = P.fl.filter((f) => f.t < 2.2);
     for (const p of P.pings) p.t += dt; P.pings = P.pings.filter((p) => p.t < p.life);
-    if (P.lvUp) { P.lvUp.t += dt; if (P.lvUp.t > 3.2) P.lvUp = null; }
+    barUpdate(dt);
+    for (const s of P.sp) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += (s.g ?? 90) * dt; s.vx *= 1 - dt * 1.5; }
+    P.sp = P.sp.filter((s) => s.t < s.life);
+    for (const s of P.stars) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 140 * dt; s.vx *= 1 - dt; }
+    P.stars = P.stars.filter((s) => s.t < s.life);
+    if (P.lvUp) {
+      const U0 = P.lvUp, t0 = U0.t;
+      // the celebration waits for the explore screen (not while taking photos, talking or reading the log)
+      if (t0 >= 0 || (Game.mode === 'explore' && !Talk.dlg && !P.log)) U0.t += dt;
+      if (t0 < 0 && U0.t >= 0) lvStart();
+      if (t0 < FLIP && U0.t >= FLIP) lvFlip();
+      if (U0.t > LVT) { P.lvUp = null; lvLand(); }
+    }
     if (!P.lvUp && P.cards.length) { P.cards[0].t += dt; if (P.cards[0].t > 3.8) P.cards.shift(); }
     // unlock=all: locked moves stay out of the way
     if (!has('wheel') && Moves.wheel) Moves.closeWheel();
@@ -333,29 +375,186 @@ const Progress = (() => {
     UI.hline(fb, cx - 6, cx + 5, cy - 6, 0xffd8b870); UI.hline(fb, cx - 6, cx + 5, cy + 6, 0xffd8b870);
     UI.rect(fb, cx - 1, cy - 4, 2, 5, 0xffe8384a); UI.rect(fb, cx - 1, cy + 3, 2, 2, 0xffe8384a);
   }
-  function logBadge() { return QS().some((q) => status(q) === 'ready' || (status(q) === 'avail' && q.area === Game.areaId)); }
-  // row below the top bar: level chip + XP bar, then the tracked objective
+  function logBadge() { return QS().some((q) => status(q) === 'ready'); }
+
+  /* ---------- the level badge (a Mudkip-head emblem) and the XP bar ---------- */
+  const hx = U.hex;
+  const BCOL = {
+    b: { finL: hx('#d2f0ff'), fin: hx('#62b8f8'), finD: hx('#2f78d4'), hl: hx('#ffffff'), bL: hx('#96d8ff'), b: hx('#4aa8f2'), bD: hx('#2f78d4'), bDD: hx('#1f559e'), rL: hx('#c8ecff'), gL: hx('#ffd08a'), g: hx('#ff8a2a'), gD: hx('#c8521a') },
+    g: { finL: hx('#fffbe0'), fin: hx('#ffe27a'), finD: hx('#e0a030'), hl: hx('#ffffff'), bL: hx('#fff2a8'), b: hx('#ffd23a'), bD: hx('#eaa424'), bDD: hx('#b87212'), rL: hx('#fffbe0'), gL: hx('#ffe0b0'), g: hx('#ff9a4a'), gD: hx('#d0602a') },
+  };
+  // sprite layout: head circle centre (BCX, BCY) radius BR, the fin sweeps back from the crown, orange gills at the cheeks
+  const BW = 29, BH = 31, BCX = 14, BCY = 19, BR = 9;
+  const GILL = ['#...', '##..', '.###', '##..', '#...'];
+  const FIN = [[4, 5], [3, 7], [3, 9], [4, 11], [4, 13], [5, 14], [5, 15], [6, 16], [7, 17], [8, 18], [9, 19]]; // rows y = 2..12: [back, front]
+  const HB = { x: 5, y: 32 }; // where the HUD badge sprite sits (fin tip just under the clock)
+  const sprC = {};
+  function badgeSpr(gold) {
+    const key = gold ? 'g' : 'b'; if (sprC[key]) return sprC[key];
+    const C = BCOL[key], w = BW, h = BH, part = new Uint8Array(w * h), d = new Uint32Array(w * h);
+    const setP = (x, y, p) => { if (x >= 0 && y >= 0 && x < w && y < h && !part[y * w + x]) part[y * w + x] = p; };
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const dx = x - BCX, dy = y - BCY; if (dx * dx + dy * dy <= BR * BR + BR * 0.6) part[y * w + x] = 1; }
+    // Mudkip's head fin: convex front edge from the brow up to a tip that leans back, concave back edge
+    FIN.forEach(([xl, xr], j) => { for (let x = xl; x <= xr; x++) setP(x, 2 + j, 2); });
+    GILL.forEach((row, j) => { for (let i = 0; i < row.length; i++) if (row[i] === '#') { setP(1 + i, BCY + 1 + j, 3); setP(w - 2 - i, BCY + 1 + j, 3); } });
+    const pt = (x, y) => (x >= 0 && y >= 0 && x < w && y < h ? part[y * w + x] : 0);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const p = pt(x, y), i = y * w + x;
+      if (!p) { if (pt(x - 1, y) || pt(x + 1, y) || pt(x, y - 1) || pt(x, y + 1)) d[i] = INK; continue; }
+      if (p !== 1 && (pt(x - 1, y) === 1 || pt(x + 1, y) === 1 || pt(x, y - 1) === 1 || pt(x, y + 1) === 1)) { d[i] = INK; continue; }
+      if (p === 1) {
+        const dx = x - BCX, dy = y - BCY, r = Math.hypot(dx, dy), l = (-dx * 0.55 - dy * 0.8) / BR;
+        let c = l > 0.5 ? C.bL : l > -0.25 ? C.b : l > -0.62 ? C.bD : C.bDD;
+        if (r > BR - 1.7) c = dy + dx * 0.4 < 0 ? C.rL : C.bDD; // bevelled coin rim
+        else if (r > BR - 2.7) c = dy + dx * 0.4 < 0 ? C.b : C.bD;
+        d[i] = c;
+      } else if (p === 2) {
+        // light front edge, a darker vein along the back
+        const fr = pt(x + 1, y) !== 2, bk = pt(x - 1, y) !== 2, bk2 = !bk && pt(x - 2, y) !== 2;
+        d[i] = fr ? C.finL : bk || pt(x, y + 1) === 1 ? C.finD : bk2 && y > 3 ? C.bD : C.fin;
+      } else d[i] = y < BCY + 3 ? C.gL : y > BCY + 3 ? C.gD : C.g;
+    }
+    const pp = (x, y, c) => { d[y * w + x] = c; };
+    pp(BCX - 4, BCY - 5, C.hl); pp(BCX - 3, BCY - 6, C.hl); pp(BCX - 5, BCY - 4, C.hl); pp(4, 4, C.hl); pp(6, 5, C.hl);
+    return (sprC[key] = { w, h, d });
+  }
+  // stamp a sprite scaled (nearest) so its head centre lands on (cx, cy); sx/sy may differ (coin flip)
+  function blitC(fb, s, cx, cy, sx, sy = sx) {
+    if (sx <= 0.05 || sy <= 0.05) return;
+    const W = Math.max(1, Math.round(s.w * sx)), H = Math.max(1, Math.round(s.h * sy)), x0 = Math.round(cx - (BCX + 0.5) * sx), y0 = Math.round(cy - (BCY + 0.5) * sy);
+    for (let j = 0; j < H; j++) {
+      const yy = y0 + j; if (yy < 0 || yy >= fb.h) continue;
+      const row = Math.min(s.h - 1, Math.floor(j / sy)) * s.w;
+      for (let i = 0; i < W; i++) { const xx = x0 + i; if (xx < 0 || xx >= fb.w) continue; const c = s.d[row + Math.min(s.w - 1, Math.floor(i / sx))]; if (c) fb.d[yy * fb.w + xx] = c; }
+    }
+  }
+  // chunky 3x5 pixel digits (block size px) with an ink outline, centred on (cx, cy)
+  const DG = { 0: ['###', '#.#', '#.#', '#.#', '###'], 1: ['.#.', '##.', '.#.', '.#.', '###'], 2: ['###', '..#', '###', '#..', '###'], 3: ['###', '..#', '.##', '..#', '###'], 4: ['#.#', '#.#', '###', '..#', '..#'], 5: ['###', '#..', '###', '..#', '###'], 6: ['###', '#..', '###', '#.#', '###'], 7: ['###', '..#', '..#', '.#.', '.#.'], 8: ['###', '#.#', '###', '#.#', '###'], 9: ['###', '#.#', '###', '..#', '###'] };
+  function digits(fb, str, cx, cy, px, col, shade) {
+    str = String(str);
+    const gap = Math.max(1, px >> 1), w = str.length * 3 * px + (str.length - 1) * gap, x0 = Math.round(cx - w / 2), y0 = Math.round(cy - (5 * px) / 2);
+    for (let pass = 0; pass < 2; pass++) for (let n = 0; n < str.length; n++) {
+      const g = DG[str[n]]; if (!g) continue;
+      const gx = x0 + n * (3 * px + gap);
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) {
+        if (g[r][c] !== '#') continue;
+        const X = gx + c * px, Y = y0 + r * px;
+        if (pass === 0) UI.rect(fb, X - 1, Y - 1, px + 2, px + 2, INK);
+        else { UI.rect(fb, X, Y, px, px, col); if (shade && px > 1 && (r === 4 || g[r + 1][c] !== '#')) UI.hline(fb, X, X + px - 1, Y + px - 1, shade); }
+      }
+    }
+  }
+  // a four-point twinkle
+  function twinkle(fb, x, y, r, c) {
+    x = Math.round(x); y = Math.round(y);
+    UI.put(fb, x, y, 0xffffffff);
+    for (let i = 1; i <= r; i++) { const cc = i === r ? c : 0xffffffff; UI.put(fb, x - i, y, cc); UI.put(fb, x + i, y, cc); UI.put(fb, x, y - i, cc); UI.put(fb, x, y + i, cc); }
+  }
+  function burst(x, y, n, big) {
+    for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = (big ? 40 : 20) + Math.random() * (big ? 50 : 30); P.sp.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 25, t: 0, life: 0.45 + Math.random() * 0.45, g: 70, big: big && i % 3 === 0 }); }
+    if (P.sp.length > 90) P.sp.splice(0, P.sp.length - 90);
+  }
+  // XP progress through a level (0..1)
+  function barK(xp, lv) { if (lv >= MAXLV) return 1; const a = XP[lv], b = XP[lv + 1]; return clamp((xp - a) / (b - a), 0, 1); }
+  function bar() { if (!P.bar) { const lv = level(); P.bar = { lv, shown: barK(L().xp, lv), ghost: 0, hold: 0, flash: 0, bump: 0, moving: false, spT: 0 }; } return P.bar; }
+  function barUpdate(dt) {
+    const B = bar(), lv = level(), xp = L().xp;
+    B.flash = Math.max(0, B.flash - dt); B.bump = Math.max(0, B.bump - dt * 3);
+    if (Game.mode !== 'explore') { B.moving = false; return; } // animations wait until the HUD is on screen
+    if (B.lv > lv) { B.lv = lv; B.shown = barK(xp, lv); }
+    // after the level-up celebration lands, the bar empties and fills with the leftover XP
+    if (B.lv < lv && !P.lvUp) { B.lv = lv; B.shown = 0; B.hold = 0.2; }
+    const tg = B.lv < lv ? 1 : barK(xp, B.lv);
+    B.ghost = tg;
+    if (B.hold > 0) { B.hold -= dt; B.moving = false; return; }
+    const was = B.shown;
+    B.shown = B.shown < tg ? Math.min(tg, B.shown + Math.max(0.45 * dt, (tg - B.shown) * 5 * dt)) : tg;
+    B.moving = B.shown > was + 1e-6;
+    const G = P.geo;
+    if (B.moving && G) { B.spT += dt; while (B.spT > 0.035) { B.spT -= 0.035; P.sp.push({ x: G.x + G.w * B.shown, y: G.y + 1 + Math.random() * 4, vx: -10 + Math.random() * 40, vy: -25 - Math.random() * 45, t: 0, life: 0.35 + Math.random() * 0.4, g: 60 }); } }
+    if (was < tg && B.shown >= tg && G) { burst(G.x + G.w * B.shown, G.y + 3, 8, false); B.bump = Math.max(B.bump, 0.6); try { Game.sfx('chirp', null, 0.6); } catch (e) { /* audio */ } }
+    if (P.lvUp && P.lvUp.t < -0.2 && B.shown >= 0.999) P.lvUp.t = -0.2;
+  }
+  const BAR = ['#e8fcff', '#98ecff', '#40c8ff', '#2a96f0', '#1c64c4'].map(hx), BARG = ['#fffce0', '#fff08a', '#ffd23a', '#f4aa30', '#c87a18'].map(hx);
+  const TRK = hx('#18244e'), TRK0 = hx('#0c1432'), GH0 = hx('#ffffff'), GH1 = hx('#aef0ff');
+  function drawBar(fb, x, y, w, h, B, t, gold) {
+    UI.rrect(fb, x, y, w, h, 2, INK);
+    const ix = x + 1, iy = y + 1, iw = w - 2, ih = h - 2, seg = iw / 10;
+    const fw = Math.round(iw * B.shown), gw = Math.round(iw * Math.max(B.shown, B.ghost)), cols = gold ? BARG : BAR;
+    const blink = Math.floor(t * 14) % 2;
+    for (let yy = 0; yy < ih; yy++) {
+      const cf = cols[Math.min(4, Math.round((yy * 4) / Math.max(1, ih - 1)))], cfs = U.mix(cf, INK, 0.42), ct = yy === 0 ? TRK0 : TRK;
+      for (let xx = 0; xx < iw; xx++) {
+        if ((xx === 0 || xx === iw - 1) && (yy === 0 || yy === ih - 1)) continue;
+        const sep = xx > 0 && Math.floor(xx / seg) !== Math.floor((xx - 1) / seg);
+        const c = xx < fw ? (sep ? cfs : cf) : xx < gw ? (blink ? GH0 : GH1) : sep ? TRK0 : ct;
+        fb.d[(iy + yy) * fb.w + ix + xx] = c;
+      }
+    }
+    if (fw > 2) {
+      // a slanted glint sweeps along the filled part every few seconds (and whenever XP pours in)
+      const ph = B.moving ? (t * 1.6) % 1 : ((t % 3.4) / 0.9);
+      if (ph < 1) { const sx = -4 + (fw + 8) * ph; for (let yy = 0; yy < ih; yy++) for (let dx = -1; dx <= 1; dx++) { const xx = Math.round(sx + dx - yy * 0.8 + ih * 0.4); if (xx >= 0 && xx < fw) UI.blend(fb, ix + xx, iy + yy, 0xffffffff, dx === 0 ? 0.8 : 0.45); } }
+      // hot leading edge while filling
+      if (B.moving) { UI.vline(fb, ix + fw - 1, iy, iy + ih - 1, 0xffffffff); UI.put(fb, ix + fw, iy - 1, 0xffffffff); }
+    }
+  }
+  // row below the top bar: the level badge + XP plate, then the tracked objective
   function drawLevel(fb, t) {
-    const lv = level(), D = L(), x = 6, y = 32;
-    const a = XP[Math.min(lv, MAXLV)], b = XP[Math.min(lv + 1, MAXLV)] || a + 1, k = lv >= MAXLV ? 1 : clamp((D.xp - a) / (b - a), 0, 1);
-    UI.rectA(fb, x, y, 92, 12, 0xff0a0e20, 0.55);
-    UI.rrect(fb, x + 1, y + 1, 24, 10, 3, 0xff3a78e8);
-    Font.draw(fb, 'Lv' + lv, x + 13, y + 3, WHITE, { font: 'small', align: 'center' });
-    UI.rect(fb, x + 28, y + 4, 60, 4, 0xff2a3050);
-    UI.rect(fb, x + 28, y + 4, Math.round(60 * k), 4, P.lvUp ? GOLD : 0xff5aff9a);
-    // floating "+XP"
-    P.fl.slice(-1).forEach((f, i) => { const kk = f.t / 2.2; if (Math.floor(f.t * 20) % 2 && kk > 0.8) return; Font.draw(fb, f.text, x + 96, y + 1 + i * 9 - Math.round(kk * 6), 0xff9affb0, { font: 'small', outline: INK }); });
+    const S = UI.skin(), B = bar(), D = L(), lv = B.lv, max = lv >= MAXLV;
+    const pend = B.lv < level(), gold = pend || B.flash > 0;
+    const bump = B.bump > 0 ? -Math.round(Math.sin((1 - B.bump) * Math.PI) * 2) : 0;
+    // plate
+    const px = 26, py = HB.y + BCY - 9, pw = 96, ph = 18;
+    UI.rrect(fb, px, py + 2, pw, ph, 5, 0xff0a0e1a);
+    UI.panel(fb, px, py, pw, ph, { r: 5, ol: S.ink, fill: U.mix(S.btn, 0xff000000, 0.2), hi: null, sh: null });
+    const a = XP[Math.min(lv, MAXLV)], b = XP[Math.min(lv + 1, MAXLV)];
+    Font.draw(fb, 'EXP', px + 10, py + 3, gold ? hx('#ffe07a') : hx('#8fd4ff'), { font: 'small' });
+    const num = max ? 'MAX' : Math.round(B.shown * (b - a)) + '/' + (b - a);
+    Font.draw(fb, num, px + pw - 5, py + 3, B.moving || pend ? hx('#fff4b0') : WHITE, { font: 'small', align: 'right' });
+    const bx = px + 8, by = py + 9, bw = pw - 13;
+    P.geo = { x: bx + 1, y: by + 1, w: bw - 2 };
+    drawBar(fb, bx, by, bw, 7, B, t, gold);
+    // badge (the celebration badge flies in and replaces it at the end of a level-up)
+    const cx = HB.x + BCX, cy = HB.y + BCY + bump;
+    const flying = P.lvUp && P.lvUp.t > LVT - FLY;
+    if (!flying) {
+      if (gold) { const r = BR + 3 + Math.round((Math.sin(t * 10) + 1) * 1.5); UI.ring(fb, cx, cy, r, hx('#ffe07a'), 1); }
+      blitC(fb, badgeSpr(gold && Math.floor(t * 8) % 2 === 0), cx, cy, 1);
+      digits(fb, lv, cx + 0.5, cy + 0.5, 2, WHITE, gold ? hx('#ffd23a') : hx('#b8dcff'));
+    }
+    // a glint runs over the badge every few seconds
+    const gp = (t % 4.2) / 0.5;
+    if (gp < 1 && !flying) twinkle(fb, cx + 6, cy - 7, gp < 0.5 ? 1 : 2, hx('#bfe8ff'));
+    // XP sparkles
+    for (const s of P.sp) {
+      const k = s.t / s.life; if (k > 0.7 && Math.floor(s.t * 24) % 2) continue;
+      if (s.big && k < 0.6) twinkle(fb, s.x, s.y, 2, hx('#ffe07a')); else twinkle(fb, s.x, s.y, k < 0.4 ? 1 : 0, hx('#aef0ff'));
+    }
+    // floating "+XP" (newest on top)
+    let fy = py + 1;
+    for (let i = P.fl.length - 1; i >= 0; i--) {
+      const f = P.fl[i], kk = f.t / 2.2, pop = f.t < 0.12 ? Math.round((1 - f.t / 0.12) * 3) : 0;
+      if (kk > 0.8 && Math.floor(f.t * 20) % 2) { fy -= 10; continue; }
+      const X = px + pw + 5, Y = fy - Math.round(kk * 6) - pop, head = '+' + f.n + ' XP';
+      Font.draw(fb, head, X, Y, hx('#aef7ff'), { font: 'small', outline: INK });
+      if (f.why) { const rw = Math.max(0, Math.min(170, fb.w - X - 70) - Font.measure(head, 'small') - 4); if (rw > 30) Font.draw(fb, fit(f.why, rw), X + Font.measure(head, 'small') + 4, Y, WHITE, { font: 'small', outline: INK }); }
+      fy -= 10;
+    }
     // tracked quest
-    const q = tracked();
+    const q = tracked(), ty = py + ph + 4;
+    P.toastY = ty;
     if (q && Game.mode === 'explore') {
       const txt = '> ' + q.title + ': ' + objective(q) + (q.area !== Game.areaId ? ' [' + areaName(q.area) + ']' : '');
       const w = Math.min(fb.w * 0.5, Font.measure(txt, 'small') + 8);
-      UI.rectA(fb, x, y + 14, w, 11, 0xff0a0e20, 0.45);
-      Font.draw(fb, fit(txt, w - 6), x + 4, y + 16, GOLD, { font: 'small' });
-      HUD.btn('track', x, y + 14, w, 11, () => openLog());
+      UI.rectA(fb, 6, ty, w, 11, 0xff0a0e20, 0.45);
+      Font.draw(fb, fit(txt, w - 6), 10, ty + 2, GOLD, { font: 'small' });
+      HUD.btn('track', 6, ty, w, 11, () => openLog());
+      P.toastY = ty + 14;
     }
+    HUD.btn('lvbadge', 4, py - 4, px + pw - 4, ph + 6, () => openLog());
   }
-  const toastTop = () => (Game.mode === 'explore' ? 62 : 34);
+  const toastTop = () => (Game.mode === 'explore' ? P.toastY || 62 : 34);
   function arrowTo(fb, t) {
     if (Game.mode !== 'explore' || Talk.busy() || P.lvUp) return;
     const q = tracked(), tg = target(q); if (!tg) return;
@@ -401,19 +600,77 @@ const Progress = (() => {
       if (p.t < p.life - 0.5 || Math.floor(p.t * 12) % 2) Font.draw(fb, p.label, X, Y - 20, p.col, { font: 'small', align: 'center', outline: INK });
     }
   }
+  /* ---------- the level-up celebration ---------- */
+  const LVT = 3.6, FLIP = 0.55, FLY = 0.55; // total length, when the badge flips to the new level, flight back to the HUD
+  let lvFb = null;
+  // where the big badge is right now: { x, y, s }
+  function lvPos() {
+    const U0 = P.lvUp, fb = lvFb; if (!U0 || !fb) return null;
+    const k = Math.max(0, U0.t), sc = fb.h >= 250 ? 3 : 2;
+    const X = Math.round(fb.w / 2), Y = Math.round(sc === 3 ? fb.h * 0.33 : fb.h * 0.34);
+    let s = sc * U.ease.outBack(Math.min(1, k / 0.42)), x = X, y = Y;
+    if (k > LVT - FLY) { const e = U.ease.inCubic(Math.min(1, (k - (LVT - FLY)) / FLY)); x = X + (HB.x + BCX - X) * e; y = Y + (HB.y + BCY - Y) * e; s = sc + (1 - sc) * e; }
+    return { x, y, s, sc, X, Y };
+  }
+  const RAY = hx('#fff2a0'), GOLDT = hx('#ffe070'), GOLDD = hx('#c87a18');
+  function drawLevelUp(fb, t) {
+    lvFb = fb;
+    const U0 = P.lvUp, k = U0.t; if (k < 0) return;
+    const W = fb.w, H = fb.h, c = lvPos(), sc = c.sc, fly = k > LVT - FLY, fade = fly ? 1 - (k - (LVT - FLY)) / FLY : 1;
+    // flash
+    if (k < 0.25) UI.rectA(fb, 0, 0, W, H, 0xffffffff, 0.45 * (1 - k / 0.25));
+    // sunburst rays behind the badge
+    if (!fly) {
+      const R = Math.round(U.ease.outCubic(Math.min(1, k / 0.5)) * (34 + 16 * sc)), rot = k * 0.7, al = k > LVT - FLY - 0.4 ? (LVT - FLY - k) / 0.4 : 1;
+      for (let y = -R; y <= R; y++) for (let x = -R; x <= R; x++) {
+        const d = Math.hypot(x, y); if (d > R || d < 4) continue;
+        const a = Math.atan2(y, x) + rot, w = Math.cos(a * 6);
+        if (w < 0.55) continue;
+        const kk = (1 - d / R) * 0.9 * al * (w - 0.55) / 0.45 + 0.08;
+        if (kk > U.bayer4(x & 3, y & 3) + 0.05) UI.blend(fb, c.X + x, c.Y + y, RAY, 0.55);
+      }
+    }
+    // shockwave rings when the badge flips
+    if (k > FLIP && k < FLIP + 0.6) { const e = (k - FLIP) / 0.6, r = Math.round(8 * sc + e * 40 * sc); UI.ring(fb, c.X, c.Y, r, 0xffffffff, 2); if (r > 8) UI.ring(fb, c.X, c.Y, r - 5, GOLDT, 1); }
+    // the badge: pops in, flips like a coin to the new number, then flies back into the HUD
+    let sx = c.s, num = U0.from || U0.lv - 1, gold = false;
+    if (k > FLIP - 0.12 && k < FLIP + 0.12) { const e = (k - (FLIP - 0.12)) / 0.24; sx = c.s * Math.abs(Math.cos(e * Math.PI)); }
+    if (k >= FLIP) { num = U0.lv; gold = !fly; }
+    // orbiting twinkles
+    if (!fly && k > 0.2) for (let i = 0; i < 8; i++) { const a = t * 2.2 + (i * Math.PI) / 4, rr = (BR + 7) * c.s; twinkle(fb, c.x + Math.cos(a) * rr, c.y + Math.sin(a) * rr * 0.9, (i + Math.floor(t * 6)) % 3 === 0 ? 2 : 1, GOLDT); }
+    blitC(fb, badgeSpr(gold), c.x, c.y, sx, c.s);
+    if (sx > c.s * 0.55 && c.s > 0.6) digits(fb, num, c.x + 0.5, c.y + 0.5, Math.max(1, Math.round(2 * c.s)), WHITE, gold ? hx('#ffd23a') : hx('#b8dcff'));
+    // flying stars
+    for (const s of P.stars) {
+      const kk = s.t / s.life; if (kk > 0.75 && Math.floor(s.t * 20) % 2) continue;
+      if (s.big) Font.icon(fb, 'star', Math.round(s.x) - 3, Math.round(s.y) - 3, 1); else twinkle(fb, s.x, s.y, 2, GOLDT);
+    }
+    if (fade <= 0) return;
+    // "LEVEL UP!" drops in letter by letter, then waves
+    const ty = Math.round(c.Y + (BH - BCY) * sc + 6), txt = 'LEVEL UP!';
+    if (k > FLIP && !fly) {
+      const ws = [...txt].map((ch) => Font.measure(ch === ' ' ? 'I' : ch, 'title') + 1), tw = ws.reduce((s, v) => s + v, 0);
+      let x = Math.round(W / 2 - tw / 2);
+      [...txt].forEach((ch, i) => {
+        const t0 = FLIP + i * 0.045, e = Math.min(1, Math.max(0, (k - t0) / 0.3));
+        if (e > 0 && ch !== ' ') {
+          const y = ty - Math.round((1 - U.ease.outBack(e)) * 16) + Math.round(Math.sin(t * 7 - i * 0.7) * 1.5 * Math.min(1, (k - t0) / 0.6));
+          Font.draw(fb, ch, x, y + 1, GOLDD, { font: 'title', outline: INK });
+          Font.draw(fb, ch, x, y, (Math.floor(t * 8) + i) % 9 === 0 ? 0xffffffff : GOLDT, { font: 'title' });
+        }
+        x += ws[i];
+      });
+      if (k > FLIP + 0.5 && (k > FLIP + 0.8 || Math.floor(k * 20) % 2)) {
+        Font.draw(fb, 'Mudkip reached Lv ' + U0.lv + '!', W / 2, ty + 20, WHITE, { font: 'body', align: 'center', outline: INK });
+        const nf = FEATS.filter((f) => f.lv === U0.lv).map((f) => f.name);
+        if (nf.length) Font.draw(fb, '{new} ' + nf.join(' + '), W / 2, ty + 34, hx('#aef7ff'), { font: 'small', align: 'center', outline: INK });
+      }
+    }
+  }
   function drawCards(fb, t) {
     const W = fb.w;
-    if (P.lvUp) {
-      const k = P.lvUp.t, e = Math.min(1, k / 0.35), out = k > 2.8 ? 1 - (k - 2.8) / 0.4 : 1;
-      const w = 170, h = 44, x = Math.round(W / 2 - w / 2), y = Math.round(66 + (1 - U.ease.outBack(e)) * -60);
-      if (out <= 0) return;
-      UI.rrect(fb, x, y + 3, w, h, 8, 0xff0a0e1a);
-      UI.rrect(fb, x, y, w, h, 8, INK); UI.rrect(fb, x + 2, y + 2, w - 4, h - 4, 6, 0xff2a5ad8);
-      for (let i = 0; i < 8; i++) { const a = t * 2 + i * 0.785; UI.put(fb, Math.round(W / 2 + Math.cos(a) * (w / 2 + 6)), Math.round(y + h / 2 + Math.sin(a) * (h / 2 + 6)), GOLD); }
-      Font.draw(fb, 'LEVEL UP!', W / 2, y + 7, GOLD, { font: 'title', align: 'center', outline: INK });
-      Font.draw(fb, 'Mudkip is now Lv ' + P.lvUp.lv, W / 2, y + 28, WHITE, { font: 'small', align: 'center' });
-      return;
-    }
+    lvFb = fb;
+    if (P.lvUp) { if (P.lvUp.t >= 0) drawLevelUp(fb, t); return; }
     const c = P.cards[0]; if (!c) return;
     const k = c.t, e = Math.min(1, k / 0.3), out = k > 3.4 ? (k - 3.4) / 0.4 : 0;
     const f = c.f, w = Math.max(Font.measure('NEW: ' + f.name, 'body'), Font.measure(f.desc, 'small')) + 24, h = 32;
@@ -434,12 +691,13 @@ const Progress = (() => {
       for (const id in WorldMap.LOC) {
         const b = HUD.btns.find((x) => x.id === 'pin-' + id); if (!b) continue;
         const qq = QS().filter((q) => q.area === id);
-        const rd = qq.some((q) => status(q) === 'ready'), av = qq.some((q) => status(q) === 'avail'), ac = qq.some((q) => status(q) === 'active');
-        if (!rd && !av && !ac) continue;
+        // only jobs the player has accepted get a pin
+        const rd = qq.some((q) => status(q) === 'ready'), ac = qq.some((q) => status(q) === 'active');
+        if (!rd && !ac) continue;
         const X = b.x + b.w + 5, Y = b.y + 7, isT = tq && tq.area === id;
         if (isT) UI.ring(fb, X, Y, 7 + Math.round(Math.sin(t * 5)), GOLD, 1);
-        UI.disc(fb, X, Y, 5, INK); UI.disc(fb, X, Y, 4, rd ? 0xff30d8ff : av ? 0xff2ac8ff : 0xff4a5470);
-        if (rd) Font.icon(fb, 'star', X - 3, Y - 3, 1); else Font.draw(fb, av ? '!' : '?', X, Y - 3, WHITE, { font: 'small', align: 'center' });
+        UI.disc(fb, X, Y, 5, INK); UI.disc(fb, X, Y, 4, rd ? 0xff30d8ff : 0xff4a5470);
+        if (rd) Font.icon(fb, 'star', X - 3, Y - 3, 1); else Font.draw(fb, '?', X, Y - 3, WHITE, { font: 'small', align: 'center' });
       }
       if (tq && !WorldMap.travel) Font.draw(fb, 'Tracked: ' + tq.title + ' — ' + areaName(tq.area), fb.w / 2, 24, GOLD, { font: 'small', align: 'center', outline: INK });
     } catch (e) { console.error(e); }
@@ -496,7 +754,10 @@ const Progress = (() => {
       Font.draw(fb, fit((e.q.birch ? 'Prof. Birch' : nm(e.q.giver) + ' · ' + areaName(e.q.area)) + ' · ' + lab, lw - 20), lx + 16, ry + 10, 0xff6a7090, { font: 'small' });
       G.rects.push({ x: lx, y: ry, w: lw, h: rowH, fn: () => { if (G.sel === i) trackSel(); else { G.sel = i; Game.sfx('blip', null, 0.4); } } });
     });
-    if (!list.length) Font.draw(fb, G.tab === 'done' ? 'Nothing finished yet.' : 'No quests right now.', lx + lw / 2, ly + 20, 0xff6a7090, { font: 'small', align: 'center' });
+    if (!list.length) {
+      if (G.tab === 'done') Font.draw(fb, 'Nothing finished yet.', lx + lw / 2, ly + 20, 0xff6a7090, { font: 'small', align: 'center' });
+      else Font.draw(fb, 'No quests yet. Talk to Pokémon with a ! over their head to take on a job.', lx + 8, ly + 14, 0xff6a7090, { font: 'small', maxW: lw - 16, lh: 9 });
+    }
     if (list.length > vis) Font.draw(fb, (G.scroll + 1) + '-' + Math.min(list.length, G.scroll + vis) + ' of ' + list.length, lx + lw / 2, ly + lh - 9, 0xff6a7090, { font: 'small', align: 'center' });
     // details (right)
     const dx = lx + lw + 6, dw = x + W - 8 - dx;
@@ -557,7 +818,7 @@ const Progress = (() => {
     return k0.call(this, k, e);
   }; }
   { const b0 = Talk.busy; Talk.busy = function () { return !!P.log || b0.call(this); }; }
-  if (typeof U.on === 'function') U.on('area', () => { P.pings.length = 0; if (P.log) P.log = null; });
+  if (typeof U.on === 'function') U.on('area', () => { P.pings.length = 0; P.sp.length = 0; if (P.log) P.log = null; });
 
   /* ---------- Rotom Dex: Progress page ---------- */
   function dexPage(fb, S, Lp, R, slide, t, X) {
@@ -605,5 +866,5 @@ const Progress = (() => {
     X.D.scroll.prog = clamp(X.D.scroll.prog || 0, 0, Math.max(0, (X.D.progH || 0) - R.h + 8));
   }
 
-  return Object.assign(P, { has, hudOk, level, gain, award, FEATS, XP, openLog, closeLog, logBadge, icon, toastTop, dexPage, objective, status, tracked, entries, onScan });
+  return Object.assign(P, { badgeSpr, has, hudOk, level, gain, award, FEATS, XP, openLog, closeLog, logBadge, icon, toastTop, dexPage, objective, status, tracked, entries, onScan });
 })();

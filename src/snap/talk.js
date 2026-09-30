@@ -239,23 +239,29 @@ const Talk = (() => {
     }
     // quest markers over the givers
     if (Game.mode !== 'explore' || T.dlg || (typeof Arcade !== 'undefined' && Arcade.live)) return;
+    // accepted jobs: "?" while under way, a star when ready; a job not taken yet only shows a small "!" up close
+    const mk = Game.mudkip, marks = new Map();
     for (const q of QUESTS) {
       if (q.area !== Game.areaId) continue;
       const s = qState(q.id); if (s && s.s === 'done') continue;
       const g = giverOf(q); if (!g || !g.visible || g.hideK > 0.5 || T.bubbles.some((b) => b.who === g)) continue;
+      if (!s && (!mk || Math.hypot(mk.x - g.x, mk.y - g.y) > 150 || (typeof Progress !== 'undefined' && Progress.status ? Progress.status(q) !== 'avail' : q.after && !(qState(q.after) && qState(q.after).s === 'done')))) continue;
+      const pr = !s ? 1 : ready(q) ? 3 : 2;
+      if (!marks.has(g) || marks.get(g) < pr) marks.set(g, pr);
+    }
+    for (const [g, pr] of marks) {
       const [hx, hy] = g.headPt();
       const [x, y] = toUI(hx, hy);
       if (x < -20 || x > fb.w + 20 || y < -20 || y > fb.h + 20) continue;
-      const bob = Math.round(Math.sin(t * 4 + g.seed) * 2), rd = ready(q);
-      const mark = !s ? '!' : rd ? '{star}' : '?';
-      const col = !s ? 0xff3ad8ff : rd ? 0xff3ae0ff : 0xfff0f0f0;
+      const bob = Math.round(Math.sin(t * 4 + g.seed) * 2);
       const X = Math.round(x), Y = Math.round(y) - 14 + bob;
-      UI.disc(fb, X, Y + 1, 6, 0xff0a0e1a); UI.disc(fb, X, Y, 6, INK); UI.disc(fb, X, Y, 5, !s ? 0xff2ac8ff : rd ? 0xff30d8ff : 0xff4a5470);
-      if (mark === '{star}') Font.icon(fb, 'star', X - 3, Y - 3, 1); else Font.draw(fb, mark, X, Y - 4, WHITE, { font: 'small', align: 'center' });
+      if (pr === 1) { UI.rect(fb, X - 2, Y - 6, 4, 7, INK); UI.rect(fb, X - 2, Y + 2, 4, 4, INK); UI.rect(fb, X - 1, Y - 5, 2, 5, 0xff3ad8ff); UI.rect(fb, X - 1, Y + 3, 2, 2, 0xff3ad8ff); }
+      else {
+        UI.disc(fb, X, Y + 1, 6, 0xff0a0e1a); UI.disc(fb, X, Y, 6, INK); UI.disc(fb, X, Y, 5, pr === 3 ? 0xff30d8ff : 0xff4a5470);
+        if (pr === 3) Font.icon(fb, 'star', X - 3, Y - 3, 1); else Font.draw(fb, '?', X, Y - 4, WHITE, { font: 'small', align: 'center' });
+      }
       // talk prompt when Mudkip is close
-      const mk = Game.mudkip;
       if (mk && Math.hypot(mk.x - g.x, mk.y - g.y) < 80) Font.draw(fb, (typeof Pad !== 'undefined' && Pad.touch ? 'Tap' : 'R') + ': Talk', X, Y + 8, WHITE, { font: 'small', align: 'center', outline: INK });
-      void col;
     }
   }
 

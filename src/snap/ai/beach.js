@@ -195,14 +195,112 @@ const BeachAI = (() => {
   }
 
   /* ================= WALREIN ================= */
+  // Walrein owns its rock: whatever asks it to walk (the territory guard, food, squabbles, curiosity)
+  // it only shuffles along the rock top and huffs over the edge; shoves are clamped at the edge; a
+  // card battle is staged with it up on the rock; and if a scripted event (a mini-game) takes it
+  // off, it waddles back and jumps up again as soon as it is released.
+  const WAL_SPAN = 12;   // how far it may shuffle from the middle of the rock
   class WalreinM extends Walker {
     constructor(A) {
       const rock = A.walreinRock;
-      super(sp('Walrein'), { kind: 'walrein', dex: 'walrein', x: rock.x, y: rock.y - rock.frames[0].h + 6, yaw: Math.PI - 0.95, z: 1.2, scale: 0.38, qPose: 0.05, qFields: { headPitch: 0.06, mouth: 0.2, squash: 0.02, flipper: 0.2 }, persona: 'grumpy' });
+      super(sp('Walrein'), { kind: 'walrein', dex: 'walrein', x: rock.x, y: rock.y - rock.frames[0].h + 6, yaw: Math.PI - 0.95, z: 1.2, scale: 0.38, qPose: 0.05, qFields: { headPitch: 0.06, mouth: 0.2, squash: 0.02, flipper: 0.2 }, persona: 'grumpy', minX: rock.x - WAL_SPAN, maxX: rock.x + WAL_SPAN });
       this.rock = rock; this.sq = new Spring(200, 10); this.senseR = 160; this.alert = 0.6;
-      this.baseY = rock.y - rock.frames[0].h + 10;
+      this.home = rock.x; this.baseY = rock.y - rock.frames[0].h + 10;
+      // the rock's top silhouette (first opaque row per column) so it sits on the rock, not on the sand under it
+      const s = rock.frames[0]; this.prof = new Int16Array(s.w).fill(-1);
+      for (let c = 0; c < s.w; c++) for (let r = 0; r < s.h; r++) if (s.d[r * s.w + c]) { this.prof[c] = r; break; }
+      this.sink = 0; this.sink = this.baseY - this.rockTop(rock.x);
+      this.y = this.baseY; this.base = this.baseY; this.climb = 0; this.hold = null;
     }
-    physics() { this.y = this.baseY; }
+    onRock(x = this.x) { return Math.abs(x - this.rock.x) <= WAL_SPAN + 0.5; }
+    // y of the rock top under Walrein's middle (the highest point of its footprint), or null past the rock
+    rockTop(x) {
+      const R = this.rock, s = R.frames[0], x0 = R.x - s.ax; let best = null;
+      for (let dx = -10; dx <= 10; dx += 5) { const c = Math.round(x + dx - x0); if (c < 0 || c >= s.w || this.prof[c] < 0) continue; const y = R.y - s.ay + this.prof[c]; if (best === null || y < best) best = y; }
+      return best === null ? null : best + this.sink;
+    }
+    surfY(x) { const g = gy(x), r = this.rockTop(x); return r === null ? g : Math.min(g, r); }
+    homing() { return !!(this.task && !this.task.done && this.task.home); }
+    update(dt, t) { this.stageBattle(); super.update(dt, t); }
+    // a card battle is fought with Walrein up on its rock (the battle would otherwise pull it down next to Mudkip)
+    stageBattle() {
+      const G = typeof Cards !== 'undefined' && Cards.live && Cards.g;
+      if (!G || G.foe !== this || G.walreinRock) return;
+      G.walreinRock = true;
+      const x = clamp(this.x, this.rock.x - WAL_SPAN, this.rock.x + WAL_SPAN);
+      if (typeof G.fx === 'number') { G.fx0 = G.fx = x; if (typeof G.mx === 'number' && Math.abs(G.mx - x) < 70) G.mx = x - (G.side || 1) * 92; }
+    }
+    physics(dt) {
+      const lo = this.rock.x - WAL_SPAN, hi = this.rock.x + WAL_SPAN, free = this.arcade || this.homing();
+      if (!free) {
+        if (this.wasOn && !this.onRock()) this.x = clamp(this.x, lo, hi);                    // shoved or pulled: it won't budge off its rock
+        else if (!this.onRock() && this.alive) { if (this.doTask(this.backToRock(), 8)) this.task.home = true; }   // released off the rock: go back up
+      }
+      if (this.hold !== null && this.homing()) { this.y = this.hold; this.base = this.hold; this.air = 0; this.vair = 0; this.wasOn = this.onRock(); return; }
+      this.hold = null;
+      if (this.air > 0 || this.vair !== 0) {
+        this.vair -= 900 * dt; this.air += this.vair * dt;
+        if (this.air <= 0) { this.air = 0; if (this.vair < -150) this.thud(0.5); this.vair = 0; }
+      }
+      const s = this.surfY(this.x);
+      if (s > this.base + 3 && this.air <= 0) { this.air = s - this.base; this.vair = 0; }   // slid off an edge: drop, don't teleport
+      if (s < this.base - 3) this.climb += this.base - s;                                    // bumped up onto the rock: clamber, don't pop
+      this.climb = Math.max(0, this.climb - dt * 160);
+      this.base = s; this.y = s - this.air + this.climb;
+      this.wasOn = this.onRock();
+    }
+    thud(k = 1) {
+      this.sq.kick(0.9 * k); Game.sfx('thud', this.x, 0.5 + 0.4 * k); Game.shake(1.2 * k);
+      for (let i = 0; i < 8; i++) FX.add({ type: 'dust', x: this.x + rnd(-24, 24), y: this.y - 1, vx: rnd(-40, 40), vy: -rnd(10, 30), r: rnd(2, 4), life: 0.6, c: Game.P.sand[3], c2: Game.P.sand[2], layer: 2 });
+    }
+    // everybody else's walkTo (guarding, food, squabbles...) only moves it along the rock top
+    *walkTo(tx, speed = 45, o = {}) {
+      if (this.arcade || this.homing()) { yield* super.walkTo(tx, speed, o); return; }
+      const lo = this.rock.x - WAL_SPAN, hi = this.rock.x + WAL_SPAN;
+      yield* super.walkTo(clamp(tx, lo, hi), Math.min(speed, 70), Object.assign({}, o, { min: lo, max: hi }));
+      if (Math.abs(tx - this.rock.x) > 40) yield* this.overEdge(tx);
+    }
+    // the target is off the rock: lean over the edge instead (snarf a berry, or huff frost at whoever it is)
+    *overEdge(tx) {
+      const d = tx > this.x ? 1 : -1;
+      const it = typeof Items !== 'undefined' && Items.list.find((q) => q.claim === this && !q.eaten && Math.abs(q.x - tx) < 30);
+      yield* this.faceTo(d, false);
+      let e = 0;
+      if (it) {
+        // a mighty sniff: the berry flies up into its mouth
+        const x0 = it.x, y0 = it.y; it.state = 'held';
+        while (e < 0.7) { const dt = yield; e += dt; const k = Math.min(1, e / 0.7); const [mx, my] = this.at('mouth'); it.x = lerp(x0, mx, k * k); it.y = lerp(y0, my, k * k) - Math.sin(k * Math.PI) * 18; this.o.mouth = 0.4 + k * 0.6; this.o.headPitch = 0.25; this.setAct('eat', 0.6); }
+        it.state = 'rest'; it.t = Math.max(it.t, 40); // stays put at the mouth (and times out if the snack gets interrupted)
+        Game.sfx('gulp', this.x, 0.6);
+        return;
+      }
+      Game.sfx('grr', this.x, 0.8);
+      while (e < 0.55) {
+        const dt = yield; e += dt;
+        const wind = Math.min(1, e / 0.3), blast = e > 0.3 ? Math.sin(Math.min(1, (e - 0.3) / 0.25) * Math.PI) : 0;
+        this.o.headPitch = 0.1 - 0.2 * wind * (1 - blast) + 0.45 * blast; this.o.mouth = 0.2 + blast * 0.8; this.o.flipper = blast; this.o.squash = -0.06 * wind + 0.1 * blast;
+        this.setAct('battle', 0.6 + blast * 0.4);
+        if (blast > 0.2 && Math.random() < dt * 40) { const [mx, my] = this.at('mouth'); FX.add({ type: 'spark', x: mx + d * rnd(0, 20), y: my + rnd(-3, 5), vx: d * rnd(90, 160), vy: rnd(-10, 25), size: 1 + (Math.random() * 2 | 0), life: 0.4, c: 0xffffffff, c2: hex('#bfefff'), layer: 3 }); }
+      }
+      this.sq.kick(0.5); Game.shake(1);
+    }
+    // off the rock (only after a scripted event): waddle to its foot, then jump back up
+    *backToRock() {
+      const R = this.rock, half = R.frames[0].w / 2, d = this.x < R.x ? 1 : -1;
+      this.emote('anger', 1);
+      if (Math.abs(this.x - R.x) > half + 18) yield* super.walkTo(R.x - d * (half + 14), 55, { turn: 8 });
+      yield* this.faceTo(d, true);
+      let e = 0;
+      while (e < 0.3) { const dt = yield; e += dt; this.o.squash = -0.14 * Math.min(1, e / 0.2); this.o.flipper = 0.6; this.setAct('jump', 0.4); }
+      Game.sfx('whoosh', this.x, 0.6);
+      const x0 = this.x, y0 = this.y, x1 = clamp(R.x + rnd(-4, 4), R.x - WAL_SPAN, R.x + WAL_SPAN), y1 = this.surfY(x1), T = 0.6, H = Math.max(22, y0 - y1 + 16);
+      e = 0;
+      while (e < T) { const dt = yield; e += dt; const k = Math.min(1, e / T); this.x = lerp(x0, x1, k); this.hold = lerp(y0, y1, k) - Math.sin(k * Math.PI) * H; this.o.squash = 0.12; this.o.flipper = 1; this.setAct('jump', 0.9); }
+      this.x = x1; this.hold = null; this.base = y1; this.y = y1; this.wasOn = true;
+      this.thud(1);
+      yield* wait(0.3);
+      yield* this.faceTo(-1, false);
+    }
     animate(dt, t) {
       const P = { headPitch: 0.1 + Math.sin(t * 0.7) * 0.03, headYaw: 0, mouth: 0.05, squash: this.sq.step(dt) * 0.5 + Math.sin(t * 1.4 + this.seed) * 0.012, flipper: 0, eyes: this.blink(t, dt) ? 'blink' : 'open' };
       if (this.sleeping) { P.eyes = 'closed'; P.headPitch = -0.1; }
