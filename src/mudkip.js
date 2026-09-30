@@ -280,6 +280,7 @@ const Mudkip = (() => {
       pri,
       glossy: GLOSSY,
       baseMat: BODY,
+      keepGloss: true,
     };
   }
 
