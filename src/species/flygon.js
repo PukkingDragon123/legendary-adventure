@@ -239,7 +239,7 @@ const Flygon = (() => {
     const up = [Math.sin(lean * 0.35), Math.cos(lean * 0.35), 0], fw = [Math.cos(lean * 0.35), -Math.sin(lean * 0.35), 0];
     const at = (a, b) => add(nb, add(sc(up, a), sc(fw, b)));
     const neckPts = [inF(tf, [8, 88, 0]), nb, at(28, 2), at(56, 10), at(78, 24), at(88, 42)];
-    tube(prims, neckPts, 22, (t) => lerp(18, 12.5, t), 2, 2, BODY, [0, 1, 0], 2.4);
+    tube(prims, neckPts, 12, (t) => lerp(18, 12.5, t), 2, 2, BODY, [0, 1, 0], 1.8);
     anchors.neck = neckPts[3];
     const hc = add(neckPts[5], [10, 8, 0]);
     const hf = chain(T(...hc), R(M3.rz(-0.1 + 0.15 * mo + (walking ? 0.03 * Math.sin(2 * wk) : 0))));
@@ -265,7 +265,7 @@ const Flygon = (() => {
       // long antennae swept back from the top of the head, with a kink
       const a0 = inF(hf, [-2, 17, 6 * sd]);
       const ap = [a0, inF(hf, [-14, 30, 9 * sd]), inF(hf, [-32, 38, 14 * sd]), inF(hf, [-52, 38, 18 * sd]), inF(hf, [-70, 44, 22 * sd])];
-      tube(prims, ap, 12, (t) => lerp(3.4, 2, t), 7, 7, DARK, [0, 1, 0], 2);
+      tube(prims, ap, 7, (t) => lerp(3.4, 2, t), 7, 7, DARK, [0, 1, 0], 1.7);
     }
     anchors.top = inF(hf, [-40, 44, 0]);
 
@@ -325,7 +325,7 @@ const Flygon = (() => {
     const sway = (walking ? 0.25 * Math.sin(wk) : 0);
     const tb = inF(tf, [-24, 14, 0]);
     const tp = [inF(tf, [-10, 24, 0]), tb, add(tb, [-38, -22, 10 * sway]), add(tb, [-84, -32, 26 * sway + 8 * side]), add(tb, [-128, -26, 40 * sway + 16 * side]), add(tb, [-160, -8, 50 * sway + 22 * side])];
-    tube(prims, tp, 30, (t) => lerp(17, 5, Math.pow(t, 0.8)), 14, 14, BODY, [0, 1, 0], 2.4);
+    tube(prims, tp, 16, (t) => lerp(17, 5, Math.pow(t, 0.8)), 14, 14, BODY, [0, 1, 0], 1.8);
     const tEnd = tp[5], tD = nrm(sub(tEnd, crPt(tp, 4.7)));
     const fanN = nrm(cross(tD, [0, 0, 1]).map((x, i) => x + (i === 2 ? 0.5 * side : 0)));
     for (const a of [-0.75, 0, 0.75]) {
