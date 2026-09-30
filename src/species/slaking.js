@@ -23,7 +23,7 @@
                       left elbow, head resting on the left hand (default). The
                       body is re-grounded for every value.
      scratch  0..1    the free (right) hand scratches its belly: 0 = resting
-                      on its hip / knee, 1 = on the belly (animate it between
+                      on its chest (lying) / knee (sitting), 1 = on the belly (animate it between
                       ≈ 0.7 and 1 to scratch)
      eyes     'open' (droopy half-lidded, as in the art; default) | 'happy' |
               'blink' | 'closed'
@@ -44,11 +44,11 @@ const Slaking = (() => {
   const FUR = 1, FACE = 2, WHITE = 3, SNOUT = 4, DARK = 5, EYEW = 6, PUPIL = 7, INK = 8, MOUTH = 9, TONGUE = 10, CLAW = 11;
   const MAT = { FUR, FACE, WHITE, SNOUT, DARK, EYEW, PUPIL, INK, MOUTH, TONGUE, CLAW };
   const PAL = Creature.palette({
-    [FUR]:    { r: ['#5c4a3e', '#76614f', '#8f7a66', '#a8937e', '#bfab96'], od: '#30241c', ol: '#56463a', ln: '#56463a' },
-    [FACE]:   { r: ['#9a8a74', '#b8a78e', '#d2c2a8', '#e4d6c0', '#f2e8d8'], od: '#524634', ol: '#7e6e58', ln: '#84745e' },
-    [WHITE]:  { r: ['#aaa69c', '#cecac0', '#eeebe4', '#f9f7f2', '#ffffff'], od: '#555044', ol: '#8a8474', ln: '#948e80' },
-    [SNOUT]:  { r: ['#b0566c', '#d27288', '#ee98aa', '#f9bcc8', '#ffe0e6'], od: '#64203a', ol: '#9a4460', ln: '#9a4460' },
-    [DARK]:   { r: ['#3a2416', '#4a301e', '#5c3e28', '#6e4e34', '#806042'], od: '#1e1008', ol: '#3a2416', ln: '#2e1c10' },
+    [FUR]:    { r: ['#5e5046', '#7a6a5a', '#96826f', '#ae9c8a', '#c4b4a4'], od: '#30261e', ol: '#58493c', ln: '#58493c' },
+    [FACE]:   { r: ['#a89c8c', '#c4b8a8', '#e0d4c5', '#ede5da', '#f8f4ee'], od: '#544a3c', ol: '#86796a', ln: '#8a7e70' },
+    [WHITE]:  { r: ['#aea89e', '#d0ccc4', '#f2f2f2', '#fafafa', '#ffffff'], od: '#555046', ol: '#8a8478', ln: '#968f84' },
+    [SNOUT]:  { r: ['#c0808e', '#daa2ae', '#eec5ce', '#f8dce2', '#fff0f2'], od: '#6a3040', ol: '#a0606e', ln: '#a0606e' },
+    [DARK]:   { r: ['#3a3028', '#4a3e34', '#5c4e42', '#6e6052', '#807264'], od: '#1e1810', ol: '#3a3028', ln: '#2e261e' },
     [EYEW]:   { r: ['#c4c4cc', '#e2e2e8', '#fbfbfd', '#ffffff', '#ffffff'], od: '#5a5a66', ol: '#8a8a96', ln: '#8a8a96' },
     [PUPIL]:  { r: ['#08080c', '#0e0e14', '#16161e', '#22222c', '#34343e'], od: '#040406', ol: '#08080c', ln: '#08080c' },
     [INK]:    { r: ['#241410', '#321c16', '#40261e', '#4e3026', '#5c3a2e'], od: '#140a08', ol: '#241410', ln: '#241410' },
@@ -59,7 +59,7 @@ const Slaking = (() => {
   const GLOSSY = { [SNOUT]: 1 };
   const C_FUR = code(FUR), C_FACE = code(FACE), C_WHITE = code(WHITE), C_SNOUT = code(SNOUT), C_DARK = code(DARK), C_EYEW = code(EYEW);
   const C_PUPIL = code(PUPIL), C_INK = code(INK), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE), C_CLAW = code(CLAW), C_NOSTRIL = code(SNOUT, -2);
-  const M_FUR = () => C_FUR, M_FACE = () => C_FACE, M_WHITE = () => C_WHITE, M_CLAW = () => C_CLAW, M_DARK = () => C_FUR;
+  const M_FUR = () => C_FUR, M_FACE = () => C_FACE, M_WHITE = () => C_WHITE, M_CLAW = () => C_CLAW, M_DARK = () => C_FACE;
 
   // ---- helpers
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -106,15 +106,16 @@ const Slaking = (() => {
     },
   });
   const SPK_W_G = spikeShape(C_WHITE), SPK_F_G = spikeShape(C_FUR);
+  // pointed fur spike: a tapering chain of three ellipsoids (reads as a clean jag in the silhouette)
   function tuft(prims, root, dir, len, w, part, grp, out, shape) {
     const U = nrm(dir);
-    let A = sub(out, sc(U, dot(out, U)));
-    if (len3(A) < 1e-3) A = cross(U, [1, 0, 0]);
-    A = nrm(A);
-    const B = cross(U, A);
-    for (const k of [1, -1]) {
-      const Vv = nrm(add(A, sc(B, k)));
-      prims.push(PL(root, M3.cols(sc(U, len / SPK_L), sc(Vv, w / SPK_W), cross(U, Vv)), part, grp, shape, 1.6));
+    const m = shape === SPK_W_G ? M_WHITE : M_FUR;
+    let p = root;
+    const L = [0.42, 0.33, 0.25], R = [0.62, 0.4, 0.18];
+    for (let i = 0; i < 3; i++) {
+      const q = add(p, sc(U, len * L[i]));
+      prims.push(E(sc(add(p, q), 0.5), M3.mul(axesAlong(U, out), M3.diag(len * L[i] * 0.5 + w * R[i] * 0.5, w * R[i], w * R[i] * 0.85)), part, grp, m));
+      p = q;
     }
   }
   const lowY = (p) => (p.kind === 'ell' ? p.c[1] - Math.hypot(p.L[3], p.L[4], p.L[5]) : p.c[1]);
@@ -155,8 +156,8 @@ const Slaking = (() => {
     return (s) => {
       const cv = Math.sqrt(Math.max(0, 1 - s[1] * s[1]));
       // the white band of fur running over the top of the head
-      if (Math.abs(s[2]) < 0.3 - 0.1 * Math.max(0, s[0]) && s[1] > 0.3 && s[0] < 0.5) return C_WHITE;
-      if (s[0] < 0.25) return C_FUR;
+      if (Math.abs(s[2]) < 0.34 - 0.08 * Math.max(0, s[0]) && s[1] > 0.4 && s[0] < 0.62) return C_WHITE;
+      if (s[0] < 0.25) return C_FACE;
       const px = 1 / (curScale * HR[1]);
       const az = Math.atan2(s[2], s[0]);
       const sd = az >= 0 ? 1 : -1;
@@ -175,10 +176,7 @@ const Slaking = (() => {
           if (Math.abs(s[1] - yc) < Math.max(0.03, 0.6 * px)) return C_INK;
         }
       }
-      // lighter face (front of the head, below the brows)
-      const fz = Math.abs(az) / 1.05, fy = (s[1] + 0.12) / 0.62;
-      if (fz * fz + fy * fy < 1) return C_FACE;
-      return C_FUR;
+      return C_FACE;
     };
   }
   function snoutMat(s) {
@@ -189,14 +187,17 @@ const Slaking = (() => {
   /* ---------- torso (S frame: y up the spine, x = front, z = its right side) ---------- */
   const BELLY_C = [4, 64, 0], BELLY_R = [62, 68, 66];
   const CHEST_C = [-4, 124, 0], CHEST_R = [52, 42, 66];
+  const C_BELLY = code(FACE, -1);
   const bellyMat = (s) => {
-    if (s[0] < 0.25 + 0.45 * s[2] * s[2] || s[1] > 0.8) return C_FUR;
-    // jagged white bib hanging over the top of the belly
-    const zz = Math.abs(s[2]), jag = 0.08 * Math.abs(((Math.atan2(s[2], s[0]) * 7) % 2 + 2) % 2 - 1);
-    if (s[1] > 0.42 - 0.5 * zz * zz + jag && zz < 0.62) return C_WHITE;
-    return C_FACE;
+    const zz = Math.abs(s[2]);
+    // big jagged white beard hanging down over the chest onto the belly
+    const jag = 0.16 * Math.abs(((Math.atan2(s[2], s[0]) * 6.5) % 2 + 2) % 2 - 1);
+    if (s[0] > 0.1 && s[1] > 0.16 - 0.3 * zz * zz + jag && zz < 0.7) return C_WHITE;
+    // greyish-beige belly on the lower front
+    if (s[0] > 0.3 + 0.4 * zz * zz && s[1] < 0.3) return C_BELLY;
+    return C_FUR;
   };
-  const chestMat = (s) => (s[0] > 0.3 + 0.5 * s[2] * s[2] ? C_WHITE : C_FUR);
+  const chestMat = (s) => (s[0] > 0.1 + 0.5 * s[2] * s[2] ? C_WHITE : C_FUR);
 
   const DEFAULT = { lie: 1, scratch: 0, eyes: 'open', mouth: 0, walk: 0, side: 1 };
   const PRI = {};
@@ -281,12 +282,11 @@ const Slaking = (() => {
       const c = S([2 + 42 * Math.cos(a), 158 + 6 * Math.cos(a), 52 * Math.sin(a)]);
       prims.push(E(c, M3.mul(M3.mul(Rw, M3.ry(-a)), M3.diag(12, 15, 17)), 5, 5, M_WHITE));
     }
-    for (let i = 0; i < 9; i++) {
-      const a = -1.6 + (i / 8) * 3.2;
-      tuft(prims, S([6 + 50 * Math.cos(a), 146, 60 * Math.sin(a)]), M3.v(Rw, [Math.cos(a) * 0.8, -0.35, Math.sin(a) * 0.9]), 20, 7, 5, 5, M3.v(Rw, [0, 1, 0]), SPK_W_G);
+    for (const a of [-1.45, -1.05, 1.05, 1.45]) {
+      tuft(prims, S([6 + 50 * Math.cos(a), 146, 58 * Math.sin(a)]), M3.v(Rw, [Math.cos(a) * 0.5, -0.8, Math.sin(a) * 0.7]), 18, 9, 5, 5, M3.v(Rw, [0, 1, 0]), SPK_W_G);
     }
-    for (const [z, y, l] of [[0, 104, 22], [20, 110, 20], [-20, 110, 20], [34, 122, 18], [-34, 122, 18]])
-      tuft(prims, S([CHEST_R[0] - 8 - Math.abs(z) * 0.2, y, z]), M3.v(Rw, [0.35, -1, z * 0.012]), l, 8, 5, 5, M3.v(Rw, [1, 0, 0]), SPK_W_G);
+    for (const [z, y, l] of [[38, 112, 16], [-38, 112, 16]])
+      tuft(prims, S([CHEST_R[0] - 14, y, z]), M3.v(Rw, [0.2, -0.7, z * 0.02]), l, 9, 5, 5, M3.v(Rw, [1, 0, 0]), SPK_W_G);
 
     // --- arms
     for (const sd of [1, -1]) {
@@ -303,10 +303,10 @@ const Slaking = (() => {
         el = lerp3(el, elL, lie); wr = lerp3(wr, wrL, lie);
         hd = nrm(lerp3(hd, [0.35, 1, 0.3], lie)); palm = nrm(lerp3(palm, [0.2, 0, 1], lie));
       } else {
-        // lying: the right arm rests along its side, hand on the hip
-        const elL = S([10, 70, 86]), wrL = S([30, 18, 80]);
+        // lying: the right arm is draped over its body, elbow up in the air, the hand resting on the chest
+        const elL = S([24, 62, 88]), wrL = S([66, 104, 40]);
         el = lerp3(el, elL, lie); wr = lerp3(wr, wrL, lie);
-        hd = nrm(lerp3(hd, M3.v(Rw, [0.55, -0.6, -0.4]), lie)); palm = nrm(lerp3(palm, M3.v(Rw, [0, 0, -1]), lie));
+        hd = nrm(lerp3(hd, M3.v(Rw, [0.35, -0.15, -1]), lie)); palm = nrm(lerp3(palm, M3.v(Rw, [-1, 0, 0]), lie));
         if (moving) { const w = 5 * Math.sin(wk); el = add(el, M3.v(Rw, [w, 0, 0])); wr = add(wr, M3.v(Rw, [w * 1.6, 0, 0])); }
         // scratch: the hand goes to the belly and rubs up and down
         if (scr > 0) {
@@ -321,7 +321,7 @@ const Slaking = (() => {
       prims.push(seg(sh, el, 21, 21, M3.v(Rw, [0, 1, 0]), id, id, M_FUR, 1.2));
       prims.push(E(el, M3.diag(19, 19, 19), id, id, M_FUR));
       prims.push(seg(el, wr, 19, 18, M3.v(Rw, [0, 1, 0]), id, id, M_FUR, 1.15));
-      for (const k of [0, 2.1, 4.2]) tuft(prims, wr, nrm(add(sc(nrm(sub(wr, el)), -0.3), M3.v(M3.ry(k), [0.8, 0, 0.6]))), 22, 7, id, id, nrm(sub(wr, el)), SPK_F_G);
+      for (const k of [0, 2.1, 4.2]) tuft(prims, add(wr, sc(nrm(sub(el, wr)), 6)), nrm(add(sc(nrm(sub(wr, el)), -0.75), M3.v(M3.ry(k), [0.8, 0, 0.6]))), 20, 7, id, id, nrm(sub(wr, el)), SPK_F_G);
       const tip = hand(prims, wr, hd, palm, hid, sd > 0 && scr > 0 ? 0.25 * scr : 0);
       anchors[sd > 0 ? 'handN' : 'handF'] = tip;
       if (sd < 0) anchors.elbow = el;
@@ -335,8 +335,8 @@ const Slaking = (() => {
       const hip = S([6, 22, 36 * sd]);
       const kneeS = [66, 44 + 6 * kick, 46 * sd], footS = [104 + 8 * kick, -4 + 4 * Math.max(0, kick), 50 * sd];
       // lying: both legs rest along the ground behind it, the top (right) one bent forward over the other
-      const kneeL = sd > 0 ? add(hip, [-34, 20, 42 + 8 * kick]) : add(hip, [-56, 0, 14]);
-      const footL = sd > 0 ? add(hip, [-92 + 10 * kick, 6, 40]) : add(hip, [-112, 0, 10]);
+      const kneeL = sd > 0 ? add(hip, [-30, 18, 38 + 8 * kick]) : add(hip, [-46, 0, 14]);
+      const footL = sd > 0 ? add(hip, [-74 + 10 * kick, 6, 36]) : add(hip, [-90, 0, 10]);
       kneeL[1] = Math.max(kneeL[1], 24); footL[1] = Math.max(footL[1], 18);
       const knee = lerp3(S(kneeS), kneeL, lie), foot = lerp3(S(footS), footL, lie);
       prims.push(seg(hip, knee, 25, 25, M3.v(Rw, [0, 1, 0]), id, id, M_FUR, 1.15));

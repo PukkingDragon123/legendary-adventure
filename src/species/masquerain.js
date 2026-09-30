@@ -36,12 +36,14 @@ const Masquerain = (() => {
   const BODY = 1, FACE = 2, ANT = 3, RING = 4, CORE = 5, WING = 6, EYEK = 7, MOUTH = 8;
   const MAT = { BODY, FACE, ANT, RING, CORE, WING, EYEK, MOUTH };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#8aaccc', '#a8c6e2', '#c8def0', '#e2eff9', '#f8fcff'], od: '#3e6890', ol: '#6c94bc', ln: '#6c94bc' },
-    [FACE]:  { r: ['#b85a44', '#d8745a', '#f0906e', '#fab092', '#ffd2bc'], od: '#6a2618', ol: '#a44a34', ln: '#a44a34' },
-    [ANT]:   { r: ['#bc6250', '#dc7c66', '#f49a82', '#fcb8a2', '#ffd8c8'], od: '#72301e', ol: '#b05a44', ln: '#b05a44' },
-    [RING]:  { r: ['#d0bcb8', '#e8d8d6', '#fcf2f0', '#ffffff', '#ffffff'], od: '#80564e', ol: '#b08a82', ln: '#b08a82' },
-    [CORE]:  { r: ['#62283a', '#7c3448', '#96475a', '#ae6070', '#c8848e'], od: '#3a1020', ol: '#62283a', ln: '#62283a' },
-    [WING]:  { r: ['#9cc0dc', '#bcd8ee', '#d8ecf8', '#ecf6fc', '#ffffff'], od: '#4a78a4', ol: '#7ca4c8', ln: '#8ab0d0' },
+    // sampled from the official art: near-white body #eaf3f8 (shadow #c0daee), salmon face/antennae #f3a385 / #eda184,
+    // mauve eye-spot core #a8697c, pale blue translucent wings
+    [BODY]:  { r: ['#96b2c8', '#bcd6ea', '#dcebf6', '#eef5fa', '#ffffff'], od: '#48729a', ol: '#7a9ec0', ln: '#7a9ec0' },
+    [FACE]:  { r: ['#b4644c', '#d48266', '#f3a385', '#f8bca2', '#fcd6c4'], od: '#6a2618', ol: '#a44a34', ln: '#a44a34' },
+    [ANT]:   { r: ['#b4684e', '#d4846a', '#eda184', '#f6b89e', '#fcd2c0'], od: '#72301e', ol: '#b05a44', ln: '#b05a44' },
+    [RING]:  { r: ['#d8ccca', '#ece4e2', '#fafafb', '#ffffff', '#ffffff'], od: '#80564e', ol: '#b08a82', ln: '#b08a82' },
+    [CORE]:  { r: ['#6a3446', '#86465a', '#a8697c', '#bc8494', '#d0a2ae'], od: '#3a1020', ol: '#62283a', ln: '#62283a' },
+    [WING]:  { r: ['#a4c4dc', '#c0daee', '#d8eaf6', '#eaf2f8', '#ffffff'], od: '#4a78a4', ol: '#7ca4c8', ln: '#8ab0d0' },
     [EYEK]:  { r: ['#0a0a10', '#101018', '#181820', '#20202a', '#2c2c38'], od: '#050508', ol: '#0a0a10', ln: '#050508' },
     [MOUTH]: { r: ['#5a1c1c', '#742626', '#903432', '#aa4642', '#c05c56'], od: '#340c0c', ol: '#5a1c1c', ln: '#5a1c1c' },
   });
@@ -79,9 +81,10 @@ const Masquerain = (() => {
   let curScale = 1;
 
   /* ---------- head: pale blue, salmon face patch, tiny eyes (decals) ---------- */
-  const HR = [16, 15.5, 16.5];
-  const EYE_AZ = 0.42, EYE_V = 0.1;
-  const inFace = (az, v) => { const a = az / 0.95, b = (v + 0.12) / 0.5; return a * a + b * b < 1; };
+  const HR = [18.5, 18, 19.5];
+  const EYE_AZ = 0.7, EYE_V = 0.1;
+  // salmon face patch: a bowl under a nearly straight top edge, the eyes at its two upper corners
+  const inFace = (az, v) => { const a = az / 0.95, b = (v - 0.14) / 0.78; return v < 0.14 + 0.06 * a * a && a * a + b * b < 1; };
   function headMat(kind, mo) {
     return (s) => {
       const az = Math.atan2(s[2], s[0]), v = s[1];
@@ -89,12 +92,11 @@ const Masquerain = (() => {
       const px = 1 / (curScale * HR[1]);
       const sd = az >= 0 ? 1 : -1;
       const u = (az - sd * EYE_AZ), w = v - EYE_V;
-      const r = Math.max(0.1, 1.2 * px);
+      const r = Math.max(0.15, 1.3 * px);
       if (kind === 'open') {
-        if (u * u + w * w < r * r) return C_EYEK;
-        // little lash flicking out at the outer top corner
-        const lx = sd * u - r * 0.6, ly = w - r * 0.7;
-        if (lx > 0 && lx < r * 1.3 && Math.abs(ly - lx * 0.5) < Math.max(0.03, 0.55 * px)) return C_EYEK;
+        // round black eye with a big white centre highlight
+        const d2 = u * u + w * w;
+        if (d2 < r * r) return r > 2.6 * px && (u + 0.1 * r * sd) ** 2 + (w - 0.05 * r) ** 2 < (0.45 * r) ** 2 ? C_RING : C_EYEK;
       } else {
         const k = u / (r * 1.4);
         if (Math.abs(k) < 1) {
@@ -126,20 +128,20 @@ const Masquerain = (() => {
   const RC = [AL * 0.42, 0];
   const ANT_G = bakeShape(Shape2D.poly(ANT_PTS, C_ANT, 6, (u, v) => {
     const du = u - RC[0], dv = v - RC[1], r = Math.hypot(du, dv);
-    if (r < 13) return C_CORE;
-    if (r < 20.5) return C_RING;
-    // white dashes along the curved edge
+    if (r < 11.5) return C_CORE;
+    if (r < 19) return C_RING;
+    // white radial dashes along the curved edge
     const a = Math.atan2(dv, du);
-    if (r > 24.5 && r < 29.5 && v > 3) {
-      const k = (a / Math.PI) * 9;
+    if (r > 22.5 && r < 29 && v > 3) {
+      const k = (a / Math.PI) * 8;
       const f = k - Math.floor(k);
-      if (f > 0.25 && f < 0.75) return C_RING;
+      if (f > 0.36 && f < 0.64) return C_RING;
     }
     return C_ANT;
   }));
 
   /* ---------- wing: long translucent diamond ---------- */
-  const WING_G = bakeShape(Shape2D.poly([[0, 0], [14, -6.5], [46, -2.5], [52, 0.5], [30, 6.5], [8, 4]], C_WING, 3));
+  const WING_G = bakeShape(Shape2D.poly([[0, 0], [16, -9.5], [44, -3], [52, 0.5], [30, 9.5], [8, 5]], C_WING, 3));
   const WING_LN = [[[2, 0.5], [49, 0.2]]];
 
   const SIZE = 1.12;
@@ -158,12 +160,12 @@ const Masquerain = (() => {
     const root = chain(T(0, 26 + bob, 0), R(M3.rx(rock)), R(M3.rz(-0.1 + (wk !== 0 ? 0.04 * Math.cos(wk) : 0))));
 
     /* --- body: a drop under the head --- */
-    prims.push(ellF(chain(root, T(-1, 0, 0)), [12, 14, 12], 1, 1, M_BODY));
-    prims.push(ellF(chain(root, T(-2, -10, 0)), [6.5, 8, 6.5], 1, 1, M_BODY));
+    prims.push(ellF(chain(root, T(-1, 4, 0)), [9, 12, 9], 1, 1, M_BODY));
+    prims.push(ellF(chain(root, T(-2, -5, 0)), [5, 7, 5], 1, 1, M_BODY));
     anchors.body = inF(root, [-1, 0, 0]);
 
     /* --- head --- */
-    const head = chain(root, T(3, 23, 0), R(M3.rz(0.06)));
+    const head = chain(root, T(3, 24, 0), R(M3.rz(0.06)));
     const headPrim = ellF(head, HR, 2, 2, headMat(kind, mo));
     prims.push(headPrim);
     anchors.head = head.t;
@@ -171,7 +173,7 @@ const Masquerain = (() => {
     anchors.eyeN = onHead(EYE_AZ, EYE_V); anchors.eyeF = onHead(-EYE_AZ, EYE_V);
     anchors.mouth = onHead(0, -0.3);
     // horn: long, tapering, curving up and back
-    let hp = inF(head, [-3, 10, 0]);
+    let hp = inF(head, [-3, 12, 0]);
     const hpts = [hp];
     for (let i = 0; i < 10; i++) {
       const a = 0.8 + 0.03 * i;
@@ -187,7 +189,7 @@ const Masquerain = (() => {
     const sway = 0.04 * Math.sin(fl * 0.25) + (wk !== 0 ? 0.05 * Math.sin(wk + 0.5) : 0);
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 4 : 5;
-      const rootA = inF(head, [0, 7, sd * 11]);
+      const rootA = inF(head, [0, 8, sd * 13]);
       const up = 0.55 + sway * sd;
       const U = dirF(head, [-0.12, Math.sin(up), sd * Math.cos(up)]);
       // bulge toward the back-top edge (the straight edge faces inward/forward), face turned to the front

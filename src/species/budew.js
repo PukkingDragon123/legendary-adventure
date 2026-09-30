@@ -30,17 +30,19 @@ const Budew = (() => {
   const GREEN = 1, BUD = 2, SEAM = 3, MOUTH = 4, HEART = 5, POLLEN = 6, EYE = 7, GLINT = 8, FOOT = 9, FACE = 10, COLLAR = 11;
   const MAT = { GREEN, BUD, SEAM, MOUTH, HEART, POLLEN, EYE, GLINT, FOOT, FACE, COLLAR };
   const PAL = Creature.palette({
-    [GREEN]:  { r: ['#3a7e2c', '#4e9a3a', '#66b44a', '#84cc60', '#aee288'], od: '#163e14', ol: '#2e6a26', ln: '#2c6424' },
-    [FOOT]:   { r: ['#8aa832', '#a6c440', '#c0dc56', '#d8ec7a', '#eef8a8'], od: '#3e5010', ol: '#6c8424', ln: '#627a20' },
-    [BUD]:    { r: ['#88b878', '#a2cc8e', '#bcdea6', '#d2ecc0', '#ecf8e0'], od: '#2e5a26', ol: '#5a8a4a', ln: '#4e7e40' },
+    // sampled from the official art: leaf green #89c768, pale yellow face #e9ea95, dark green collar #56844a,
+    // pale mint bud cap #d8e9b6 (shadow #b4d398), olive feet #a5b759
+    [GREEN]:  { r: ['#4a8a3c', '#68a94f', '#89c768', '#a6d888', '#c8eab0'], od: '#1a4216', ol: '#34702a', ln: '#3a7430' },
+    [FOOT]:   { r: ['#6a7636', '#828e46', '#a5b759', '#bccc74', '#d4e09a'], od: '#343c10', ol: '#5a6424', ln: '#5a6424' },
+    [BUD]:    { r: ['#94b87c', '#b4d398', '#cce2aa', '#dcecc2', '#eef8e0'], od: '#2e5a26', ol: '#5a8a4a', ln: '#4e7e40' },
     [SEAM]:   { r: ['#3a6a2a', '#487c34', '#58903e', '#6ca44e', '#84b866'], od: '#1a3a12', ol: '#305e22', ln: '#2a5a20' },
     [MOUTH]:  { r: ['#3a2a10', '#4a3616', '#5a441e', '#6a5428', '#7a6434'], od: '#2c1c08', ol: '#3a2a10', ln: '#3a2a10' },
     [HEART]:  { r: ['#c89a20', '#e4bc30', '#f6d84a', '#fdec84', '#fffbd0'], od: '#6a4c08', ol: '#a47c18', ln: '#9a7416' },
     [POLLEN]: { r: ['#d6b830', '#ecd246', '#fae466', '#fff29a', '#fffde0'], od: '#7a6214', ol: '#b09426', ln: '#b09426' },
     [EYE]:    { r: ['#1a1a0e', '#222212', '#2a2a16', '#34341c', '#404024'], od: '#0e0e06', ol: '#1a1a0e', ln: '#1a1a0e' },
     [GLINT]:  { r: ['#e6ece8', '#f4f8f4', '#ffffff', '#ffffff', '#ffffff'], od: '#16241a', ol: '#16241a', ln: '#16241a' },
-    [FACE]:   { r: ['#b8c04a', '#d0d85c', '#e4ea74', '#f2f49a', '#fcfcd0'], od: '#5a5a14', ol: '#8a9028', ln: '#7a8024' },
-    [COLLAR]: { r: ['#244e1e', '#2e6226', '#3a762e', '#4a8a3a', '#5e9e4a'], od: '#10280c', ol: '#1e4218', ln: '#183a14' },
+    [FACE]:   { r: ['#bcc062', '#d2d676', '#e6e98e', '#f2f4ae', '#fcfcd8'], od: '#5a5a14', ol: '#8a9028', ln: '#7a8024' },
+    [COLLAR]: { r: ['#345a2c', '#46723a', '#56844a', '#68985a', '#80ae70'], od: '#142c10', ol: '#264a1e', ln: '#20421a' },
   });
   const GLOSSY = {};
   const C_GREEN = code(GREEN), C_BUD = code(BUD), C_SEAM = code(SEAM), C_HEART = code(HEART), C_POLLEN = code(POLLEN);
@@ -65,18 +67,19 @@ const Budew = (() => {
   }
 
   /* ---------- layout (design units, 2× the final size) ---------- */
-  const BODY_C = [0, 22, 0], BODY_R = [17, 19, 17.5];
-  const HEAD_C = [7.5, 25.5, 0], HEAD_R = [11, 12, 14.5]; // the yellow face dome
-  const TOP_C = [1.5, 58, 0], TOP_R = [11, 9.5, 11]; // closed bud at the top
+  const BODY_C = [0, 21, 0], BODY_R = [17.5, 18.5, 18];
+  const HEAD_C = [8.5, 23, 0], HEAD_R = [11, 15, 15.5]; // the yellow face dome
+  const TOP_C = [2, 60, -3], TOP_R = [9, 10.5, 9]; // closed bud at the top (leans to one side)
   const SIZE = 0.5;
   let curScale = 1, MO = 0, EYEK = 'open', DECAL = false;
   const px1 = (r) => 0.55 / (curScale * SIZE * r);
 
   // face: tiny vertical-dash eyes and a small smile (surface decals when big on screen)
-  const EYE_AZ = 0.42, EYE_V = 0.18;
+  const EYE_AZ = 0.42, EYE_V = 0.22;
   function faceMat(s) {
-    if (s[0] < 0.1) return C_FACE;
     const az = Math.atan2(s[2], s[0]), v = s[1];
+    { const w = 1.12 * Math.pow(Math.max(0, 1 - Math.max(0, v + 0.1) / 1.0), 0.45); if (Math.abs(az) > w || s[0] < -0.2) return 0; }
+    if (s[0] < 0.1) return C_FACE;
     if (DECAL) {
       const lw = Math.max(0.06, px1(HEAD_R[2]) * 0.8);
       for (const sd of [1, -1]) {
@@ -142,7 +145,7 @@ const Budew = (() => {
 
     // --- pear body: round lower bulb narrowing into the neck
     prims.push(ellF(chain(root, T(...BODY_C)), BODY_R, 1, 1, M_GREEN));
-    prims.push(ellF(chain(root, T(-1, 40, 0)), [11.5, 15, 12], 1, 1, M_GREEN));
+    prims.push(ellF(chain(root, T(-1, 36, 0)), [8.5, 7, 9], 1, 1, M_GREEN));
     anchors.body = inF(root, BODY_C);
 
     // --- face dome and the dark four-lobed collar under it (tilt rolls the upper body)
@@ -151,16 +154,17 @@ const Budew = (() => {
     const headPrim = ellF(head, HEAD_R, 2, 2, faceMat);
     prims.push(headPrim);
     [[-0.55, 0], [-0.18, 1], [0.18, 2], [0.55, 3]].forEach(([az, i]) => {
-      const c = [BODY_C[0] + 14 * Math.cos(az), 12 - 2 * Math.abs(az), 17 * Math.sin(az)];
-      prims.push(ellF(chain(neck, T(...c), R(M3.ry(-az))), [5, 6.2, 7], 12 + i, 12 + i, M_COLLAR));
+      const c = [BODY_C[0] + 13.5 * Math.cos(az), 9.5 - 2 * Math.abs(az), 17.5 * Math.sin(az)];
+      prims.push(ellF(chain(neck, T(...c), R(M3.ry(-az)), R(M3.rz(-0.25))), [5.6, 8.4, 8.4], 12 + i, 12 + i, M_COLLAR));
     });
 
-    // --- leaf band wrapping diagonally up from the near side to the top bud
-    prims.push(seg(inF(neck, [2, 26, 15]), inF(neck, [4, 44, -3]), 5.5, 5, 3, 3, M_GREEN));
-    prims.push(seg(inF(neck, [4, 42, -4]), inF(neck, [1, 54, -1]), 5.5, 5.5, 3, 3, M_GREEN));
+    // --- thin neck curving up in an S (the wrapped leaf) to the leaning top bud
+    prims.push(seg(inF(neck, [0, 36, 1]), inF(neck, [1, 46, 4]), 6, 6, 1, 1, M_GREEN));
+    prims.push(seg(inF(neck, [1, 44, 4]), inF(neck, [2, 54, -1]), 5.4, 5.4, 3, 3, M_GREEN));
+    prims.push(seg(inF(neck, [2, 28, 15]), inF(neck, [3, 43, 3]), 4.2, 3.8, 3, 3, M_GREEN));
 
     // --- top bud; parts into petals when blooming
-    const tipBase = chain(neck, T(...TOP_C), R(M3.rz(-0.15)));
+    const tipBase = chain(neck, T(...TOP_C), R(M3.rx(-0.38)), R(M3.rz(-0.12)));
     prims.push(ellF(tipBase, TOP_R, 4, 4, topMat));
     if (bloom < 0.04) {
       anchors.top = inF(tipBase, [0, TOP_R[1], 0]);

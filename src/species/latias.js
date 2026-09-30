@@ -2,10 +2,11 @@
    Latias — the Eon Pokémon (1.4 m ≈ 245 units tall hovering, scale 1).
    A red-and-white jet-like dragon: a plump streamlined body (red back,
    white throat/chest/belly) that tapers into a tail with two little
-   stabiliser fins, a round head with a short snout (red crown, white
-   jaw), golden-yellow eyes, two red fin "ears" swept back from the head,
-   a blue downward-pointing triangle on the white chest, short white arms
-   and big red jet wings from the shoulders.
+   stabiliser fins, a white head with a tapered snout and a red visor
+   frame (arching over each big golden eye and running along the top edges
+   of the snout), white fin "ears" swept back, a blue downward-pointing
+   triangle on each flank, short arms (white upper arm, red hand) and big
+   red jet wings from the shoulders.
    Model space: x = forward, y = up, z = near side at yaw 0. In the default
    hovering pose the tail tip is the lowest point (y = 0).
 
@@ -29,14 +30,16 @@
 ------------------------------------------------------------------- */
 const Latias = (() => {
   // material ids (eyes are pixel stamps)
-  const MAIN = 1, WHITE = 2, MARK = 3, MOUTH = 4, TONGUE = 5;
-  const MAT = { RED: MAIN, WHITE, MARK, MOUTH, TONGUE };
+  const MAIN = 1, WHITE = 2, MARK = 3, MOUTH = 4, TONGUE = 5, IRIS = 6, PUPIL = 7;
+  const MAT = { RED: MAIN, WHITE, MARK, MOUTH, TONGUE, IRIS, PUPIL };
   const PAL = Creature.palette({
     [MAIN]:   { r: ['#8c2c3a', '#b64652', '#d6646a', '#ee8c8c', '#fcc0bc'], od: '#541020', ol: '#9a3242', ln: '#8a2a38' },
     [WHITE]:  { r: ['#98a0c2', '#bac4de', '#dae2f2', '#f0f4fc', '#ffffff'], od: '#464c72', ol: '#8088ac', ln: '#8e96b8' },
     [MARK]:   { r: ['#2654aa', '#3670cc', '#5290e8', '#80b4f8', '#bcdafe'], od: '#122c66', ol: '#2a56a6', ln: '#244a96' },
     [MOUTH]:  { r: ['#4a1020', '#66182c', '#84263c', '#a2384e', '#bc5264'], od: '#2c0612', ol: '#4a1020', ln: '#3c0c1a' },
     [TONGUE]: { r: ['#b8485e', '#d66276', '#ee8290', '#ffa8b0', '#ffd0d2'], od: '#6a1a2e', ol: '#8e2a40', ln: '#8e2a40' },
+    [IRIS]:   { r: ['#a86e2a', '#c48c40', '#deb16a', '#edd6ac', '#fff4dc'], od: '#5a3010', ol: '#8a5a24', ln: '#8a5a24' },
+    [PUPIL]:  { r: ['#140608', '#1e0a0e', '#2a0e14', '#3a161c', '#4a2028'], od: '#0a0204', ol: '#140608', ln: '#140608' },
   });
   const GLOSSY = { [MAIN]: 1, [MARK]: 1 };
   const GLOW_TINT = PX.hex('#ffe4ee');
@@ -138,21 +141,21 @@ const Latias = (() => {
     { h: [-79, 18], j: [-114, 104], rn: 9, rw: 10, wk: -2 },
     { h: [-52, 37], j: [-80, 105], rn: 15, rw: 16, wk: -2 },
     { h: [-28, 64], j: [-46, 106], rn: 21.5, rw: 22.5, wk: -2 },
-    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: -0.55 },
-    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: 0.3 },
-    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 2 },
+    { h: [-9, 96], j: [-12, 107], rn: 26, rw: 26, wk: -1.1 },
+    { h: [4, 126], j: [22, 108], rn: 27, rw: 26.5, wk: -0.3 },
+    { h: [12, 150], j: [48, 110], rn: 19.5, rw: 19.5, wk: 0.45 },
     { h: [20, 170], j: [70, 113], rn: 12, rw: 12, wk: 2 },
     { h: [30, 188], j: [90, 117], rn: 11, rw: 11, wk: 2 },
   ];
-  const TRI = { t0: 3.55, t1: 4.55, w: 12 };          // belly triangle (spline param range, top half-width)
+  const TRI = { t0: 3.75, t1: 4.75, w: 11, y: 0.05 };  // flank triangle (spline param range, top half-width, height)
   const PATCH = { t: 3.45, dt: 0.62, z: 0.8, dz: 0.3, y: -0.15, dy: 0.5 };
   const HEAD = { h: [48, 203, 0], j: [112, 125, 0], ph: -0.06, pj: 0.06 };
-  const CRAN_R = [25, 21, 20.5], SNOUT_C = [14.5, -6, 0], SNOUT_R = [17, 13, 14.5], SNOUT_TILT = -0.08;
+  const CRAN_R = [24, 20.5, 19.5], SNOUT_C = [18, -6.5, 0], SNOUT_R = [21, 11.5, 12.5], SNOUT_TILT = -0.12;
   const jawLine = (x) => (x > 8 ? -3 - (x - 8) * 0.1 : -3 - (8 - x) * 0.26);
-  const EYE_S = nrm([0.62, 0.2, 0.76]);                // eye position on the cranium (unit sphere, near side)
+  const EYE_S = nrm([0.62, 0.0, 0.78]);                // eye position on the cranium (unit sphere, near side)
 
   // wing (u = span out from the root, v = chord: + toward the leading edge)
-  const WING = outline([[-8, 20], [20, 15], [52, 9], [84, 4], [112, 1], [124, -3], [114, -8], [110, -13], [104, -9], [84, -11], [54, -16], [26, -25], [6, -32], [-8, -24]], 16, 6);
+  const WING = outline([[-8, 16], [20, 12], [52, 7], [84, 3], [112, 1], [126, -3], [114, -7], [110, -12], [104, -8], [84, -9], [54, -12], [26, -18], [6, -24], [-8, -18]], 16, 6);
   const EAR = outline([[-6, 10], [12, 10.5], [28, 7], [44, 0.5], [31, -4], [14, -7.5], [-6, -7.5]], 6, 3.2);
   const TFIN = outline([[-5, 12], [10, 10], [22, 3], [32, -7], [22, -9], [9, -7], [-5, -8]], 2, 2.6);
 
@@ -178,6 +181,27 @@ const Latias = (() => {
   const EYEC = { k: '#3a0c1a', y: '#ffd23c', o: '#e0961c', p: '#2a0c14', w: '#ffffff' };
 
   const C_MAIN = code(MAIN), C_WHITE = code(WHITE), C_MARK = code(MARK), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE);
+  const C_IRIS = code(IRIS), C_IRIS_D = code(IRIS, -1), C_PUPIL = code(PUPIL), C_GLINT = code(WHITE, 2);
+  // big eyes as decals on the cranium when the sprite is large enough (small sprites use the pixel stamps)
+  const EYE_AZ = Math.atan2(EYE_S[2], EYE_S[0]), EYE_V = EYE_S[1], EYE_RU = 0.24, EYE_RV = 0.29;
+  const EYE_P = [CRAN_R[0] * EYE_S[0], CRAN_R[1] * EYE_S[1]]; // eye centre in the head frame (side view)
+  let curScale = 1, bigEyes = false;
+  function eyeDecal(s, kind) {
+    const cv = Math.sqrt(Math.max(0, 1 - s[1] * s[1]));
+    const a = (Math.abs(Math.atan2(s[2], s[0])) - EYE_AZ) * cv / EYE_RU, b = (s[1] - EYE_V) / EYE_RV;
+    const r = Math.hypot(a, b);
+    if (r > 1) return 0;
+    const px = 1 / (curScale * SIZE * CRAN_R[1] * EYE_RV);
+    const lw = Math.max(0.12, 1.1 * px);
+    if (kind !== 'open') {
+      const yc = kind === 'happy' ? -0.35 + 0.7 * (1 - a * a) : kind === 'closed' ? 0.25 - 0.6 * (1 - a * a) : -0.05;
+      return Math.abs(b - yc) < lw * 1.2 && Math.abs(a) < 0.95 ? C_PUPIL : 0;
+    }
+    if (r > 1 - lw) return C_PUPIL;
+    const pa = (a + 0.08) / 0.34, pb = b / 0.62;
+    if (pa * pa + pb * pb < 1) return (pa + 0.2) ** 2 + (pb - 0.45) ** 2 < 0.09 ? C_GLINT : C_PUPIL;
+    return b < -0.35 ? C_IRIS_D : C_IRIS;
+  }
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -194,16 +218,14 @@ const Latias = (() => {
       const tg = nrm([q1[0] - q0[0], q1[1] - q0[1], 0]);
       return { p: [q[0], q[1], 0], t: tg, n: [-tg[1], tg[0], 0], rn: q[2], rw: q[3], wk: q[4] };
     };
-    // body material: white belly below the dorsal threshold, blue triangle on the chest
+    // body material: white belly below the dorsal threshold, blue triangle on each flank
     const bodyMat = (tm, rlT, rw, wk) => (s) => {
       const t = tm + s[0] * rlT;
-      if (s[1] < -0.2 && t > TRI.t0 && t < TRI.t1) {
-        const hw = (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0), z = Math.abs(s[2] * rw);
-        if (z < hw) return (z < hw - 2.6 && t < TRI.t1 - 0.22 && t > TRI.t0 + 0.28 ? C_MAIN : C_MARK);
+      // the blue triangle on each flank (outlined, red inside), pointing down toward the tail
+      if (Math.abs(s[2]) > 0.55 && t > TRI.t0 && t < TRI.t1) {
+        const hw = (TRI.w * (t - TRI.t0)) / (TRI.t1 - TRI.t0), y = (s[1] - TRI.y) * rw;
+        if (Math.abs(y) < hw) return Math.abs(y) < hw - 2.6 && t < TRI.t1 - 0.2 && t > TRI.t0 + 0.26 ? C_MAIN : C_MARK;
       }
-      // white jet-intake patches low on the flanks
-      const pt = (t - PATCH.t) / PATCH.dt, pz = (Math.abs(s[2]) - PATCH.z) / PATCH.dz, py = (s[1] - PATCH.y) / PATCH.dy;
-      if (pt * pt + pz * pz + py * py < 1) return C_WHITE;
       return s[1] < wk ? C_WHITE : C_MAIN;
     };
     const NS = 56;
@@ -219,15 +241,22 @@ const Latias = (() => {
 
     /* --- head: cranium + snout (red crown, white jaw), mouth wedge at the snout tip --- */
     const hc = lerpV(HEAD.h, HEAD.j, k), HL = M3.rz(lerp(HEAD.ph, HEAD.pj, k));
+    const kind = ['open', 'happy', 'closed', 'blink'].includes(P.eyes) ? P.eyes : 'open';
     const headMat = (c, Lloc, snout) => (s) => {
+      if (!snout && bigEyes && s[0] > 0.2) { const e = eyeDecal(s, kind); if (e) return e; }
       const p = add(c, M3.v(Lloc, s));
       const yb = jawLine(p[0]);
       if (snout && mouth > 0.04 && p[0] > 15) {
         const open = mouth * 0.34 * (p[0] - 15);
         if (p[1] < yb + 0.9 && p[1] > yb - open) return p[1] < yb - open * 0.5 && Math.abs(p[2]) < 8.5 ? C_TONGUE : C_MOUTH;
       }
-      // white head; a red band across the face through the eyes and back over the crown
-      if (!snout || p[0] < 26) { if (p[1] > yb + 3.5 && p[1] < yb + 16 - 0.1 * p[0]) return C_MAIN; }
+      // white head with a red visor frame on each side: an arch over and round the back of the eye that
+      // runs forward along the upper edge of the snout to its tip; the top of the snout stays white
+      if (Math.abs(p[2]) > 3.5) {
+        const dx = p[0] - EYE_P[0], dyy = p[1] - EYE_P[1], d = Math.hypot(dx, dyy * 1.05);
+        if (d > 7.2 && d < 13 && (dyy > -1 || (dx < -3 && dyy > -6 + 0.4 * dx))) return C_MAIN;
+        if (dx > 8 && Math.abs(p[1] - (EYE_P[1] + 2 - 0.44 * (dx - 9.5))) < 3) return C_MAIN;
+      }
       return C_WHITE;
     };
     const crL = M3.diag(...CRAN_R);
@@ -249,7 +278,6 @@ const Latias = (() => {
     }
 
     /* --- eyes --- */
-    const kind = ['open', 'happy', 'closed', 'blink'].includes(P.eyes) ? P.eyes : 'open';
     for (const sd of [1, -1]) {
       const s = [EYE_S[0], EYE_S[1], EYE_S[2] * sd];
       const at0 = { prim: cran, p: add(cran.c, M3.v(cran.L, s)), s };
@@ -285,7 +313,7 @@ const Latias = (() => {
       const fo = nrm(lerpV(dir(0.28, -0.95, -0.02), dir(-0.97, 0.06, -0.06), k));
       const el = add(sh, scl(up, 19)), ha = add(el, scl(fo, 16));
       const id = sd > 0 ? 7 : 8;
-      prims.push(segE(sh, el, 7.6, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
+      prims.push(segE(sh, el, 7.6, SH.n, 40 + (sd > 0 ? 0 : 3), id, () => C_WHITE));
       prims.push(segE(el, ha, 6.8, SH.n, 41 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
       prims.push(E(add(ha, scl(fo, 1.5)), M3.diag(7.4, 7, 7), 42 + (sd > 0 ? 0 : 3), id, () => C_MAIN));
       // three small white claws
@@ -325,8 +353,9 @@ const Latias = (() => {
   /* ---------- render: eye set by scale, glow lift + aura, tight ray-cast box ---------- */
   function render(model, opt) {
     const sc = opt.scale || 1;
-    const set = sc >= 0.7 ? EYES_XL : sc >= 0.36 ? EYES_L : EYES_S;
-    for (const st of model.stamps) st.set = set;
+    curScale = sc; bigEyes = sc >= 0.6;
+    const set = sc >= 0.36 ? EYES_L : EYES_S;
+    for (const st of model.stamps) st.set = set, st.minFacing = bigEyes ? 2 : 0.1; // big sprites draw the eye decal instead
     const g = clamp((model.pose && model.pose.glow) || 0, 0, 1);
     let pal = opt.pal || PAL;
     if (g > 0) {
@@ -375,5 +404,5 @@ const Latias = (() => {
     return r;
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.4, bw: 330, bh: 300, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.4, bw: 400, bh: 300, oy: 0.9 } };
 })();

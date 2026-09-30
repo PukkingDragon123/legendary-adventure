@@ -37,13 +37,13 @@ const Starmie = (() => {
   const ARM = 1, GOLD = 2, COLLAR = 3, JEWEL = 4, GLOW = 5, ARM2 = 6;
   const MAT = { ARM, GOLD, COLLAR, JEWEL, GLOW, ARM2 };
   const PAL = Creature.palette({
-    [ARM]:    { r: ['#46425e', '#5e5a7c', '#7a7698', '#9894b8', '#bab6d6'], od: '#26233a', ol: '#4a4664', ln: '#403c58' },
-    [GOLD]:   { r: ['#9c7e2a', '#c4a23c', '#e2c257', '#f2dc8a', '#fff4c8'], od: '#5e4206', ol: '#94721a', ln: '#886812' },
-    [COLLAR]: { r: ['#c2a232', '#e0c24c', '#f6e074', '#fff0a8', '#fffce0'], od: '#664a0a', ol: '#a0801e', ln: '#8a6c16' },
-    [JEWEL]:  { r: ['#80202e', '#b0384a', '#d85a66', '#f08c8e', '#ffd8d4'], od: '#40040e', ol: '#721024', ln: '#6a0e22' },
+    [ARM]:    { r: ['#52505e', '#686576', '#8a869e', '#aaa9c8', '#cacae4'], od: '#26242e', ol: '#4a4854', ln: '#44424e' },
+    [GOLD]:   { r: ['#a08a4c', '#c4aa62', '#e7d07e', '#f6e4a0', '#fff6d4'], od: '#5a4410', ol: '#907424', ln: '#86701e' },
+    [COLLAR]: { r: ['#b09a58', '#d4bc70', '#f2dc8a', '#faeab0', '#fff8e0'], od: '#62480e', ol: '#9a7c28', ln: '#8a6e20' },
+    [JEWEL]:  { r: ['#8a3a48', '#b0505e', '#cf787f', '#e89aa0', '#fce8ea'], od: '#4a1018', ol: '#7a2432', ln: '#7a2432' },
     [GLOW]:   { r: ['#ff5c78', '#ff8c9e', '#ffbcc6', '#ffe6ea', '#ffffff'], od: '#a01a36', ol: '#d84058', ln: '#d84058' },
     // back star: the same violet, a touch deeper so the two stars read apart
-    [ARM2]:   { r: ['#3e3a54', '#555170', '#6e6a8c', '#8a86aa', '#aaa6c8'], od: '#221f34', ol: '#423e5a', ln: '#38344e' },
+    [ARM2]:   { r: ['#4a4856', '#5e5b6c', '#7c7890', '#9c9aba', '#bcbcd8'], od: '#22202a', ol: '#42404c', ln: '#3a3844' },
   });
   const GLOSSY = { [JEWEL]: 1, [GOLD]: 1, [COLLAR]: 1 };
   const C_ARM = code(ARM), C_ARM2 = code(ARM2), C_GOLD = code(GOLD), C_GOLD_L = code(GOLD, 1), C_COLLAR = code(COLLAR), C_JEWEL = code(JEWEL), C_JEWEL_L = code(JEWEL, 1), C_JEWEL_D = code(JEWEL, -1);
@@ -83,35 +83,33 @@ const Starmie = (() => {
   }
 
   /* ---------- the two stars (core frame: x = front, stars in the y-z plane) ---------- */
-  const R_OUT = 96, R_IN = 36;                        // tip radius, inner-corner radius (sharp points)
+  const R_OUT = 98, R_IN = 43;                        // tip radius, inner-corner radius (sharp points)
   const CS = Math.cos(Math.PI / 5), SN = Math.sin(Math.PI / 5);
   const BASE = R_IN * CS, HALF = R_IN * SN;           // arm base line distance and half width
   // x: plane of the star, hF / hB: ridge height at the centre toward the front / back, rot: turn
   const STARS = [
-    { x: 0, hF: 17, hB: 8, rot: 0, id: 1 },           // front star (arms 1..5)
-    { x: -12, hF: 9, hB: 13, rot: Math.PI / 5, id: 11 }, // back star, turned 36° (arms 11..15)
+    { x: 0, hF: 26, hB: 8, rot: 0, id: 1 },           // front star (arms 1..5)
+    { x: -12, hF: 14, hB: 13, rot: Math.PI / 5, id: 11 }, // back star, turned 36° (arms 11..15)
   ];
 
   /* ---------- gold setting, collar and jewel ---------- */
-  const SET_X = 11, SET_R = [9.5, 39, 39];              // gold disc (its back half sinks into the star)
-  const COLLAR_X = 15, COLLAR_R = [5, 24.5, 24.5];
-  const JEWEL_X = 15, JEWEL_R = 21, JEWEL_D = 11;
-  // ten-point sunburst rim: radius (unit disc) by angle, points toward all ten arm tips
-  function sunburst(th) {
-    const u = (th - Math.PI / 2) / (Math.PI / 5);
-    const f = Math.abs(u - Math.round(u)) * 2; // 0 at a point, 1 half way between
-    return 1 - 0.3 * Math.pow(f, 0.8);
-  }
+  const SET_X = 11, SET_R = [9.5, 53, 53];              // gold disc (its back half sinks into the star)
+  const COLLAR_X = 15, COLLAR_R = [5, 31, 31];
+  const JEWEL_X = 16, JEWEL_R = 27, JEWEL_D = 11;
+  // the gold setting: a broad ring round the jewel with eight square-ended prongs sticking out
   const setMat = (s) => {
     const rho = Math.hypot(s[1], s[2]);
-    if (rho > sunburst(Math.atan2(s[1], s[2]))) return 0;
-    // a raised inner ridge of the setting catches the light
-    return rho > 0.62 && rho < 0.7 ? C_GOLD_L : C_GOLD;
+    if (rho < 0.72) return rho > 0.62 && rho < 0.67 ? C_GOLD_L : C_GOLD;
+    const th = Math.atan2(s[1], s[2]);
+    const k = Math.round((th - Math.PI / 2) / (Math.PI / 4));
+    const dth = th - Math.PI / 2 - k * (Math.PI / 4);
+    return Math.abs(Math.sin(dth)) * rho < 0.085 && Math.cos(dth) * rho < 1 ? C_GOLD : 0;
   };
   const collarMat = (s) => (s[0] > 0.35 ? code(COLLAR, 1) : C_COLLAR);
 
   // core flash: a white four-point sparkle stamped over the jewel (per pixel size, cached)
   const SPARKS = new Map();
+  let curScale = 1;
   function spark(L) {
     let g = SPARKS.get(L);
     if (g) return g;
@@ -160,7 +158,7 @@ const Starmie = (() => {
         const Af = [st.x + st.hF, 0, 0], Ab = [st.x - st.hB, 0, 0];
         const Il = add(O, add(sc(d, BASE), sc(w, HALF))), Ir = add(O, add(sc(d, BASE), sc(w, -HALF)));
         const tip = add(O, sc(d, R_OUT));
-        for (const tri of [[Af, Il, tip], [Af, tip, Ir], [Ab, Il, tip], [Ab, tip, Ir]]) prims.push(facet(tri.map(toM), id, id, st.id === 1 ? C_ARM : C_ARM2));
+        for (const tri of [[Af, Il, tip], [Af, tip, Ir], [Ab, Il, tip], [Ab, tip, Ir]]) prims.push(facet(tri.map(toM), id, st.id, st.id === 1 ? C_ARM : C_ARM2)); // one group per star: its arms don't shadow each other
         const tk = st.id === 1 ? k : 5 + k;
         anchors['tip' + tk] = toM(tip);
         top = Math.max(top, anchors['tip' + tk][1]);
@@ -175,7 +173,22 @@ const Starmie = (() => {
     jewel.part = jewel.grp = 22;
     const dim = P.eyes === 'closed';
     // facet glints: a bright crescent toward the light, a darker rim underneath
-    jewel.mat = (s) => (s[0] * 0.5 + s[1] * 0.62 + s[2] * 0.6 > 0.74 ? (dim ? C_JEWEL : C_JEWEL_L) : s[0] < 0.3 && s[1] < -0.2 ? C_JEWEL_D : dim ? C_JEWEL_D : C_JEWEL);
+    // a faceted octagonal gem: a flat table in the middle, eight facets round it (alternately lighter and
+    // darker), a white glint on the upper facets
+    jewel.mat = (s) => {
+      const rho = Math.hypot(s[1], s[2]), th = Math.atan2(s[1], s[2]);
+      const k = Math.round((th - Math.PI / 8) / (Math.PI / 4)), dth = th - Math.PI / 8 - k * (Math.PI / 4);
+      if (rho * Math.cos(dth) > 0.93) return 0;                       // octagon outline
+      const lw = Math.max(0.03, 0.8 / (curScale * JEWEL_R));
+      const table = rho * Math.cos(dth) < 0.46;
+      // facet edges: the table's outline and the seams between the side facets
+      if (Math.abs(rho * Math.cos(dth) - 0.46) < lw || (!table && Math.abs(Math.sin(Math.abs(dth) - Math.PI / 8)) * rho < lw * 0.8)) return C_JEWEL_D;
+      if (dim) return table ? C_JEWEL_D : code(JEWEL, -1 + (k & 1));
+      if (table) return s[1] - s[2] > 0.18 && s[1] - s[2] < 0.34 ? code(JEWEL, 2) : C_JEWEL;
+      const up = Math.sin(th + Math.PI / 4);                          // facets facing up-left catch the light
+      if (up > 0.55 && Math.abs(s[1] - s[2] - 0.6) < 0.14) return code(JEWEL, 2);
+      return code(JEWEL, up > 0.3 ? 1 : up < -0.4 ? -1 : (k & 1) ? 0 : -1);
+    };
     prims.push(jewel);
     toM([SET_X - SET_R[0], 0, 0]); toM([SET_X, -SET_R[1], 0]); toM([SET_X, SET_R[1], 0]);
 
@@ -232,6 +245,7 @@ const Starmie = (() => {
 
   function render(model, opt) {
     const scl = opt.scale || 1;
+    curScale = scl;
     const g = clamp(model.pose.glow || 0, 0, 1);
     for (const st of model.stamps) st.set = spark(Math.max(1, Math.round(JEWEL_R * 1.8 * scl * (0.6 + 0.4 * g))));
     if (g > 0) {

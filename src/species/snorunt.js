@@ -33,9 +33,9 @@ const Snorunt = (() => {
   const PAL = Creature.palette({
     [HOOD]:   { r: ['#a8844a', '#c8a866', '#e6cc8c', '#f6e2ae', '#fff6dc'], od: '#4e3814', ol: '#8a6a34', ln: '#8a6a34' },
     [TOOTH_W]: { r: ['#b8bcc4', '#d4d8de', '#eceef2', '#f8f9fb', '#ffffff'], od: '#303038', ol: '#606070', ln: '#1a1a22' },
-    [LINING]: { r: ['#7a3a10', '#9a4e16', '#bc6620', '#d6802e', '#eca048'], od: '#3e1a04', ol: '#6a3008', ln: '#5a2808' },
-    [BLACK]:  { r: ['#0b0c13', '#14151f', '#1f212e', '#2d3042', '#43485e'], od: '#050509', ol: '#16182a', ln: '#050508' },
-    [EYE]:    { r: ['#3a96c4', '#5ebce6', '#98e2fa', '#d2f6ff', '#ffffff'], od: '#12405c', ol: '#2a6688', ln: '#2a6688' },
+    [LINING]: { r: ['#a8583a', '#cc7650', '#f09b6f', '#f8b48c', '#ffd0b0'], od: '#5a2210', ol: '#8e4424', ln: '#7a3a1e' },
+    [BLACK]:  { r: ['#161618', '#222224', '#333335', '#48484a', '#5e5e60'], od: '#08080a', ol: '#1a1a1c', ln: '#0c0c0e' },
+    [EYE]:    { r: ['#5a9ec4', '#7ebce0', '#a2d6f2', '#cceaf8', '#ffffff'], od: '#1e4a66', ol: '#3a6e8e', ln: '#3a6e8e' },
     [MOUTH]:  { r: ['#521020', '#741a2e', '#962a40', '#b84458', '#d46a78'], od: '#2a0610', ol: '#521020', ln: '#3a0a18' },
   });
   const GLOSSY = {}; // the hood's highlight comes from shadeCode (ideal normal)
@@ -49,7 +49,7 @@ const Snorunt = (() => {
      prim.Lv·Q maps them to view space. shadeCode returns the material code whose tone bias
      lands on the tone (and highlight) the ideal normal n would get. */
   let LD = V3.norm([-0.5, 0.72, 0.5]), TH = [-0.2, 0.18, 0.74], HH = V3.norm(V3.add(LD, [0, 0, 1])), SPEC = 0.975;
-  const toneOf = (d) => (d < TH[0] ? 0 : d < TH[1] ? 1 : d < TH[2] ? 2 : 3);
+  const toneOf = (d) => (d < TH[0] ? 0 : d < TH[1] ? 1 : d < TH[2] + 0.13 ? 2 : 3); // soft renderer thresholds
   function shadeCode(prim, Q, s, n0, n1, n2, m, gloss, extra) {
     const Lv = prim.Lv, Li = prim.Li;
     const q0 = Q[0] * n0 + Q[1] * n1 + Q[2] * n2, q1 = Q[3] * n0 + Q[4] * n1 + Q[5] * n2, q2 = Q[6] * n0 + Q[7] * n1 + Q[8] * n2;
@@ -95,12 +95,12 @@ const Snorunt = (() => {
   const bendAt = (y, b) => (y > 70 ? -b * ((y - 70) / 52) ** 2 : 0);
 
   // head layout (hood-local coordinates, before K)
-  const HEAD_C = [2, 63, 0], HEAD_R = [30, 29, 30];
+  const HEAD_C = [2, 58, 0], HEAD_R = [30, 30, 30];
   // face opening: a tunnel along +x through the hood (oval in y-z)
-  const FACE_Y = 66, FACE_H = 26, FACE_W = 34;
+  const FACE_Y = 66, FACE_H = 26, FACE_W = 31;
 
   // eyes: tangent frames on the head ellipsoid (unit-sphere space)
-  const EC = sph(0.3, 0.26);
+  const EC = sph(0.48, 0.1);
   const ETY = V3.norm(V3.sub([0, 1, 0], V3.scale(EC, EC[1])));
   const ETX = V3.cross(ETY, EC); // toward the face centre on the near side
   let curScale = 1;
@@ -141,15 +141,15 @@ const Snorunt = (() => {
     }
 
     /* --- round black body under the hood --- */
-    const bodyC = [1, 32, 0];
-    prims.push(shell(body, bodyC, I3, [26, 25, 26], 1, 1, mBLACK));
+    const bodyC = [0, 30, 0];
+    prims.push(shell(body, bodyC, I3, [24, 23, 24], 1, 1, mBLACK));
     anchors.body = pt(body, bodyC);
 
     /* --- little black arm nubs between the hem points --- */
     for (const sd of [1, -1]) {
       const sw = walking ? 0.3 * Math.sin(wk + (sd > 0 ? Math.PI : 0)) : 0;
       const hug = sa;
-      const a = chain(body, T(27 + 2 * hug, 40 + 2 * sw, sd * (9.5 - 2 * hug)), R(M3.rz(sw)), T(0, -3, 0));
+      const a = chain(body, T(25 + 2 * hug, 30 + 2 * sw, sd * (8 - 2 * hug)), R(M3.rz(sw)), T(0, -3, 0));
       const id = sd > 0 ? 4 : 5;
       prims.push(shell(a, [0, 0, 0], I3, [8, 8.5, 8], id, id, mBLACK));
       anchors[sd > 0 ? 'handN' : 'handF'] = pt(a, [0, 0, 0]);
@@ -186,13 +186,13 @@ const Snorunt = (() => {
       // big toothy grin: a wide white band of teeth under the eyes (opens with `mouth`)
       if (s[0] > 0.3) {
         const az = Math.atan2(s[2], s[0]);
-        const mid = -0.12 - 0.06 * (az / 0.62) ** 2, hh = 0.13 + 0.07 * mouth;
-        if (Math.abs(az) < 0.62 && Math.abs(s[1] - mid) < hh * (1 - 0.35 * (az / 0.62) ** 2)) {
-          if (mouth > 0.1 && Math.abs(s[1] - mid) < 0.09 * mouth) return code(MOUTH, -1);
+        const topE = -0.2 + 0.07 * (1 - (az / 0.95) ** 2), mid = topE - 0.25, hh = 0.3;
+        if (Math.abs(az) < 0.95 && s[1] < topE && s[1] > topE - 0.75) {
+          if (mouth > 0.1 && Math.abs(s[1] - mid) < 0.16 * mouth) return code(MOUTH, -1);
           const px = 1 / (curScale * K * HEAD_R[1]);
-          const g = (az / 0.62) * 3.5 + 0.5; // tooth gaps
+          const g = (az / 0.95) * 2; // tooth gaps: four big teeth
           if (Math.abs(g - Math.round(g)) * 0.62 / 3.5 < Math.max(0.012, 0.5 * px)) return cBLACK;
-          return code(TOOTH_W, s[1] > mid ? 1 : 0);
+          return code(TOOTH_W, s[1] > topE - 0.12 ? 1 : 0);
         }
       }
       return cBLACK;
@@ -203,7 +203,7 @@ const Snorunt = (() => {
     const bend = 1 + 2 * rock;
     const hoodF = headF;
     // triangular face opening following the cone (apex up), open down to the hem
-    const faceHW = (Y, m) => (Y > 104 + m ? -1 : Math.min(40, ((104 + m - Y) / 57) * (FACE_W + m)));
+    const faceHW = (Y, m) => (Y > 102 + m ? -1 : Y >= 46 ? ((102 + m - Y) / 56) * (FACE_W + m) : (5 + m) + (FACE_W - 5) * Math.pow(clamp((Y - 30) / 16, 0, 1), 0.7));
     const inFace = (X, Y, Z) => X > 6 && Math.abs(Z) < faceHW(Y, 0);
     const beadMat = (s, X, Y, Z, prim, Q) => {
       if (Y < Y_HEM || inFace(X, Y, Z)) return 0;

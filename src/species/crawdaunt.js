@@ -1,329 +1,435 @@
 /* ------------------------------------------------------------------
-   Crawdaunt — the Rogue Pokémon (1.1 m ≈ 192 units at scale 1).
-   Corphish's evolution, built on the same rig (src/species/corphish.js).
+   Crawdaunt — the Rogue Pokémon (1.1 m ≈ 192 units tall at scale 1).
+   Corphish's evolution. A posable 3D model rendered straight to pixel
+   art by the shared Creature pipeline (src/creature.js).
    Model space: x = forward, y = up, z = near side at yaw 0, ground at y = 0.
 
-   Design (official art): a crimson carapace hood with a big yellow
-   four-pointed star crest on top of the head, mean yellow eyes under heavy
-   red brows, a cream face window and cream segmented belly; two huge red
-   pincers (bigger than the head) on thick arms, six short red legs and a
-   red fan tail.
+   Design (official art): a tall crimson crayfish, its long domed head
+   leaning forward over a big rounded body. A big pale-gold five-pointed
+   star (faceted, with a ridge down every point) is stuck on the front of
+   the crown. A cream mask covers the face and chest: a red nose-V dips
+   into its top, two blue chevrons cross it, and it ends in a zigzag of
+   teeth; a red band with more zigzags separates it from the cream belly.
+   Small round eyes (white, thick black ring, tiny pupil) sit high on the
+   sides of the head in dark-red sockets. Two huge pincers: a bulbous red
+   palm, a curved red upper hook with conical teeth and spiky side studs,
+   a cream fixed finger curving up to a pale tip, a black throat when
+   open. Thin jointed arms, six chunky spiked legs with white claw tips,
+   and a segmented tail ending in a pointed, gold-edged fan.
 
    Pose params:
      walk   radians  tripod scuttle phase; exactly 0 = standing
-     claw   0..1     0 = claws held low in front, closed; 1 = raised high
+     claw   0..1     0 = claws held low in front, jaws barely open; 1 = raised high
                      and snapped wide open (boss pose / Crabhammer)
      mouth  0..1     small mouth opens (tongue shows)
-     eyes   'open' (default, glaring) | 'happy' | 'closed' | 'angry' | 'dizzy'
-     side   −1..1    camera side from the game (unused; the model is symmetric)
-     squash 0..1, tilt (radians roll) — as Corphish
+     eyes   'open' (default, glaring) | 'happy' | 'closed' | 'blink' | 'angry' | 'dizzy'
+     side   −1..1    ≈ 3·cos(yaw), from the game: the star turns a little toward the camera
+     squash 0..1, tilt (radians, sideways body roll; feet stay planted)
    Anchors: top (star tip), head, mouth, body, eyeN, eyeF, clawTipN, clawTipF.
 ------------------------------------------------------------------- */
 const Crawdaunt = (() => {
   const { chain, T, R, F, code } = Creature;
 
   // ---- materials
-  const SHELL = 1, CREAM = 2, EYE = 3, INNER = 4, MOUTH = 5, TONGUE = 6, STAR = 7, BLUE = 8;
-  const MAT = { SHELL, CREAM, EYE, INNER, MOUTH, TONGUE, STAR, BLUE };
+  const SHELL = 1, CREAM = 2, EYE = 3, INNER = 4, MOUTH = 5, TONGUE = 6, STAR = 7, BLUE = 8, SOCKET = 9, NAIL = 10, SEG = 11;
+  const MAT = { SHELL, CREAM, EYE, INNER, MOUTH, TONGUE, STAR, BLUE, SOCKET, NAIL, SEG };
   const PAL = Creature.palette({
-    [SHELL]: { r: ['#6a1216', '#921e20', '#bc302c', '#dc4c3e', '#f47a62'], od: '#3a0608', ol: '#6e1414', ln: '#6a1214' },
-    [CREAM]: { r: ['#b09470', '#d2b88e', '#ecd6ac', '#f8eaca', '#fff8e6'], od: '#5a3a1e', ol: '#8a6844', ln: '#9a7a54' },
-    [EYE]: { r: ['#b8b4b0', '#d8d6d2', '#f2f0ec', '#fcfcfa', '#ffffff'], od: '#3a1008', ol: '#5c2010', ln: '#3a1008' },
-    [BLUE]: { r: ['#244a8a', '#3462b0', '#4a84d0', '#6ea4e4', '#a0c8f4'], od: '#142a5a', ol: '#1e3c78', ln: '#1e3c78' },
-    [INNER]: { r: ['#141016', '#1e181e', '#2a2228', '#382e34', '#4a3e44'], od: '#0a0608', ol: '#140c10', ln: '#e8e0d8' },
-    [STAR]: { r: ['#b87410', '#dc9c1c', '#f6c634', '#ffe070', '#fff4b4'], od: '#6a3a06', ol: '#a0620e', ln: '#a8680e' },
+    [SHELL]: { r: ['#7a2224', '#a63634', '#c94c44', '#e0685a', '#f39584'], od: '#420c0e', ol: '#7a1e1e', ln: '#7c1e1e' },
+    [CREAM]: { r: ['#968a7c', '#b6aa9a', '#d2c6b4', '#e8ddcc', '#f8f2e6'], od: '#4e3c2c', ol: '#806a54', ln: '#6e5a48' },
+    [EYE]: { r: ['#b6bac6', '#d6dae4', '#f0f2f6', '#ffffff', '#ffffff'], od: '#2a1012', ol: '#3a1618', ln: '#2a1012' },
+    [INNER]: { r: ['#141012', '#1e181a', '#2a2224', '#3a3034', '#4c4044'], od: '#0c0808', ol: '#140c0e', ln: '#0c0808' },
     [MOUTH]: { r: ['#3e0c12', '#56141a', '#6e1e24', '#88282c', '#a03836'], od: '#2a0608', ol: '#3a0c10', ln: '#3a0c10' },
     [TONGUE]: { r: ['#b0404a', '#cc5a60', '#e57a78', '#f59a92', '#ffc0b4'], od: '#5a1018', ol: '#7a1c24', ln: '#8a2830' },
+    [STAR]: { r: ['#b8964e', '#d6b670', '#eccd8a', '#fae3a4', '#fff4cc'], od: '#5e4214', ol: '#8e6a2a', ln: '#9a7430' },
+    [BLUE]: { r: ['#285a92', '#3a78b6', '#5294cf', '#76b0e2', '#a6cff2'], od: '#16325c', ol: '#224a82', ln: '#1e3e6e' },
+    [SOCKET]: { r: ['#3e0c0e', '#521416', '#661c1e', '#7a2626', '#8c3030'], od: '#2a0608', ol: '#3a0a0c', ln: '#2e0808' },
+    [NAIL]: { r: ['#aaa6a2', '#cac6c2', '#e8e6e2', '#fafaf8', '#ffffff'], od: '#3c3432', ol: '#5c5450', ln: '#6c6460' },
+    [SEG]: { r: ['#5a4838', '#665444', '#746050', '#806c5a', '#8c7864'], od: '#4e3c2c', ol: '#806a54', ln: '#746050' },
   });
   const GLOSSY = { [SHELL]: 1, [STAR]: 1 };
   const NO_DOTS = [{}].slice(1); // empty, but with the elements kind of Mudkip's dot list
-  const C_SHELL = code(SHELL), C_SHELL_D = code(SHELL, -1), C_CREAM = code(CREAM), C_EYE = code(EYE);
-  const C_BLUE = code(BLUE), C_BLUE_L = code(BLUE, 1);
-  const C_INNER = code(INNER), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE);
-  const M_SHELL = () => C_SHELL, M_CREAM = () => C_CREAM, M_EYE = () => C_EYE, M_LINING = () => C_SHELL_D;
+  const C_SHELL = code(SHELL), C_CREAM = code(CREAM), C_EYE = code(EYE), C_INNER = code(INNER), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE);
+  const C_STAR = code(STAR), C_BLUE = code(BLUE), C_SOCKET = code(SOCKET), C_NAIL = code(NAIL), C_SEG = code(SEG), C_BLUE_LN = code(BLUE, -2);
+  const M_SHELL = () => C_SHELL, M_CREAM = () => C_CREAM, M_INNER = () => C_INNER, M_SOCKET = () => C_SOCKET;
 
   // ---- vector helpers
   const add = V3.add, sub = V3.sub, sc = V3.scale, dot = V3.dot, cross = V3.cross, nrm = V3.norm;
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   const len3 = (a) => Math.hypot(a[0], a[1], a[2]);
-  const mul3 = (a, b) => [a[0] * b[0], a[1] * b[1], a[2] * b[2]];
+  const mz = (a, side) => [a[0], a[1], a[2] * side]; // mirror to the far side
   const inF = (f, p) => add(f.t, M3.v(f.L, p)); // local point → parent space
+  const tri = (x) => { const q = x - Math.floor(x); return 1 - Math.abs(2 * q - 1); }; // triangle wave 0..1..0, period 1
 
   // Primitives, stamps and the model reuse Mudkip's exact object layouts, so the shared
   // renderer's inline caches see no new hidden classes (no deopts when species interleave).
   const E = (c, L, part, grp, mat) => ({ kind: 'ell', part, grp, c, L, mat });
   const PL = (c, L, part, grp, shape, thick) => ({ kind: 'plate', part, grp, c, L, shape, thick });
   const ellF = (f, r, part, grp, mat) => E(f.t, M3.mul(f.L, M3.diag(r[0], r[1], r[2])), part, grp, mat);
-  // ellipsoid spanning p0 → p1 along its local y axis (model-space points)
-  function seg(p0, p1, rx, rz, part, grp, mat) {
+  // ellipsoid spanning p0 → p1 (frame-local points) along its local y axis, x kept close to `fwd`
+  function seg(f, p0, p1, rx, rz, part, grp, mat, fwd = [1, 0, 0]) {
     const d = sub(p1, p0), l = len3(d);
     const Y = sc(d, 1 / l);
-    let X = cross(Y, [0, 0, 1]);
-    if (len3(X) < 1e-3) X = cross(Y, [1, 0, 0]);
+    let X = sub(fwd, sc(Y, dot(fwd, Y)));
+    if (len3(X) < 1e-3) X = cross(Y, [0, 0, 1]);
     X = nrm(X);
     const Z = cross(X, Y);
-    return E(sc(add(p0, p1), 0.5), M3.mul(M3.cols(X, Y, Z), M3.diag(rx, l / 2, rz)), part, grp, mat);
+    return E(inF(f, sc(add(p0, p1), 0.5)), M3.mul(f.L, M3.cols(sc(X, rx), sc(Y, l / 2), sc(Z, rz))), part, grp, mat);
   }
-
-  // ---- body geometry (body frame: origin on the ground, before squash/tilt)
-  const HOOD_C = [-2, 54, 0], HOOD_R = [23, 30, 27];
-  const MUZ_C = [7, 52, 0], MUZ_R = [16.5, 13.5, 19];
-  const BEL = [
-    { c: [6, 41, 0], r: [16, 12.5, 19.5] },
-    { c: [4.5, 31.5, 0], r: [15, 11.5, 18] },
-    { c: [3, 24.5, 0], r: [13.5, 8, 15] },
-  ];
-  const LOW_C = [-4, 29, 0], LOW_R = [18, 11, 18.5]; // lower body under the hood rim
-  const LAM_Y = 65, LAM_K = 0.66; // Λ-shaped top edge of the cream face: y < LAM_Y − LAM_K·|z|
-  const RIM_Y = 29; // hood rim height
-  // the window follows the cream shells' outlines (so it never shows the hood lining)
-  const SHELLS = [{ c: MUZ_C, r: MUZ_R }, ...BEL];
-  const SH_Y = SHELLS.map((b) => b.c[1]), SH_RY = SHELLS.map((b) => 1 / b.r[1]), SH_RZ = SHELLS.map((b) => 1 / b.r[2]);
-  function inWindow(x, y, z) {
-    if (x <= 0 || y >= LAM_Y - LAM_K * Math.abs(z)) return false;
-    for (let i = 0; i < 4; i++) {
-      const dy = (y - SH_Y[i]) * SH_RY[i], dz = z * SH_RZ[i];
-      if (dy * dy + dz * dz < 0.8) return true;
+  // flat triangle plate (frame-local vertices)
+  function triPlate(A, B, C, code_) {
+    const u = nrm(sub(B, A)), n = nrm(cross(sub(B, A), sub(C, A))), v = cross(n, u);
+    const b = [len3(sub(B, A)), 0], c = [dot(sub(C, A), u), dot(sub(C, A), v)];
+    const bb = [Math.min(0, c[0]) - 0.6, Math.min(0, c[1]) - 0.6, Math.max(b[0], c[0]) + 0.6, Math.max(0, c[1]) + 0.6];
+    // grown a hair so neighbouring facets close without cracks
+    const g = 0.35, cx = (b[0] + c[0]) / 3, cy = c[1] / 3;
+    const G = (p) => { const d = [p[0] - cx, p[1] - cy], l = Math.hypot(d[0], d[1]) || 1; return [p[0] + (d[0] / l) * g, p[1] + (d[1] / l) * g]; };
+    const a2 = G([0, 0]), b2 = G(b), c2 = G(c);
+    const shape = bakeShape({ bb, test: (x, y) => (Shape2D.inTri(x, y, a2, b2, c2) ? code_ : 0) });
+    return { A, axes: M3.cols(u, v, n), shape };
+  }
+  // faceted cone (flat triangular plates): teeth, studs and nails
+  function cone(base, apex, r, n, rot, code_) {
+    const ax = nrm(sub(apex, base));
+    let e1 = cross(ax, [0, 0, 1]);
+    if (len3(e1) < 1e-3) e1 = cross(ax, [1, 0, 0]);
+    e1 = nrm(e1);
+    const e2 = cross(ax, e1);
+    const V = [];
+    for (let k = 0; k < n; k++) {
+      const a = rot + (k / n) * Math.PI * 2;
+      V.push(add(base, add(sc(e1, r * Math.cos(a)), sc(e2, r * Math.sin(a)))));
     }
-    return false;
+    const out = [];
+    for (let k = 0; k < n; k++) out.push(triPlate(V[k], V[(k + 1) % n], apex, code_));
+    return out;
   }
-  const hoodMat = (s) => {
-    const x = HOOD_C[0] + HOOD_R[0] * s[0], y = HOOD_C[1] + HOOD_R[1] * s[1], z = HOOD_R[2] * s[2];
-    return y < RIM_Y || inWindow(x, y, z) ? 0 : C_SHELL;
-  };
-  const lowMat = (s) => (s[1] < 0.3 ? C_CREAM : C_SHELL);
+  const pushTris = (prims, f, tris, part, grp) => { for (const t of tris) prims.push(PL(inF(f, t.A), M3.mul(f.L, t.axes), part, grp, t.shape, 1.1)); };
 
-  // yellow four-pointed star crest: two crossed star plates (frontal + sagittal) so it reads from every side
-  const C_STAR = code(STAR), C_STAR_D = code(STAR, -1);
-  const STAR_C = [-3, 94, 0], STAR_R = 31, STAR_IN = 0.46;
-  const STAR_G = bakeShape({
-    bb: [-STAR_R - 1, -STAR_R - 1, STAR_R + 1, STAR_R + 1],
-    test(u, v) {
-      const r = Math.hypot(u, v), a = Math.atan2(v, u);
-      // 5-pointed star, one point straight up
-      const sec = (2 * Math.PI) / 5;
-      let t = (a - Math.PI / 2) / sec; t = Math.abs(t - Math.round(t)) * 2;
-      const lim = STAR_R / (1 + (1 / STAR_IN - 1) * t);
-      if (r > lim) return 0;
-      return r > lim - 2.2 && r > 5 ? C_STAR_D : C_STAR;
-    },
-  });
+  /* ---------- body (body frame: origin on the ground, before squash / roll) ----------
+     torso + neck + a long head leaning forward; the cream mask and belly are "proud" copies of
+     them (a touch larger) painted only inside their regions, so they sit on the red shell like
+     armour plates with clean contour lines at every size. */
+  const TORSO_C = [-4, 72, 0], TORSO_R = [35, 36, 37];
+  const POT_C = [-3, 52, 0], POT_R = [37, 21, 40.5]; // pot belly: the body is widest low down
+  const NECK_C = [6, 98, 0], NECK_R = [30, 23, 32]; 
+  const HEAD_C = [12, 121, 0], HEAD_R = [25.5, 37, 28.5], HEAD_LEAN = -0.3;
+  const HEAD_M = M3.rz(HEAD_LEAN);
+  const PROUD = [1.06, 1.012, 1.03];
+  // mask (face + chest), front view coordinates (y up, z across)
+  const maskW = (y) => 31.5 - 0.0045 * (y - 96) * (y - 96);
+  const maskTop = (z) => Math.min(128, 116 + 1.15 * Math.abs(z)) - Math.max(0, Math.abs(z) - 24) * 0.8; // red nose-V dips into the top
+  const maskBot = (z) => 60 + 17 * Math.abs(((Math.abs(z) / 12.5) % 2) - 1); // zigzag teeth pointing down
+  const CHEV_K = 0.68, CHEV = [[92, 102], [79.5, 89.5]]; // blue chevrons: y − K·|z| within these
+  const bellyTop = (z) => 57 - 7 * tri(Math.abs(z) / 13 + 0.5); // zigzag, red V's pointing down
+  const BELLY_SEG = [44, 36];
+  let lineW = 0.5, mouthK = 0;
+  function maskAt(x, y, z) {
+    const az = Math.abs(z);
+    if (y > 57 || x > 0) {
+      if (x > 6 && y < maskTop(z) && y > maskBot(z) && az < maskW(y)) {
+        // mouth: under the tip of the red nose-V, above the chevrons
+        if (mouthK > 0.02) { const dv = (y - 108.5 + 1.6 * mouthK) / (0.9 + 3.4 * mouthK), dz = z / (5.5 + 1.5 * mouthK); if (dv * dv + dz * dz < 1) return dv < -0.25 && mouthK > 0.4 ? C_TONGUE : C_MOUTH; }
+        const v = y - CHEV_K * az;
+        for (const [a, b] of CHEV) if (v > a && v < b) return v - a < lineW * 1.2 || b - v < lineW * 1.2 ? C_BLUE_LN : C_BLUE;
+        return C_CREAM;
+      }
+      if (y > 57) return 0;
+    }
+    // belly: the lower body all round, below a zigzag
+    if (y < bellyTop(z) - (x < -12 ? 3 : 0)) {
+      for (const y0 of BELLY_SEG) if (Math.abs(y - (y0 + 0.012 * z * z)) < lineW) return C_SEG;
+      return C_CREAM;
+    }
+    return 0;
+  }
+  // mat for an ellipsoid (centre c, rotation m, radii r) that evaluates fn at body coordinates
+  function bodyMat(c, m, r, fn) {
+    return (s) => {
+      const lx = r[0] * s[0], ly = r[1] * s[1], lz = r[2] * s[2];
+      return fn(c[0] + m[0] * lx + m[1] * ly + m[2] * lz, c[1] + m[3] * lx + m[4] * ly + m[5] * lz, c[2] + m[6] * lx + m[7] * ly + m[8] * lz);
+    };
+  }
+  const I3 = M3.I();
+  const pr = (r) => [r[0] * PROUD[0], r[1] * PROUD[1], r[2] * PROUD[2]];
+  const MASK_T = bodyMat(TORSO_C, I3, pr(TORSO_R), maskAt);
+  const MASK_P = bodyMat(POT_C, I3, pr(POT_R), maskAt);
+  const MASK_N = bodyMat(NECK_C, I3, pr(NECK_R), maskAt);
+  const MASK_H = bodyMat(HEAD_C, HEAD_M, pr(HEAD_R), maskAt);
 
-  // ---- claw geometry (claw frame: origin at the wrist, x' = toward the tip,
-  //      y' = back of the claw (red upper jaw side), z' = across the broad cream palm)
-  // The bite surface is a steeply tilted plane s1 = Y0 − KT·s0 (unit-sphere space): the red
-  // upper jaw is a wedge over the top and back, hinged low at the back, so the pincer
-  // opens like a mouth at the front-top of the claw. The border zigzags (big teeth).
-  const CA = 22.5, CB = 11.8, CC = 16; // half-length, half-depth (jaw axis), half-width
-  const Y0 = -0.45, KT = 1.4, ZA = 0.5, ZN = 6, ZPH = 0.5;
-  const BN = nrm([KT, 1, 0]), BU = nrm([1, -KT, 0]), BOFF = Y0 / Math.hypot(1, KT);
-  const BCEN = sc(BN, BOFF);
-  const bite = (s) => {
-    const ph = (Math.atan2(s[2], (s[0] - BCEN[0]) * BU[0] + (s[1] - BCEN[1]) * BU[1]) / (2 * Math.PI)) * ZN + ZPH;
-    return Y0 - KT * s[0] + ZA * (Math.abs(ph - Math.floor(ph + 0.5)) * 2 - 0.5);
-  };
-  const lowerMat = (s) => (s[1] < bite(s) ? C_SHELL : 0);
-  const upperMat = (s) => (s[1] >= bite(s) ? C_SHELL : 0);
-  // bite faces: discs in the tilted plane (only seen when the pincer is open)
-  const BRHO = Math.sqrt(1 - BOFF * BOFF) * 0.92, BS = 10;
-  const BITE_G = bakeShape({
-    bb: [-BRHO * BS - 0.5, -BRHO * BS - 0.5, BRHO * BS + 0.5, BRHO * BS + 0.5],
-    test: (u, v) => (u * u + v * v <= (BRHO * BS) ** 2 ? C_INNER : 0),
-  });
-  const BITE_L = M3.mul(M3.diag(CA, CB, CC), M3.mul(M3.cols(BU, [0, 0, 1], BN), M3.diag(1 / BS, 1 / BS, 1 / BS)));
-  const BITE_C = add([CA, 0, 0], M3.v(M3.diag(CA, CB, CC), BCEN));
-  const onBite = (k) => add([CA, 0, 0], mul3([CA, CB, CC], add(BCEN, sc(BU, k * Math.sqrt(1 - BOFF * BOFF)))));
-  const HINGE = onBite(-0.97); // lowest back point of the bite loop
-  const TIP = onBite(0.97); // front point of the bite loop (where the pincer tips meet)
-  // arm keyframes (near side, body frame): wrist position, claw axis, back-of-claw direction
+  /* ---------- star crest: a faceted five-pointed star (flat triangles), in the (y, z) plane
+     with its bulge along +x; a ridge runs from the raised centre out to every point ---------- */
+  const STAR_R = 34, STAR_IN = 14.2, STAR_H = 11;
+  const STAR_TRIS = (() => {
+    const tips = [], ins = [];
+    for (let k = 0; k < 5; k++) {
+      const a = Math.PI / 2 + (k * 2 * Math.PI) / 5, b = a + Math.PI / 5;
+      tips.push([0, STAR_R * Math.sin(a), STAR_R * Math.cos(a)]);
+      ins.push([0, STAR_IN * Math.sin(b), STAR_IN * Math.cos(b)]);
+    }
+    const out = [];
+    for (const h of [STAR_H, -STAR_H]) {
+      const C = [h, 0, 0];
+      for (let k = 0; k < 5; k++) {
+        const kp = (k + 1) % 5, kn = (k + 4) % 5;
+        out.push(triPlate(C, tips[k], ins[k], C_STAR));
+        out.push(triPlate(C, ins[kn], tips[k], C_STAR));
+      }
+    }
+    return out;
+  })();
+  const STAR_C = [29, 156, 0];
+
+  /* ---------- eyes: small, high on the sides of the head, in dark-red sockets ---------- */
+  const EYE_AZ = 1.26, EYE_V = 0.46, EYE_R = [6.8, 6.8, 4.4], SOCK_R = [10.5, 11, 3.6];
+  const WHITE = 0.62; // white disc radius (fraction of the eyeball) inside the thick black ring
+  const eyeMat = (s) => (s[2] > Math.sqrt(1 - WHITE * WHITE) ? C_EYE : C_INNER);
+  const lidMat = (s) => (s[1] > 0.25 - 0.5 * s[0] ? C_SHELL : 0);
+  const LOOK = nrm([1, -0.05, 0]);
+
+  /* ---------- claws (claw frame: origin at the wrist; x' = toward the tips,
+     y' = the upper hook's side, z' = across) ---------- */
+  const CS = 1.32; // claw scale
+  const PALM_C = [14, 0, 0], PALM_R = [18, 15, 14.5];
+  const HINGE = [22, 8, 0];
+  // upper hook: a broad dome that sweeps forward and curls down to a point
+  const DOME = { c: [42, 11, 0], r: [31, 12.5, 16.5], a: -0.13 }; // one smooth dome from the hinge forward
+  const DACT = [[[60, 11, 0], [90, -9.5, 0], 7.2, 8]]; // the hooked point
+  const TEETH = [[[48, 3, 0], [50.5, -8.5, 0], 4.6], [[63, 1.5, 0], [65, -8.5, 0], 3.8]];
+  const STUDS = [[[33, 7, 13], [35, -3, 22.5], 3.8], [[49, 11, 11], [52, 3, 19], 3]];
+  const TEETH_T = TEETH.flatMap(([b, a, r]) => cone(b, a, r, 5, 0.3, C_SHELL));
+  const STUDS_T = STUDS.flatMap(([b, a, r]) => [1, -1].flatMap((zz) => cone(mz(b, zz), mz(a, zz), r, 4, 0.2, C_SHELL)));
+  const FIXED = [[[14, -7, 0], [74, -13.5, 0], 9.5, 13], [[62, -14, 0], [88, 0, 0], 5.4, 6.6]]; // long tusk, tip curling up
+  const FIX_CREAM = 38; // the fixed finger is cream from here on (pale tip)
+  const fixedMat = (p0, p1) => (s) => (lerp3(p0, p1, (s[1] + 1) / 2)[0] > FIX_CREAM ? C_CREAM : C_SHELL);
+  const CLAW_TIP = [85, -4, 0];
+  // arm keyframes (near side, body frame): shoulder, elbow, wrist, claw axis x', hook side y'
+  const SHOULDER = [-4, 94, 31];
   const ARM_K = [
-    { a: -0.5, W: [12, 32, 26], X: [1, 0.35, -0.15], Y: [-0.8, 0.9, 0.1] },
-    { a: 0, W: [-8, 55, 34], X: [0.2, 1, 0.3], Y: [-1, 0.15, -0.35] },
-    { a: 1, W: [-6, 66, 27], X: [0.05, 1, 0.12], Y: [-1, 0.05, -0.3] },
+    { E: [-2, 72, 47], W: [20, 62, 45], X: [0.84, -0.3, 0.3], Y: [0.3, 1, 0] },
+    { E: [-4, 94, 57], W: [18, 104, 56], X: [0.93, 0.2, 0.3], Y: [-0.2, 1, 0] },
   ];
-  function armKey(a) {
-    const i = a <= 0 ? 0 : 1;
-    const k0 = ARM_K[i], k1 = ARM_K[i + 1];
-    const t = Math.max(0, Math.min(1, (a - k0.a) / (k1.a - k0.a)));
-    return { W: lerp3(k0.W, k1.W, t), X: nrm(lerp3(k0.X, k1.X, t)), Y: lerp3(k0.Y, k1.Y, t) };
-  }
 
-  // ---- eyes
-  const EYE_AZ = 0.6, EYE_V = 0.44, EYE_R = [6.8, 8.6, 4];
-  const lidMat = (s) => (s[1] > 0.42 - 0.62 * s[0] ? C_SHELL : 0);
-
-  // ---- legs: hips in the body frame, feet on the ground (tripod gait phases)
+  /* ---------- legs: chunky, with a row of small studs and two white claw tips ---------- */
   const LEGS = [
-    { hip: [9, 25, 11], foot: [25, 0, 21], ph: 0 },
-    { hip: [-2, 24, 14], foot: [1, 0, 32], ph: Math.PI },
-    { hip: [-12, 25, 11], foot: [-24, 0, 26], ph: 0 },
+    { hip: [17, 38, 20], foot: [36, 0, 35], ph: 0 },
+    { hip: [-3, 36, 27], foot: [-3, 0, 51], ph: Math.PI },
+    { hip: [-22, 38, 21], foot: [-37, 0, 40], ph: 0 },
   ];
-  const L_UP = 8, L_LO = 23;
+  const KNEE_OUT = 10, KNEE_UP = 5;
+  // studs and claw tips, baked once in local frames (shin frame: x out, y down the shin; foot frame: x out, y up)
+  const LSTUD_T = [8, 17].flatMap((d) => { const b = [9.4 - d * 0.14, d, 0]; return cone(b, add(b, [5.5, -3, 0]), 2.8, 4, 0.4, C_SHELL); });
+  const NAIL_T = [-1, 1].flatMap((k) => cone([2, 3.6, k * 3.4], [8, 0, k * 4.4], 2.8, 4, 0.2, C_NAIL));
 
-  // ---- tail
+  /* ---------- tail: overlapping segments trailing back and down, then a pointed fan ---------- */
   const TAIL = [
-    { c: [-18, 27, 0], r: [7, 6, 11], a: -0.3 },
-    { c: [-25, 23, 0], r: [6, 5, 9.5], a: -0.42 },
-    { c: [-31, 19.5, 0], r: [5, 4.2, 8.5], a: -0.55 },
-    { c: [-36.5, 16, 0], r: [6.5, 2.4, 11], a: -0.7 },
+    { c: [-31, 46, 0], r: [10, 9, 16], a: -0.25 },
+    { c: [-40, 41.5, 0], r: [8.5, 7.6, 14], a: -0.45 },
+    { c: [-48, 36, 0], r: [7.5, 6.6, 12.5], a: -0.7 },
   ];
+  const FAN_P = [[0, -8], [10, -14], [21, -20], [18, -11], [27, -8], [33, 0], [27, 8], [18, 11], [21, 20], [10, 14], [0, 8]];
+  const FAN_POLY = Shape2D.poly(FAN_P, C_SHELL, 4);
+  const FAN_PIN = FAN_P.map(([u, v]) => [u * 0.8 + 1, v * 0.78]);
+  const FAN_IN = Shape2D.catmull(FAN_PIN, true, 4);
+  // gold rim round the fan (as in the art), cupped halves so it reads as 3D
+  const FAN_G = bakeShape({ bb: FAN_POLY.bb, test: (u, v) => (v < -0.4 || !FAN_POLY.test(u, v) ? 0 : u > 6 && !Shape2D.inPoly(u, v, FAN_IN) ? C_STAR : C_SHELL) });
+  const FAN_CUP = 0.4;
+  const FAN_LINES = [[[3, 4], [13, 9.5], [18, 15]], [[5, 1.6], [16, 5], [24, 6]]];
 
   // contour-line priorities per group (integer-keyed object like Mudkip's)
   const PRI = {};
-  for (let i = 1; i < 64; i++) PRI[i] = 0;
-  Object.assign(PRI, { 2: 2, 3: 4, 4: 3, 5: 2, 6: 1, 10: 5, 11: 5, 12: 6, 13: 6, 60: 1, 62: -1, 63: -2 });
-  for (const b of [20, 30]) { PRI[b] = 3; PRI[b + 1] = 4; PRI[b + 2] = 5; PRI[b + 3] = 6; }
-  for (let i = 40; i < 46; i++) PRI[i] = 1;
+  for (let i = 1; i < 72; i++) PRI[i] = 0;
+  Object.assign(PRI, { 1: 0, 2: 3, 8: 4, 10: 6, 11: 6, 12: 5, 13: 5, 14: 7, 15: 7, 60: 1, 61: 0, 62: -1, 63: -2 });
+  for (const b of [20, 30]) { PRI[b] = 2; PRI[b + 1] = 3; PRI[b + 2] = 3; PRI[b + 3] = 5; PRI[b + 4] = 4; PRI[b + 5] = 1; PRI[b + 6] = 6; }
+  for (let i = 40; i < 52; i++) PRI[i] = 1;
 
-  const SIZE = 1.62;
+  const SIZE = 1;
   const DEFAULT = { claw: 0, walk: 0, eyes: 'open', squash: 0, tilt: 0, mouth: 0, side: 1 };
-  const CLAW_S = 1.3;
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
     const prims = [], stamps = [], anchors = {};
-    const sq = P.squash;
-    const root = F(M3.diag(1 + sq * 0.45, 1 - sq, 1 + sq * 0.45), [0, 0, 0]);
+    const sq = clamp(+P.squash || 0, -0.3, 0.8);
+    const root = F(M3.diag(1 + sq * 0.25, 1 - sq, 1 + sq * 0.25), [0, 0, 0]);
     // body roll about the forward axis (sideways shuffle); legs are IK so the feet stay planted
-    const body = chain(root, T(0, 40, 0), R(M3.rx(-P.tilt)), T(0, -40, 0));
-    const hood = chain(body, T(...HOOD_C));
+    const body = chain(root, T(0, 60, 0), R(M3.rx(-(+P.tilt || 0))), T(0, -60, 0));
+    const head = chain(body, T(...HEAD_C), R(HEAD_M));
+    const side = clamp(+P.side || 0, -1, 1);
+    mouthK = clamp(+P.mouth || 0, 0, 1);
 
-    // --- eyes first (front-most), white eyeballs bulging from the hood; pupils are stamps
-    const eyeKind = P.eyes;
-    const closed = eyeKind === 'happy' || eyeKind === 'closed';
-    for (const side of [1, -1]) {
-      const s0 = Creature.sph(side * EYE_AZ, EYE_V);
-      const pS = add(HOOD_C, mul3(HOOD_R, s0));
-      const n = nrm([s0[0] / HOOD_R[0], s0[1] / HOOD_R[1], s0[2] / HOOD_R[2]]);
+    /* --- eyes first (front-most): ringed eyeballs in dark sockets; pupils are stamps --- */
+    const ek = P.eyes === 'sleep' || P.eyes === 'blink' ? 'closed' : P.eyes;
+    const closed = ek === 'happy' || ek === 'closed';
+    for (const sd of [1, -1]) {
+      const s0 = Creature.sph(sd * EYE_AZ, EYE_V);
+      const pS = [HEAD_R[0] * s0[0], HEAD_R[1] * s0[1], HEAD_R[2] * s0[2]];
+      const n = nrm([s0[0] / HEAD_R[0], s0[1] / HEAD_R[1], s0[2] / HEAD_R[2]]);
       const ye = nrm(sub([0, 1, 0], sc(n, n[1])));
-      const xe = sc(cross(ye, n), side); // x_e points forward/inward for both eyes
-      const cLoc = sub(pS, sc(n, 1.0));
+      const xe = sc(cross(ye, n), sd);
       const ax = M3.cols(xe, ye, n);
-      const id = side > 0 ? 10 : 11;
-      const eyePrim = E(inF(body, cLoc), M3.mul(body.L, M3.mul(ax, M3.diag(EYE_R[0], EYE_R[1], EYE_R[2]))), id, closed ? 2 : id, closed ? M_SHELL : M_EYE);
+      const id = sd > 0 ? 10 : 11;
+      const sock = chain(head, F(ax, add(pS, sc(n, -1.2))));
+      prims.push(ellF(sock, SOCK_R, id + 2, id + 2, M_SOCKET));
+      const eyeF = chain(head, F(ax, add(pS, sc(n, 1.6))));
+      const eyePrim = ellF(eyeF, EYE_R, id, id, closed ? M_SHELL : eyeMat);
       prims.push(eyePrim);
-      if (eyeKind === 'angry' || eyeKind === 'open') prims.push(E(eyePrim.c, M3.mul(body.L, M3.mul(ax, M3.diag(EYE_R[0] * 1.12, EYE_R[1] * 1.1, EYE_R[2] * 1.15))), id + 2, id + 2, lidMat));
+      if (ek === 'angry') prims.push(ellF(eyeF, [EYE_R[0] * 1.2, EYE_R[1] * 1.2, EYE_R[2] * 1.25], id + 4, id + 4, lidMat));
       let sP;
-      if (closed) sP = [0, 0.05, 1];
-      else if (eyeKind === 'angry' || eyeKind === 'open') sP = [0.15, -0.05, 1];
-      else if (eyeKind === 'dizzy') sP = [0, 0, 1];
-      else sP = [0.28, -0.08, 1];
+      if (closed) sP = [0, 0, 1];
+      else if (ek === 'dizzy') sP = [0, 0, 1];
+      else {
+        const Lh = M3.v([HEAD_M[0], HEAD_M[3], HEAD_M[6], HEAD_M[1], HEAD_M[4], HEAD_M[7], HEAD_M[2], HEAD_M[5], HEAD_M[8]], LOOK); // look dir in head space
+        const dl = M3.v([ax[0], ax[3], ax[6], ax[1], ax[4], ax[7], ax[2], ax[5], ax[8]], Lh);
+        sP = [EYE_R[0] * dl[0] * 0.5, EYE_R[1] * dl[1] * 0.5 - (ek === 'angry' ? 0.2 : 0), Math.max(0.6, EYE_R[2] * dl[2])];
+      }
       sP = nrm(sP);
       const at = { prim: eyePrim, p: add(eyePrim.c, M3.v(eyePrim.L, sP)), s: sP };
-      stamps.push({ at, set: EYE_SETS[eyeKind] || EYE_SETS.open, colors: EYEC, kind: 'open' });
-      anchors[side > 0 ? 'eyeN' : 'eyeF'] = at.p;
+      stamps.push({ at, set: EYE_SETS.M[ek] || EYE_SETS.M.open, colors: EYEC, kind: 'open' });
+      anchors[sd > 0 ? 'eyeN' : 'eyeF'] = at.p;
     }
 
-    // --- cream face (muzzle, with the Λ top edge and the optional mouth) and belly shells
-    const mouthH = P.mouth;
-    const hh = 0.13 * mouthH + 0.03, vc = -0.53 + hh;
-    const muzMat = (s) => {
-      if (MUZ_C[1] + MUZ_R[1] * s[1] >= LAM_Y - LAM_K * Math.abs(MUZ_R[2] * s[2])) return 0;
-      if (mouthH > 0.02 && s[0] > 0) {
-        // small mouth just above the smile line, opening upward
-        const dv = (s[1] - vc) / hh, az = Math.atan2(s[2], s[0]) / 0.24;
-        if (dv * dv + az * az < 1) return dv < -0.25 && mouthH > 0.4 ? C_TONGUE : C_MOUTH;
-      }
-      // blue chevron band across the snout (Crawdaunt's face mask)
-      if (s[0] > 0.15) {
-        const v = s[1] + 0.55 * Math.abs(s[2]);
-        if (v > -0.35 && v < 0.35) return v > -0.02 && v < 0.08 ? C_BLUE_L : C_BLUE;
-      }
-      return C_CREAM;
-    };
-    prims.push(ellF(chain(body, T(...MUZ_C)), MUZ_R, 3, 3, muzMat));
-    BEL.forEach((b, i) => prims.push(ellF(chain(body, T(...b.c)), b.r, 4 + i, 4 + i, M_CREAM)));
+    /* --- star crest (turned a little toward the camera) --- */
+    const starF = chain(body, T(...STAR_C), R(M3.ry(-0.5 * side)), R(M3.rz(0.2)), R(M3.rx(-0.16)));
+    pushTris(prims, starF, STAR_TRIS, 8, 8);
 
-    // --- hood (red carapace) with the Λ window, its lining and the lower body
-    const hoodPrim = ellF(hood, HOOD_R, 1, 2, hoodMat);
-    prims.push(hoodPrim);
-    // star crest: frontal plate (u = z, v = y) and a slimmer sagittal plate (u = x, v = y)
-    prims.push(PL(inF(body, STAR_C), M3.mul(body.L, M3.cols([0, 0, 1], [0, 1, 0], [-1, 0, 0])), 8, 8, STAR_G, 2.4));
-    prims.push(PL(inF(body, STAR_C), M3.mul(body.L, M3.cols([0.8, 0, 0], [0, 1, 0], [0, 0, 1])), 9, 8, STAR_G, 2.4));
+    /* --- mask / belly plates, then the red shell --- */
+    prims.push(ellF(chain(body, T(...TORSO_C)), pr(TORSO_R), 2, 2, MASK_T));
+    prims.push(ellF(chain(body, T(...POT_C)), pr(POT_R), 2, 2, MASK_P));
+    prims.push(ellF(chain(body, T(...NECK_C)), pr(NECK_R), 2, 2, MASK_N));
+    prims.push(ellF(head, pr(HEAD_R), 2, 2, MASK_H));
+    const headPrim = ellF(head, HEAD_R, 1, 1, M_SHELL);
+    prims.push(headPrim);
+    prims.push(ellF(chain(body, T(...NECK_C)), NECK_R, 1, 1, M_SHELL));
+    prims.push(ellF(chain(body, T(...TORSO_C)), TORSO_R, 1, 1, M_SHELL));
+    prims.push(ellF(chain(body, T(...POT_C)), POT_R, 1, 1, M_SHELL));
 
-    // --- claws
-    for (const side of [1, -1]) {
-      const cl = Math.max(0, Math.min(1, +P.claw || 0));
-      const arm = 0.8 * cl, open = Math.min(1, cl * 1.25);
-      const k = armKey(arm);
-      const W = [k.W[0], k.W[1], k.W[2] * side], X = [k.X[0], k.X[1], k.X[2] * side];
-      let Y = [k.Y[0], k.Y[1], k.Y[2] * side];
+    /* --- claws --- */
+    const cl = clamp(+P.claw || 0, 0, 1);
+    const raise = cl * cl * (3 - 2 * cl), open = 0.2 + 0.8 * clamp(cl * 1.4, 0, 1); // the jaws always gape a little
+    const W0 = F(M3.I(), [0, 0, 0]);
+    for (const sd of [1, -1]) {
+      const k0 = ARM_K[0], k1 = ARM_K[1];
+      const X = mz(nrm(lerp3(k0.X, k1.X, raise)), sd);
+      let Y = mz(nrm(lerp3(k0.Y, k1.Y, raise)), sd);
       Y = nrm(sub(Y, sc(X, dot(Y, X))));
-      const CF = chain(body, F(M3.cols(X, Y, cross(X, Y)), W), Creature.S(CLAW_S, CLAW_S, CLAW_S));
-      const base = side > 0 ? 20 : 30;
-      // lower (cream) jaw + its bite face
-      prims.push(ellF(chain(CF, T(CA, 0, 0)), [CA, CB, CC], base + 2, base + 2, lowerMat));
-      if (open > 0.01) prims.push(PL(inF(CF, BITE_C), M3.mul(CF.L, BITE_L), base + 2, base + 2, BITE_G, 1.2));
-      // upper (red) jaw hinged at the back
-      const UF = chain(CF, T(...HINGE), R(M3.rz(open * 0.72)), T(-HINGE[0], -HINGE[1], 0));
-      prims.push(ellF(chain(UF, T(CA, 0, 0)), [CA, CB, CC], base + 3, base + 3, upperMat));
-      if (open > 0.01) prims.push(PL(inF(UF, BITE_C), M3.mul(UF.L, BITE_L), base + 3, base + 3, BITE_G, 1.2));
-      // wrist knob and arm from the shoulder to the wrist
-      prims.push(ellF(chain(CF, T(0.5, -0.5, 0)), [4.4, 4.4, 4.4], base + 1, base + 1, M_SHELL));
-      prims.push(seg(inF(body, [-3, 46, 14 * side]), inF(CF, [-2, 0, 0]), 5.4, 5.4, base, base, M_SHELL));
-      anchors[side > 0 ? 'clawTipN' : 'clawTipF'] = sc(add(inF(CF, TIP), inF(UF, TIP)), 0.5);
+      const Zc = sc(nrm(cross(X, Y)), sd); // toward the outer side
+      const Wr = mz(lerp3(k0.W, k1.W, raise), sd), El = mz(lerp3(k0.E, k1.E, raise), sd), Sh = mz(SHOULDER, sd);
+      const CF = chain(body, F(M3.cols(X, Y, Zc), Wr), Creature.S(CS, CS, CS));
+      const base = sd > 0 ? 20 : 30;
+      // palm
+      prims.push(ellF(chain(CF, T(...PALM_C)), PALM_R, base + 2, base + 2, M_SHELL));
+      // throat (black), seen between the jaws when they open
+      prims.push(ellF(chain(CF, T(36, -1.5, 0)), [18, 8.5, 11], base + 5, base + 5, M_INNER));
+      // fixed finger (lower jaw): red at the root, a long cream tusk
+      for (const [p0, p1, rx, rz] of FIXED) prims.push(seg(CF, p0, p1, rx, rz, base + 4, base + 4, fixedMat(p0, p1), [0, 1, 0]));
+      // upper hook, hinged at the top of the palm: teeth underneath, spiky studs on the sides
+      const DF = chain(CF, T(...HINGE), R(M3.rz(open * 0.72)), T(-HINGE[0], -HINGE[1], -HINGE[2]));
+      prims.push(ellF(chain(DF, T(...DOME.c), R(M3.rz(DOME.a))), DOME.r, base + 3, base + 3, M_SHELL));
+      for (const [p0, p1, rx, rz] of DACT) prims.push(seg(DF, p0, p1, rx, rz, base + 3, base + 3, M_SHELL, [0, 1, 0]));
+      pushTris(prims, DF, TEETH_T, base + 3, base + 3);
+      pushTris(prims, DF, STUDS_T, base + 3, base + 3);
+      // wrist knob, forearm, elbow knob, upper arm
+      prims.push(ellF(chain(CF, T(-1, 0, 0)), [7, 7, 7], base + 1, base + 1, M_SHELL));
+      prims.push(seg(body, El, add(Wr, sc(X, -3 * CS)), 5.2, 5.2, base + 1, base + 1, M_SHELL));
+      prims.push(ellF(chain(body, T(...El)), [6, 6, 6], base + 6, base + 6, M_CREAM));
+      prims.push(seg(body, Sh, El, 5.6, 5.6, base, base, M_SHELL));
+      anchors[sd > 0 ? 'clawTipN' : 'clawTipF'] = sc(add(inF(CF, CLAW_TIP), inF(DF, CLAW_TIP)), 0.5);
     }
 
-    prims.push(ellF(hood, sc(HOOD_R, 0.9), 2, 1, M_LINING));
-    prims.push(ellF(chain(body, T(...LOW_C)), LOW_R, 2, 1, lowMat));
-
-    // --- legs (2-bone IK: hips follow the body, feet stay on the ground; tripod walk cycle)
+    /* --- legs: hips and knees ride on the body, feet stay planted (tripod scuttle) --- */
+    const walk = +P.walk || 0;
     let li = 0;
-    for (const side of [1, -1])
+    for (const sd of [1, -1])
       for (const lg of LEGS) {
-        // tripod gait for a sideways scuttle: lifted feet swing along z (and a little along x)
-        const ph = P.walk + lg.ph + (side > 0 ? 0 : Math.PI);
-        const lift = Math.max(0, Math.sin(ph)) * 5;
-        const swing = Math.cos(ph) * 4.5;
-        const hip = inF(body, [lg.hip[0], lg.hip[1], lg.hip[2] * side]);
-        const foot = [lg.foot[0] + swing * 0.35, lift, lg.foot[2] * side * (1 + sq * 0.3) + swing];
-        const d = sub(foot, hip), dl = len3(d);
-        const dir = sc(d, 1 / dl);
-        const a = Math.min(dl, (L_UP * L_UP - L_LO * L_LO + dl * dl) / (2 * dl));
-        const h = Math.sqrt(Math.max(0, L_UP * L_UP - a * a));
-        const out = nrm([foot[0] - hip[0], 0, foot[2] - hip[2]]);
-        let bend = add([0, 1.3, 0], out);
-        bend = nrm(sub(bend, sc(dir, dot(bend, dir))));
-        const knee = add(add(hip, sc(dir, a)), sc(bend, h));
+        const ph = walk + lg.ph + (sd > 0 ? 0 : Math.PI);
+        const lift = walk ? Math.max(0, Math.sin(ph)) * 7 : 0;
+        const swing = walk ? Math.cos(ph) * 6 : 0;
+        const hipB = mz(lg.hip, sd);
+        const outB = nrm([lg.foot[0] - lg.hip[0], 0, (lg.foot[2] - lg.hip[2]) * sd]);
+        const hip = inF(body, hipB);
+        const knee = inF(body, add(hipB, add(sc(outB, KNEE_OUT), [0, KNEE_UP + lift * 0.4, 0])));
+        const foot = [lg.foot[0] + swing * 0.35, lift, lg.foot[2] * sd * (1 + sq * 0.3) + swing];
+        const out = nrm([foot[0] - knee[0], 0, foot[2] - knee[2]]);
         const id = 40 + li++;
-        // talon: fat rounded knee, curving outward, tapering to a sharp tip on the ground
         const kd = sub(foot, knee);
-        const mid = add(add(knee, sc(kd, 0.5)), sc(out, 2));
-        prims.push(seg(sub(knee, sc(kd, 0.18)), add(mid, sc(sub(foot, mid), 0.35)), 5.6, 5.2, id, id, M_SHELL));
-        prims.push(seg(add(knee, sc(sub(mid, knee), 0.6)), foot, 2.6, 2.5, id, id, M_SHELL));
-        prims.push(seg(hip, add(knee, sc(kd, 0.1)), 3.8, 3.8, id, id, M_SHELL));
+        const ank = add(knee, sc(kd, 0.78));
+        prims.push(seg(W0, hip, knee, 9.5, 9.5, id, id, M_SHELL, out));
+        prims.push(seg(W0, sub(knee, sc(kd, 0.2)), ank, 11, 10, id, id, M_SHELL, out));
+        prims.push(seg(W0, add(knee, sc(kd, 0.45)), add(foot, [0, 3, 0]), 7.8, 7, id, id, M_SHELL, out));
+        // studs up the outer side of the shin (shin frame: x out, y down the shin), two white claw tips
+        const Yd = nrm(kd), Xo = nrm(sub(out, sc(Yd, dot(out, Yd))));
+        pushTris(prims, F(M3.cols(Xo, Yd, cross(Xo, Yd)), knee), LSTUD_T, id, id);
+        const up = [0, 1, 0];
+        pushTris(prims, F(M3.cols(out, up, cross(out, up)), foot), NAIL_T, 46 + (li % 6), id);
       }
 
-    // --- tail (flattened overlapping segments trailing back, ending in a fan)
+    /* --- tail --- */
     TAIL.forEach((t, i) => prims.push(ellF(chain(body, T(...t.c), R(M3.rz(t.a))), t.r, 60 + i, 60 + i, M_SHELL)));
+    const fan = chain(body, T(-54, 30, 0), R(M3.rz(-0.9)));
+    for (const zs of [1, -1]) {
+      const V = [0, -Math.sin(FAN_CUP), Math.cos(FAN_CUP) * zs], U = [-1, 0, 0];
+      const lines = FAN_LINES.map((pl) => ({ pts: pl.map(([u, v]) => [u, v, 0]), mat: SHELL, useLn: true }));
+      prims.push(Object.assign(PL(fan.t, M3.mul(fan.L, M3.cols(U, V, cross(U, V))), 63, 63, FAN_G, 1.6), { lines }));
+    }
 
-    anchors.top = inF(body, [STAR_C[0], STAR_C[1] + STAR_R, 0]); // star crest tip
-    anchors.body = inF(body, [4, 34, 0]);
-    anchors.head = inF(body, HOOD_C);
-    anchors.mouth = inF(body, [MUZ_C[0] + MUZ_R[0] * 0.85, MUZ_C[1] - MUZ_R[1] * 0.5, 0]);
+    anchors.top = inF(starF, [0, STAR_R, 0]); // star tip
+    anchors.body = inF(body, [6, 70, 0]);
+    anchors.head = inF(head, [0, 4, 0]);
+    anchors.mouth = inF(body, [37, 107, 0]);
 
-    // uniform scale to the Pokédex height (1.1 m ≈ 192 px silhouette at yaw 1.1)
     for (const p of prims) { p.c = sc(p.c, SIZE); p.L = p.L.map((v) => v * SIZE); }
     for (const st of stamps) st.at.p = sc(st.at.p, SIZE);
     for (const key in anchors) anchors[key] = sc(anchors[key], SIZE);
-    return { prims, anchors, pose: P, headPrim: hoodPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: SHELL, shadowSteps: 16 };
+    return { prims, anchors, pose: P, headPrim, stamps, dots: NO_DOTS, pri: PRI, glossy: GLOSSY, baseMat: SHELL, shadowSteps: 14 };
   }
 
-  /* ---------- eye stamps (pupils and closed-eye marks) ----------
+  /* ---------- eye stamps (pupils and closed-eye marks), one set per render size ----------
      Every set uses Mudkip's exact key layout (the renderer looks glyphs up by name);
      each expression puts its glyphs in the open/openN/openF slots and is drawn as kind 'open'.
      k = pupil, b = dark lid line, w = white. */
   const stampSet = (o, oN, oF) => ({ open: o, openN: oN, openF: oF, happy: o, happyN: oN, happyF: oF, blink: o, blinkN: oN, blinkF: oF, sleep: o, sleepN: oN, sleepF: oF });
   const EYE_SETS = {
-    open: stampSet(['.kk.', 'kkkk', 'kkkk', '.kk.'], ['.kk.', 'kkkk', 'kkkk', '.kk.'], ['kk', 'kk']),
-    angry: stampSet(['kk', 'kk'], ['kk', 'kk'], ['k', 'k']),
-    dizzy: stampSet(['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kk', 'k.k', 'kkk']),
-    happy: stampSet(['..bb..', '.b..b.', 'b....b'], ['.bb.', 'b..b', 'b..b'], ['.b', 'b.', 'b.']),
-    closed: stampSet(['......', '......', 'bbbbbb', '.bbbb.'], ['....', '....', 'bbbb', '.bb.'], ['..', '..', 'bb', '.b']),
+    S: {
+      open: stampSet(['k'], ['k'], ['k']),
+      angry: stampSet(['k'], ['k'], ['k']),
+      dizzy: stampSet(['kk', 'kk'], ['kk', 'kk'], ['k']),
+      happy: stampSet(['.b.', 'b.b'], ['.b', 'b.'], ['b']),
+      closed: stampSet(['bbb'], ['bb'], ['b']),
+    },
+    M: {
+      open: stampSet(['kk', 'kk'], ['kk', 'kk'], ['k', 'k']),
+      angry: stampSet(['kk', 'kk'], ['kk', 'kk'], ['k', 'k']),
+      dizzy: stampSet(['.kk.', 'k..k', 'k.kk', '.k..'], ['.kk.', 'k..k', 'k.kk', '.k..'], ['kk', 'kk']),
+      happy: stampSet(['.bb.', 'b..b', 'b..b'], ['.b.', 'b.b', 'b.b'], ['.b', 'b.']),
+      closed: stampSet(['....', 'bbbb', '.bb.'], ['...', 'bbb', '.b.'], ['..', 'bb']),
+    },
+    L: {
+      open: stampSet(['.kk.', 'kkkk', 'kkkk', '.kk.'], ['.kk', 'kkk', 'kkk', '.kk'], ['kk', 'kk', 'kk']),
+      angry: stampSet(['kkk', 'kkk', '.k.'], ['kkk', 'kkk', '.k.'], ['kk', 'kk']),
+      dizzy: stampSet(['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kkk.', 'k...k', 'k.k.k', 'k..kk', '.k...'], ['.kk', 'k.k', 'kkk']),
+      happy: stampSet(['..bb..', '.b..b.', 'b....b', 'b....b'], ['.bb.', 'b..b', 'b..b'], ['.b', 'b.', 'b.']),
+      closed: stampSet(['......', '......', 'bbbbbb', '.bbbb.'], ['....', '....', 'bbbb', '.bb.'], ['..', '..', 'bb', '.b']),
+    },
+    XL: {
+      open: stampSet(['.kk.', 'kkkk', 'kkkk', '.kk.'], ['.kk', 'kkk', 'kkk', '.kk'], ['kk', 'kk', 'kk']),
+      angry: stampSet(['kkkk', 'kkkk', 'kkkk', '.kk.'], ['kkk', 'kkk', 'kkk', '.k.'], ['kk', 'kk', 'kk']),
+      dizzy: stampSet(['..kkkk..', '.k....k.', 'k..kk..k', 'k.k..k.k', 'k.k.kk.k', 'k..k...k', '.k....k.', '..kkk...'], ['.kkkk.', 'k....k', 'k.kk.k', 'k.k..k', 'k..kkk', '.k....'], ['.kk', 'k.k', 'kkk']),
+      happy: stampSet(['...bbbb...', '..bb..bb..', '.bb....bb.', 'bb......bb', 'b........b'], ['..bbb..', '.bb.bb.', 'bb...bb', 'b.....b'], ['.bb', 'bb.', 'b..']),
+      closed: stampSet(['..........', '..........', 'bbbbbbbbbb', '.bbbbbbbb.', '...bbbb...'], ['.......', '.......', 'bbbbbbb', '.bbbbb.'], ['...', '...', 'bbb', '.bb']),
+    },
   };
-  const EYEC = { k: '#1c1012', w: '#ffffff', b: '#3a0608' };
+  const EYEC = { k: '#140c0e', w: '#ffffff', b: '#1e0a0c' };
 
-  const render = (model, opt) => Creature.render(model, opt);
+  function render(model, opt) {
+    const s = (opt.scale || 1) * SIZE;
+    const sets = EYE_SETS[s >= 1.7 ? 'XL' : s >= 1.1 ? 'L' : s >= 0.55 ? 'M' : 'S'];
+    lineW = Math.max(0.3, 0.52 / s);
+    const P = model.pose || {};
+    mouthK = clamp(+P.mouth || 0, 0, 1);
+    const ek = P.eyes === 'sleep' || P.eyes === 'blink' ? 'closed' : P.eyes;
+    for (const st of model.stamps) st.set = sets[ek] || sets.open;
+    return Creature.render(model, opt);
+  }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.1, bw: 250, bh: 250, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.1, bw: 340, bh: 280, oy: 0.9 } };
 })();

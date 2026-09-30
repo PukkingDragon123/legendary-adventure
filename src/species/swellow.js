@@ -40,11 +40,13 @@ const Swellow = (() => {
   const NAVY = 1, RED = 2, WHITE = 3, BEAK = 4, LEG = 5, CLAW = 6, MOUTH = 7, EYEK = 8, EYEW = 9;
   const MAT = { NAVY, RED, WHITE, BEAK, LEG, CLAW, MOUTH, EYEK, EYEW };
   const PAL = Creature.palette({
-    [NAVY]:  { r: ['#161828', '#22253c', '#303452', '#434a6c', '#636a8c'], od: '#0a0a14', ol: '#1a1c2e', ln: '#141626' },
-    [RED]:   { r: ['#7e2236', '#a2344a', '#c44c62', '#da6c80', '#eea0ac'], od: '#420c18', ol: '#76202e', ln: '#6c1c2a' },
-    [WHITE]: { r: ['#a4aabe', '#c8cede', '#eceff6', '#fafbfd', '#ffffff'], od: '#3c4460', ol: '#68708c', ln: '#8088a4' },
-    [BEAK]:  { r: ['#a8883a', '#c8a44a', '#e2c060', '#f0d888', '#fcf0c0'], od: '#5a4418', ol: '#8e7030', ln: '#86682a' },
-    [LEG]:   { r: ['#8a3444', '#aa4a5a', '#c86474', '#dc8490', '#ecb0b8'], od: '#48141e', ol: '#7a2c38', ln: '#702834' },
+    // sampled from the official art: navy #3d4361, rose-crimson face/chest #b5506d (lit #ce6d81), white belly #dee5f1
+    // (shadow #cbcee1), pale yellow beak #f8df98, dark pink legs #8d4557
+    [NAVY]:  { r: ['#1e2236', '#2c3148', '#3d4361', '#50587a', '#6c7496'], od: '#0c0e1a', ol: '#1e2236', ln: '#1a1e30' },
+    [RED]:   { r: ['#7a3048', '#98405a', '#b5506d', '#ce6d81', '#e494a2'], od: '#40121e', ol: '#702436', ln: '#6c2434' },
+    [WHITE]: { r: ['#a4aac0', '#c4c8dc', '#dee5f1', '#eef2f8', '#ffffff'], od: '#3c4460', ol: '#68708c', ln: '#8088a4' },
+    [BEAK]:  { r: ['#b09250', '#d4b670', '#f0d690', '#f8e4aa', '#fdf2d0'], od: '#5a4418', ol: '#8e7030', ln: '#86682a' },
+    [LEG]:   { r: ['#5e2a38', '#763546', '#8d4557', '#a65c6c', '#c07e8a'], od: '#361018', ol: '#5a2230', ln: '#56202e' },
     [CLAW]:  { r: ['#22242c', '#30323c', '#40444e', '#585c68', '#80848e'], od: '#0e1014', ol: '#22242c', ln: '#1a1c22' },
     [MOUTH]: { r: ['#4e1224', '#6a1c30', '#86283e', '#a03c50', '#b85668'], od: '#2a0610', ol: '#4e1224', ln: '#46101e' },
     [EYEK]:  { r: ['#08090e', '#0c0e14', '#10141c', '#181e28', '#242c38'], od: '#040508', ol: '#040508', ln: '#040508' },
@@ -99,9 +101,10 @@ const Swellow = (() => {
   let curScale = 1;
 
   /* ---------- head: navy cap and nape, crimson face; decal eyes under the brow ---------- */
-  const HR = [22, 21, 20.5];
+  const HR = [15.5, 14, 13.5];
   const EYE_AZ = 0.62, EYE_V = 0.2;
-  const capLine = (s) => 0.4 - 0.12 * s[0] - 0.1 * Math.max(0, Math.abs(Math.atan2(s[2], s[0])) - 0.6);
+  // navy crown line; a red stripe runs up over the forehead from the beak base
+  const capLine = (s) => { const a = Math.abs(Math.atan2(s[2], s[0])); return (a < 0.28 && s[0] > 0.6 ? 1.1 : 0.34) - 0.12 * s[0] - 0.1 * Math.max(0, a - 0.6); };
   function eyePix(s, kind) {
     const az = Math.atan2(Math.abs(s[2]), s[0]);
     const px = 1 / (curScale * HR[1]);
@@ -173,33 +176,35 @@ const Swellow = (() => {
     const hop = walking ? 3.5 * Math.abs(Math.sin(st)) : 0;
     // body pitch: perched upright, level in flight, nose down in a dive
     const pitch = lerp(0.05, 0.42, pe) * (1 - dv) - 0.95 * dv;
-    const root = chain(T(0, lerp(55, 40, pe) + hop, 0), R(M3.rz(pitch)));
+    const root = chain(T(0, lerp(55, 43, pe) + hop, 0), R(M3.rz(pitch)));
 
     /* --- body --- */
-    prims.push(ellF(root, [40, 26.5, 24], 1, 1, bodyMat));
+    prims.push(ellF(root, [43, 27.5, 24.5], 1, 1, bodyMat));
     anchors.body = root.t;
 
     /* --- neck + head (the head stays level-ish when perched) --- */
-    const neckF = chain(root, T(33, 13, 0));
-    prims.push(ellF(chain(neckF, R(M3.rz(0.3))), [14, 14, 15], 3, 3, neckMat));
-    const head = chain(root, T(41, 23, 0), R(M3.rz(-pitch * 0.75 - 0.04 * bo + (walking ? 0.04 * Math.sin(2 * st) : 0))));
-    const headPrim = ellF(head, HR, 2, 2, headMat(kind));
+    // long, thick neck: red throat in front, navy nape
+    // (one contour group with the body and head, so chest, neck and head read as one smooth shape)
+    prims.push(seg(inF(root, [18, 4, 0]), inF(root, [36, 30, 0]), 16.5, 17, 3, 1, neckMat, dirF(root, [1, 0, 0]), 1.1));
+    prims.push(seg(inF(root, [32, 22, 0]), inF(root, [44, 40, 0]), 12.5, 13, 3, 1, neckMat, dirF(root, [1, 0, 0]), 1.15));
+    const head = chain(root, T(46, 42, 0), R(M3.rz(-pitch * 0.75 - 0.04 * bo + (walking ? 0.04 * Math.sin(2 * st) : 0))));
+    const headPrim = ellF(head, HR, 2, 1, headMat(kind));
     prims.push(headPrim);
     anchors.head = head.t;
     const onHead = (az, v) => { const s = Creature.sph(az, v); return inF(head, [HR[0] * s[0], HR[1] * s[1], HR[2] * s[2]]); };
     anchors.eyeN = onHead(EYE_AZ, EYE_V); anchors.eyeF = onHead(-EYE_AZ, EYE_V);
     // beak: short, pointed, yellow; lower half opens
-    const hinge = chain(head, T(17, 0.5, 0));
+    const hinge = chain(head, T(12.5, -1, 0));
     const ub = chain(hinge, R(M3.rz(bo * 0.15)));
-    prims.push(ellF(chain(ub, T(7, 0.6, 0), R(M3.rz(-0.12))), [11, 3.4, 4.6], 4, 4, () => C_BEAK));
+    prims.push(ellF(chain(ub, T(6.5, 0.4, 0), R(M3.rz(-0.1))), [10, 2.8, 3.8], 4, 4, () => C_BEAK));
     const lb = chain(hinge, R(M3.rz(-0.1 - bo * 0.55)));
-    prims.push(ellF(chain(lb, T(6, -1.4, 0)), [9, 2.2, 3.8], 5, 5, () => C_BEAK_D));
+    prims.push(ellF(chain(lb, T(5.5, -1.2, 0)), [8, 1.8, 3.2], 5, 5, () => C_BEAK_D));
     if (bo > 0.05) prims.push(ellF(chain(hinge, T(3.5, -1.5, 0), R(M3.rz(-bo * 0.25))), [6, 1.4 + bo * 2, 4], 6, 6, () => C_MOUTH));
-    anchors.beak = inF(ub, [17, -0.6, 0]);
+    anchors.beak = inF(ub, [16, -0.6, 0]);
     anchors.mouth = inF(hinge, [4, -1.5, 0]);
     // crest: three navy spikes swept back from the back of the head
-    const cb = inF(head, [-15, 8, 0]);
-    for (const [a, z, l] of [[0.35, 0, 1.9], [0.12, 5, 1.6], [0.12, -5, 1.6], [-0.15, 0, 1.3]]) {
+    const cb = inF(head, [-11, 6, 0]);
+    for (const [a, z, l] of [[0.22, 0, 2.3], [0.02, 4, 2.1], [0.02, -4, 2.1], [-0.25, 0, 1.9], [-0.45, 2, 1.5]]) {
       const U = dirF(head, [-Math.cos(a), Math.sin(a), z * 0.03]);
       const L = M3.mul(frameUV(U, dirF(head, [0, 1, 0.2 * Math.sign(z || 1)])), M3.diag(l, 1, 1));
       prims.push(plate(add(cb, dirF(head, [0, 0, z])), L, 11, 11, CREST_G, 2.2));
@@ -272,5 +277,5 @@ const Swellow = (() => {
     return Creature.render(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.7, bw: 250, bh: 240, oy: 0.84 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.7, bw: 270, bh: 240, oy: 0.84 } };
 })();

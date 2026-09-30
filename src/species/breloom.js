@@ -37,11 +37,13 @@ const Breloom = (() => {
   const GREEN = 1, CREAM = 2, GILL = 3, RED = 4, EYEK = 5, GLINT = 6, MOUTH = 7, SEED = 8;
   const MAT = { GREEN, CREAM, GILL, RED, EYEK, GLINT, MOUTH, SEED };
   const PAL = Creature.palette({
-    [GREEN]: { r: ['#3a6242', '#4c7e54', '#64996a', '#80b284', '#a8cca6'], od: '#1c3622', ol: '#3a6242', ln: '#34583a' },
-    [SEED]:  { r: ['#3a6242', '#4c7e54', '#64996a', '#80b284', '#a8cca6'], od: '#1c3622', ol: '#3a6242', ln: '#34583a' },
-    [CREAM]: { r: ['#b0a47c', '#d0c49c', '#ece2bc', '#f6f0d6', '#fffaec'], od: '#62582e', ol: '#9a8e5a', ln: '#9a8e5a' },
-    [GILL]:  { r: ['#8e7c58', '#ac9a72', '#c8b88e', '#dcceaa', '#ece2c8'], od: '#4a3c20', ol: '#7a6a48', ln: '#7a6844' },
-    [RED]:   { r: ['#a02c3a', '#c4424e', '#e0606a', '#f0868c', '#ffb4b4'], od: '#541018', ol: '#90283a', ln: '#882432' },
+    // sampled from the official art: sage green #76a070 (lit #91af8b, shadow #4e684b), cream #efe3c4,
+    // greyish-beige gills #baaf9b, dusty coral red claws/seeds #d86c72
+    [GREEN]: { r: ['#4a6447', '#5f825b', '#76a070', '#91b48a', '#b0c8a8'], od: '#1e3220', ol: '#3e5e3c', ln: '#3e5c3c' },
+    [SEED]:  { r: ['#4a6447', '#5f825b', '#76a070', '#91b48a', '#b0c8a8'], od: '#1e3220', ol: '#3e5e3c', ln: '#3e5c3c' },
+    [CREAM]: { r: ['#b4a888', '#d2c6a6', '#ece0c2', '#f6efda', '#fffaec'], od: '#5e5434', ol: '#968a62', ln: '#9a8e66' },
+    [GILL]:  { r: ['#857c6c', '#a59b89', '#baaf9b', '#cec4b2', '#e0d8c8'], od: '#46402e', ol: '#766e5a', ln: '#6e6654' },
+    [RED]:   { r: ['#984a50', '#b65c62', '#d86c72', '#ea9094', '#f6b8b8'], od: '#541820', ol: '#8a3440', ln: '#86343c' },
     [EYEK]:  { r: ['#0a0a0c', '#101014', '#18181c', '#222228', '#303038'], od: '#050506', ol: '#0a0a0c', ln: '#050506' },
     [GLINT]: { r: ['#e8eef0', '#ffffff', '#ffffff', '#ffffff', '#ffffff'], od: '#8090a0', ol: '#c0ccd8', ln: '#c0ccd8' },
     [MOUTH]: { r: ['#3a1216', '#521c20', '#6c282c', '#86383a', '#a04c4c'], od: '#22080a', ol: '#3a1216', ln: '#3a1216' },
@@ -78,12 +80,12 @@ const Breloom = (() => {
 
   /* ---------- head: cream, small black oval eyes (decals) ---------- */
   const HR = [19, 22, 18];
-  const EYE_AZ = 0.5, EYE_V = -0.04;
+  const EYE_AZ = 0.52, EYE_V = 0.04;
   function eyePix(s, kind) {
     const az = Math.atan2(Math.abs(s[2]), s[0]);
     const px = 1 / (curScale * HR[1]);
     const u = (az - EYE_AZ) * 1.1, v = s[1] - EYE_V;
-    const ru = Math.max(0.15, 1.4 * px), rv = Math.max(0.24, 2 * px);
+    const ru = Math.max(0.2, 1.4 * px), rv = Math.max(0.31, 2 * px);
     const a = u / ru, b = v / rv;
     if (kind === 'open') {
       if (a * a + b * b >= 1) return 0;
@@ -101,19 +103,19 @@ const Breloom = (() => {
   const headMat = (kind) => (s) => (s[0] > 0 ? eyePix(s, kind) || C_CREAM : C_CREAM);
 
   /* ---------- cap: green dome, beige gilled underside ---------- */
-  const CAP_R = [40, 30, 40];
+  const CAP_R = [36, 16, 38];
   const capMat = (s) => {
-    if (s[1] > -0.5) return C_GREEN;
+    if (s[1] > -0.45) return C_GREEN; // the green top and rim
     // underside: radial gills
     const az = Math.atan2(s[2], s[0]);
     const r = Math.hypot(s[0], s[2]);
     const lw = Math.max(0.05, 0.9 / (curScale * CAP_R[0] * Math.max(0.3, r)));
     const g = Math.abs(((az * 14) / Math.PI) % 1);
-    if (r < 0.35) return C_GILL_D;
+    if (r < 0.3) return C_GILL_D;
     return Math.min(g, 1 - g) < lw * 2 ? C_GILL_D : C_GILL;
   };
   // red seed with a dark centre
-  const seedMat = (s) => (s[0] > 0.86 ? code(RED, -2) : C_RED);
+  const seedMat = (s) => (s[0] > 0.8 ? C_EYEK : C_RED);
 
   const DEFAULT = { walk: 0, punch: 0, tail: 0, mouth: 0, eyes: 'open', side: 1 };
   // 1 torso, 2 head+neck, 3 beak, 4 cap, 5 seeds, 6 collar, 7/8 arms, 9/10 legs, 11 tail, 12 seed balls, 13 jaw/mouth, 14 thighs
@@ -172,16 +174,19 @@ const Breloom = (() => {
     }
 
     /* --- cap: tilted back, gills showing under the front brim; red seeds on the sides --- */
-    const cap = chain(head, T(-10, 23, 0), R(M3.rz(0.42)));
+    // worn like a hood: tipped far back so the gilled underside frames the face (official art)
+    const cap = chain(head, T(-18, 14, 0), R(M3.rz(1.12)));
     prims.push(ellF(cap, CAP_R, 4, 4, capMat));
     anchors.cap = inF(cap, [0, CAP_R[1], 0]);
-    anchors.top = inF(cap, [-8, CAP_R[1] + 1, 0]);
+    let capTop = anchors.cap;
+    for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; const q = inF(cap, [CAP_R[0] * Math.cos(a), 0, CAP_R[2] * Math.sin(a)]); if (q[1] > capTop[1]) capTop = q; }
+    anchors.top = capTop;
     for (const sd of [1, -1]) {
-      const s = nrm([Math.cos(1.05), 0.12, sd * Math.sin(1.05)]);
+      const s = nrm([Math.cos(1.3), -0.15, sd * Math.sin(1.3)]);
       const p = inF(cap, [CAP_R[0] * s[0], CAP_R[1] * s[1], CAP_R[2] * s[2]]);
       const n = dirF(cap, [s[0] / CAP_R[0], s[1] / CAP_R[1], s[2] / CAP_R[2]]);
       const [X, Y, Z] = frameAlong(dirF(cap, [0, 1, 0]), n);
-      prims.push(ellAx(add(p, sc(n, 2.5)), X, Y, Z, [7.5, 7.5, 7.5], 5, 5, seedMat));
+      prims.push(ellAx(add(p, sc(n, 2)), X, Y, Z, [7.5, 7.5, 7.5], 5, 5, seedMat));
     }
 
     /* --- arms: short, red pointed claws; the near one shoots out for Mach Punch --- */
@@ -203,9 +208,11 @@ const Breloom = (() => {
       const [X, Y, Z] = frameAlong(dir, dirF(body, [1, 0, 0]));
       const hc = add(hand, sc(Y, 7));
       const big = sd > 0 && pu > 0.5 ? 1.25 : 1;
-      prims.push(ellAx(hc, X, Y, Z, [7 * big, 12 * big, 6.5 * big], id, id, M_RED));
-      prims.push(ellAx(add(hc, sc(Y, 9 * big)), X, Y, Z, [3.6 * big, 6 * big, 3.4 * big], id, id, M_RED));
-      anchors[sd > 0 ? 'handN' : 'handF'] = add(hc, sc(Y, 14 * big));
+      // a big pointed leaf-shaped claw
+      prims.push(ellAx(add(hc, sc(Y, 2)), X, Y, Z, [8 * big, 14 * big, 7 * big], id, id, M_RED));
+      prims.push(ellAx(add(hc, sc(Y, 12 * big)), X, Y, Z, [4.4 * big, 8 * big, 4 * big], id, id, M_RED));
+      prims.push(ellAx(add(hc, sc(Y, 19 * big)), X, Y, Z, [2 * big, 4 * big, 1.8 * big], id, id, M_RED));
+      anchors[sd > 0 ? 'handN' : 'handF'] = add(hc, sc(Y, 22 * big));
     }
     anchors.fist = anchors.handN;
 
@@ -261,5 +268,5 @@ const Breloom = (() => {
     return Creature.render(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.2, bw: 290, bh: 250, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.2, bw: 310, bh: 250, oy: 0.9 } };
 })();

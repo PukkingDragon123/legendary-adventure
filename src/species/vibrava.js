@@ -36,14 +36,14 @@ const Vibrava = (() => {
   const BODY = 1, EYE = 2, PUPIL = 3, LEG = 4, WING = 5, EDGE = 6, FANG = 7, MOUTH = 8, BAND = 9, WINGL = 10;
   const MAT = { BODY, EYE, PUPIL, LEG, WING, EDGE, FANG, MOUTH, BAND, WINGL };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#a8a070', '#c8c08c', '#e2dca8', '#f0ecc4', '#fcfae2'], od: '#5a5434', ol: '#8a8258', ln: '#8a8258' },
-    [EYE]:   { r: ['#1e7a34', '#2c9a42', '#44b856', '#74d27c', '#b0eeb0'], od: '#0e401a', ol: '#1e6a2c', ln: '#1e6a2c' },
+    [BODY]:  { r: ['#a4a46a', '#c4c28a', '#e4e39e', '#f0efc0', '#fbfbe2'], od: '#56562e', ol: '#868452', ln: '#8a8856' },
+    [EYE]:   { r: ['#2a7e38', '#3a984a', '#53af63', '#7cca84', '#b4eab4'], od: '#0e401a', ol: '#1e6a2c', ln: '#1e6a2c' },
     [PUPIL]: { r: ['#08100a', '#0e1810', '#142016', '#1e2c20', '#2c3c2e'], od: '#040806', ol: '#08100a', ln: '#08100a' },
-    [LEG]:   { r: ['#2a2c2e', '#3a3c40', '#4c4f54', '#62666c', '#80848a'], od: '#121314', ol: '#26282a', ln: '#26282a' },
-    [WING]:  { r: ['#246e30', '#2e8a3a', '#3ea44a', '#5cbc62', '#8ad68a'], od: '#103c16', ol: '#1e5e26', ln: '#1e5e26' },
-    [WINGL]: { r: ['#6aaa5a', '#86c46e', '#a6dc88', '#c6eca6', '#e6fad0'], od: '#2a6a2a', ol: '#4a8e44', ln: '#4a8e44' },
-    [EDGE]:  { r: ['#26282a', '#323436', '#404346', '#54585c', '#6c7074'], od: '#101112', ol: '#222426', ln: '#222426' },
-    [FANG]:  { r: ['#b8b4a8', '#d8d4c8', '#f4f2ea', '#fcfbf6', '#ffffff'], od: '#5a5648', ol: '#8a8676', ln: '#8a8676' },
+    [LEG]:   { r: ['#2c2e2e', '#3e4140', '#505352', '#666a69', '#848887'], od: '#121414', ol: '#262828', ln: '#262828' },
+    [WING]:  { r: ['#3a8a48', '#4ea45a', '#61b96d', '#84cc8a', '#aee0ae'], od: '#143e1c', ol: '#24602c', ln: '#24602c' },
+    [WINGL]: { r: ['#2e7a3a', '#3a8e46', '#4aa256', '#66b870', '#8ed094'], od: '#123a18', ol: '#205a28', ln: '#205a28' },
+    [EDGE]:  { r: ['#262828', '#363938', '#484b4a', '#5c605f', '#747877'], od: '#101111', ol: '#222424', ln: '#222424' },
+    [FANG]:  { r: ['#a4acbc', '#c4ccdc', '#dfe6f2', '#eff3f9', '#ffffff'], od: '#4a5262', ol: '#7a8292', ln: '#7a8292' },
     [MOUTH]: { r: ['#3e0e14', '#5a1820', '#76262c', '#90383a', '#a84c4a'], od: '#26060a', ol: '#3e0e14', ln: '#3e0e14' },
     [BAND]:  { r: ['#8e8660', '#a8a076', '#c2ba8e', '#d6d0a6', '#e8e4c2'], od: '#4a4630', ol: '#726c4c', ln: '#726c4c' },
   });
@@ -96,18 +96,18 @@ const Vibrava = (() => {
         if (q >= a) return 0;
         const d = (a - q) * Math.min(mid * len, w);         // ≈ distance to the edge
         if (d < border) return C_EDGE;
-        if (band && Math.abs(u - len * 0.62) < band && d > border * 2.2) return cBand;
+        if (d < border * 1.9) return cBand;                  // darker green just inside the frame
         return cMain;
       },
     });
   }
-  const WING_F = rhombus(100, 34, 0.45, C_WING, C_WINGL, 5, 0);
-  const WING_H = rhombus(86, 30, 0.45, C_WING, C_WINGL, 4.5, 0);
-  const FIN_G = rhombus(30, 12, 0.5, C_WING, C_WINGL, 2.6, 0);
+  const WING_F = rhombus(100, 36, 0.45, C_WING, C_WINGL, 7, 0);
+  const WING_H = rhombus(88, 32, 0.45, C_WING, C_WINGL, 6.5, 0);
+  const FIN_G = rhombus(46, 17, 0.5, C_WING, C_WINGL, 4.2, 0);
 
   /* ---------- head, eyes ---------- */
-  const HR = [26, 15, 17];
-  const ER = [11, 12, 6.5];
+  const HR = [25, 16, 17];
+  const ER = [12, 13, 7];
   function eyeMat(kind, sd) {
     return (s) => {
       // s: eye-local unit sphere; its outward face is +z·sd, looking a little forward
@@ -116,14 +116,14 @@ const Vibrava = (() => {
       if (out < 0.1) return C_EYE;
       const lw = Math.max(0.09, 0.8 * px);
       if (kind === 'open') {
-        const r = Math.hypot(u - 0.05, v);
-        const pr = Math.max(0.36, 1.4 * px);
-        if (r < pr) {
-          if ((u + 0.1) ** 2 + (v - 0.14) ** 2 < 0.02 && px < 0.12) return C_GLINT;
+        // big green eye: a tall black pupil with a white glint, a darker green rim
+        const pr = Math.max(0.3, 1.3 * px);
+        const r = Math.hypot((u - 0.08) / pr, v / (pr * 1.35));
+        if (r < 1) {
+          if ((u + 0.02) ** 2 + (v - 0.2) ** 2 < 0.018 && px < 0.12) return C_GLINT;
           return C_PUPIL;
         }
-        if (r < pr + Math.max(0.14, 0.9 * px)) return C_EYE_D;
-        if (r > 0.86) return C_PUPIL;
+        if (Math.hypot(u, v) > 0.84 - Math.min(0.2, px)) return C_EYE_D;
         return C_EYE;
       }
       if (Math.abs(u - 0.1) > 0.55) return C_EYE;
@@ -150,7 +150,7 @@ const Vibrava = (() => {
     const bob = walking ? 1.5 * Math.abs(Math.sin(wk)) : 0;
 
     // --- thorax
-    const tf = chain(T(0, 34 + bob, 0), R(M3.rz(0.1)));
+    const tf = chain(T(0, 31 + bob, 0), R(M3.rz(0.1)));
     prims.push(ellF(tf, [19, 15, 14], 1, 1, M_BODY));
     anchors.body = tf.t;
     anchors.back = inF(tf, [0, 15, 0]);
@@ -160,6 +160,8 @@ const Vibrava = (() => {
     const headPrim = ellF(hf, HR, 2, 2, M_BODY);
     prims.push(headPrim);
     prims.push(seg(tf.t, hf.t, 11, 11, [0, 1, 0], 1, 1, M_BODY, 0.8)); // neck
+    // the head tapers forward into a narrower snout
+    prims.push(ellF(chain(hf, T(20, -3, 0)), [15, 10, 11], 2, 2, M_BODY));
     anchors.head = hf.t;
     // the lower jaw drops when the mouth opens (a dark gap under the head)
     if (mo > 0.05) {
@@ -174,23 +176,24 @@ const Vibrava = (() => {
       const ef = chain(hf, T(4, 1, 14.5 * sd), R(M3.ry(-sd * 0.15)));
       prims.push(ellF(ef, ER, sd > 0 ? 3 : 4, sd > 0 ? 3 : 4, eyeMat(kind, sd)));
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = inF(ef, [0, 0, ER[2] * sd]);
-      // two long pale mandibles jutting forward and down from the snout, diverging
-      const fb = inF(hf, [22, -4, 5 * sd]);
-      const fd = dirF(hf, [1, -0.35, 0.28 * sd]);
-      prims.push(seg(fb, add(fb, sc(fd, 20)), 3.4, 3, M3.v(hf.L, [0, 1, 0]), 5, 5, M_BODY, 1.1));
-      prims.push(seg(add(fb, sc(fd, 18)), add(fb, sc(fd, 40)), 2, 1.8, M3.v(hf.L, [0, 1, 0]), 5, 5, M_BODY, 1.15));
+      // two long pale mandibles jutting forward from the tapered snout, diverging, tapering to sharp points
+      const fb = inF(hf, [30, -5, 4 * sd]);
+      const fd = dirF(hf, [1, -0.16, 0.72 * sd]);
+      prims.push(seg(fb, add(fb, sc(fd, 18)), 4, 3.6, M3.v(hf.L, [0, 1, 0]), 5, 5, M_BODY, 1.1));
+      prims.push(seg(add(fb, sc(fd, 16)), add(fb, sc(fd, 34)), 2.8, 2.5, M3.v(hf.L, [0, 1, 0]), 5, 5, M_BODY, 1.1));
+      prims.push(seg(add(fb, sc(fd, 32)), add(fb, sc(fd, 50)), 1.6, 1.4, M3.v(hf.L, [0, 1, 0]), 5, 5, M_BODY, 1.1));
       // white bumps on top of the head
-      prims.push(E(inF(hf, [-2, 13, 7 * sd]), M3.mul(hf.L, M3.diag(6, 4.5, 5)), 6, 6, M_BUMP));
+      prims.push(E(inF(hf, [-4, 14, 7.5 * sd]), M3.mul(hf.L, M3.diag(7, 5.5, 6)), 6, 6, M_BUMP));
     }
     anchors.top = inF(hf, [-2, 18, 0]);
 
     // --- long thin segmented abdomen, curving up a little at the end, two rhombus fins
     const sway = walking ? 0.12 * Math.sin(wk) : 0;
-    const tp = [inF(tf, [-12, -2, 0]), inF(tf, [-36, -2, 0]), inF(tf, [-58, 6, 14 * sway]), inF(tf, [-70, 20, 26 * sway]), inF(tf, [-74, 38, 36 * sway])];
+    const tp = [inF(tf, [-12, -2, 0]), inF(tf, [-30, 2, 0]), inF(tf, [-44, 16, 12 * sway]), inF(tf, [-50, 36, 22 * sway]), inF(tf, [-50, 58, 30 * sway])];
     const NS = 12;
     for (let i = 0; i < NS; i++) {
       const a = crPt(tp, (i / NS) * 4), b = crPt(tp, ((i + 1) / NS) * 4);
-      const r = lerp(9.5, 3.4, i / (NS - 1));
+      const r = lerp(9.5, 4, i / (NS - 1));
       const banded = i % 2 === 1 && i < NS - 1;
       const hl = len3(sub(b, a)) * 0.75;
       prims.push(seg(a, b, r, r, [0, 1, 0], 7, 7, banded ? (q) => (Math.abs(q[0]) < Math.max(0.2, 1.1 / (curScale * hl)) ? C_BAND : C_BODY) : M_BODY, 1.5));
@@ -228,12 +231,16 @@ const Vibrava = (() => {
       const ph = wk + ph0;
       const lift = walking ? 5 * Math.max(0, Math.sin(ph)) : 0;
       const swing = walking ? 6 * Math.cos(ph) : 0;
-      const hip = inF(tf, [x, -8, 9 * sd]);
-      const knee = [hip[0] + (x > 0 ? 14 : -10) + swing * 0.5, 44 + lift, 28 * sd];
-      const foot = [hip[0] + (x > 0 ? 24 : -18) + swing, 1.8 + lift, 36 * sd];
-      prims.push(seg(hip, knee, 2.4, 2.4, [0, 1, 0], id, id, M_LEG, 1.15));
-      prims.push(seg(knee, foot, 2, 2, [0, 1, 0], id, id, M_LEG, 1.12));
-      prims.push(E(add(foot, [3, 0, 0]), M3.diag(6, 1.8, 3), id, id, M_LEG));
+      const fr = x > 0 ? 1 : -1;
+      const hip = inF(tf, [x, -2, 12 * sd]);
+      // thin jointed legs: up and out to a high knee, then down to a wide stance
+      const knee = [hip[0] + fr * (x > 0 ? 24 : 18) + swing * 0.5, 58 + lift, 32 * sd];
+      const foot = [hip[0] + fr * (x > 0 ? 50 : 42) + swing, 3 + lift, 46 * sd];
+      prims.push(seg(hip, knee, 2.4, 2.4, [0, 1, 0], id, id, M_LEG, 1.08));
+      prims.push(E(knee, M3.diag(2.9, 2.9, 2.9), id, id, M_LEG));
+      prims.push(seg(knee, foot, 2.1, 2.1, [0, 1, 0], id, id, M_LEG, 1.06));
+      // forked foot: two toes splaying forward and back
+      for (const t of [1, -1]) prims.push(seg(foot, [foot[0] + t * 9, 1.4, foot[2] + sd * 2], 1.9, 1.6, [0, 1, 0], id, id, M_LEG, 1.15));
       if (i < 2) anchors[sd > 0 ? 'footN' : 'footF'] = [foot[0], 0, foot[2]];
     });
 

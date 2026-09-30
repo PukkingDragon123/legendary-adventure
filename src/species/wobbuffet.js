@@ -6,9 +6,9 @@
    dev/CREATURE_GUIDE.md).
    Model space: x = forward, y = up, z = near side at yaw 0, ground at y = 0.
 
-   Design (official art): a big light-blue punching-bag blob: a round
-   head that merges into a wider, heavy lower body with a flat base, tiny
-   feet barely peeking out. Narrow squinting black eye slits high on the
+   Design (official art): a tall light-blue punching-bag blob: a round
+   head that merges into the body, widest just under the face, tapering
+   toward the bottom where two flat feet splay out to the sides. Narrow squinting black eye slits high on the
    face and a wide pink-lipped mouth. Two long, flat paddle arms pressed to
    its sides (one raised to its forehead in its famous salute). A thin
    black tail ends in a round black head with two big white eyes.
@@ -38,13 +38,14 @@ const Wobbuffet = (() => {
   const BLUE = 1, BLACK = 2, WHITE = 3, INK = 4, LIP = 5, MOUTH = 6, TONGUE = 7;
   const MAT = { BLUE, BLACK, WHITE, INK, LIP, MOUTH, TONGUE };
   const PAL = Creature.palette({
-    [BLUE]:   { r: ['#2c74a8', '#3f92c8', '#56abde', '#7cc4ec', '#b0e0f8'], od: '#143e62', ol: '#2a6a9a', ln: '#2a6a9a' },
+    // sampled from the official art: sky blue #65b5d8 with a greyish shadow #5992ad; mouth #7d5a5f / #d58a8a
+    [BLUE]:   { r: ['#40809e', '#5a9ab8', '#65b5d8', '#86c6e0', '#b4dcec'], od: '#1a3a4c', ol: '#346a86', ln: '#3a7896' },
     [BLACK]:  { r: ['#15161c', '#1f2029', '#2c2e3a', '#3e4150', '#5c6070'], od: '#08080c', ol: '#15161c', ln: '#101118' },
     [WHITE]:  { r: ['#c6ccd8', '#e4e8f0', '#fbfcfe', '#ffffff', '#ffffff'], od: '#4a5060', ol: '#7a8090', ln: '#7a8090' },
     [INK]:    { r: ['#0e1420', '#121a28', '#182232', '#202c40', '#2a384e'], od: '#060a12', ol: '#0e1420', ln: '#0e1420' },
     [LIP]:    { r: ['#b8466a', '#d6628a', '#ee86a6', '#f8a8c0', '#ffd0de'], od: '#681634', ol: '#9a2e52', ln: '#9a2e52' },
-    [MOUTH]:  { r: ['#6a2a36', '#843842', '#9c4a52', '#b25c62', '#c47074'], od: '#3a121a', ol: '#5a1e28', ln: '#5a1e28' },
-    [TONGUE]: { r: ['#c45a64', '#da747a', '#ec9294', '#f8b0b0', '#ffd0cc'], od: '#6a1e28', ol: '#94303a', ln: '#94303a' },
+    [MOUTH]:  { r: ['#503438', '#664448', '#7d5a5f', '#8e6a6e', '#9e7c80'], od: '#2a1418', ol: '#4a2428', ln: '#4a2428' },
+    [TONGUE]: { r: ['#a8606a', '#c07478', '#d58a8a', '#e4a2a0', '#f0bcb8'], od: '#6a1e28', ol: '#94303a', ln: '#94303a' },
   });
   const GLOSSY = {};
   const C_BLUE = code(BLUE), C_BLUE_D = code(BLUE, -1), C_BLACK = code(BLACK), C_WHITE = code(WHITE), C_INK = code(INK);
@@ -84,9 +85,9 @@ const Wobbuffet = (() => {
   let curScale = 1;
 
   /* ---------- head decals (head frame, unit sphere s) ---------- */
-  const HR = [54, 66, 56];
-  const EYE_AZ = 0.42, EYE_V = 0.52, EYE_HW = 0.15;
-  const MO_V = 0.2, MO_HW = 0.62, MO_H = 0.2;
+  const HR = [55, 80, 60];
+  const EYE_AZ = 0.4, EYE_V = 0.69, EYE_HW = 0.15;
+  const MO_V = 0.44, MO_HW = 0.66, MO_H = 0.24;
   function eyePix(u, v, kind, px, sd = 1) {
     const k = u / EYE_HW;
     if (Math.abs(k) > 1.05) return 0;
@@ -119,13 +120,13 @@ const Wobbuffet = (() => {
       const k = u / MO_HW;
       if (Math.abs(k) < 1) {
         const lw = Math.max(0.025, 0.6 * px);
-        const zz = Math.abs(((k * 2.5 + 0.5) % 1 + 1) % 1 - 0.5) * 2;   // 0..1 triangle wave
-        const top = MO_V + 0.05 - 0.09 * zz;
+        const zz = Math.abs(((k * 1.5 + 0.5) % 1 + 1) % 1 - 0.5) * 2;   // 0..1 triangle wave: a few big teeth
+        const top = MO_V + 0.05 - 0.13 * zz;
         if (mo > 0.05) {
           const depth = MO_H * 3.6 * mo * Math.sqrt(Math.max(0, 1 - k * k));
           const bot = MO_V + 0.05 - depth;
           if (s[1] < top && s[1] > bot) {
-            const tb = (s[1] - bot) / Math.max(0.01, depth * 0.5), tk = k / 0.62;
+            const tb = (s[1] - bot) / Math.max(0.01, depth * 0.55), tk = k / 0.8;
             return tb * tb + tk * tk < 1 ? C_TONGUE : C_MOUTH;
           }
         } else if (Math.abs(s[1] - MO_V) < lw && Math.abs(k) < 0.8) return C_INK;
@@ -172,11 +173,10 @@ const Wobbuffet = (() => {
     const root = chain({ L: M3.diag(1 + 0.22 * sq, 1 - 0.3 * sq, 1 + 0.22 * sq), t: [0, bob, 0] }, R(M3.rx(lean)));
 
     // --- the blob: heavy lower body + round head, merged in one contour group
-    const bodyF = chain(root, T(0, 82, 0));
-    prims.push(ellF(bodyF, [68, 82, 74], 1, 1, (s) => (s[1] < -0.93 ? C_BLUE_D : C_BLUE)));
-    // neck filler so head and body read as one smooth blob
-    prims.push(ellF(chain(root, T(-4, 128, 0)), [52, 50, 64], 1, 1, M_BLUE));
-    const hf = chain(root, T(8, 160, 0), R(M3.rx(-0.3 * lean)), R(M3.rz(walking ? 0.02 * Math.sin(2 * wk) : 0)));
+    // lower body: tapers toward the base (widest up under the face)
+    const bodyF = chain(root, T(0, 80, 0));
+    prims.push(ellF(bodyF, [50, 80, 56], 1, 1, M_BLUE));
+    const hf = chain(root, T(4, 146, 0), R(M3.rx(-0.3 * lean)), R(M3.rz(walking ? 0.02 * Math.sin(2 * wk) : 0)));
     const headPrim = ellF(hf, HR, 1, 1, headMat(kind, mo));
     prims.push(headPrim);
     anchors.head = hf.t;
@@ -191,7 +191,7 @@ const Wobbuffet = (() => {
       const id = sd > 0 ? 2 : 3;
       const flop = walking ? 0.1 * Math.sin(wk + (sd > 0 ? 0 : Math.PI)) : 0;
       const sa = sd > 0 ? sal : 0;
-      const sh = inF(root, [2, 136, 56 * sd]);
+      const sh = inF(root, [2, 150, 58 * sd]);
       // hanging: down along the side, a little out; salute: up and forward to the forehead
       let ang = 0.3 - 0.35 * sw * sd + flop;                         // spread from straight down
       const hang = dirF(root, [0.08, -Math.cos(ang), sd * Math.sin(ang)]);
@@ -211,8 +211,8 @@ const Wobbuffet = (() => {
       const id = sd > 0 ? 4 : 5;
       const ph = wk + (sd > 0 ? 0 : Math.PI);
       const fwd = walking ? 6 * Math.sin(ph) : 0, lift = walking ? 4 * Math.max(0, Math.cos(ph)) : 0;
-      const f = [30 + fwd, 10 + lift - bob, 34 * sd];
-      prims.push(E(f, M3.diag(26, 11, 20), id, id, (s) => (s[1] < -0.5 ? C_BLUE_D : C_BLUE)));
+      const f = [10 + fwd, 10 + lift - bob, 46 * sd];
+      prims.push(E(f, M3.mul(M3.ry(-0.35 * sd), M3.diag(22, 11, 30)), id, id, (s) => (s[1] < -0.5 ? C_BLUE_D : C_BLUE)));
       anchors[sd > 0 ? 'footN' : 'footF'] = [f[0], 0, f[2]];
     }
 
@@ -276,5 +276,5 @@ const Wobbuffet = (() => {
     return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.3, bw: 320, bh: 270, oy: 0.92 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.3, bw: 340, bh: 270, oy: 0.92 } };
 })();

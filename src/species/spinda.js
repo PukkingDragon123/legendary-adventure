@@ -33,14 +33,15 @@ const Spinda = (() => {
   const CREAM = 1, RED = 2, INK = 3, PINK = 4, MOUTH = 5;
   const MAT = { CREAM, RED, INK, PINK, MOUTH };
   const PAL = Creature.palette({
-    [CREAM]: { r: ['#b09a84', '#cebaa2', '#e8dcc8', '#f6eee0', '#fffaf0'], od: '#665040', ol: '#96806a', ln: '#a48c76' },
-    [RED]:   { r: ['#a0383c', '#c05256', '#dc6e6a', '#ee908a', '#fcb6ae'], od: '#561418', ol: '#86282c', ln: '#94383a' },
+    // sampled from the official art: pinkish cream #e8ddcf, spot red #d86d6b
+    [CREAM]: { r: ['#b4a292', '#d0c2b2', '#e8ddcf', '#f2ebe0', '#fbf7f0'], od: '#5e4a40', ol: '#8e7a6c', ln: '#a4927e' },
+    [RED]:   { r: ['#9a3c3c', '#bc5452', '#d86d6b', '#e88a86', '#f4aaa4'], od: '#561418', ol: '#86282c', ln: '#94383a' },
     [INK]:   { r: ['#140e12', '#1a1216', '#20161a', '#2a1e22', '#34262a'], od: '#0a0608', ol: '#140e12', ln: '#140e12' },
-    [PINK]:  { r: ['#b85a78', '#d07490', '#e690aa', '#f4b0c4', '#ffd0dc'], od: '#6a1e38', ol: '#94344e', ln: '#9e4058' },
+    [PINK]:  { r: ['#a84e6c', '#c46482', '#dc7e98', '#e898ae', '#f4b8c8'], od: '#6a1e38', ol: '#94344e', ln: '#9e4058' },
     [MOUTH]: { r: ['#5a1a2a', '#742434', '#8e3244', '#a84456', '#c05a6a'], od: '#380c18', ol: '#561424', ln: '#561424' },
   });
   const GLOSSY = {};
-  const C_CREAM = code(CREAM), C_RED = code(RED), C_INK = code(INK), C_PINK = code(PINK, 1), C_MOUTH = code(MOUTH);
+  const C_CREAM = code(CREAM), C_RED = code(RED), C_INK = code(INK), C_PINK = code(PINK), C_MOUTH = code(MOUTH);
   const M_CREAM = () => C_CREAM, M_RED = () => C_RED;
 
   // ---- helpers
@@ -78,8 +79,8 @@ const Spinda = (() => {
     const r = Math.hypot(du, dv);
     const p = 1 / curScale;
     if (r > R0 + 0.6 * p) return false;
-    const gap = Math.max(R0 / 1.9, 2.3 * p);  // turn spacing, at least ~2 px
-    const lw = Math.max(R0 * 0.16, 0.62 * p);
+    const gap = Math.max(R0 / 1.6, 2.3 * p);  // turn spacing, at least ~2 px
+    const lw = Math.max(R0 * 0.18, 0.62 * p);
     if (r < lw * 1.2) return true;            // centre dot
     const th = dir * Math.atan2(dv, du);
     const turns = r / gap - th / (2 * Math.PI);
@@ -88,10 +89,10 @@ const Spinda = (() => {
   }
 
   /* ---------- head decals (head frame: unit sphere s) ---------- */
-  const HR = [44, 42, 50];
-  const EYE_AZ = 0.42, EYE_V = 0.1, EYE_R = 12, NOSE_V = -0.1, MOUTH_V = -0.3;
+  const HR = [44, 42, 52];
+  const EYE_AZ = 0.43, EYE_V = 0.1, EYE_R = 14, NOSE_V = -0.12, MOUTH_V = -0.3;
   // official-art spot pattern (az, v, radius in unit-sphere units)
-  const OFFICIAL = [[-0.62, 0.7, 0.33], [0.5, 0.12, 0.34], [-1.7, 0.2, 0.36], [2.5, 0.45, 0.42]];
+  const OFFICIAL = [[0.42, 0.74, 0.3], [-0.56, 0.12, 0.36], [1.75, 0.2, 0.3], [2.6, 0.45, 0.42]];
   function spotSet(seed) {
     if (!seed) return OFFICIAL;
     const r = rng(seed);
@@ -120,14 +121,14 @@ const Spinda = (() => {
         const nx = u / Math.max(2, 0.8 * p), ny = (v - NOSE_V) * HR[1] / Math.max(1.5, 0.6 * p);
         if (nx * nx + ny * ny < 1) return C_INK;
         // smile
-        if (Math.abs(u) < 11 && Math.abs(y) < 10) {
-          const hw = 8 + mo, k = u / hw;
+        if (Math.abs(u) < 13 && Math.abs(y) < 10) {
+          const hw = 11 + mo, k = u / hw;
           if (Math.abs(k) < 1) {
             const yc = 1.8 * k * k;
             if (mo > 0.08) {
               const h = Math.max(1.5 + 5 * mo, 2 * p) * Math.sqrt(1 - k * k);
               if (y < yc + 0.6 && y > yc - h) return y > yc - Math.max(0.9, 0.6 * p) ? C_PINK : C_MOUTH;
-            } else if (Math.abs(y - yc) < Math.max(0.9, 0.6 * p)) return C_PINK;
+            } else if (Math.abs(y - yc) < Math.max(1.3, 0.62 * p)) return C_PINK;
           }
         }
       }
@@ -137,12 +138,16 @@ const Spinda = (() => {
     };
   }
   // body: cream, red band around the hips
-  const bodyMat = (s) => (s[1] < -0.3 + 0.05 * Math.sin(Math.atan2(s[2], s[0]) * 3) && s[1] > -0.86 ? C_RED : C_CREAM);
+  // red band wraps the lower body (rising at the sides and back), cream belly oval above it at the front
+  const bodyMat = (s) => {
+    const back = Math.max(0, 0.35 - s[0]);
+    return s[1] < -0.28 + 0.55 * back && s[1] > -0.9 ? C_RED : C_CREAM;
+  };
   // ear (flat ellipsoid: x = thickness facing forward, y = along the ear, z = across): red outer tip, black spiral inside
   function earMat(sd) {
     return (s) => {
-      if (s[1] > 0.55 - 0.3 * s[2] * sd) return C_RED;
-      if (s[0] > 0.3 && spiral(s[2] * 17 * sd, (s[1] + 0.05) * 25, 12, -1)) return C_INK;
+      if (s[1] > 0.3 - 0.35 * s[2] * sd) return C_RED;
+      if (s[0] > 0.3 && spiral(s[2] * 17 * sd, (s[1] + 0.25) * 25, 11, -1)) return C_INK;
       return C_CREAM;
     };
   }
@@ -172,23 +177,23 @@ const Spinda = (() => {
       const ph = wk + (sd > 0 ? 0 : Math.PI);
       const fwd = walking ? 9 * Math.sin(ph) : 0;
       const lift = walking ? 5 * Math.max(0, Math.cos(ph)) : 0;
-      const hip = inF(root, [0, 28, sd * 16]);
-      const ank = [4 + fwd, 9 + lift, sd * 18 + Math.sin(wb) * 3];
-      prims.push(seg(hip, ank, 13, 13, id, id, M_CREAM, [1, 0, 0], 1.2));
-      const foot = chain(T(ank[0] + 5, ank[1] - 3, ank[2]), R(M3.ry(-sd * 0.3)), R(M3.rz(walking ? 0.2 * Math.sin(ph) : 0)));
-      prims.push(ellF(foot, [15, 7.5, 11.5], id, id, M_CREAM));
-      anchors[sd > 0 ? 'footN' : 'footF'] = inF(foot, [0, -7.5, 0]);
+      const hip = inF(root, [0, 22, sd * 15]);
+      const ank = [4 + fwd, 8 + lift, sd * 17 + Math.sin(wb) * 3];
+      prims.push(seg(hip, ank, 11.5, 11.5, id, id, M_CREAM, [1, 0, 0], 1.2));
+      const foot = chain(T(ank[0] + 4, ank[1] - 2.5, ank[2]), R(M3.ry(-sd * 0.3)), R(M3.rz(walking ? 0.2 * Math.sin(ph) : 0)));
+      prims.push(ellF(foot, [12, 6, 10], id, id, M_CREAM));
+      anchors[sd > 0 ? 'footN' : 'footF'] = inF(foot, [0, -6, 0]);
     }
 
     /* --- pear-shaped body with the red hip band --- */
-    const bodyF = chain(root, T(0, 56, 0));
-    prims.push(ellF(bodyF, [32, 33, 34], 1, 1, bodyMat));
+    const bodyF = chain(root, T(0, 50, 0));
+    prims.push(ellF(bodyF, [30, 35, 32], 1, 1, bodyMat));
     anchors.body = bodyF.t;
     anchors.belly = inF(bodyF, [33, -8, 0]);
 
     /* --- head: lags behind the sway and counter-tilts (dizzy) --- */
     const lag = 0.12 * Math.sin(wb - 0.9);
-    const head = chain(root, T(4, 100, 0), R(M3.rx(-0.6 * swayX + lag)), R(M3.rz(-0.1 * Math.sin(2 * wb - 0.6))), T(0, 10, 0));
+    const head = chain(root, T(4, 96, 0), R(M3.rx(-0.6 * swayX + lag)), R(M3.rz(-0.1 * Math.sin(2 * wb - 0.6))), T(0, 10, 0));
     const headPrim = ellF(head, HR, 2, 2, headMat(kind, mo, spots));
     prims.push(headPrim);
     anchors.head = head.t;

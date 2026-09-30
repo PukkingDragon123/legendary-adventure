@@ -46,14 +46,16 @@ const Lombre = (() => {
   const GREEN = 1, MINT = 2, PAD = 3, PADU = 4, RIM = 5, LIP = 6, MOUTH = 7, CLAW = 8, EYEW = 9, EYE = 10;
   const MAT = { GREEN, MINT, PAD, PADU, RIM, LIP, MOUTH, CLAW, EYEW, EYE };
   const PAL = Creature.palette({
-    [GREEN]: { r: ['#4a7a24', '#64982e', '#80b43c', '#9ccc56', '#c0e482'], od: '#223e0e', ol: '#46701e', ln: '#446c20' },
-    [MINT]:  { r: ['#6a9a86', '#8ab8a2', '#a8d2bc', '#c4e4d2', '#e4f6ec'], od: '#2a5244', ol: '#4e8270', ln: '#4e8270' },
-    [PAD]:   { r: ['#4a7e2a', '#5e9834', '#74b042', '#8ec658', '#b0de7e'], od: '#224212', ol: '#447424', ln: '#406e22' },
-    [PADU]:  { r: ['#305a1e', '#3c6c26', '#4a802e', '#5a9438', '#6ea848'], od: '#15300c', ol: '#2a5a1e', ln: '#2a561e' },
-    [RIM]:   { r: ['#44782a', '#5a9234', '#6ea840', '#88c056', '#aad87a'], od: '#224212', ol: '#447424', ln: '#3e6a20' },
-    [LIP]:   { r: ['#a2324a', '#c44a60', '#e26a7a', '#f2909a', '#ffc0c4'], od: '#58101e', ol: '#922a3c', ln: '#8a2838' },
+    // sampled from the official art: body green #78a647 (lit #91c35d, shadow #599234), pale mint face/arms #c2decf,
+    // lily-pad hat #5e8a3a with a darker rim #568a34, pink lips #ec9498 / #bc6d71, pink claws #ce898c
+    [GREEN]: { r: ['#44722a', '#599234', '#78a647', '#91c35d', '#b0d680'], od: '#1e3a10', ol: '#3e6a22', ln: '#446e26' },
+    [MINT]:  { r: ['#7e9a8e', '#a0b8ab', '#c2decf', '#d8ece2', '#eef8f4'], od: '#2a4a40', ol: '#4e7a6a', ln: '#56826e' },
+    [PAD]:   { r: ['#44682a', '#547e34', '#66983e', '#80b050', '#a2c86c'], od: '#1e3a10', ol: '#3e6a22', ln: '#3e6420' },
+    [PADU]:  { r: ['#3e6026', '#4c742e', '#5e8a3a', '#70a046', '#86b458'], od: '#15300c', ol: '#2a5a1e', ln: '#2a561e' },
+    [RIM]:   { r: ['#3e6a24', '#4c7c2c', '#568a34', '#6aa044', '#88ba60'], od: '#1e3a10', ol: '#3e6a22', ln: '#3a6220' },
+    [LIP]:   { r: ['#9a4650', '#bc6d71', '#e08488', '#ec9498', '#f8b8ba'], od: '#58141e', ol: '#8a2e3a', ln: '#8a3038' },
     [MOUTH]: { r: ['#3c0c14', '#54141e', '#6c2029', '#862e36', '#a24048'], od: '#26060c', ol: '#3c0c14', ln: '#3c0c14' },
-    [CLAW]:  { r: ['#b4465a', '#d26276', '#ec8696', '#f8acb6', '#ffd6dc'], od: '#661426', ol: '#a0384c', ln: '#9c384a' },
+    [CLAW]:  { r: ['#985860', '#b87276', '#ce898c', '#e0a4a6', '#f0c4c4'], od: '#5a1c26', ol: '#8a3a44', ln: '#9a4a52' },
     [EYEW]:  { r: ['#c2d0ca', '#dfeae5', '#f6fbf9', '#ffffff', '#ffffff'], od: '#1c3a32', ol: '#2e5048', ln: '#1c3a32' },
     [EYE]:   { r: ['#0a0f0d', '#101714', '#161f1b', '#222c27', '#34403a'], od: '#060a08', ol: '#0a0f0d', ln: '#060a08' },
   });
@@ -111,7 +113,7 @@ const Lombre = (() => {
     const fw = [Math.sin(az), 0, (sd ? 1 : -1) * Math.cos(az)];
     const u = (s[0] - q[0]) * fw[0] + (s[2] - q[2]) * fw[2], v = s[1] - q[1];
     const px = 1 / (curScale * HR[1]);
-    const ru = Math.max(0.27, 2.2 * px), rv = Math.max(0.24, 2.0 * px);
+    const ru = Math.max(0.3, 2.2 * px), rv = Math.max(0.27, 2.0 * px);
     if (kind === 'open') {
       // half-lidded: the upper part of the almond is covered by a flat lid, a dark lid line on top
       const lid = 0.03 * rv, lw = Math.max(0.05, 0.8 * px);
@@ -121,7 +123,7 @@ const Lombre = (() => {
       if (v < -0.62 * rv * Math.sqrt(Math.max(0, 1 - a * a)) - 0.3 * lw && a * a + b * b > 0.72) return C_EYE; // lower rim (only when big)
       // pupil: a black dot just under the lid, toward the beak
       const pr = Math.max(0.085, 1.05 * px);
-      const pu = (u - 0.18 * ru) / pr, pv = (v - (lid - 0.9 * pr)) / (pr * 1.1);
+      const pu = (u + 0.5 * ru) / pr, pv = (v - (lid - 0.9 * pr)) / (pr * 1.1);
       return pu * pu + pv * pv < 1 ? C_EYE : C_EYEW;
     }
     const w = Math.max(0.045, 0.72 * px), a = u / (ru * 0.95);
@@ -133,7 +135,7 @@ const Lombre = (() => {
     return Math.abs(v - yc) < w ? C_EYE : 0;
   }
   const headMat = (kind) => (s) => {
-    if (s[0] < -0.28 + 0.12 * s[1]) return C_GREEN; // back of the head
+    if (0.96 * s[0] - 0.28 * s[1] < 0.42) return C_GREEN; // green hood round the sides and back, mint face disc in front
     if (s[0] > 0.2 && Math.abs(s[2]) < 0.9) { const e = eyePix(s, kind); if (e) return e; }
     return C_MINT;
   };
@@ -143,8 +145,11 @@ const Lombre = (() => {
   const NOTCH_A = -1.75, NOTCH_IN = 0.66, NOTCH_W = 23; // notch direction (atan2(z, x) in the hat frame), depth, width
   const ND = [Math.cos(NOTCH_A), Math.sin(NOTCH_A)], NP = [-ND[1], ND[0]];
   const inNotch = (x, z) => x * ND[0] + z * ND[1] > HAT_R * NOTCH_IN && Math.abs(x * NP[0] + z * NP[1]) < NOTCH_W / 2;
-  const padTop = (s) => (s[1] < 0 || inNotch(HAT_R * s[0], HAT_R * s[2]) ? 0 : C_PAD);
-  const padBot = (s) => (s[1] > 0 || inNotch(HAT_R * s[0], HAT_R * s[2]) ? 0 : C_PADU);
+  // faint radial veins, like Lotad's pad
+  const vein = (s) => { const r = Math.hypot(s[0], s[2]); if (r < 0.12 || r > 0.93) return false; const a = Math.atan2(s[2], s[0]) * 9 / (2 * Math.PI); return Math.abs(a - Math.round(a)) * r < Math.max(0.012, 0.5 / (curScale * HAT_R)); };
+  const C_PAD_L = code(PAD, 1), C_PADU_L = code(PADU, 1);
+  const padTop = (s) => (s[1] < 0 || inNotch(HAT_R * s[0], HAT_R * s[2]) ? 0 : vein(s) ? C_PAD_L : C_PAD);
+  const padBot = (s) => (s[1] > 0 || inNotch(HAT_R * s[0], HAT_R * s[2]) ? 0 : vein(s) ? C_PADU_L : C_PADU);
   const RIM_L = (2 * Math.PI * HAT_R) / RIM_N;
   const rimShape = (hw, h) => bakeShape({
     bb: [-hw - 0.5, -h / 2 - 0.5, hw + 0.5, h / 2 + 0.5],
@@ -221,7 +226,7 @@ const Lombre = (() => {
     anchors.mouth = inF(bk, [14, -1, 0]);
 
     // ---- hat (pushed back on the head; rolls toward the camera; bounces with the dance)
-    const hat = chain(hf, T(-16, 25, 0), R(M3.rz(0.46 + (dancing ? 0.06 * g * Math.sin(2 * dph - 0.7) : 0) - (swimming ? 0.9 : 0))), R(M3.rx(0.2 * side + (dancing ? 0.06 * g * Math.sin(dph - 0.8) : 0))));
+    const hat = chain(hf, T(-20, 21, 0), R(M3.rz(0.66 + (dancing ? 0.06 * g * Math.sin(2 * dph - 0.7) : 0) - (swimming ? 0.9 : 0))), R(M3.rx(0.22 * side + (dancing ? 0.06 * g * Math.sin(dph - 0.8) : 0))));
     prims.push(ellF(chain(hat, T(0, HAT_H / 2, 0)), [HAT_R, 3.4, HAT_R], 7, 7, padTop));
     prims.push(ellF(chain(hat, T(0, -HAT_H / 2, 0)), [HAT_R, 2.6, HAT_R], 8, 8, padBot));
     for (let i = 0; i < RIM_N; i++) {
@@ -320,5 +325,5 @@ const Lombre = (() => {
     return Creature.render(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.2, bw: 250, bh: 260, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.2, bw: 290, bh: 270, oy: 0.9 } };
 })();

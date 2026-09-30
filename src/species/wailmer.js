@@ -32,10 +32,10 @@ const Wailmer = (() => {
   const BODY = 1, BELLY = 2, TEETH = 3, FIN = 4, MOUTH = 5, TONGUE = 6, WATER = 7, HOLE = 8;
   const MAT = { BODY, BELLY, TEETH, FIN, MOUTH, TONGUE, WATER, HOLE };
   const PAL = Creature.palette({
-    [BODY]:   { r: ['#173e76', '#22579e', '#2e6db6', '#4284ca', '#8cc0ec'], od: '#0c2250', ol: '#1a4282', ln: '#163c78' },
+    [BODY]:   { r: ['#123a62', '#18507e', '#1f6096', '#3a7eb0', '#6ea8cc'], od: '#0a2240', ol: '#173e6a', ln: '#143a64' },
     // flat-shaded plates: a narrow ramp so the flippers stay a clean mid blue from any side
-    [FIN]:    { r: ['#1f4f92', '#2560a8', '#2c6ab4', '#3576c0', '#4382cb'], od: '#0c2250', ol: '#1a4282', ln: '#143a74' },
-    [BELLY]:  { r: ['#c6b07a', '#dfca94', '#f3e3b2', '#fbefcb', '#fff9e6'], od: '#6c5222', ol: '#9c804c', ln: '#b09062' },
+    [FIN]:    { r: ['#18507e', '#1c5888', '#205f94', '#2868a0', '#3274aa'], od: '#0a2240', ol: '#173e6a', ln: '#123660' },
+    [BELLY]:  { r: ['#d0b484', '#e8cf9e', '#fbe4b3', '#fdefcc', '#fff8e8'], od: '#6c5222', ol: '#9c804c', ln: '#a88a5a' },
     [TEETH]:  { r: ['#96a2b4', '#c2cad8', '#eaeff5', '#ffffff', '#ffffff'], od: '#3a4458', ol: '#667286', ln: '#8490a4' },
     [MOUTH]:  { r: ['#3c0c1a', '#581426', '#761f34', '#963246', '#b44a5a'], od: '#26060f', ol: '#400b19', ln: '#400b19' },
     [TONGUE]: { r: ['#a43c52', '#c45468', '#de7282', '#ee94a0', '#f8b8c0'], od: '#5c1426', ol: '#7e2234', ln: '#8c2c40' },
@@ -60,11 +60,11 @@ const Wailmer = (() => {
   const tr = (m) => [m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]];
 
   /* ---------- the ball: inner cream/teeth ball + a slightly larger blue cap shell ---------- */
-  const RAD = [184, 170, 178];
-  const CAP_K = [1.13, 1.04, 1.05], CAP_OFF = [14, 4, 0]; // longer than the ball: the upper jaw juts forward as a snout
+  const RAD = [198, 164, 180];
+  const CAP_K = [1.12, 1.0, 1.05], CAP_OFF = [14, 8, 0]; // longer than the ball: the upper jaw juts forward as a snout
   const AZC = 1.8; // mouth corner azimuth: the grin runs round the sides to just behind them
-  const lipV = (a) => 0.3 - 0.16 * (a / AZC) ** 2; // upper lip (cap edge) across the mouth
-  const loV = (a) => -0.04 + 0.16 * (a / AZC) ** 2; // lower edge of the grin
+  const lipV = (a) => 0.33 - 0.14 * (a / AZC) ** 2; // upper lip (cap edge) across the mouth
+  const loV = (a) => 0.14 + 0.1 * (a / AZC) ** 2; // lower edge of the grin: a narrow band of teeth
   // lower edge of the blue cap all the way round (cap unit sphere; a = |azimuth|, 0 = front)
   function capV(a) {
     if (a <= AZC) return lipV(a);
@@ -184,7 +184,7 @@ const Wailmer = (() => {
     sleep: ['k.....k', '.k...k.', '..kkk..'], sleepN: ['k...k', '.kkk.'], sleepF: ['k..k', '.kk.'],
   };
   const EYEC = { k: '#0a1020', w: '#ffffff' };
-  const EYE_AZ = 0.62, EYE_V = 0.52;
+  const EYE_AZ = 0.66, EYE_V = 0.5;
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -361,5 +361,5 @@ const Wailmer = (() => {
     return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 2.0, bw: 850, bh: 720, oy: 0.86 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 2.0, bw: 940, bh: 720, oy: 0.86 } };
 })();

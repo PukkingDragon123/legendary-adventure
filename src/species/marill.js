@@ -30,21 +30,23 @@ const Marill = (() => {
   const { chain, T, R, code } = Creature;
 
   // ---- materials
-  const BLUE = 1, PALE = 2, EARIN = 3, BLACK = 4, EYE = 5, MOUTH = 6, TONGUE = 7, SHINE = 8;
-  const MAT = { BLUE, PALE, EARIN, BLACK, EYE, MOUTH, TONGUE, SHINE };
+  const BLUE = 1, PALE = 2, EARIN = 3, BLACK = 4, EYE = 5, MOUTH = 6, TONGUE = 7, SHINE = 8, EYEBL = 9;
+  const MAT = { BLUE, PALE, EARIN, BLACK, EYE, MOUTH, TONGUE, SHINE, EYEBL };
   const PAL = Creature.palette({
-    [BLUE]:   { r: ['#1e62a8', '#3384cc', '#4aa6e4', '#7cc6f2', '#bfe4ff'], od: '#123c78', ol: '#2a62a2', ln: '#2a60a0' },
-    [PALE]:   { r: ['#94a2b4', '#b8c4d2', '#dae2ea', '#eef3f8', '#ffffff'], od: '#34506e', ol: '#62789a', ln: '#8090a6' },
-    [EARIN]:  { r: ['#96301e', '#b8482e', '#d66448', '#ea866a', '#ffae96'], od: '#521408', ol: '#80281a', ln: '#8e3222' },
+    // sampled from the official art: sky blue #4db6e7, pale grey belly #b1bdc2, red-orange ear insides
+    [BLUE]:   { r: ['#2474a8', '#3399ca', '#4db6e7', '#81c9ec', '#c0e6f8'], od: '#123e66', ol: '#2a6a98', ln: '#2a7cae' },
+    [PALE]:   { r: ['#94a2aa', '#aebcc2', '#c4d0d6', '#d6e0e4', '#eef4f6'], od: '#34506e', ol: '#62789a', ln: '#8a9aa4' },
+    [EARIN]:  { r: ['#8a3c2c', '#b04a34', '#d4583e', '#e27052', '#f09478'], od: '#521408', ol: '#80281a', ln: '#8e3222' },
     [BLACK]:  { r: ['#14141c', '#1e1e28', '#2a2a36', '#3a3a48', '#565666'], od: '#08080c', ol: '#14141c', ln: '#101016' },
     [EYE]:    { r: ['#0a0e1a', '#0e1220', '#121828', '#182032', '#20283e'], od: '#06080e', ol: '#0a0e1a', ln: '#0a0e1a' },
     [MOUTH]:  { r: ['#561426', '#701e32', '#8a2c42', '#a43e54', '#bc5466'], od: '#380c18', ol: '#561424', ln: '#561424' },
     [TONGUE]: { r: ['#c04c68', '#da6a84', '#ee8ca2', '#ffb0c0', '#ffd4de'], od: '#6a1430', ol: '#94203e', ln: '#94203e' },
     [SHINE]:  { r: ['#e8eef6', '#f6f9fc', '#ffffff', '#ffffff', '#ffffff'], od: '#606878', ol: '#8890a0', ln: '#8890a0' },
+    [EYEBL]:  { r: ['#1c4a78', '#1c4a78', '#245a8e', '#245a8e', '#245a8e'], od: '#0a0e1a', ol: '#0a0e1a', ln: '#0a0e1a' },
   });
   const GLOSSY = { [BLUE]: 1, [BLACK]: 1 };
   const C_BLUE = code(BLUE), C_PALE = code(PALE), C_EARIN = code(EARIN), C_BLACK = code(BLACK);
-  const C_EYE = code(EYE), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE), C_SHINE = code(SHINE, 1);
+  const C_EYE = code(EYE), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE), C_SHINE = code(SHINE, 1), C_EYEBL = code(EYEBL);
   const M_BLUE = () => C_BLUE, M_BLACK = () => C_BLACK;
 
   // ---- helpers
@@ -74,10 +76,10 @@ const Marill = (() => {
 
   /* ---------- body decals (unit sphere s; az 0 = forward) ---------- */
   const BR = [25.5, 25, 26];
-  const EYE_AZ = 0.3, EYE_V = 0.2, NOSE_V = 0.06, MOUTH_V = -0.04;
+  const EYE_AZ = 0.33, EYE_V = 0.27, NOSE_V = 0.1, MOUTH_V = 0.0;
   function eyePix(ea, eb, sd, kind) {
     const pu = 1 / (curScale * BR[2]), pv = 1 / (curScale * BR[1]);
-    const ru = Math.max(0.1, 0.75 * pu), rv = Math.max(0.145, 1.05 * pv);
+    const ru = Math.max(0.105, 0.75 * pu), rv = Math.max(0.14, 1.05 * pv);
     const x = ea / ru, y = eb / rv;
     if (Math.abs(x) > 1.3 || Math.abs(y) > 1.4) return 0;
     const lw = Math.max(0.2, 0.7 * pv / rv);
@@ -86,13 +88,15 @@ const Marill = (() => {
     if (kind === 'closed') return Math.abs(x) < 1.05 && Math.abs(y - (-0.3 + 0.6 * x * x)) < lw ? C_EYE : 0;
     if (x * x + y * y > 1) return 0;
     if (ru > 1.7 * pu) {
-      const gx = x + 0.28 * sd, gy = y - 0.4, gr = Math.max(0.3, 0.75 * pu / ru);
+      const gx = x + 0.12 * sd, gy = y - 0.36, gr = Math.max(0.36, 0.75 * pu / ru);
       if (gx * gx + gy * gy < gr * gr) return C_SHINE;
+      const bx = x + 0.12 * sd, by = y + 0.45;
+      if (ru > 3 * pu && bx * bx / 0.16 + by * by / 0.07 < 1) return C_EYEBL;
     }
     return C_EYE;
   }
   // pale lower third: the boundary dips a little toward the front and back, rises at the sides
-  const paleLine = (az) => -0.36 + 0.06 * Math.sin(az) ** 2;
+  const paleLine = (az) => -0.42 + 0.05 * Math.sin(az) ** 2 + 0.08 * Math.max(0, -Math.cos(az));
   function bodyMat(kind, mo) {
     return (s) => {
       const az = Math.atan2(s[2], s[0]), a = Math.abs(az), v = s[1];
@@ -106,14 +110,16 @@ const Marill = (() => {
       const nx = u / Math.max(0.035, 0.6 * pu), ny = (v - NOSE_V) / Math.max(0.025, 0.55 * pv);
       if (nx * nx + ny * ny < 1) return C_EYE;
       // smile: a small "w"-ish curve closed, a round open mouth with a pink tongue
-      if (Math.abs(u) < 0.2 && v < MOUTH_V + 0.04 && v > MOUTH_V - 0.25) {
-        const hw = Math.max(0.1, 2.2 * pu);
-        const k = u / hw;
+      if (Math.abs(u) < 0.26 && v < MOUTH_V + 0.08 && v > MOUTH_V - 0.3) {
+        const sw = Math.max(0.17, 2.6 * pu), k = u / sw; // smile half-width
+        const line = MOUTH_V - 0.035 + 0.06 * k * k;
+        if (Math.abs(k) < 1 && Math.abs(v - line) < Math.max(0.016, 0.5 * pv)) return C_EYE;
         if (mo > 0.08) {
-          const h = Math.max(0.08 + 0.12 * mo, 2.2 * pv);
-          const top = MOUTH_V;
-          if (Math.abs(k) < 1 && v < top && v > top - h * Math.sqrt(1 - k * k)) return v < top - h * 0.5 ? C_TONGUE : C_MOUTH;
-        } else if (Math.abs(k) < 1 && Math.abs(v - (MOUTH_V - 0.02 + 0.03 * k * k)) < Math.max(0.018, 0.55 * pv)) return C_MOUTH;
+          const hw = Math.max(0.1, 1.7 * pu), kk = u / hw;
+          const h = Math.max(0.06 + 0.16 * mo, 2 * pv);
+          const top = MOUTH_V - 0.035;
+          if (Math.abs(kk) < 1 && v < top && v > top - h * Math.sqrt(1 - kk * kk)) return v < top - h * 0.45 ? C_TONGUE : C_MOUTH;
+        }
       }
       return C_BLUE;
     };
@@ -153,13 +159,13 @@ const Marill = (() => {
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 2 : 3;
       const flop = walking ? 0.06 * Math.cos(wk) : 0;
-      const ec = onB(sd * 1.2, 0.72, 1);
-      const Y = dirF(bodyF, [-0.1, 1, sd * (0.62 + flop)]);
+      const ec = onB(sd * 1.15, 0.75, 1);
+      const Y = dirF(bodyF, [-0.12, 1, sd * (0.55 + flop)]);
       const [X, Yy, Z] = frameAlong(Y, dirF(bodyF, [1, 0, 0.45 * sd]));
       const c = add(ec, sc(Yy, 5.5));
-      prims.push(ellAx(c, X, Yy, Z, [4.2, 11.8, 12.6], id, id, earMat));
-      anchors[sd > 0 ? 'earN' : 'earF'] = add(c, sc(Yy, 11.8));
-      top = Math.max(top, c[1] + 11.8);
+      prims.push(ellAx(c, X, Yy, Z, [4.2, 12.4, 12.8], id, id, earMat));
+      anchors[sd > 0 ? 'earN' : 'earF'] = add(c, sc(Yy, 12.4));
+      top = Math.max(top, c[1] + 12.4);
     }
     anchors.top = [bodyF.t[0], top, 0];
 
@@ -183,12 +189,12 @@ const Marill = (() => {
       const fwd = walking ? 5 * Math.sin(ph) * (1 - sw) : 0;
       const lift = walking ? 3 * Math.max(0, Math.cos(ph)) * (1 - sw) : 0;
       const kick = walking ? 4 * Math.sin(ph) * sw : 0;
-      const stand = [5 + fwd, 5.2 + lift, sd * 11];
+      const stand = [6 + fwd, 4.4 + lift, sd * 10];
       const swimP = inF(bodyF, [-12 + kick, -24, sd * 11]);
       const c = [lerp(stand[0], swimP[0], sw), lerp(stand[1], swimP[1], sw), lerp(stand[2], swimP[2], sw)];
       const f = chain(T(...c), R(M3.ry(-sd * 0.2)), R(M3.rz((walking ? 0.2 * Math.sin(ph) : 0) + 0.9 * sw)));
-      prims.push(ellF(f, [8.5, 5.4, 6.6], id, id, M_BLUE));
-      anchors[sd > 0 ? 'footN' : 'footF'] = inF(f, [0, -5.4, 0]);
+      prims.push(ellF(f, [7, 4.4, 5.2], id, id, M_BLUE));
+      anchors[sd > 0 ? 'footN' : 'footF'] = inF(f, [0, -4.4, 0]);
     }
 
     /* --- thin black zig-zag tail with the blue ball float --- */
@@ -197,11 +203,11 @@ const Marill = (() => {
     const rootP = onB(Math.PI, -0.3, -1);
     // zig-zag rising up and back from the lower back (in world space; higher when swimming)
     const up = lerp(1, 1.35, sw);
-    const zig = [[0, 0, 0], [-9, 4, 0.25], [-6, 8, 0.35], [-15, 11, 0.55], [-12, 15, 0.7], [-21, 18, 0.85], [-19, 22, 1]];
+    const zig = [[0, 0, 0], [-10, 3, 0.25], [-5, 8, 0.35], [-16, 10, 0.55], [-11, 15, 0.7], [-22, 17, 0.85], [-19, 23, 1]];
     const pts = zig.map(([dx, dy, k]) => [rootP[0] + dx - 3 * sw * k * 3, rootP[1] + (dy * up + bounceT * k), rootP[2] + sg * zs * 8 * k]);
-    for (let i = 0; i < pts.length - 1; i++) prims.push(seg(pts[i], pts[i + 1], 1.1, 1.1, 8, 8, M_BLACK, [0, 1, 0], 1.2));
+    for (let i = 0; i < pts.length - 1; i++) prims.push(seg(pts[i], pts[i + 1], 1.3, 1.3, 8, 8, M_BLACK, [0, 1, 0], 1.2));
     const last = pts[pts.length - 1], dirT = nrm(sub(last, pts[pts.length - 2]));
-    const BALL = 12.5;
+    const BALL = 10.5;
     const bc = add(last, sc(nrm(add(dirT, [-0.5, 0.5, 0])), BALL - 1));
     prims.push(E(bc, M3.diag(BALL, BALL, BALL), 9, 9, M_BLUE));
     anchors.tail = rootP;
@@ -217,5 +223,5 @@ const Marill = (() => {
     return Creature.render(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.4, bw: 130, bh: 104, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.4, bw: 150, bh: 104, oy: 0.9 } };
 })();

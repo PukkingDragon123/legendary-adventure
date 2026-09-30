@@ -38,11 +38,12 @@ const Linoone = (() => {
   const FUR = 1, STRIPE = 2, CLAW = 3, NOSE = 4, IRIS = 5, EYEK = 6, MOUTH = 7, FANG = 8, GLINT = 9;
   const MAT = { FUR, STRIPE, CLAW, NOSE, IRIS, EYEK, MOUTH, FANG, GLINT };
   const PAL = Creature.palette({
-    [FUR]:    { r: ['#a0968e', '#c0b6ac', '#dad2c8', '#ebe5dd', '#f8f5f0'], od: '#524640', ol: '#8a7e74', ln: '#8e8278' },
-    [STRIPE]: { r: ['#5a4636', '#72604c', '#8c7862', '#a6927a', '#bea88e'], od: '#34261a', ol: '#5e4a38', ln: '#54402e' },
-    [CLAW]:   { r: ['#8496ae', '#a8b8cc', '#ccd8e6', '#e6eef6', '#ffffff'], od: '#3c4a60', ol: '#6c7c94', ln: '#6c7c94' },
-    [NOSE]:   { r: ['#0c0c10', '#141418', '#1e1e24', '#2c2c34', '#8a8a94'], od: '#060608', ol: '#0c0c10', ln: '#060608' },
-    [IRIS]:   { r: ['#1a6aa8', '#2488cc', '#3aa8e8', '#6ac6f6', '#b0e6ff'], od: '#0c3458', ol: '#1a6aa8', ln: '#1a6aa8' },
+    // sampled from the official art: pinkish cream fur #e7ddd7 (shadow #cac0ba), taupe stripes #a58d7b / #89806a
+    [FUR]:    { r: ['#a8a09a', '#c6bcb6', '#e0d6d0', '#ece4de', '#f8f4f0'], od: '#4e4440', ol: '#867c76', ln: '#8e8480' },
+    [STRIPE]: { r: ['#665646', '#86766a', '#a28a78', '#b49e8c', '#c8b4a2'], od: '#34261a', ol: '#5e4a38', ln: '#5a4838' },
+    [CLAW]:   { r: ['#8e96a6', '#aab2c0', '#cdd2dc', '#e2e6ee', '#f6f8fc'], od: '#3c4a60', ol: '#6c7c94', ln: '#6c7c94' },
+    [NOSE]:   { r: ['#1c1c20', '#2a2a30', '#3c3c44', '#56565e', '#8a8a94'], od: '#0a0a0c', ol: '#1c1c20', ln: '#0a0a0c' },
+    [IRIS]:   { r: ['#3e84ae', '#5aa0c8', '#80c0e2', '#a4d6ee', '#cceaf8'], od: '#0c3458', ol: '#1a6aa8', ln: '#1a6aa8' },
     [EYEK]:   { r: ['#0a0a0e', '#101016', '#16161e', '#20202a', '#2e2e3a'], od: '#050508', ol: '#0a0a0e', ln: '#050508' },
     [MOUTH]:  { r: ['#3e1218', '#561c22', '#70282e', '#8c3a3e', '#a84e50'], od: '#24080c', ol: '#3e1218', ln: '#3e1218' },
     [FANG]:   { r: ['#b8b8c0', '#d8d8de', '#f4f4f6', '#ffffff', '#ffffff'], od: '#5a5a66', ol: '#8a8a96', ln: '#8a8a96' },
@@ -84,7 +85,7 @@ const Linoone = (() => {
   // flank stripe: from a jagged point at x ≈ 2 back along the upper flank into the tail
   function bodyStripe(p, sy, sz) {
     const az = Math.atan2(Math.abs(sz), sy); // 0 = top of the back, π/2 = the flank, π = belly
-    const wD = 0.4 * clamp((p[0] + 22) / 40, 0, 1) + 0.02 * tri(p[0] / 6);
+    const wD = 0.82 * clamp((p[0] + 18) / 34, 0, 1) ** 0.8 + 0.04 * tri(p[0] / 6);
     if (az < wD) return true;
     const f0 = 2 + 5 * tri(az * 2.2 + 0.2);
     if (p[0] < f0) {
@@ -135,11 +136,11 @@ const Linoone = (() => {
   function headStripe(p) {
     const r = Math.hypot(p[1] / HR[1], p[2] / HR[2]);
     const az = Math.atan2(Math.abs(p[2]) / HR[2], p[1] / HR[1]);
-    if (p[0] < 6 && az < 0.3) return true;
+    if (p[0] < 8 && az < 0.34) return true;
     const endX = -HR[0] - 2 + 5 * tri(az * 2.5);
     if (p[0] > endX && p[0] < 17) {
       const c = 0.95 + 0.012 * (p[0] - EYE.x);
-      const w = 0.36 - 0.012 * Math.max(0, p[0] - EYE.x) + 0.1 * Math.max(0, -p[0] / HR[0]);
+      const w = 0.44 - 0.014 * Math.max(0, p[0] - EYE.x) + 0.1 * Math.max(0, -p[0] / HR[0]);
       if (Math.abs(az - c) < w && r > 0.2) return true;
     }
     return false;
@@ -150,7 +151,7 @@ const Linoone = (() => {
     return headStripe(p) ? C_ST : C_FUR;
   };
   // muzzle (head frame offset SN_C): the mask stripe runs on along its upper side
-  const SN_C = [17, -2.2, 0], SN_R = [12, 6.6, 7.4];
+  const SN_C = [18, -2.6, 0], SN_R = [13, 6, 6.6];
   const snoutMat = (s) => {
     const p = [SN_C[0] + SN_R[0] * s[0], SN_C[1] + SN_R[1] * s[1], SN_C[2] + SN_R[2] * s[2]];
     const az = Math.atan2(Math.abs(s[2]), s[1]);
@@ -160,7 +161,7 @@ const Linoone = (() => {
 
   /* ---------- flat pieces ---------- */
   // spiky ear tuft (u = up, v = across): three points
-  const EAR_G = bakeShape(Shape2D.poly([[-1, -4.5], [5, -4.2], [8.5, -3.2], [5.5, -1.4], [9.5, 0], [5.5, 1.4], [8.5, 3.2], [5, 4.2], [-1, 4.5]], C_FUR, 6));
+  const EAR_G = bakeShape(Shape2D.poly([[-1, -3.6], [4, -3.4], [6.8, -2.6], [4.4, -1.1], [7.6, 0], [4.4, 1.1], [6.8, 2.6], [4, 3.4], [-1, 3.6]], C_FUR, 6));
   // fur spike (u = along)
   const SPK = (m) => bakeShape({ bb: [-1, -3.5, 10.5, 3.5], test: (u, v) => (u < -1 || u > 10 ? 0 : Math.abs(v) < 3.2 * Math.max(0, Math.min(1, (10 - u) / 10)) ** 0.8 ? m : 0) });
   const SPK_F = SPK(C_FUR), SPK_S = SPK(C_ST);
@@ -188,7 +189,7 @@ const Linoone = (() => {
     const body = chain(T(0, bob - 2.5 - 3.5 * dash, 0), R(M3.rz(pitch)), Creature.S(stretch, 1 - 0.06 * dash, 1));
 
     /* --- torso: chest, middle, rounded haunch --- */
-    for (const [C, Rr] of [[[22, 25, 0], [22, 12.5, 12]], [[-2, 24.5, 0], [34, 13.5, 13.5]], [[-26, 24, 0], [22, 13.8, 13.8]]])
+    for (const [C, Rr] of [[[22, 25, 0], [22, 12.5, 12]], [[-2, 23.8, 0], [34, 14.4, 13.8]], [[-26, 24, 0], [22, 13.8, 13.8]]])
       prims.push(ellF(chain(body, T(...C)), Rr, 1, 1, bodyMat(C, Rr)));
     anchors.body = inF(body, [-2, 25, 0]);
 
@@ -203,10 +204,10 @@ const Linoone = (() => {
     prims.push(headPrim);
     anchors.head = hf.t;
     for (const [k, sd] of [['eyeN', 1], ['eyeF', -1]]) anchors[k] = inF(hf, [EYE.x, EYE.y, sd * EYE.z]);
-    prims.push(ellF(chain(hf, T(...SN_C), R(M3.rz(-0.08))), SN_R, 3, 3, snoutMat));
+    prims.push(ellF(chain(hf, T(...SN_C), R(M3.rz(-0.08))), SN_R, 3, 2, snoutMat)); // same contour group as the head: one smooth wedge
     const twitch = sn > 0 ? 0.6 * Math.sin(sn * 40) : 0;
-    prims.push(ellF(chain(hf, T(28.6, -2.4 + twitch, 0)), [2.8, 2.4, 3.2], 4, 4, M_NOSE));
-    anchors.nose = inF(hf, [31.4, -2.4, 0]);
+    prims.push(ellF(chain(hf, T(30.2, -3.2 + twitch, 0)), [2.2, 2, 2.5], 4, 4, M_NOSE));
+    anchors.nose = inF(hf, [32.4, -3.2, 0]);
     anchors.mouth = inF(hf, [22, -8, 0]);
     // jaw (opens) and two little fangs
     const jf = chain(hf, T(6, -6.8, 0), R(M3.rz(-0.5 * mo)));
@@ -250,14 +251,14 @@ const Linoone = (() => {
       prims.push(ellF(paw, [5.6, 3, 4.2], id, id, M_FUR));
       for (const k of lg.front ? [-1, 0, 1] : [-1, 1]) {
         const cb = inF(paw, [4.2, -0.4, k * 2.2]);
-        prims.push(seg(cb, inF(paw, [lg.front ? 9.5 : 8, -2.4, k * 2.6]), 1.1, 1.1, id, id, M_CLAW, [0, 1, 0], 1.05));
+        prims.push(seg(cb, inF(paw, [lg.front ? 11.5 : 9, -2.8, k * 2.6]), 1.2, 1.2, id, id, M_CLAW, [0, 1, 0], 1.05));
       }
       if (i === 0) anchors.pawN = inF(paw, [7, -2, 0]);
       if (i === 1) anchors.pawF = inF(paw, [7, -2, 0]);
     });
 
     /* --- tail: long bushy plume sweeping up and back, lower half brown --- */
-    const tAng = lerp(0.2, 0.04, dash) + (moving ? 0.06 * Math.sin(st + 1) : 0);
+    const tAng = lerp(0.12, 0.02, dash) + (moving ? 0.06 * Math.sin(st + 1) : 0);
     const tf = chain(body, T(-44, 27, 0), R(M3.rz(Math.PI - tAng)), R(M3.rx(moving ? 0.1 * Math.sin(st) : 0)));
     // tail frame: +x runs back along the tail, +y is the tail's upper side (flipped by the π turn)
     const tailMat = (x0, rx) => (s) => {
@@ -266,7 +267,7 @@ const Linoone = (() => {
       return !tip && Math.abs(s[1] + 0.05) < 0.36 - 0.12 * Math.max(0, (x - 30) / 30) + 0.06 * tri(x / 8) && x > -6 ? C_ST : C_FUR;
     };
     let top = inF(body, [-2, 38, 0]);
-    const TB = (x) => -0.14 * (x / 60) ** 2;
+    const TB = (x) => -0.07 * (x / 60) ** 2;
     for (const [x, rx, ry, rz] of [[6, 14, 11, 9.8], [20, 16, 13, 10.2], [35, 16, 13.6, 10], [49, 13, 11.6, 8.6], [58, 9, 8, 6.4]]) {
       const c = chain(tf, R(M3.rz(TB(x))), T(x, 0, 0), R(M3.rz(TB(x) * 0.8)));
       prims.push(ellF(c, [rx, ry, rz], 8, 8, tailMat(x, rx)));
@@ -292,5 +293,5 @@ const Linoone = (() => {
     return Creature.render(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.5, bw: 236, bh: 110, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.5, bw: 290, bh: 116, oy: 0.9 } };
 })();

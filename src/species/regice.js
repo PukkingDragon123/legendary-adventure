@@ -11,8 +11,8 @@
    serve as its eyes and light up yellow when it wakes. Each arm is a big
    hexagonal crystal hanging from the shoulder, pointed at the top, with
    four stubby crystal fingers; a thinner crystal juts up and back behind
-   each shoulder. It stands on a wide flat hexagonal ice slab with two
-   downward-pointing crystal spikes for legs.
+   each shoulder. It stands on two thick flat hexagonal ice slabs, each
+   with a downward-pointing crystal spike for a leg.
    Build: every crystal is a convex hull of hexagonal rings made of flat
    facet plates (flat-shaded by the renderer); dots are small discs.
 
@@ -124,8 +124,8 @@ const Regice = (() => {
   const PRI = { 1: 1, 2: 0, 3: 2, 4: 1, 5: 0, 6: 0, 7: 0, 8: 0, 9: 3 };
 
   // body profile (y, radius along x (front/back), radius along z)
-  const BODY = [[92, 50, 56], [112, 62, 68], [246, 64, 70], [272, 52, 58], [304, 14, 16], [310, 4, 5]];
-  const FRONT = 63.2; // distance of the flat front face from the axis (y 112..246)
+  const BODY = [[92, 52, 58], [112, 64, 70], [232, 66, 72], [252, 58, 64], [314, 5, 5]];
+  const FRONT = 65.2; // distance of the flat front face from the axis (y 112..246)
 
   function build(pose) {
     const P = Object.assign({}, DEFAULT, pose);
@@ -142,34 +142,23 @@ const Regice = (() => {
     /* --- body: a tall hexagonal crystal with a flat face to the front --- */
     hull(prims, BODY.map(([y, a, b]) => ring(Bp([0, y, 0]), X, Z, a / Math.cos(Math.PI / 6), b / Math.cos(Math.PI / 6), 6, Math.PI / 6)), 1, [C_ICE, C_ICED, C_ICED, C_ICE, C_ICED, C_ICED]);
     anchors.body = Bp([0, 180, 0]);
-    anchors.top = Bp([0, 310, 0]);
+    anchors.top = Bp([0, 314, 0]);
 
     /* --- braille: a plus of seven dots on the upper front face --- */
-    const DY = 224, DS = 16, DR = 6.6;
+    const DY = 208, DS = 15.5, DR = 6.6;
     const dots = [[-2, 0], [-1, 0], [0, 0], [1, 0], [2, 0], [0, 1], [0, -1]];
-    for (const [u, v] of dots) {
-      // the outer dots of the row wrap onto the angled side faces
-      const au = Math.abs(u);
-      let c, n;
-      if (au < 2) { c = [FRONT + 0.8, DY + v * DS, u * DS]; n = [1, 0, 0]; }
-      else {
-        const th = Math.sign(u) * Math.PI / 3, e = [FRONT, DY, Math.sign(u) * 38.5];
-        n = [Math.cos(th), 0, Math.sin(th)];
-        const along = [-Math.sin(th), 0, Math.cos(th)];
-        c = add(add(e, sc(along, 10)), sc(n, 0.8));
-      }
-      prims.push(disc(Bp(c), Bd(n), DR, 9, C_DOT));
-    }
+    for (const [u, v] of dots) prims.push(disc(Bp([FRONT + 0.8, DY + v * DS, u * DS]), Bd([1, 0, 0]), DR, 9, C_DOT));
     anchors.head = Bp([FRONT, DY, 0]);
     anchors.mouth = anchors.head;
     anchors.eyeN = Bp([FRONT, DY, DS]); anchors.eyeF = Bp([FRONT, DY, -DS]);
 
     /* --- slab and spike legs --- */
-    hull(prims, [[44, 70, 96], [58, 74, 102], [80, 70, 96]].map(([y, a, b]) => ring(Bp([0, y, 0]), X, Z, a, b, 6, 0)), 2, MI);
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 5 : 6;
       const ph = wk + (sd > 0 ? 0 : Math.PI);
       const lift = walking ? 6 * Math.max(0, Math.sin(ph)) : 0;
+      // a thick flat hexagonal ice slab under each foot
+      hull(prims, [[44, 62, 52], [56, 66, 55], [78, 62, 52]].map(([y, a, b]) => ring(Bp([8, y + lift, sd * 52]), X, Z, a, b, 6, 0)), 2, MI);
       const base = Bp([4, 50 + lift, sd * 56]);
       crystal(prims, base, Bd([0.05, -1, sd * 0.1]), [[0, 22], [20, 20], [50 + lift * 0.3, 0]], id, MI, [1, 0, 0]);
       anchors[sd > 0 ? 'footN' : 'footF'] = add(base, Bd([2, -50, sd * 5]));
@@ -180,11 +169,11 @@ const Regice = (() => {
       const id = sd > 0 ? 3 : 4;
       const ph = wk + (sd > 0 ? Math.PI : 0);
       const sw = walking ? 0.08 * Math.sin(ph) : 0;
-      const sh = Bp([4, 238, sd * 88]);
-      const ang = lerp(0.12 + sw, 1.6, sam);
-      const out = lerp(0.55, 0.18, sam);
+      const sh = Bp([4, 236, sd * 100]);
+      const ang = lerp(0.1 + sw, 1.6, sam);
+      const out = lerp(0.32, 0.12, sam);
       const d = nrm(Bd([Math.sin(ang), -Math.cos(ang), sd * out]));
-      crystal(prims, sh, d, [[-34, 0], [-6, 36], [118, 38], [138, 26]], id, [C_ICED, C_ICE], Bd([0, 0, sd]), 0.92);
+      crystal(prims, sh, d, [[-44, 0], [-10, 44], [112, 44], [134, 30]], id, [C_ICED, C_ICE], Bd([0, 0, sd]), 0.92);
       const wr = add(sh, sc(d, 136));
       let Uh = nrm(sub(Bd([0, 0, sd]), sc(d, dot(Bd([0, 0, sd]), d)))); const Vh = cross(d, Uh);
       // fingers: three along the bottom, a thumb to the front
@@ -196,7 +185,7 @@ const Regice = (() => {
       }
       anchors[sd > 0 ? 'handN' : 'handF'] = add(wr, sc(d, 34));
       // back crystal behind the shoulder, pointing up and out
-      crystal(prims, Bp([-34, 232, sd * 58]), Bd([-0.35, 0.75, sd * 0.62]), [[0, 20], [62, 20], [84, 0]], sd > 0 ? 7 : 8, MI, Bd([1, 0, 0]));
+      crystal(prims, Bp([-34, 226, sd * 64]), Bd([-0.3, 0.72, sd * 0.66]), [[0, 17], [96, 17], [116, 0]], sd > 0 ? 7 : 8, MI, Bd([1, 0, 0]));
     }
     return { prims, stamps: [], dots: [], anchors, pose: P, pri: PRI, glossy: GLOSSY, baseMat: ICE, shadowSteps: 12, shadowDepth: 40 };
   }

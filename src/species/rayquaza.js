@@ -39,8 +39,8 @@ const Rayquaza = (() => {
   const GREEN = 1, RING = 2, RED = 3, EYE = 4, PUPIL = 5, MOUTH = 6, TONGUE = 7, CLAW = 8, DARK = 9, FIN = 10;
   const MAT = { GREEN, RING, RED, EYE, PUPIL, MOUTH, TONGUE, CLAW, DARK, FIN };
   const PAL = Creature.palette({
-    [GREEN]:  { r: ['#123a2a', '#1c5a3e', '#2c7c52', '#4c9e6c', '#8ccaa0'], od: '#08241a', ol: '#16493a', ln: '#10402c' },
-    [FIN]:    { r: ['#10362a', '#1a543c', '#28744e', '#469668', '#84c29a'], od: '#08241a', ol: '#16493a', ln: '#10402c' },
+    [GREEN]:  { r: ['#1a4a34', '#2a6c4a', '#3d8a5f', '#62a67e', '#94c8aa'], od: '#0a261a', ol: '#1c4c38', ln: '#123e2a' },
+    [FIN]:    { r: ['#1c3a2e', '#2a5040', '#3a6452', '#52806a', '#80a896'], od: '#0a1e16', ol: '#1c3a2e', ln: '#10281e' },
     [RING]:   { r: ['#b88410', '#dcaa1a', '#f8d030', '#ffe67c', '#fff6c4'], od: '#5e3c06', ol: '#8a6010', ln: '#6e4a08' },
     [RED]:    { r: ['#7a1a26', '#a42a36', '#c84a50', '#e67272', '#ffa8a0'], od: '#44060e', ol: '#7a121e', ln: '#621019' },
     [EYE]:    { r: ['#c89a10', '#e8bc20', '#ffd83a', '#ffe98a', '#fff6c8'], od: '#6a3a06', ol: '#8a5a10', ln: '#6a3a06' },
@@ -84,7 +84,7 @@ const Rayquaza = (() => {
 
   let curScale = 1;
   let LD = V3.norm([-0.5, 0.72, 0.5]), TH = [-0.2, 0.18, 0.74];
-  const tone = (d) => (d < TH[0] ? 0 : d < TH[1] ? 1 : d < TH[2] ? 2 : 3);
+  const tone = (d) => (d < TH[0] ? 0 : d < TH[1] ? 1 : d < TH[2] + 0.13 ? 2 : 3); // soft renderer thresholds
   // smooth tube shading: shade a bead with the ideal radial normal (see milotic.js)
   function tube(prim, s, m) {
     const Lv = prim.Lv, Li = prim.Li;
@@ -216,7 +216,7 @@ const Rayquaza = (() => {
       const hl = len3(sub(Bp, A)) / 2 + r * 0.7;
       const smid = (s0 + s1) / 2;
       const prim = E(sc(add(A, Bp), 0.5), M3.mul(M3.cols(X, Y, Z), M3.diag(hl, r, r)), 1, 1, null);
-      const rr = r * 0.5, wv = Math.max(r * 0.09, 0.8 / curScale);
+      const rr = r * 0.5, wv = Math.max(r * 0.065, 0.75 / curScale);
       prim.mat = (s) => {
         let m = GREEN;
         const al = smid + s[0] * hl;
@@ -229,7 +229,11 @@ const Rayquaza = (() => {
           if (k >= 0 && Math.abs(d - rr) < wv) m = RING;
           else if (k >= 0 && d > rr && Math.abs(dv) < wv * 0.9) m = RING;
         }
-        if (m === GREEN && Math.abs(s[2]) > 0.3 && s[1] < -0.5 && s[1] > -0.5 - Math.max(0.12, wv / r * 1.6)) m = RED;
+        // thin black joint lines round the body half way between the rings
+        if (m === GREEN && al > RING_FROM && al < Ls - 60) {
+          const dj = al - (RING_FROM + RING_PER / 2 + Math.round((al - RING_FROM - RING_PER / 2) / RING_PER) * RING_PER);
+          if (Math.abs(dj) < Math.max(r * 0.035, 0.55 / curScale)) m = DARK;
+        }
         return tube(prim, s, m);
       };
       prims.push(prim);
@@ -382,5 +386,5 @@ const Rayquaza = (() => {
     return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 7.0, lengthM: 7.0, bw: 1480, bh: 560, oy: 0.86 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 7.0, lengthM: 7.0, bw: 1480, bh: 620, oy: 0.777 } };
 })();

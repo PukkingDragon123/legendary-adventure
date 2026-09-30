@@ -35,11 +35,11 @@ const Groudon = (() => {
   const RED = 1, GREY = 2, LINE = 3, CLAW = 4, EYE = 5, PUPIL = 6, MOUTH = 7, TONGUE = 8, TOOTH = 9, PLATE = 10;
   const MAT = { RED, GREY, LINE, CLAW, EYE, PUPIL, MOUTH, TONGUE, TOOTH, PLATE };
   const PAL = Creature.palette({
-    [RED]:    { r: ['#6a1410', '#9e2618', '#ca3c22', '#ea643e', '#ffa07c'], od: '#3e0a08', ol: '#7a1a12', ln: '#5e120e' },
-    [GREY]:   { r: ['#4e4442', '#6e6260', '#8e8280', '#b0a6a2', '#d4ccc6'], od: '#2e2a30', ol: '#5a565c', ln: '#4a464c' },
-    [PLATE]:  { r: ['#5e120e', '#8e2216', '#bc361e', '#e05838', '#fa9070'], od: '#300806', ol: '#6a160e', ln: '#200806' },
-    [LINE]:   { r: ['#170e12', '#1e1418', '#261a1e', '#302226', '#3c2a30'], od: '#10080c', ol: '#1e1418', ln: '#10080c' },
-    [CLAW]:   { r: ['#8e8a88', '#bcb8b4', '#e2e0da', '#f6f4f0', '#ffffff'], od: '#3e3a3a', ol: '#6a6664', ln: '#6a6664' },
+    [RED]:    { r: ['#6e1612', '#a42820', '#cc3a28', '#de654a', '#f29274'], od: '#3e0a08', ol: '#7a1a12', ln: '#5e120e' },
+    [GREY]:   { r: ['#4c423e', '#665a54', '#8a7e78', '#aaa09a', '#cac2bc'], od: '#2a2224', ol: '#564a48', ln: '#463c3a' },
+    [PLATE]:  { r: ['#62140e', '#962418', '#c43424', '#dc5a40', '#f08a6c'], od: '#300806', ol: '#6a160e', ln: '#200806' },
+    [LINE]:   { r: ['#140c18', '#1b1020', '#221428', '#2c1a32', '#38223e'], od: '#0c0610', ol: '#1b1020', ln: '#0c0610' },
+    [CLAW]:   { r: ['#9a96a6', '#c0bcca', '#dcdae4', '#eeeef4', '#ffffff'], od: '#44404e', ol: '#727080', ln: '#727080' },
     [EYE]:    { r: ['#c8920e', '#e8b41c', '#ffd23a', '#ffe684', '#fff6c8'], od: '#6a3a06', ol: '#8a5a10', ln: '#6a3a06' },
     [PUPIL]:  { r: ['#0c0608', '#120a0c', '#180e10', '#201216', '#28181c'], od: '#0c0608', ol: '#0c0608', ln: '#0c0608' },
     [MOUTH]:  { r: ['#3a0a16', '#561222', '#741e30', '#922e40', '#b04454'], od: '#24050e', ol: '#3a0a16', ln: '#3a0a16' },
@@ -123,7 +123,7 @@ const Groudon = (() => {
 
   /* ---------- smooth tube shading for the tail beads (ideal radial normal, see milotic.js) ---------- */
   let LD = V3.norm([-0.5, 0.72, 0.5]), TH = [-0.2, 0.18, 0.74];
-  const tone = (d) => (d < TH[0] ? 0 : d < TH[1] ? 1 : d < TH[2] ? 2 : 3);
+  const tone = (d) => (d < TH[0] ? 0 : d < TH[1] ? 1 : d < TH[2] + 0.13 ? 2 : 3); // soft renderer thresholds
   function tube(prim, s, m) {
     const Lv = prim.Lv, Li = prim.Li;
     let ix = Lv[1] * s[1] + Lv[2] * s[2], iy = Lv[4] * s[1] + Lv[5] * s[2], iz = Lv[7] * s[1] + Lv[8] * s[2];
@@ -139,7 +139,7 @@ const Groudon = (() => {
   const TOR = [150, 182, 150];
   function torsoMat(s) {
     const x = s[0], y = s[1], z = s[2], az = Math.abs(z);
-    const w = lw(TOR[1], 0.022);
+    const w = lw(TOR[1], 0.034);
     // grey chest / belly: the front, narrowing toward the sides and the throat
     const bel = x - (0.34 + 0.55 * z * z + 0.25 * Math.max(0, y - 0.35));
     if (bel > 0) {
@@ -166,7 +166,7 @@ const Groudon = (() => {
   function headMat(kind) {
     return (s) => {
       const m = s[2] < 0 ? [s[0], s[1], -s[2]] : s;
-      const w = lw(HR[1], 0.03);
+      const w = lw(HR[1], 0.04);
       if (m[0] * EC[0] + m[1] * EC[1] + m[2] * EC[2] > 0.6) {
         const d = sub(m, EC);
         const ex = dot(d, ETX), ey = dot(d, ETY);
@@ -207,21 +207,21 @@ const Groudon = (() => {
       return C_RED;
     };
   }
-  const JAWR = [70, 26, 46];
+  const JAWR = [72, 30, 48];
   const jawMat = (s) => (s[1] > 0.55 && s[0] > -0.1 && Math.abs(s[2]) < 0.8 ? C_TONGUE : s[1] > 0.25 && Math.abs(s[2]) > 0.55 ? C_RED : C_GREY);
 
   /* ---------- limb decals ---------- */
   // thighs: a black line ring that dips down on the outside (the "knee" chevron)
   const THR = [92, 112, 82];
   function thighMat(s) {
-    const w = lw(THR[1], 0.03);
+    const w = lw(THR[1], 0.045);
     const yc = -0.1 + 0.38 * Math.abs(s[0]) - 0.18 * Math.max(0, s[2]);
     if (Math.abs(s[1] - yc) < w && Math.abs(s[2]) > 0.2) return C_LINE;
     if (s[0] > 0.55 && s[1] < -0.2) return C_RED;
     return C_RED;
   }
   const armMat = (r) => (s) => {
-    const w = lw(r, 0.05);
+    const w = lw(r, 0.08);
     return Math.abs(s[0] - 0.42) < w && s[1] > -0.9 ? C_LINE : C_RED;
   };
   const M_RED = () => C_RED, M_CLAW = () => C_CLAW, M_GREY = () => C_GREY;
@@ -265,7 +265,7 @@ const Groudon = (() => {
     /* --- head: on a short neck at the top front of the torso --- */
     const neck = inF(B, [100, 292, 0]);
     const hp = lerp(0.1, -0.1, ssl) - lean * 0.55 + 0.55 * ro + (walking ? 0.03 * Math.sin(wk * 2) : 0);
-    const H = chain(T(...neck), R(M3.rz(lean + hp)), T(64, 26, 0));
+    const H = chain(T(...neck), R(M3.rz(lean + hp)), T(70, 22, 0), Creature.S(1.16, 1.16, 1.16));
     const headPrim = ellF(H, HR, 2, 2, headMat(kind));
     prims.push(headPrim);
     prims.push(seg(inF(B, [60, 250, 0]), inF(H, [-30, -8, 0]), 62, 70, 2, 2, M_RED));
@@ -276,8 +276,9 @@ const Groudon = (() => {
     prims.push(ellF(jawF, JAWR, 3, 3, jawMat));
     if (mo > 0.04) prims.push(ellF(chain(H, T(48, -30, 0)), [58, 22 + 18 * mo, 38], 4, 4, (s) => (s[1] < -0.2 && Math.abs(s[2]) < 0.6 ? C_TONGUE : C_MOUTH)));
     // grey horn-plates at the back of the head
-    for (const [x, y, l, r] of [[34, 44, 58, 11], [8, 50, 74, 12], [-22, 50, 84, 12], [-50, 42, 80, 11]])
-      for (const sd of [1, -1]) prims.push(seg(inF(H, [x, y - 10, sd * 26]), inF(H, [x - l * 0.55, y + l * 0.62, sd * 32]), r, 9, 2, 2, (q) => (q[1] < -0.2 ? C_LINE : C_RED), [1, 0, 0], 0.3));
+    // the big red fin crest: parallel blades on each side of the head, sweeping up and back
+    for (const [x, y, l, r] of [[44, 38, 64, 13], [16, 46, 86, 15], [-14, 48, 98, 15], [-44, 40, 92, 14]])
+      for (const sd of [1, -1]) prims.push(seg(inF(H, [x, y - 12, sd * 30]), inF(H, [x - l * 0.72, y + l * 0.5, sd * 40]), r, 10, 2, 2, (q) => (q[1] < -0.3 ? C_LINE : C_RED), [1, 0, 0], 0.3));
     anchors.head = H.t;
     anchors.mouth = inF(H, [96, -34, 0]);
     const eyeP = (sd) => inF(H, [HR[0] * EC[0], HR[1] * EC[1], sd * HR[2] * EC[2]]);
@@ -286,7 +287,7 @@ const Groudon = (() => {
     /* --- shoulder armour: red domes cut by black lines, a row of white spikes along each side of the back --- */
     let top = [0, -1e9, 0];
     const armMatS = (s) => {
-      const w = lw(80, 0.03);
+      const w = lw(80, 0.045);
       // plate seams: a ring round the dome and two cross seams
       if (Math.abs(s[1] - 0.15 + 0.2 * s[0]) < w || Math.abs(s[0] - 0.35) < w * 1.2 || Math.abs(s[0] + 0.3) < w * 1.2) return C_LINE;
       return C_RED;
@@ -296,9 +297,9 @@ const Groudon = (() => {
       const dF = chain(B, T(10, 262, sd * 92), R(M3.rx(-sd * 0.35)), R(M3.rz(0.1)));
       prims.push(ellF(dF, [128, 64, 70], id, id, armMatS));
       // back spikes: four cones pointing up, out and back
-      for (const [x, h, l] of [[74, 292, 92], [20, 316, 120], [-36, 316, 124], [-92, 292, 100]]) {
-        const bp = inF(B, [x, h - 6, sd * 108]);
-        const tip = cone(prims, bp, dirF(B, [-0.45, 0.8, sd * 0.5]), l, 21, id);
+      for (const [x, h, l] of [[92, 280, 70], [36, 306, 84], [-22, 312, 88], [-80, 294, 80]]) {
+        const bp = inF(B, [x, h - 16, sd * 112]);
+        const tip = cone(prims, bp, dirF(B, [-0.8, -0.2, sd * 0.6]), l, 20, id);
         if (tip[1] > top[1]) top = tip;
       }
     }
@@ -323,7 +324,7 @@ const Groudon = (() => {
       for (const k of [-1, 0, 1]) {
         const cd = nrm(add(d2, [0.2, -0.25, sd * 0.3 * k + sd * 0.05]));
         const c0 = add(wr, add(sc(cd, 22), [0, 0, sd * 0 + k * 16]));
-        prims.push(seg(c0, add(c0, sc(nrm(add(cd, [0, -0.45, 0])), 30)), 8, 8, id, id, M_CLAW, [0, 1, 0], 0.5));
+        prims.push(seg(c0, add(c0, sc(nrm(add(cd, [0, -0.45, 0])), 38)), 10, 10, id, id, M_CLAW, [0, 1, 0], 0.5));
       }
       anchors[sd > 0 ? 'handN' : 'handF'] = add(wr, sc(d2, 40));
     }
@@ -345,8 +346,8 @@ const Groudon = (() => {
       const foot = chain(T(ft[0] + 22, ft[1] + 22, ft[2]), R(M3.ry(-sd * 0.12)));
       prims.push(ellF(foot, [66, 26, 52], id, id, M_RED));
       for (const k of [-1, 0, 1]) {
-        const c0 = inF(foot, [50, -2, k * 30]);
-        prims.push(seg(c0, inF(foot, [84, -16, k * 36]), 11, 11, id, id, M_CLAW, [0, 1, 0], 0.5));
+        const c0 = inF(foot, [48, 0, k * 30]);
+        prims.push(seg(c0, inF(foot, [92, -18, k * 38]), 14, 13, id, id, M_CLAW, [0, 1, 0], 0.5));
       }
       anchors[sd > 0 ? 'footN' : 'footF'] = inF(foot, [0, -24, 0]);
     }
@@ -487,5 +488,5 @@ const Groudon = (() => {
     return { buf, depth, part, W, H, ox, oy, anchors };
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 3.5, bw: 1420, bh: 740, oy: 0.9 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 3.5, bw: 1420, bh: 800, oy: 0.8325 } };
 })();

@@ -36,14 +36,14 @@ const Vigoroth = (() => {
   const FUR = 1, RED = 2, BROWN = 3, CLAW = 4, EYEW = 5, PUPIL = 6, MOUTH = 7, TONGUE = 8, NOSE = 9, INK = 10;
   const MAT = { FUR, RED, BROWN, CLAW, EYEW, PUPIL, MOUTH, TONGUE, NOSE, INK };
   const PAL = Creature.palette({
-    [FUR]:    { r: ['#a09cae', '#c4c0cc', '#e8e6ec', '#f7f6f9', '#ffffff'], od: '#4a4660', ol: '#86829a', ln: '#9490a6' },
-    [RED]:    { r: ['#921a28', '#bc2a36', '#e0444a', '#f26c66', '#ffa092'], od: '#560a16', ol: '#901a26', ln: '#8a1824' },
-    [BROWN]:  { r: ['#4a2c1e', '#62402a', '#7c5638', '#966e4a', '#b08a62'], od: '#28160c', ol: '#4a2c1c', ln: '#4a2c1c' },
-    [CLAW]:   { r: ['#34323a', '#4a4852', '#62606a', '#7e7c86', '#a09ea8'], od: '#18161c', ol: '#2e2c34', ln: '#2a2830' },
+    [FUR]:    { r: ['#a6a4b0', '#cfcdd4', '#eeeef0', '#f8f8f9', '#ffffff'], od: '#4a4858', ol: '#86849a', ln: '#9896a6' },
+    [RED]:    { r: ['#a8404c', '#cc5a64', '#e6757b', '#f49a9c', '#ffc6c4'], od: '#5e1620', ol: '#96323c', ln: '#9a3a44' },
+    [BROWN]:  { r: ['#5a4638', '#76604e', '#937c6d', '#ab9686', '#c4b2a4'], od: '#2e2018', ol: '#4e3c30', ln: '#4e3c30' },
+    [CLAW]:   { r: ['#26262a', '#3a3a3e', '#56565a', '#747478', '#9a9a9e'], od: '#121214', ol: '#26262a', ln: '#222226' },
     [EYEW]:   { r: ['#c4c4cc', '#e2e2e8', '#fbfbfd', '#ffffff', '#ffffff'], od: '#5a5a66', ol: '#8a8a96', ln: '#8a8a96' },
     [PUPIL]:  { r: ['#08080c', '#0e0e14', '#16161e', '#22222c', '#34343e'], od: '#040406', ol: '#08080c', ln: '#08080c' },
-    [MOUTH]:  { r: ['#6e2440', '#8a3452', '#a64866', '#c0607c', '#d67c94'], od: '#3a0e20', ol: '#5e1c34', ln: '#5e1c34' },
-    [TONGUE]: { r: ['#b44c60', '#d06678', '#ea8896', '#f8aab4', '#ffcdd2'], od: '#621828', ol: '#8e2a3c', ln: '#8e2a3c' },
+    [MOUTH]:  { r: ['#5e2e44', '#7c4260', '#9d607d', '#b67a96', '#cc96ae'], od: '#34101e', ol: '#5a2438', ln: '#5a2438' },
+    [TONGUE]: { r: ['#b8849a', '#cc9cb0', '#dfb2c5', '#ecc8d6', '#f8e0ea'], od: '#6a3048', ol: '#8e4a64', ln: '#8e4a64' },
     [NOSE]:   { r: ['#a84c62', '#c8687e', '#e68ea0', '#f6b2c0', '#ffd8e0'], od: '#5e1a32', ol: '#903e58', ln: '#903e58' },
     [INK]:    { r: ['#241410', '#321c16', '#40261e', '#4e3026', '#5c3a2e'], od: '#140a08', ol: '#241410', ln: '#241410' },
   });
@@ -115,9 +115,9 @@ const Vigoroth = (() => {
   let curScale = 1;
 
   /* ---------- head decals (head frame, unit sphere s) ---------- */
-  const HR = [34, 32, 36];
-  const EYE_AZ = 0.45, EYE_V = 0.24, RING_R = 0.32, WHITE_R = 0.16;
-  const NOSE_V = 0.02, MOUTH_V = -0.2, MOUTH_HW = 0.58;
+  const HR = [30, 28.5, 31];
+  const EYE_AZ = 0.43, EYE_V = 0.3, RING_R = 0.37, WHITE_R = 0.21;
+  const NOSE_V = 0.08, MOUTH_V = -0.06, MOUTH_HW = 0.62;
   function eyePix(a, b, kind, px, sd) {
     const r = Math.hypot(a, b * 0.95);
     if (r > RING_R) return 0;
@@ -130,7 +130,7 @@ const Vigoroth = (() => {
       }
       return C_BROWN;
     }
-    const wr = Math.max(WHITE_R, RING_R - Math.max(0.06, 1.6 * px));
+    const wr = Math.min(RING_R * 0.6, RING_R - 1.3 * px);
     if (r > wr) return C_BROWN;
     const pr = Math.max(0.095, 1.4 * px);
     const pa = a + 0.035 * sd, pb = b + 0.01;
@@ -155,7 +155,7 @@ const Vigoroth = (() => {
       if (Math.abs(u) < MOUTH_HW + 0.2 && s[1] < MOUTH_V + 0.2) {
         const k = u / MOUTH_HW;
         const top = MOUTH_V + 0.09 * k * k;
-        const h = mo * 0.62 * Math.sqrt(Math.max(0, 1 - k * k));
+        const h = mo * 0.8 * Math.sqrt(Math.max(0, 1 - k * k));
         if (h > 0.035 && Math.abs(k) < 1 && s[1] < top && s[1] > top - h) {
           // two little triangular fangs in each jaw
           const tw = 0.1, th = Math.max(0.09, 2.4 * px);
@@ -170,23 +170,25 @@ const Vigoroth = (() => {
         }
         if (h <= 0.035 && Math.abs(k) < 0.95 && Math.abs(s[1] - (top - 0.02)) < Math.max(0.03, 0.6 * px)) return C_INK;
         // brown lips ringing the maw
-        const rim = Math.max(0.07, 1.8 * px);
+        const rim = Math.max(0.1, 1.5 * px);
         const hr = Math.max(h, 0.05);
         const kk = Math.abs(k) / (1 + rim / MOUTH_HW);
-        if (kk < 1 && s[1] < top + rim && s[1] > top - hr * Math.sqrt(Math.max(0, 1 - kk * kk)) - rim) return C_BROWN;
+        if (kk < 1 && s[1] < top + rim * 0.8 && s[1] > top - hr * Math.sqrt(Math.max(0, 1 - kk * kk)) - rim * (1.2 + 0.6 * (1 - kk * kk))) return C_BROWN;
       }
       return C_FUR;
     };
   }
 
   /* ---------- torso: two brown stripes across the upper back ---------- */
-  function torsoMat(s) {
-    if (s[0] < -0.15) {
-      const f = sstep(-0.15, -0.5, s[0]);
-      for (const v0 of [0.62, 0.36]) if (Math.abs(s[1] - v0) < 0.075 * (0.4 + 0.6 * f)) return C_BROWN;
+  // one wedge-shaped stripe per torso ellipsoid (v0 = its height on the unit sphere): widest at the spine,
+  // tapering to a point toward the flanks
+  const torsoMat = (v0) => (s) => {
+    if (s[0] < -0.2) {
+      const f = sstep(-0.2, -0.85, s[0]);
+      if (Math.abs(s[1] - v0 - 0.06 * (1 - f)) < 0.11 * f) return C_BROWN;
     }
     return C_FUR;
-  }
+  };
   function sstep(a, b, x) { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
 
   const DEFAULT = { eyes: 'open', mouth: 0.8, walk: 0, arms: 0, side: 1 };
@@ -195,13 +197,13 @@ const Vigoroth = (() => {
   // 1 torso, 2 head, 3 tuft, 4 nose, 5 ears, 6 chest/cheek fur, 7/8 arms, 9/10 hand claws,
   // 11/12 legs, 13/14 foot claws, 15 tail
   Object.assign(PRI, { 1: 0, 2: 2, 3: 3, 4: 4, 5: 1, 6: 1, 7: 3, 8: 3, 9: 4, 10: 4, 11: 1, 12: 1, 13: 2, 14: 2, 15: -1 });
-  const SIZE = 1.1;
+  const SIZE = 1.22;
 
-  function claws(prims, base, dir, up, id, len = 16, spread = 0.3) {
+  function claws(prims, base, dir, up, id, len = 16, spread = 0.3, three = false) {
     const Rm = axesAlong(dir, up);
     const X = [Rm[0], Rm[3], Rm[6]], Y = [Rm[1], Rm[4], Rm[7]], Z = [Rm[2], Rm[5], Rm[8]];
     const k = len / 16;
-    for (const o of [-spread, spread]) {
+    for (const o of three ? [-spread, 0, spread] : [-spread, spread]) {
       const d0 = nrm(add(X, sc(Z, o)));
       hookChain(prims, add(base, sc(Z, o * 9)), d0, Y, [6.5 * k, 5.5 * k, 4.8 * k], [[3.6, 3.2], [2.6, 2.3], [1.4, 1.3]], 0.4, id, id, M_CLAW);
     }
@@ -218,17 +220,17 @@ const Vigoroth = (() => {
     const rock = walking ? 0.06 * Math.sin(wk) : 0;
 
     // --- torso frame at the hips, hunched a little forward
-    const tf = chain(T(-4, 42 + bob, 0), R(M3.rx(rock)), R(M3.rz(-0.13)));
-    prims.push(ellF(chain(tf, T(0, 42, 0)), [31, 46, 33], 1, 1, torsoMat));
-    prims.push(ellF(chain(tf, T(3, 76, 0)), [32, 27, 40], 1, 1, torsoMat));
+    const tf = chain(T(-8, 40 + bob, 0), R(M3.rx(rock)), R(M3.rz(-0.3)));
+    prims.push(ellF(chain(tf, T(0, 40, 0)), [31, 44, 32], 1, 1, torsoMat(0.5)));
+    prims.push(ellF(chain(tf, T(4, 78, 0)), [31, 27, 37], 1, 1, torsoMat(-0.02)));
     anchors.body = inF(tf, [0, 50, 0]);
     anchors.chest = inF(tf, [31, 66, 0]);
     // shaggy chest fur: spikes hanging down over the belly, and a ruff at the collar
-    for (const [z, y, l] of [[0, 56, 14], [12, 58, 13], [-12, 58, 13], [23, 63, 12], [-23, 63, 12]])
+    for (const [z, y, l] of [])
       tuft(prims, inF(tf, [30 - Math.abs(z) * 0.3, y, z]), dirF(tf, [0.45, -1, z * 0.02]), l, 7, 6, 6, M3.v(tf.L, [1, 0, 0]));
 
     // --- head: sits low on the shoulders
-    const hf = chain(tf, T(12, 114, 0), R(M3.rz(0.13 + (walking ? 0.03 * Math.sin(2 * wk) : 0))), R(M3.rx(-rock * 0.6)));
+    const hf = chain(tf, T(22, 108, 0), R(M3.rz(0.34 + (walking ? 0.03 * Math.sin(2 * wk) : 0))), R(M3.rx(-rock * 0.6)));
     const headPrim = ellF(hf, HR, 2, 2, headMat(kind, mo));
     prims.push(headPrim);
     anchors.head = hf.t;
@@ -237,25 +239,32 @@ const Vigoroth = (() => {
     anchors.mouth = onHead(0, MOUTH_V - 0.18 * mo);
     // small pink nose
     const nc = onHead(0, NOSE_V, -1.5);
-    prims.push(E(nc, M3.mul(hf.L, M3.diag(5.5, 5, 6.5)), 4, 4, M_NOSE));
+    prims.push(E(nc, M3.mul(hf.L, M3.diag(6, 5.5, 7)), 4, 4, M_NOSE));
     anchors.nose = nc;
     // stubby ears
     for (const sd of [1, -1]) prims.push(E(onHead(sd * 1.5, 0.42, -3), M3.mul(hf.L, M3.diag(6, 7.5, 5)), 5, 5, M_FUR));
     // shaggy fur at the sides of the maw
     for (const sd of [1, -1])
-      for (const [az, v, l] of [[1.05, -0.3, 13], [0.9, -0.55, 12], [1.3, -0.05, 11]])
-        tuft(prims, onHead(sd * az, v, -3), dirF(hf, [0.1, -0.5, sd]), l, 5.4, 6, 6, M3.v(hf.L, [1, 0, 0]));
+      for (const [az, v, l] of [[1.15, -0.35, 12], [1.35, -0.05, 10]])
+        tuft(prims, onHead(sd * az, v, -3), dirF(hf, [-0.1, -0.5, sd]), l, 5.4, 2, 2, M3.v(hf.L, [1, 0, 0]));
 
-    // --- the red teardrop tuft rising from the forehead, tip curling back
-    const tb = onHead(0, 0.62, -4);
-    const tU = dirF(hf, [0.55, 1, 0]);
-    const bulbC = add(tb, sc(tU, 13));
-    prims.push(E(bulbC, M3.mul(axesAlong(tU, dirF(hf, [1, 0, 0])), M3.diag(19, 15, 12)), 3, 3, M_RED));
-    const tD = dirF(hf, [0.9, 0.8, 0]);
-    const upC = add(bulbC, sc(tU, 16));
-    prims.push(E(upC, M3.mul(axesAlong(tD, dirF(hf, [0, 1, 0])), M3.diag(16, 8, 7.5)), 3, 3, M_RED));
-    const tip = add(upC, sc(tD, 16));
-    anchors.tuft = inF(hf, [2, 42, 0]);
+    // --- the red teardrop tuft rising from the forehead: a fat bulb at the front, tapering up into
+    //     a pointed flame tip with a smaller second point just behind it
+    const tb = onHead(0, 0.6, -5);
+    const fwdH = dirF(hf, [1, 0, 0]), upH = dirF(hf, [0, 1, 0]);
+    const tU = dirF(hf, [0.3, 1, 0]);
+    const bulbC = add(tb, add(sc(tU, 10), sc(fwdH, 2)));
+    const tAx = axesAlong(tU, fwdH);
+    prims.push(E(bulbC, M3.mul(tAx, M3.diag(16, 13.5, 10.5)), 3, 3, M_RED));
+    // upper half narrows smoothly into the point (the two ellipsoids blend into one teardrop)
+    const upC = add(bulbC, sc(dirF(hf, [0.12, 1, 0]), 12));
+    prims.push(E(upC, M3.mul(axesAlong(dirF(hf, [0.12, 1, 0]), fwdH), M3.diag(13, 8.5, 7)), 3, 3, M_RED));
+    const tip = add(upC, sc(dirF(hf, [0.12, 1, 0]), 12.5));
+    prims.push(E(add(upC, sc(dirF(hf, [0.12, 1, 0]), 9)), M3.mul(axesAlong(dirF(hf, [0.12, 1, 0]), fwdH), M3.diag(6, 4.2, 3.6)), 3, 3, M_RED));
+    // the small second point just behind the tip
+    const t2 = dirF(hf, [-0.55, 1, 0]);
+    prims.push(E(add(upC, add(sc(t2, 8), sc(fwdH, -3))), M3.mul(axesAlong(t2, fwdH), M3.diag(7, 3.4, 3.2)), 3, 3, M_RED));
+    anchors.tuft = bulbC;
     anchors.top = add(tip, [0, 2, 0]);
 
     // --- arms: long, raised up and out; `arms` windmills them about the shoulders
@@ -265,13 +274,13 @@ const Vigoroth = (() => {
       const swing = (walking ? 0.35 * Math.sin(wk + (sd > 0 ? Math.PI : 0)) : 0) + sw * sd;
       const Rs = M3.mul(tf.L, M3.rz(swing));
       // upper arm out to the side and down; forearm bent up, hands about head height
-      const d1 = nrm(M3.v(Rs, [0.25, -0.5, 0.83 * sd]));
-      const el = add(sh, sc(d1, 36));
-      const d2 = nrm(M3.v(Rs, [0.3, 0.95, 0.12 * sd]));
-      const wr = add(el, sc(d2, 58));
-      prims.push(seg(sh, el, 12.5, 12.5, [0, 1, 0], id, id, M_FUR, 1.2));
-      prims.push(E(el, M3.diag(12, 12, 12), id, id, M_FUR));
-      prims.push(seg(el, wr, 12, 11.5, [0, 1, 0], id, id, M_FUR, 1.12));
+      const d1 = nrm(M3.v(Rs, [0.2, -0.72, 0.66 * sd]));
+      const el = add(sh, sc(d1, 40));
+      const d2 = nrm(M3.v(Rs, [0.28, 0.96, 0.02 * sd]));
+      const wr = add(el, sc(d2, 70));
+      prims.push(seg(sh, el, 13, 13, [0, 1, 0], id, id, M_FUR, 1.2));
+      prims.push(E(el, M3.diag(12.5, 12.5, 12.5), id, id, M_FUR));
+      prims.push(seg(el, wr, 12.5, 12, [0, 1, 0], id, id, M_FUR, 1.1));
       // shaggy elbow tuft
       tuft(prims, el, nrm(sub(sc(d2, -1), sc(d1, 1))), 13, 5.2, id, id, M3.v(Rs, [0, 0, sd]));
       const hc = add(wr, sc(d2, 5));
@@ -294,15 +303,15 @@ const Vigoroth = (() => {
       const ank = [4 + fwd, 9 + lift, 21 * sd];
       prims.push(seg(hip, ank, 14, 14, [1, 0, 0], id, id, M_FUR, 1.1));
       const foot = chain(T(ank[0] + 5, ank[1] - 2.5, ank[2]), R(M3.ry(-sd * 0.15)), R(M3.rz(walking ? -0.3 * Math.sin(ph) * (lift > 0 ? 1 : 0.3) : 0)));
-      prims.push(ellF(foot, [15, 7.5, 11.5], id, id, M_FUR));
-      claws(prims, inF(foot, [11, -1, 0]), dirF(foot, [1, 0.05, 0]), dirF(foot, [0, 1, 0]), cid, 13, 0.36);
+      prims.push(ellF(foot, [15, 7.5, 12], id, id, M_FUR));
+      claws(prims, inF(foot, [11, -1, 0]), dirF(foot, [1, 0.05, 0]), dirF(foot, [0, 1, 0]), cid, 12, 0.5, true);
       anchors[sd > 0 ? 'footN' : 'footF'] = inF(foot, [0, -7, 0]);
     }
 
     // --- stubby shaggy tail
     const tc = inF(tf, [-34, 16, 0]);
-    prims.push(E(tc, M3.mul(tf.L, M3.diag(10, 9, 9)), 15, 15, M_FUR));
-    for (const [dy, dz] of [[0, 0], [-0.6, 0.5], [-0.6, -0.5]]) tuft(prims, tc, dirF(tf, [-1, -0.4 + dy, dz]), 14, 5, 15, 15, M3.v(tf.L, [0, 1, 0]));
+    prims.push(E(tc, M3.mul(tf.L, M3.diag(15, 12, 12)), 15, 15, M_FUR));
+    for (const [dy, dz, l] of [[0.1, 0, 24], [-0.5, 0.45, 20], [-0.5, -0.45, 20], [0.6, 0.3, 17], [0.6, -0.3, 17]]) tuft(prims, tc, dirF(tf, [-1, -0.2 + dy, dz]), l, 7, 15, 15, M3.v(tf.L, [0, 1, 0]));
     anchors.tail = tc;
 
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }

@@ -29,21 +29,23 @@ const Azurill = (() => {
   const { chain, T, R, code } = Creature;
 
   // ---- materials
-  const BLUE = 1, PINK = 2, BLACK = 3, WHITE = 4, EYE = 5, MOUTH = 6, TONGUE = 7, SHINE = 8;
-  const MAT = { BLUE, PINK, BLACK, WHITE, EYE, MOUTH, TONGUE, SHINE };
+  const BLUE = 1, PINK = 2, BLACK = 3, WHITE = 4, EYE = 5, MOUTH = 6, TONGUE = 7, SHINE = 8, EYEBL = 9;
+  const MAT = { BLUE, PINK, BLACK, WHITE, EYE, MOUTH, TONGUE, SHINE, EYEBL };
   const PAL = Creature.palette({
-    [BLUE]:   { r: ['#2c6cb0', '#428cd2', '#5eaae8', '#8ccaf6', '#c8e8ff'], od: '#16407c', ol: '#2c68a8', ln: '#2e66a4' },
-    [PINK]:   { r: ['#a8507c', '#c46e98', '#e094b8', '#f2b6d0', '#ffd8e8'], od: '#5c1c3e', ol: '#8a3460', ln: '#9a4470' },
+    // sampled from the official art: sky blue #66b1e1 (shadow #49a4dc), pink ear insides #cf7ba5
+    [BLUE]:   { r: ['#2e7cb4', '#49a4dc', '#66b1e1', '#8ac4ea', '#c0e0f6'], od: '#1c3e56', ol: '#2e6690', ln: '#3478aa' },
+    [PINK]:   { r: ['#9a4a74', '#b8628e', '#cf7ba5', '#e09cc0', '#f0c0d8'], od: '#5c1c3e', ol: '#8a3460', ln: '#9a4470' },
     [BLACK]:  { r: ['#14141c', '#1e1e28', '#2a2a36', '#3a3a48', '#565666'], od: '#08080c', ol: '#14141c', ln: '#101016' },
     [WHITE]:  { r: ['#c4dcf0', '#e0eefa', '#f8fcff', '#ffffff', '#ffffff'], od: '#3a6aa0', ol: '#6a98c8', ln: '#80a8d0' },
-    [EYE]:    { r: ['#0c1020', '#101428', '#141a30', '#1a2238', '#222c44'], od: '#06080e', ol: '#0c1020', ln: '#0c1020' },
+    [EYE]:    { r: ['#141824', '#141824', '#1c2230', '#1c2230', '#1c2230'], od: '#06080e', ol: '#0c1020', ln: '#0c1020' },
+    [EYEBL]:  { r: ['#3a5a84', '#3a5a84', '#48709c', '#48709c', '#48709c'], od: '#06080e', ol: '#0c1020', ln: '#0c1020' },
     [MOUTH]:  { r: ['#5a1828', '#742234', '#8e3044', '#a84256', '#c05868'], od: '#380c18', ol: '#561424', ln: '#561424' },
     [TONGUE]: { r: ['#c04c68', '#da6a84', '#ee8ca2', '#ffb0c0', '#ffd4de'], od: '#6a1430', ol: '#94203e', ln: '#94203e' },
     [SHINE]:  { r: ['#e8eef6', '#f6f9fc', '#ffffff', '#ffffff', '#ffffff'], od: '#606878', ol: '#8890a0', ln: '#8890a0' },
   });
   const GLOSSY = { [BLUE]: 1, [BLACK]: 1 };
   const C_BLUE = code(BLUE), C_PINK = code(PINK), C_BLACK = code(BLACK), C_WHITE = code(WHITE, 1);
-  const C_EYE = code(EYE), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE), C_SHINE = code(SHINE, 1);
+  const C_EYE = code(EYE), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE), C_SHINE = code(SHINE, 1), C_EYEBL = code(EYEBL), C_LIP = code(PINK, -1);
   const M_BLUE = () => C_BLUE, M_BLACK = () => C_BLACK;
 
   // ---- helpers
@@ -71,12 +73,12 @@ const Azurill = (() => {
   let curScale = 1;
 
   /* ---------- body/head decals (unit sphere s; az 0 = forward) ---------- */
-  const BR = [9.8, 11, 10.2];
-  const EYE_AZ = 0.36, EYE_V = 0.2, MOUTH_V = -0.2, CHEEK_AZ = 0.78, CHEEK_V = -0.12;
+  const BR = [9.6, 10.8, 9.8];
+  const EYE_AZ = 0.36, EYE_V = 0.4, MOUTH_V = 0.14, CHEEK_AZ = 0.74, CHEEK_V = 0.02;
   // small black oval eyes with a glint, scale-aware so they stay readable at a few pixels
   function eyePix(ea, eb, sd, kind) {
     const pu = 1 / (curScale * BR[2]), pv = 1 / (curScale * BR[1]);
-    const ru = Math.max(0.12, 0.85 * pu), rv = Math.max(0.21, 1.25 * pv);
+    const ru = Math.max(0.12, 0.85 * pu), rv = Math.max(0.2, 1.25 * pv);
     const x = ea / ru, y = eb / rv;
     if (Math.abs(x) > 1.3 || Math.abs(y) > 1.3) return 0;
     const lw = Math.max(0.2, 0.7 * pv / rv);
@@ -87,6 +89,7 @@ const Azurill = (() => {
     if (ru > 1.7 * pu) {
       const gx = x + 0.25 * sd, gy = y - 0.42, gr = Math.max(0.3, 0.75 * pu / ru);
       if (gx * gx + gy * gy < gr * gr) return C_SHINE;
+      if (rv > 3 * pv && y < -0.35 && Math.abs(x) < 0.7) return C_EYEBL;
     }
     return C_EYE;
   }
@@ -96,7 +99,7 @@ const Azurill = (() => {
       const az = Math.atan2(s[2], s[0]), a = Math.abs(az), v = s[1];
       const cv = Math.sqrt(Math.max(0, 1 - v * v)), sd = az >= 0 ? 1 : -1;
       const pu = 1 / (curScale * BR[2]), pv = 1 / (curScale * BR[1]);
-      if (a > 0.1 && a < 0.66 && v > -0.15 && v < 0.55) { const e = eyePix((az - sd * EYE_AZ) * cv, v - EYE_V, sd, kind); if (e) return e; }
+      if (a > 0.1 && a < 0.66 && v > 0.08 && v < 0.75) { const e = eyePix((az - sd * EYE_AZ) * cv, v - EYE_V, sd, kind); if (e) return e; }
       // white cheek spots
       if (a > 0.55 && a < 1.05) {
         const cx = (az - sd * CHEEK_AZ) * cv / Math.max(0.17, 1.2 * pu), cy = (v - CHEEK_V) / Math.max(0.17, 1.2 * pv);
@@ -107,12 +110,13 @@ const Azurill = (() => {
       if (mo > 0.08) {
         const mx = u / Math.max(0.1 + 0.05 * mo, 1.3 * pu), my = (v - (MOUTH_V - 0.05 * mo)) / Math.max(0.05 + 0.1 * mo, 1.1 * pv);
         if (mx * mx + my * my < 1) return my < -0.1 && mx * mx + (my + 0.6) * (my + 0.6) < 0.5 ? C_TONGUE : C_MOUTH;
-      } else if (Math.abs(u) < Math.max(0.1, 1.1 * pu) && Math.abs(v - MOUTH_V) < Math.max(0.028, 0.55 * pv)) return C_MOUTH;
+      } else if (Math.abs(u) < Math.max(0.13, 1.3 * pu) && Math.abs(v - MOUTH_V - 0.025 * Math.sin(u * 30)) < Math.max(0.03, 0.55 * pv)) return C_LIP;
       return C_BLUE;
     };
   }
   // ear: round flat disc, pink inside on the front face
-  const earMat = (s) => (s[0] > 0.3 && s[1] * s[1] + s[2] * s[2] < 0.6 ? C_PINK : C_BLUE);
+  // pink oval set low in the round ear
+  const earMat = (s) => (s[0] > 0.3 && (s[1] + 0.12) ** 2 / 0.3 + s[2] * s[2] / 0.13 < 1 ? C_PINK : C_BLUE);
 
   const DEFAULT = { walk: 0, bounce: 0.2, mouth: 0, eyes: 'open', side: 1 };
   // 1 body, 2/3 ears, 4/5 arms, 6 ball, 7 stalk
@@ -133,15 +137,15 @@ const Azurill = (() => {
     const rock = walking ? 0.1 * Math.sin(wk) : 0;
 
     /* --- ball tail: the big blue ball it sits on --- */
-    const BRAD = 13;
-    const by = BRAD * (1 - 0.38 * sq), bx = BRAD * (1.1 + 0.24 * sq);
+    const BRAD = 10.2;
+    const by = BRAD * 0.88 * (1 - 0.38 * sq), bx = BRAD * (1.2 + 0.24 * sq);
     const ball = { L: M3.diag(bx, by, bx), t: [-1.5, by + lift, 0] };
     prims.push(E(ball.t, ball.L, 6, 6, M_BLUE));
     anchors.ball = ball.t;
     anchors.foot = [ball.t[0], lift, 0];
 
     /* --- body: round, sits on the ball --- */
-    const bodyY = 2 * by + 8 - 1.2 * sq + lift;
+    const bodyY = 2 * by + 8.6 - 1.2 * sq + lift;
     const bodyF = chain(T(0.5, bodyY, 0), R(M3.rx(rock)), R(M3.rz(walking ? 0.05 * Math.sin(2 * wk) : 0)));
     const bodyPrim = ellF(bodyF, BR, 1, 1, bodyMat(kind, mo));
     prims.push(bodyPrim);
@@ -156,13 +160,13 @@ const Azurill = (() => {
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 2 : 3;
       const flop = walking ? 0.12 * Math.cos(wk) : 0;
-      const ec = onB(sd * 1.05, 0.78, 2.5);
-      const Y = dirF(bodyF, [-0.05, 1, sd * (0.32 + flop)]);
+      const ec = onB(sd * 1.05, 0.74, 1.5);
+      const Y = dirF(bodyF, [-0.05, 1, sd * (0.45 + flop)]);
       const [X, Yy, Z] = frameAlong(Y, dirF(bodyF, [1, 0, 0.35 * sd]));
-      const c = add(ec, sc(Yy, 3.8));
-      prims.push(ellAx(c, X, Yy, Z, [2.4, 6.6, 6.2], id, id, earMat));
-      anchors[sd > 0 ? 'earN' : 'earF'] = add(c, sc(Yy, 6.6));
-      top = Math.max(top, c[1] + 6.6);
+      const c = add(ec, sc(Yy, 2.6));
+      prims.push(ellAx(c, X, Yy, Z, [2.2, 5.4, 5.2], id, id, earMat));
+      anchors[sd > 0 ? 'earN' : 'earF'] = add(c, sc(Yy, 5.4));
+      top = Math.max(top, c[1] + 5.4);
     }
     anchors.top = [anchors.body[0], top, 0];
 
@@ -190,7 +194,7 @@ const Azurill = (() => {
       [rootP[0] - 10, rootP[1] - 14 * spring, zz(5)],
       [bt[0] - bx * 0.85, bt[1] - by * 0.1, zz(1.5)],
     ];
-    for (let i = 0; i < pts.length - 1; i++) prims.push(seg(pts[i], pts[i + 1], 1.3, 1.3, 7, 7, M_BLACK, [0, 1, 0], 1.18));
+    for (let i = 0; i < pts.length - 1; i++) prims.push(seg(pts[i], pts[i + 1], 1.0, 1.0, 7, 7, M_BLACK, [0, 1, 0], 1.14));
     anchors.tail = rootP;
 
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }

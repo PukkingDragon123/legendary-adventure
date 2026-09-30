@@ -38,11 +38,11 @@ const Tentacool = (() => {
   const BODY = 1, ORB = 2, UNDER = 3, TENT = 4, EYE = 5, PUPIL = 6, GLINT = 7, KEEL = 8;
   const MAT = { BODY, ORB, UNDER, TENT, EYE, PUPIL, GLINT, KEEL };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#2a7fb8', '#3ba4d8', '#5cc6ee', '#90def8', '#d2f6ff'], od: '#15496e', ol: '#2c82b8', ln: '#2878ae' },
-    [KEEL]:  { r: ['#2a7fb8', '#3ba4d8', '#5cc6ee', '#90def8', '#d2f6ff'], od: '#15496e', ol: '#2c82b8', ln: '#236d9e' },
-    [ORB]:   { r: ['#840e26', '#b41c36', '#dc3448', '#f2707c', '#ffc6cc'], od: '#520614', ol: '#86122a', ln: '#7c1026' },
+    [BODY]:  { r: ['#3a86b0', '#52a4cc', '#6cbce1', '#94d2ee', '#c8ecfa'], od: '#174a6c', ol: '#2e7aa6', ln: '#2a72a0' },
+    [KEEL]:  { r: ['#3a86b0', '#52a4cc', '#6cbce1', '#94d2ee', '#c8ecfa'], od: '#174a6c', ol: '#2e7aa6', ln: '#256a96' },
+    [ORB]:   { r: ['#6e1a30', '#962a44', '#b8405a', '#cc6e8a', '#eab0c2'], od: '#420a1a', ol: '#781a32', ln: '#701830' },
     [GLINT]: { r: ['#d8404e', '#f06270', '#ff8c96', '#ffc0c6', '#ffffff'], od: '#8a1428', ol: '#b82a3c', ln: '#b82a3c' },
-    [UNDER]: { r: ['#0c1a2e', '#12243c', '#1a3050', '#223e66', '#2e4f80'], od: '#060e1a', ol: '#0e1c32', ln: '#0e1c32' },
+    [UNDER]: { r: ['#0a0a0c', '#121214', '#1a1a1e', '#24242a', '#303038'], od: '#050506', ol: '#0e0e10', ln: '#0e0e10' },
     [TENT]:  { r: ['#72685f', '#8e8378', '#aca196', '#c8bfb4', '#e6dfd6'], od: '#3c342e', ol: '#62584f', ln: '#62584f' },
     [EYE]:   { r: ['#b4c2d2', '#d6e0ea', '#f2f7fb', '#ffffff', '#ffffff'], od: '#15496e', ol: '#2c82b8', ln: '#1a3a56' },
     [PUPIL]: { r: ['#0c1018', '#10141e', '#141a26', '#1a222e', '#222c3a'], od: '#080a10', ol: '#080a10', ln: '#080a10' },
@@ -73,7 +73,7 @@ const Tentacool = (() => {
   };
 
   /* ---------- dome, face ---------- */
-  const DOME_C = [0, 66, 0], DOME_R = [44, 47, 46], DOME_TILT = 0.12;
+  const DOME_C = [0, 70, 0], DOME_R = [40, 52, 42], DOME_TILT = 0.14;
   const EYE_AZ = 0.5, EYE_V = -0.45, EYE_W = 11, EYE_H = 4.8;       // eye half-width / half-height (units)
   let curScale = 1;
 
@@ -81,7 +81,7 @@ const Tentacool = (() => {
      normal blended from both surfaces (returned as a tone bias against the prim's own normal), so the
      two ellipsoids read as one soft body with no ledge at the waist. Light captured per render. */
   let LD = V3.norm([-0.5, 0.72, 0.5]), TH = [-0.2, 0.18, 0.74], VR = M3.I();
-  const tone = (d) => (d < TH[0] ? 0 : d < TH[1] ? 1 : d < TH[2] ? 2 : 3);
+  const tone = (d) => (d < TH[0] ? 0 : d < TH[1] ? 1 : d < TH[2] + 0.13 ? 2 : 3); // soft renderer thresholds
   const BK = 0.55;
   function blendBias(A, s, B) {
     const L = A.L, QA = A.Q, QB = B.Q;
@@ -208,9 +208,9 @@ const Tentacool = (() => {
     // --- red orbs: two big crystals in the upper sides, a small one on the front
     const orbMat = (s) => (s[0] * -0.35 + s[1] * 0.75 + s[2] * 0.35 > 0.6 ? C_ORB_L : s[1] < -0.6 ? C_ORB_D : C_ORB);
     for (const sd of [1, -1]) {
-      const { p, n } = onDome(sd * 0.92, 0.42, -8);
+      const { p, n } = onDome(sd * 1.0, 0.46, -11);
       const ax0 = nrm(cross([0, 1, 0], n)), ax1 = cross(n, ax0);
-      const r = 17.5;
+      const r = 23.5;
       const id = sd > 0 ? 5 : 6;
       const orb = E(inF(domeF, p), M3.mul(domeF.L, M3.cols(sc(ax0, r), sc(ax1, r * 1.1), sc(n, r))), id, id, orbMat);
       prims.push(orb);
@@ -227,12 +227,12 @@ const Tentacool = (() => {
 
     // --- mantle: the skirt that hangs from under the eyes and flares out, rim in soft scallops
     const sk = 1 + 0.07 * k;
-    const bellF = chain(T(-13, 8, 0), R(M3.diag(sk, 1 - 0.06 * k, sk)));
+    const bellF = chain(T(-6, 10, 0), R(M3.diag(sk, 1 - 0.06 * k, sk)));
     const RIM = -0.2;
     // the mantle is one jelly with the dome (same group: no seam at the back); a crease line is drawn
     // only across the front, where the hood meets the face under the eyes
     const DQ = J.dome.Q, DC = J.dome.c;
-    const mantle = J.mantle = ellF(bellF, [56, 38, 62], 1, 1, null);
+    const mantle = J.mantle = ellF(bellF, [47, 32, 50], 1, 1, null);
     mantle.Q = M3.inv(mantle.L);
     mantle.mat = (s) => {
       if (s[1] < RIM + 0.05 * Math.cos(Math.atan2(s[2], s[0]) * 5)) return 0;
@@ -244,7 +244,7 @@ const Tentacool = (() => {
     };
     prims.push(mantle);
     // dark underside, showing below the rim
-    prims.push(ellF(chain(bellF, T(1, -9, 0)), [53, 10, 58], 3, 3, M_UNDER));
+    prims.push(ellF(chain(bellF, T(1, -8, 0)), [44, 9, 47], 3, 3, M_UNDER));
     anchors.body = bellF.t;
     anchors.base = inF(bellF, [0, -8, 0]);
 
@@ -263,9 +263,9 @@ const Tentacool = (() => {
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 8 : 9;
       const p0 = [27, 4, sd * 9];
-      const p1 = [42, -16, sd * 15];
-      const p2 = [24, -34, sd * 56];
-      const p3 = [6, -14, sd * 80];
+      const p1 = [40, -22, sd * 16];
+      const p2 = [30, -42, sd * 44];
+      const p3 = [18, -26, sd * 76];
       const pts = [];
       for (let i = 0; i <= NL; i++) {
         const t = i / NL;
@@ -353,5 +353,5 @@ const Tentacool = (() => {
     return cropRender(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.9, bw: 240, bh: 176, oy: 0.72 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.9, bw: 290, bh: 210, oy: 0.7 } };
 })();

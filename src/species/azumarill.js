@@ -32,22 +32,24 @@ const Azumarill = (() => {
   const { chain, T, R, code } = Creature;
 
   // ---- materials
-  const BLUE = 1, PALE = 2, EARIN = 3, BLACK = 4, EYE = 5, MOUTH = 6, TONGUE = 7, SHINE = 8, SPOT = 9;
-  const MAT = { BLUE, PALE, EARIN, BLACK, EYE, MOUTH, TONGUE, SHINE, SPOT };
+  const BLUE = 1, PALE = 2, EARIN = 3, BLACK = 4, EYE = 5, MOUTH = 6, TONGUE = 7, SHINE = 8, SPOT = 9, EYEBR = 10;
+  const MAT = { BLUE, PALE, EARIN, BLACK, EYE, MOUTH, TONGUE, SHINE, SPOT, EYEBR };
   const PAL = Creature.palette({
-    [BLUE]:   { r: ['#1a5a9e', '#2c7cc2', '#4299da', '#72bcee', '#b8e0ff'], od: '#10386e', ol: '#285c9c', ln: '#285a98' },
-    [PALE]:   { r: ['#94a2b4', '#b8c4d2', '#dae2ea', '#eef3f8', '#ffffff'], od: '#34506e', ol: '#62789a', ln: '#8090a6' },
-    [EARIN]:  { r: ['#a43a4e', '#c45464', '#e0707c', '#f0949c', '#ffbcc0'], od: '#5a1424', ol: '#8a2a3c', ln: '#9a3a4a' },
+    // sampled from the official art: teal-blue #3e9ecb, warm off-white belly/spots #f5f1ed, pink ears #cd6469
+    [BLUE]:   { r: ['#236a92', '#3186b2', '#3e9ecb', '#68b6d6', '#a4d6ea'], od: '#123e5c', ol: '#2a6890', ln: '#2c78a4' },
+    [PALE]:   { r: ['#a09a96', '#bcb6b2', '#d8d2ce', '#eeeae6', '#fbf9f7'], od: '#4a4442', ol: '#7a7270', ln: '#9a928e' },
+    [EARIN]:  { r: ['#8e3c48', '#b0505a', '#cd6469', '#de8286', '#eca4a6'], od: '#5a1424', ol: '#8a2a3c', ln: '#9a3a4a' },
     [BLACK]:  { r: ['#14141c', '#1e1e28', '#2a2a36', '#3a3a48', '#565666'], od: '#08080c', ol: '#14141c', ln: '#101016' },
-    [EYE]:    { r: ['#1a0e0c', '#221410', '#2c1a14', '#38221a', '#442c22'], od: '#0c0606', ol: '#1a0e0c', ln: '#1a0e0c' },
-    [MOUTH]:  { r: ['#561426', '#701e32', '#8a2c42', '#a43e54', '#bc5466'], od: '#380c18', ol: '#561424', ln: '#561424' },
-    [TONGUE]: { r: ['#c04c68', '#da6a84', '#ee8ca2', '#ffb0c0', '#ffd4de'], od: '#6a1430', ol: '#94203e', ln: '#94203e' },
+    [EYE]:    { r: ['#1c0e08', '#1c0e08', '#24140c', '#24140c', '#24140c'], od: '#0c0606', ol: '#1a0e0c', ln: '#1a0e0c' },
+    [MOUTH]:  { r: ['#561426', '#6e2032', '#8a3040', '#a04452', '#b45a64'], od: '#380c18', ol: '#561424', ln: '#561424' },
+    [TONGUE]: { r: ['#b85a66', '#d0747e', '#e48e96', '#f2acb0', '#fccccc'], od: '#6a1430', ol: '#94203e', ln: '#94203e' },
     [SHINE]:  { r: ['#e8eef6', '#f6f9fc', '#ffffff', '#ffffff', '#ffffff'], od: '#606878', ol: '#8890a0', ln: '#8890a0' },
-    [SPOT]:   { r: ['#b8cce0', '#dce8f4', '#f6fafe', '#ffffff', '#ffffff'], od: '#2a5a90', ol: '#5a88bc', ln: '#6a94c4' },
+    [SPOT]:   { r: ['#d0ccc8', '#e8e4e0', '#fbf8f4', '#ffffff', '#ffffff'], od: '#1e5478', ol: '#2e6a92', ln: '#2c5e9a' },
+    [EYEBR]:  { r: ['#5c3222', '#5c3222', '#6e3e28', '#6e3e28', '#6e3e28'], od: '#0c0606', ol: '#1a0e0c', ln: '#1a0e0c' },
   });
   const GLOSSY = { [BLUE]: 1, [BLACK]: 1 };
   const C_BLUE = code(BLUE), C_PALE = code(PALE), C_EARIN = code(EARIN), C_BLACK = code(BLACK), C_SPOT = code(SPOT, 1);
-  const C_EYE = code(EYE), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE), C_SHINE = code(SHINE, 1);
+  const C_EYE = code(EYE), C_MOUTH = code(MOUTH), C_TONGUE = code(TONGUE), C_SHINE = code(SHINE, 1), C_EYEBR = code(EYEBR);
   const M_BLUE = () => C_BLUE, M_BLACK = () => C_BLACK;
 
   // ---- helpers
@@ -78,15 +80,15 @@ const Azumarill = (() => {
   /* ---------- egg body: two half-ellipsoids sharing the equator (wide bottom) ----------
      decals are computed from (az, y) with y = height above the equator in model units */
   const EQ = 42, RX = 37, RZ = 39, R_LO = 38, R_UP = 50;
-  const EYE_AZ = 0.28, EYE_Y = 30, NOSE_Y = 24, MOUTH_Y = 20;
-  // bubble spots on the blue belly (az, y, radius); mirrored pairs, a little uneven like the art
-  const SPOTS = [[0.3, 4, 6.8], [-0.34, 6, 6], [0.8, 10, 5.6], [-0.78, 1, 6.4], [1.2, -1, 4.2], [-1.2, 12, 3.6],
-    [0.52, 17, 3.4], [-0.62, 17, 3.8], [1.12, 17, 2.8]];
+  const EYE_AZ = 0.31, EYE_Y = 37, NOSE_Y = 33, MOUTH_Y = 30.5;
+  // bubble spots on the blue belly (az, y, radius), laid out as in the official art (a little uneven)
+  const SPOTS = [[-0.62, 20.5, 3.4], [-0.54, 7.5, 6.6], [-1.12, 2, 5], [0.0, 8, 5.4], [0.42, 13, 5.4], [0.38, -1.5, 2.8],
+    [1.12, 5, 4.6], [1.5, 16, 3.2], [-1.55, 14, 3.4]];
   const waveY = (az) => -7 + 2.6 * Math.sin(az * 6.2 + 0.6) + 1.2 * Math.sin(az * 11 + 1.3);
   function eyePix(ea, eb, sd, kind) {
     // ea, eb in model units on the surface
     const p = 1 / curScale;
-    const ru = Math.max(3, 0.8 * p), rv = Math.max(4, 1.1 * p);
+    const ru = Math.max(3.1, 0.8 * p), rv = Math.max(4.1, 1.1 * p);
     const x = ea / ru, y = eb / rv;
     if (Math.abs(x) > 1.3 || Math.abs(y) > 1.4) return 0;
     const lw = Math.max(0.2, 0.7 * p / rv);
@@ -97,6 +99,7 @@ const Azumarill = (() => {
     if (ru > 1.7 * p) {
       const gx = x + 0.28 * sd, gy = y - 0.4, gr = Math.max(0.3, 0.75 * p / ru);
       if (gx * gx + gy * gy < gr * gr) return C_SHINE;
+      if (y < -0.25 && rv > 2.5 * p) return C_EYEBR;
     }
     return C_EYE;
   }
@@ -111,19 +114,19 @@ const Azumarill = (() => {
       if (a > 1.6) return C_BLUE;
       const p = 1 / curScale;
       // spots
-      if (y < 26) for (const [sa, sy, r] of SPOTS) {
+      if (y < 25) for (const [sa, sy, r] of SPOTS) {
         const du = (az - sa) * rh, dv = y - sy, rr = Math.max(r, 0.9 * p);
         if (du * du + dv * dv < rr * rr) return C_SPOT;
       }
       if (!upper) return C_BLUE;
       const u = az * rh, sd = az >= 0 ? 1 : -1;
-      if (a < 0.6 && Math.abs(y - EYE_Y) < 6) { const e = eyePix((az - sd * EYE_AZ) * rh, y - EYE_Y, sd, kind); if (e) return e; }
+      if (a < 0.62 && Math.abs(y - EYE_Y) < 7) { const e = eyePix((az - sd * EYE_AZ) * rh, y - EYE_Y, sd, kind); if (e) return e; }
       // nose
       const nx = u / Math.max(1.3, 0.6 * p), ny = (y - NOSE_Y) / Math.max(1, 0.55 * p);
       if (nx * nx + ny * ny < 1) return C_EYE;
       // smile
       if (Math.abs(u) < 9 && y < MOUTH_Y + 1.5 && y > MOUTH_Y - 12) {
-        const hw = Math.max(5 + 1.5 * mo, 2.2 * p), k = u / hw;
+        const hw = Math.max(4.6 + 1.2 * mo, 2.2 * p), k = u / hw;
         if (mo > 0.08) {
           const h = Math.max(3 + 6 * mo, 2.2 * p);
           if (Math.abs(k) < 1 && y < MOUTH_Y + 0.8 * k * k && y > MOUTH_Y - h * Math.sqrt(1 - k * k)) return y < MOUTH_Y - h * 0.5 && Math.abs(k) < 0.75 ? C_TONGUE : C_MOUTH;
@@ -133,7 +136,7 @@ const Azumarill = (() => {
     };
   }
   // long ear segment: thin flat ellipsoid (x = thickness, facing forward), pink-red inside at the front
-  const earMat = (k0, k1) => (s) => (s[0] > 0.42 && Math.abs(s[2]) < 0.5 && s[1] > k0 && s[1] < k1 ? C_EARIN : C_BLUE);
+  const earMat = (k0, k1) => (s) => (s[0] > 0.4 && Math.abs(s[2]) < 0.56 && s[1] > k0 && s[1] < k1 ? C_EARIN : C_BLUE);
 
   const DEFAULT = { walk: 0, swim: 0, mouth: 0.5, eyes: 'open', side: 1 };
   // 1 body, 2/3 ears, 4/5 arms, 6/7 feet, 8 tail, 9 tail ball
@@ -169,22 +172,22 @@ const Azumarill = (() => {
     for (const sd of [1, -1]) {
       const id = sd > 0 ? 2 : 3;
       const bounce = walking ? 0.08 * Math.sin(wk * 2 + (sd > 0 ? 0 : 1)) : 0;
-      const base = onUp(sd * 0.72, 0.84, -3);
-      const d1 = dirF(bodyF, [-0.12 - 0.9 * sw, 1, sd * (0.32 + bounce)]);
+      const base = onUp(sd * 0.62, 0.86, -3);
+      const d1 = dirF(bodyF, [-0.12 - 0.9 * sw, 1, sd * ((sd > 0 ? 0.55 : 0.3) + bounce)]);
       const fwd = dirF(bodyF, [1, 0, 0.35 * sd]);
       const mid = add(base, sc(d1, 27));
       let tipP;
       if (sd > 0) {
         // the standing ear: one long leaf, narrow at the base
         tipP = add(base, sc(nrm(add(d1, dirF(bodyF, [0, 0, bounce]))), 55));
-        prims.push(seg(base, tipP, 4.6, 12, id, id, earMat(-0.62, 0.84), fwd, 1.06));
+        prims.push(seg(base, tipP, 4, 7.4, id, id, earMat(-0.66, 0.86), fwd, 1.06));
       } else {
         // the floppy ear: bends over sideways near halfway
         const flop = 1.25 + 3 * bounce;
         const d2 = nrm(add(sc(d1, Math.cos(flop)), sc(dirF(bodyF, [0, 0, sd]), Math.sin(flop))));
         tipP = add(mid, sc(d2, 27));
-        prims.push(seg(base, mid, 4.6, 11, id, id, earMat(-0.55, 1.2), fwd, 1.12));
-        prims.push(seg(mid, tipP, 4.6, 12, id, id, earMat(-1.2, 0.72), fwd, 1.12));
+        prims.push(seg(base, mid, 4, 6.6, id, id, earMat(-0.55, 1.2), fwd, 1.12));
+        prims.push(seg(mid, tipP, 4, 7.4, id, id, earMat(-1.2, 0.72), fwd, 1.12));
       }
       anchors[sd > 0 ? 'earN' : 'earF'] = tipP;
       topY = Math.max(topY, tipP[1] + 3);
@@ -196,11 +199,11 @@ const Azumarill = (() => {
       const id = sd > 0 ? 4 : 5;
       const ph = wk + (sd > 0 ? Math.PI : 0);
       const swing = walking ? 0.3 * Math.sin(ph) : 0;
-      const root = inF(bodyF, [4, 8, sd * (RZ - 7)]);
+      const root = inF(bodyF, [4, 11, sd * (RZ - 7)]);
       const stroke = walking ? Math.sin(ph) : 0;
-      const d = nrm(add(sc(dirF(bodyF, [0.35 + swing, -0.3, sd * 0.9]), 1 - sw), sc(dirF(bodyF, [0.9 + 0.4 * stroke, 0.1, sd * 0.45]), sw)));
+      const d = nrm(add(sc(dirF(bodyF, [0.3 + swing, -0.14, sd * 0.95]), 1 - sw), sc(dirF(bodyF, [0.9 + 0.4 * stroke, 0.1, sd * 0.45]), sw)));
       const hand = add(root, sc(d, 30));
-      prims.push(seg(root, hand, 6.4, 7, id, id, M_BLUE, [1, 0, 0], 1.06));
+      prims.push(seg(root, hand, 5.6, 6.2, id, id, M_BLUE, [1, 0, 0], 1.06));
       anchors[sd > 0 ? 'handN' : 'handF'] = hand;
     }
 
@@ -211,12 +214,12 @@ const Azumarill = (() => {
       const fwd = walking ? 7 * Math.sin(ph) * (1 - sw) : 0;
       const lift = walking ? 4 * Math.max(0, Math.cos(ph)) * (1 - sw) : 0;
       const kick = walking ? 6 * Math.sin(ph) * sw : 0;
-      const stand = [10 + fwd, 6.8 + lift, sd * 17];
+      const stand = [10 + fwd, 6 + lift, sd * 18];
       const swimP = inF(bodyF, [-20 + kick, -36, sd * 16]);
       const c = [lerp(stand[0], swimP[0], sw), lerp(stand[1], swimP[1], sw), lerp(stand[2], swimP[2], sw)];
-      const f = chain(T(...c), R(M3.ry(-sd * 0.25)), R(M3.rz((walking ? 0.2 * Math.sin(ph) : 0) + 0.9 * sw)));
-      prims.push(ellF(f, [15, 7, 10], id, id, M_BLUE));
-      anchors[sd > 0 ? 'footN' : 'footF'] = inF(f, [0, -7, 0]);
+      const f = chain(T(...c), R(M3.ry(-sd * 0.4)), R(M3.rz((walking ? 0.2 * Math.sin(ph) : 0) + 0.9 * sw)));
+      prims.push(ellF(f, [12, 6, 8.5], id, id, M_BLUE));
+      anchors[sd > 0 ? 'footN' : 'footF'] = inF(f, [0, -6, 0]);
     }
 
     /* --- black zig-zag tail running back low, small blue ball --- */

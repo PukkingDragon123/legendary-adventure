@@ -33,13 +33,17 @@ const Nuzleaf = (() => {
   const { chain, T, R, code } = Creature;
 
   // ---- materials
-  const BODY = 1, MASK = 2, PANTS = 3, LEAF = 4, MOUTH = 5, INNER = 6, EYEK = 7, EYEW = 8;
-  const MAT = { BODY, MASK, PANTS, LEAF, MOUTH, INNER, EYEK, EYEW };
+  const BODY = 1, MASK = 2, PANTS = 3, LEAF = 4, MOUTH = 5, INNER = 6, EYEK = 7, EYEW = 8, NOSE = 9;
+  const MAT = { BODY, MASK, PANTS, LEAF, MOUTH, INNER, EYEK, EYEW, NOSE };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#5e3e30', '#80584a', '#a27a64', '#bc967e', '#d6b49a'], od: '#342018', ol: '#6a4838', ln: '#5a3a2c' },
-    [MASK]:  { r: ['#968a78', '#b6aa96', '#d4c8b4', '#e6dccb', '#f4ede2'], od: '#4a4032', ol: '#7e7260', ln: '#7e7260' },
-    [PANTS]: { r: ['#968a78', '#b8ad9a', '#d6ccba', '#e8e0d0', '#f6f0e6'], od: '#4a4032', ol: '#7e7260', ln: '#7e7260' },
-    [LEAF]:  { r: ['#2e6a3e', '#3e8a52', '#56a468', '#78bc86', '#a4d8ae'], od: '#143a20', ol: '#2e6a3e', ln: '#2a5e36' },
+    // sampled from the official art: greyish brown #98725e (shadow #795b4c, lit #bfa497), cream mask #e5dbd0,
+    // cream pants #e9ddd0, pale leaf green #70ae88 / #8cba9a
+    [BODY]:  { r: ['#604a40', '#826452', '#a07c68', '#b89682', '#ccb09e'], od: '#2e2018', ol: '#5e4436', ln: '#5a4032' },
+    [MASK]:  { r: ['#9e958a', '#bdb4aa', '#dcd2c6', '#e8dfd4', '#f4eee6'], od: '#4a4032', ol: '#7e7260', ln: '#7e7260' },
+    // the cone nose: a flatter ramp so its stacked sections read as one smooth cone
+    [NOSE]:  { r: ['#b4aca2', '#c4bcb1', '#d4cbc0', '#e0d7cc', '#ece4da'], od: '#4a4032', ol: '#7e7260', ln: '#7e7260' },
+    [PANTS]: { r: ['#a89c8e', '#c6baac', '#e2d6c8', '#ece2d6', '#f6f0e8'], od: '#4a4032', ol: '#7e7260', ln: '#7e7260' },
+    [LEAF]:  { r: ['#3e7a56', '#56946c', '#70ae88', '#8cc49e', '#b0dcbc'], od: '#1a3c28', ol: '#34684a', ln: '#3a7050' },
     [MOUTH]: { r: ['#3c0c10', '#541418', '#6c2024', '#862e30', '#a0403e'], od: '#240408', ol: '#3c0c10', ln: '#3c0c10' },
     [INNER]: { r: ['#a8404e', '#c65464', '#e0707e', '#f0929c', '#ffbcc2'], od: '#5a1420', ol: '#8a2a38', ln: '#8a2a38' },
     [EYEK]:  { r: ['#0a0808', '#100c0c', '#161212', '#201a1a', '#2e2626'], od: '#050303', ol: '#0a0808', ln: '#050303' },
@@ -49,7 +53,7 @@ const Nuzleaf = (() => {
   const C_BODY = code(BODY), C_MASK = code(MASK), C_PANTS = code(PANTS), C_STRIPE = code(PANTS, -2);
   const C_LEAF = code(LEAF), C_LEAF_L = code(LEAF, 1), C_MOUTH = code(MOUTH), C_INNER = code(INNER);
   const C_EYEK = code(EYEK), C_EYEW = code(EYEW);
-  const M_BODY = () => C_BODY, M_MASK = () => C_MASK, M_LEAF = () => C_LEAF;
+  const M_BODY = () => C_BODY, M_MASK = () => C_MASK, M_LEAF = () => C_LEAF, C_NOSE = code(NOSE), M_NOSE = () => C_NOSE;
 
   // ---- helpers
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -82,14 +86,14 @@ const Nuzleaf = (() => {
 
   /* ---------- head: tan, a cream mask band across the eyes, decal eyes and mouth ---------- */
   const HR = [39, 41, 43];
-  const EYE_AZ = 0.47, EYE_V = 0.17, EYE_W = 0.31, EYE_H = 0.19;
+  const EYE_AZ = 0.5, EYE_V = 0.3, EYE_W = 0.36, EYE_H = 0.2;
   const MOUTH_V = -0.46;
   // mask band: from eye level up to the brow, wrapping round the sides; dips under the nose
   const inBand = (az, v) => {
     const a = Math.abs(az);
     if (a > 1.55) return false;
-    const top = 0.56 - 0.14 * (a / 1.55) ** 2;
-    const bot = -0.16 - 0.2 * Math.max(0, 1 - a / 0.34) + 0.1 * (a / 1.55);
+    const top = 0.76 - 0.2 * (a / 1.55) ** 2;
+    const bot = -0.2 - 0.1 * Math.max(0, 1 - a / 0.45) + 0.06 * (a / 1.55);
     return v < top && v > bot;
   };
   function eyePix(az, v, sd, kind) {
@@ -137,7 +141,7 @@ const Nuzleaf = (() => {
 
   /* ---------- plates ---------- */
   // head leaf: u = along the leaf (from the stem), v = across; a long pointed blade
-  const LEAF_P = [[0, 0], [8, -9], [22, -16], [40, -19], [58, -17], [76, -10], [92, -2], [74, 7], [56, 12], [38, 14], [20, 12], [8, 7]];
+  const LEAF_P = [[0, 0], [8, -10], [22, -19], [40, -23], [58, -21], [76, -13], [94, -2], [76, 8], [56, 14], [38, 16], [20, 13], [8, 7]];
   const LEAF_G = bakeShape(Shape2D.poly(LEAF_P, C_LEAF, 8, (u, v) => (v > 0.6 ? C_LEAF_L : C_LEAF)));
   const LEAF_RIB = Shape2D.catmull([[2, 0], [26, 0.6], [52, 0.6], [76, 0.2]], false, 4);
   // small plucked leaf held to the mouth
@@ -179,7 +183,7 @@ const Nuzleaf = (() => {
     const dots = [{ at: { prim: navelPrim, p: inF(torso, [11, 12, 0]), s: nrm([0.95, -0.3, 0]) }, mat: BODY, tone: 0, minFacing: 0.3 }];
 
     /* --- head --- */
-    const head = chain(torso, T(1, 34, 0), R(M3.rz(0.14 * wh)), T(2, 30, 0));
+    const head = chain(torso, T(1, 30, 0), R(M3.rz(0.14 * wh)), T(2, 29, 0));
     const kind = ['open', 'happy', 'blink', 'closed'].includes(P.eyes) ? P.eyes : 'open';
     const headPrim = ellF(head, HR, 2, 2, headMat(kind, wh > 0.3 ? 0.35 : mo));
     prims.push(headPrim);
@@ -188,12 +192,11 @@ const Nuzleaf = (() => {
     anchors.eyeN = onHead(EYE_AZ, EYE_V); anchors.eyeF = onHead(-EYE_AZ, EYE_V);
     anchors.mouth = onHead(0, MOUTH_V);
     // thick cream cone nose from the middle of the band, pointing forward and a little up
-    const nd = dirF(head, [Math.cos(0.42), Math.sin(0.42), 0]);
-    const nb = inF(head, [31, 4, 0]);
-    prims.push(seg(nb, add(nb, sc(nd, 20)), 11.5, 10.5, 3, 3, M_MASK, dirF(head, [0, 1, 0]), 1.05));
-    prims.push(seg(add(nb, sc(nd, 12)), add(nb, sc(nd, 36)), 6.6, 6.2, 3, 3, M_MASK, dirF(head, [0, 1, 0]), 1.05));
-    prims.push(seg(add(nb, sc(nd, 30)), add(nb, sc(nd, 48)), 2.8, 2.8, 3, 3, M_MASK, dirF(head, [0, 1, 0])));
-    anchors.nose = add(nb, sc(nd, 48));
+    const nd = dirF(head, [Math.cos(0.58), Math.sin(0.58), 0]);
+    const nb = inF(head, [30, 9, 0]);
+    // a long pointed cone: stacked, shrinking sections
+    for (const [a, b, r] of [[-4, 30, 10], [12, 46, 5.4], [30, 57, 2.4]]) prims.push(seg(add(nb, sc(nd, a)), add(nb, sc(nd, b)), r, r * 0.94, 3, 3, M_NOSE, dirF(head, [0, 1, 0])));
+    anchors.nose = add(nb, sc(nd, 56));
     // pucker when whistling
     if (wh > 0.3) prims.push(ellF(chain(head, T(HR[0] * 0.86, HR[1] * MOUTH_V, 0)), [4, 3.4, 4], 3, 3, () => C_MOUTH));
 
@@ -245,9 +248,9 @@ const Nuzleaf = (() => {
       const ank = [1 + fwd, 6 + lift, sd * 17];
       prims.push(seg(h0, ank, 5.4, 5.4, id, id, M_BODY, [1, 0, 0], 1.1));
       const tip = walking ? 0.25 * Math.sin(ph) * (lift > 0 ? 1 : 0.4) : 0;
-      const foot = chain(T(ank[0] + 4, ank[1] - 2, ank[2]), R(M3.ry(-sd * 0.2)), R(M3.rz(-tip)));
-      prims.push(ellF(foot, [10, 4, 8.5], id, id, M_BODY));
-      for (const k of [-1, 0, 1]) prims.push(ellF(chain(foot, T(8.5, -0.8, k * 4.6), R(M3.ry(-k * 0.35))), [5, 3, 2.8], id, id, M_BODY));
+      const foot = chain(T(ank[0] + 4, ank[1] - 2, ank[2]), R(M3.ry(-sd * 0.45)), R(M3.rz(-tip)));
+      prims.push(ellF(foot, [12, 4.2, 9], id, id, M_BODY));
+      for (const k of [-1, 0, 1]) prims.push(ellF(chain(foot, T(10.5, -0.8, k * 4.8), R(M3.ry(-k * 0.35))), [6.4, 3, 2.8], id, id, M_BODY));
       anchors[sd > 0 ? 'footN' : 'footF'] = inF(foot, [0, -4, 0]);
     }
 

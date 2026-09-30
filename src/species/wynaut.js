@@ -41,12 +41,13 @@ const Wynaut = (() => {
   const BLUE = 1, BLACK = 2, WHITE = 3, INK = 4, MOUTH = 5, TONGUE = 6;
   const MAT = { BLUE, BLACK, WHITE, INK, MOUTH, TONGUE };
   const PAL = Creature.palette({
-    [BLUE]:   { r: ['#3f8e9e', '#5aaebc', '#7ecad4', '#a4e0e6', '#d4f4f6'], od: '#1c5058', ol: '#3a808c', ln: '#3a808c' },
+    // sampled from the official art: aqua #7dc8cf (shadow #69bbbd, light #b2dce2), brick-red mouth #a55051, pale tongue #f5c0bb
+    [BLUE]:   { r: ['#4c9ea4', '#69bbbd', '#7dc8cf', '#a2d8de', '#cceef0'], od: '#1c4e54', ol: '#3a8088', ln: '#3e8a90' },
     [BLACK]:  { r: ['#15161c', '#1f2029', '#2c2e3a', '#3e4150', '#5c6070'], od: '#08080c', ol: '#15161c', ln: '#101118' },
     [WHITE]:  { r: ['#c6ccd8', '#e4e8f0', '#fbfcfe', '#ffffff', '#ffffff'], od: '#4a5060', ol: '#7a8090', ln: '#7a8090' },
     [INK]:    { r: ['#0e1420', '#121a28', '#182232', '#202c40', '#2a384e'], od: '#060a12', ol: '#0e1420', ln: '#0e1420' },
-    [MOUTH]:  { r: ['#4a0e1e', '#62162a', '#7c2236', '#963044', '#ae4254'], od: '#2c060e', ol: '#4a0e1e', ln: '#4a0e1e' },
-    [TONGUE]: { r: ['#c24c68', '#dc6882', '#f08aa0', '#ffaec0', '#ffd4de'], od: '#6a1430', ol: '#94203e', ln: '#94203e' },
+    [MOUTH]:  { r: ['#6a2a2e', '#86383c', '#a55051', '#b86462', '#c87874'], od: '#3a1014', ol: '#5a1c20', ln: '#5a1c20' },
+    [TONGUE]: { r: ['#d08c8a', '#e4a4a0', '#f5c0bb', '#fad2ce', '#fde4e0'], od: '#6a2a2e', ol: '#8a3a3e', ln: '#8a3a3e' },
   });
   const GLOSSY = {};
   const C_BLUE = code(BLUE), C_BLUE_D = code(BLUE, -1), C_BLACK = code(BLACK), C_WHITE = code(WHITE);
@@ -83,17 +84,17 @@ const Wynaut = (() => {
 
   /* ---------- head decals (head frame, unit sphere s) ---------- */
   const HR = [33, 32, 34];
-  const EYE_AZ = 0.4, EYE_V = 0.28, EYE_RU = 0.17, EYE_RV = 0.115;
-  const MO_TOP = -0.02, MO_HW = 0.64, MO_H = 0.62;
+  const EYE_AZ = 0.4, EYE_V = 0.34, EYE_RU = 0.19, EYE_RV = 0.12;
+  const MO_TOP = 0.05, MO_HW = 0.62, MO_H = 0.84;
 
   // closed eyes: 'open' = the official ^ (two curved strokes meeting in a point)
   function eyePix(a, b, kind, px) {
     const ru = Math.max(EYE_RU, 2.2 * px), rv = Math.max(EYE_RV, 1.6 * px);
     const t = Math.abs(a) / ru;
     if (t > 1) return 0;
-    const w = Math.max(0.028, 0.62 * px) * (kind === 'happy' ? 1.35 : 1);
+    const w = Math.max(0.036, 0.7 * px) * (kind === 'happy' ? 1.35 : 1);
     let yc, slope;
-    if (kind === 'open') { yc = rv * (0.55 - 1.15 * Math.pow(t, 1.25)); slope = 1.44 * Math.pow(Math.max(t, 1e-3), 0.25) * rv / ru; }
+    if (kind === 'open') { yc = rv * (0.6 - 1.2 * t); slope = 1.2 * rv / ru; } // sharp ∧ chevron
     else if (kind === 'happy') { yc = rv * (0.55 - 1.1 * t * t); slope = 2.2 * t * rv / ru; }
     else if (kind === 'closed') { yc = rv * (-0.35 + 0.7 * t * t); slope = 1.4 * t * rv / ru; }
     else { yc = -rv * 0.05; slope = 0; }
@@ -121,9 +122,9 @@ const Wynaut = (() => {
           const bot = top - h * Math.sqrt(1 - k * k);
           if (s[1] > top || s[1] < bot) return C_BLUE;
           // serrated upper jaw: blue teeth hanging from the top edge (only when they read)
-          const n = Math.min(7, Math.floor((2 * MO_HW) / (4.2 * px)));
+          const n = Math.min(4, Math.floor((2 * MO_HW) / (4.2 * px)));
           if (n >= 3) {
-            const depth = Math.max(0.07, 2.1 * px) * Math.min(1, 0.4 + mo);
+            const depth = Math.max(0.13, 2.1 * px) * Math.min(1, 0.4 + mo);
             const ph = ((k + 1) / 2) * n + 0.5;
             if (s[1] > top - depth * tri(ph)) return C_BLUE;
           }
@@ -172,11 +173,12 @@ const Wynaut = (() => {
     const root = chain({ L: M3.diag(1 + sq * 0.5, 1 - sq, 1 + sq * 0.5), t: [0, bob, 0] }, R(M3.rx(lean)));
 
     // --- lower body with the zig-zag fur hem over the legs
-    const BC = [0, 22, 0], BR = [19, 16, 21];
+    // a short skirt-like body: the upper half of an egg, widest at the zig-zag hem
+    const BC = [0, 15, 0], BR = [17.5, 22, 19.5];
     const bodyF = chain(root, T(...BC));
     prims.push(ellF(bodyF, BR, 1, 1, (s) => {
       const az = Math.atan2(s[2], s[0]);
-      const hem = -0.4 - 0.2 * tri((az / (2 * Math.PI)) * 11);
+      const hem = -0.02 - 0.26 * tri((az / (2 * Math.PI)) * 10 + 0.5);
       return s[1] < hem ? 0 : C_BLUE;
     }));
     anchors.body = bodyF.t;
@@ -192,11 +194,11 @@ const Wynaut = (() => {
 
     // --- the bulbous knob on the forehead
     // big rounded lobe rising from the crown, leaning back
-    const kf = chain(hf, T(-4, HR[1] + 2, 0), R(M3.rz(0.85)));
-    const kc = kf.t;
-    prims.push(ellF(chain(kf, T(0, 4, 0)), [12, 22, 15], 3, 3, M_BLUE));
-    anchors.knob = inF(kf, [0, 10, 0]);
-    anchors.top = inF(kf, [0, 26, 0]);
+    // a big droplet lobe growing out of the crown and flopping over to one side and back (official art)
+    const kf = chain(hf, T(-5, HR[1] - 6, 2), R(M3.rx(0.78)), R(M3.rz(0.42)));
+    prims.push(ellF(chain(kf, T(0, 20, 0)), [14, 25, 16.5], 3, 3, M_BLUE));
+    anchors.knob = inF(kf, [0, 20, 0]);
+    anchors.top = inF(kf, [0, 45, 0]);
 
     // --- ear-like arms: hang from the upper sides of the head, widening to paddle tips
     for (const sd of [1, -1]) {
@@ -220,7 +222,7 @@ const Wynaut = (() => {
       const ph = wk + (sd > 0 ? 0 : Math.PI);
       const fwd = walking ? 3.6 * Math.sin(ph) : 0;
       const lift = walking ? 3 * Math.max(0, Math.cos(ph)) : 0;
-      const hip = inF(root, [0.5, 17, 8.6 * sd]);
+      const hip = inF(root, [0.5, 14, 8.6 * sd]);
       const foot = inF(root, [3.5 + fwd, 4 + lift - bob, 9.4 * sd]);
       prims.push(seg(hip, add(foot, [0, 2, 0]), 6.4, 6.2, id, id, M_BLUE));
       prims.push(E(foot, M3.mul(M3.mul(root.L, M3.rz(walking ? 0.2 * Math.sin(ph) : 0)), M3.diag(8.2, 4.4, 6.6)), id, id, (s) => (s[1] < -0.55 ? C_BLUE_D : C_BLUE)));
@@ -233,7 +235,7 @@ const Wynaut = (() => {
     const sgn = side >= 0 ? 1 : -1;
     const tz = (k) => (sgn * zs * k + wag * k * 0.8) ;
     const pts = [
-      inF(bodyF, [-15, -9, 0]),
+      inF(bodyF, [-14, -2, 0]),
       inF(root, [-27, 12, tz(8)]),
       inF(root, [-38, 14, tz(17)]),
       inF(root, [-45, 20, tz(25)]),
@@ -260,5 +262,5 @@ const Wynaut = (() => {
     return Creature.render(model, opt);
   }
 
-  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 184, bh: 160, oy: 0.88 } };
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 204, bh: 160, oy: 0.88 } };
 })();
