@@ -15,7 +15,7 @@ const Dex = (() => {
     sel: null, star: 0, scroll: {}, btns: [], press: null, drag: null, keyAng: 0, keyV: 0,
     thumbs: new Map(), imgs: new Map(), confirm: null, album: 0, styleSlot: 'hat', mudYaw: 1.1,
   };
-  const TABS = [['grid', 'Pokémon', 'pb'], ['album', 'Album', 'cam'], ['quests', 'Requests', 'check'], ['style', 'Style', 'shirt'], ['shop', 'Shop', 'bag'], ['disc', 'Secrets', 'spark'], ['settings', 'Options', 'coin']];
+  const TABS = [['grid', 'Pokémon', 'pb'], ['prog', 'Progress', 'star'], ['album', 'Album', 'cam'], ['quests', 'Requests', 'check'], ['style', 'Style', 'shirt'], ['shop', 'Shop', 'bag'], ['disc', 'Secrets', 'spark'], ['settings', 'Options', 'coin']];
   const RANKS = [[0, 'Rookie'], [2000, 'Novice'], [6000, 'Pro'], [15000, 'Expert'], [30000, 'Master'], [60000, 'Legend']];
   const rank = () => { let r = RANKS[0][1]; for (const [n, name] of RANKS) if (Save.data.points >= n) r = name; return r; };
 
@@ -317,6 +317,7 @@ const Dex = (() => {
     else if (page === 'style') pageStyle(fb, S, L, R, slide, t);
     else if (page === 'shop') pageShop(fb, S, L, R, slide, t);
     else if (page === 'disc') pageDisc(fb, S, L, R, slide, t);
+    else if (page === 'prog' && typeof Progress !== 'undefined') Progress.dexPage(fb, S, L, R, slide, t, { btn, clipTo, areas, D, thumb });
     else if (page === 'settings') pageSettings(fb, S, L, R, slide, t);
   }
   function clipTo(fb, Q, fn) {

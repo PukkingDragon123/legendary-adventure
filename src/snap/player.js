@@ -542,6 +542,7 @@ const Player = (() => {
         const s = WorldRender.surfaceAt(this.x, t), g = World.groundAt(this.x);
         if (this.y < s + 10) { this.y = s + 10; this.vy = Math.max(0, this.vy); }
         if (this.y > g - 8) { this.y = g - 8; this.vy = Math.min(0, this.vy); }
+        if (Game.swimCap) { const cap = Game.swimCap(this.x, s); if (this.y > cap) { this.y = cap; this.vy = Math.min(0, this.vy); this.diveT = 0; } }
         if (!World.isWet(this.x, 12)) { this.mode = 'land'; this.air = 0; this.vx = 0; this.rot = 0; this.target = this.target && this.target.kind === 'swim' ? null : this.target; if (!this.target && !this.keyDir) this.idleTask(this.shakeOff()); }
         const sp2 = Math.abs(this.vx) + Math.abs(this.vy);
         if (sp2 > 25 && Math.random() < dt * (4 + sp2 * 0.08)) FX.bubbles(this.x - Math.cos(this.yaw) * 12, this.y - 6, 1, WorldRender.surfaceAt(this.x, t));

@@ -28,9 +28,9 @@ const Feebas = (() => {
   const BODY = 1, BELLY = 2, SPOT = 3, FIN = 4, LIP = 5, MOUTH = 6;
   const MAT = { BODY, BELLY, SPOT, FIN, LIP, MOUTH };
   const PAL = Creature.palette({
-    [BODY]:  { r: ['#664628', '#86603c', '#a57d55', '#c19b70', '#dbbb92'], od: '#3a2414', ol: '#6c4a2c', ln: '#684628' },
+    [BODY]:  { r: ['#8a7048', '#a88c62', '#c4aa7c', '#d8c298', '#ecdcb8'], od: '#4a3620', ol: '#7c6040', ln: '#7a5e3c' },
     [BELLY]: { r: ['#ad916a', '#c8ad88', '#dfc7a2', '#eedaba', '#f8ead4'], od: '#5c4226', ol: '#886a46', ln: '#937556' },
-    [SPOT]:  { r: ['#402a18', '#523622', '#64442c', '#765236', '#8a6344'], od: '#28180c', ol: '#46301c', ln: '#3a2616' },
+    [SPOT]:  { r: ['#5a3e22', '#6e4e2e', '#82603a', '#967248', '#aa8458'], od: '#34220f', ol: '#553a20', ln: '#4a321c' },
     [FIN]:   { r: ['#465270', '#5e6c8a', '#7a88a4', '#9aa6be', '#bec8d8'], od: '#232b44', ol: '#434f6c', ln: '#48546f' },
     [LIP]:   { r: ['#bb9286', '#d6ada0', '#eac8bc', '#f5ded4', '#fff0ea'], od: '#664036', ol: '#98695e', ln: '#9c7064' },
     [MOUTH]: { r: ['#361618', '#4a1e22', '#60282c', '#763438', '#8a4446'], od: '#220a0e', ol: '#3a1216', ln: '#3a1216' },

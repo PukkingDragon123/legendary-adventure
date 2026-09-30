@@ -201,17 +201,18 @@ const HUD = (() => {
       { id: 'bag', fn: () => Bag.open(), badge: typeof Bag !== 'undefined' && Bag.fresh && Bag.fresh() },
       { id: 'style', fn: () => Style.open(), badge: typeof Style !== 'undefined' && Style.fresh && Style.fresh() },
       { id: 'snd', fn: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); } },
-    ];
+    ].filter((it) => typeof Progress === 'undefined' || Progress.hudOk(it.id));
+    if (typeof Progress !== 'undefined') items.unshift({ id: 'quests', fn: () => Progress.openLog(), badge: Progress.logBadge() });
     items.forEach((it, i) => {
       const x = fb.w - 6 - (items.length - i) * (bw + 3);
       const p = pressed(it.id) ? 1 : 0, hov = H.hoverId === it.id;
       UI.rrect(fb, x, y + 2, bw, bw, 6, 0xff0a0e1a);
       const fill = it.id === 'dex' ? S.body : hov ? U.tweak(S.btn, 0, 1, 0.08) : S.btn;
       UI.panel(fb, x, y + p, bw, bw, { r: 6, ol: S.ink, fill, hi: U.tweak(fill, 0, 1, 0.16) });
-      TOPI[it.id](fb, x + bw / 2, y + p + bw / 2, S, t);
+      if (TOPI[it.id]) TOPI[it.id](fb, x + bw / 2, y + p + bw / 2, S, t); else if (it.id === 'quests') Progress.icon(fb, x + bw / 2, y + p + bw / 2, t);
       btn(it.id, x - 1, y - 1, bw + 2, bw + 4, it.fn);
       if (it.badge) { UI.disc(fb, x + bw - 2, y + 2, 3, 0xffff3a4a); UI.put(fb, x + bw - 2, y + 2, 0xffffffff); }
-      if (hov) Font.draw(fb, { dex: 'Pokédex (P)', map: 'Map (M)', bag: 'Bag (B)', style: 'Wardrobe (V)', snd: 'Sound', games: 'Playground (H)' }[it.id], x + bw / 2, y + bw + 5, 0xffffffff, { font: 'small', align: 'center', outline: INK });
+      if (hov) Font.draw(fb, { dex: 'Pokédex (P)', map: 'Map (M)', bag: 'Bag (B)', style: 'Wardrobe (V)', snd: 'Sound', games: 'Playground (H)', quests: 'Quests (L)' }[it.id], x + bw / 2, y + bw + 5, 0xffffffff, { font: 'small', align: 'center', outline: INK });
     });
     // left: clock (tap = let time pass) + points
     const hr = Game.hour();
@@ -224,7 +225,7 @@ const HUD = (() => {
     UI.panel(fb, x + 28, y + 4, 64, 16, { r: 4, ol: S.ink, fill: U.mix(S.btn, 0xff000000, 0.2), hi: null, sh: null });
     Font.draw(fb, '{coin}' + Save.data.points, x + 32, y + 9, 0xffffffff, { font: 'small' });
     // season chip (tap = next season)
-    if (typeof Seasons !== 'undefined') {
+    if (typeof Seasons !== 'undefined' && (typeof Progress === 'undefined' || Progress.has('season'))) {
       const sx = x + 96, ps = pressed('season') ? 1 : 0, sn = Seasons.cur;
       UI.rrect(fb, sx, y + 2, 24, 24, 6, 0xff0a0e1a);
       UI.panel(fb, sx, y + ps, 24, 24, { r: 6, ol: S.ink, fill: U.mix(S.btn, U.hex({ spring: '#ff9ec4', summer: '#4ab860', autumn: '#e2741c', winter: '#9ad8ff' }[sn]), 0.25) });
@@ -323,7 +324,7 @@ const HUD = (() => {
     Music.drawUI(fb, t, 'explore');
     drawBanner(fb, S, t);
     drawScope(fb, t);
-    drawToasts(fb, S, t);
+    drawToasts(fb, S, t, false, typeof Progress !== 'undefined' ? Progress.toastTop(fb) : 34);
     Quests.drawPop(fb, t);
     if (WorldMap.reveal) WorldMap.drawReveal(fb, t);
     if (typeof Moves !== 'undefined') { if (Moves.drawChip && !Talk.busy()) Moves.drawChip(fb, S, t); Moves.drawWheel(fb, S, t); Moves.drawLearn(fb, S, t); }

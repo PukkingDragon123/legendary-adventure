@@ -75,7 +75,7 @@ const Snorunt = (() => {
   const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
 
   /* ---------- hood profile: radius by height (surface of revolution about the hood's y axis) ---------- */
-  const PROF = [[18, 47], [26, 46.8], [36, 45.6], [46, 43.6], [54, 41.5], [64, 37], [74, 32], [84, 26.8], [94, 21.4], [104, 15.8], [113, 10.4], [121, 5.6], [126, 2.4], [128.5, 0.8]];
+  const PROF = [[18, 50.8], [26, 50.5], [36, 49.2], [46, 47.1], [54, 44.8], [63.2, 39.8], [71.2, 34.0], [79.2, 28.2], [87.2, 22.3], [95.2, 16.2], [102.4, 10.6], [108.8, 5.6], [112.8, 2.4], [114.8, 0.8]];
   const PR = (() => {
     const out = new Float32Array(260); // r at y = 0..129.5 in 0.5 steps
     const S = Shape2D.catmull(PROF, false, 10);
@@ -90,14 +90,14 @@ const Snorunt = (() => {
   })();
   const rAt = (y) => PR[clamp(Math.round(y * 2), 0, PR.length - 1)];
   const slopeAt = (y) => (rAt(y + 1.5) - rAt(y - 1.5)) / 3; // dr/dy
-  const Y_HEM = 24, Y_TOP = 128;
+  const Y_HEM = 24, Y_TOP = 114.4;
   // backward bend of the hood's upper part (x offset of the axis by height)
   const bendAt = (y, b) => (y > 70 ? -b * ((y - 70) / 52) ** 2 : 0);
 
   // head layout (hood-local coordinates, before K)
   const HEAD_C = [2, 63, 0], HEAD_R = [30, 29, 30];
   // face opening: a tunnel along +x through the hood (oval in y-z)
-  const FACE_Y = 69, FACE_H = 22, FACE_W = 30;
+  const FACE_Y = 66, FACE_H = 26, FACE_W = 34;
 
   // eyes: tangent frames on the head ellipsoid (unit-sphere space)
   const EC = sph(0.3, 0.26);

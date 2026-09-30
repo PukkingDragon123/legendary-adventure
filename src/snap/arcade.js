@@ -1,24 +1,26 @@
 /* ------------------------------------------------------------------
-   Arcade — play games with the Pokémon right where you are, like a
+   Arcade — games played with the Pokémon right where they are, like a
    little cutscene: letterbox bars slide in, the camera frames Mudkip
-   and its playmate, and the game happens in the living world (H, or
-   the ball button). The nearest friendly Pokémon joins in.
+   and its playmate, and the game happens in the living world. There is
+   no play-anywhere menu any more: every game is an activity hosted by
+   a specific Pokémon (see hosts.js / boardwalk.js, which call
+   Arcade.challenge(id, host, { onEnd })).
     · Type Battle — rock-paper-scissors with moves: Water beats Fire,
       Fire beats Grass, Grass beats Water. Real attacks fly across the
       scene and clash in the middle. First to 3 hits wins. Every
       Pokémon has a favourite move... watch for the hint!
     · Jump Rope — two friends swing a rope around Mudkip, faster and
       faster; jump as it sweeps under your feet
-    · Hide & Seek — Mudkip counts while its friend hides behind one of
-      the bushes that pop up around you; watch for the rustle, walk
-      over and search (E). Three rounds.
+    · Hide & Seek — Mudkip counts while its friend hides behind the
+      real scenery nearby (houses, the bar, towers, palms, rocks...);
+      watch for the rustle, walk over and search (E). Three rounds.
     · Tag — you're it! Chase your friend down... then run when it's
       their turn to chase you.
 ------------------------------------------------------------------- */
 const Arcade = (() => {
   const { clamp, rnd, pick, lerp, hex } = U;
   const INK = 0xff1b2240, WHITE = 0xffffffff;
-  const A = { live: false, phase: 'off', g: null, t: 0, bars: 0, btns: [], partner: null, partner2: null, sel: 0, keys: {}, fx: [], toast: null };
+  const A = { EXT: {}, live: false, phase: 'off', g: null, t: 0, bars: 0, btns: [], partner: null, partner2: null, sel: 0, keys: {}, fx: [], toast: null };
   const GAMES = [
     { id: 'battle', name: 'Type Battle', col: '#ff5a4a', ic: 'bolt' },
     { id: 'rope', name: 'Jump Rope', col: '#ffc83a', ic: 'rope' },
@@ -46,7 +48,11 @@ const Arcade = (() => {
   function* walkThen(m, x, speed, after) { yield* m.walkTo(x, speed, { turn: 12 }); if (after) yield* after(); }
 
   /* ---------- open / leave ---------- */
+  // (the old play-anywhere menu is gone: games are hosted by Pokémon around the world)
   function open() {
+    if (!A.live && Game.mode === 'explore') HUD.toast('Games are hosted by Pokémon now! Look for a Pokémon with a ball above its head.', { life: 3 });
+  }
+  function openMenu() {
     const M = mk(); if (!M || Game.mode !== 'explore' || A.live) return;
     if (M.mode !== 'land' && M.mode !== 'fall') { HUD.toast('Get out of the water to play!', { life: 2 }); Game.sfx('error'); return; }
     const cands = Mons.all.filter((m) => okMate(m, M)).sort((a, b) => Math.abs(a.x - M.x) - Math.abs(b.x - M.x));
@@ -70,7 +76,8 @@ const Arcade = (() => {
   }
   function cleanup() {
     const G = A.g, Ar = Game.area;
-    if (G && G.bushes && Ar) { for (const b of G.bushes) { const i = Ar.props.indexOf(b.prop); if (i >= 0) Ar.props.splice(i, 1); } }
+    if (G && A.EXT[G.id] && A.EXT[G.id].end) try { A.EXT[G.id].end(G); } catch (e) { console.error(e); }
+    if (G && G.bushes && Ar) { for (const b of G.bushes) { if (b.real) { b.prop.x = b.x0; continue; } const i = Ar.props.indexOf(b.prop); if (i >= 0) Ar.props.splice(i, 1); } }
     if (A.partner) { A.partner.hidden = false; A.partner.tintK = 0; }
     const M = mk(); if (M) { M.tintK = 0; }
   }
@@ -78,7 +85,7 @@ const Arcade = (() => {
   function challenge(id, partner, o = {}) {
     const M = mk(); if (!M || Game.mode !== 'explore' || A.live || !partner || !partner.alive) return false;
     if (M.mode !== 'land' && M.mode !== 'fall') return false;
-    A.live = true; A.solo = true; A.g = null; A.t = 0; A.fx.length = 0; A.partner = partner; A.partner2 = null; A.opt = o;
+    A.live = true; A.solo = true; A.g = null; A.t = 0; A.fx.length = 0; A.partner = partner; A.partner2 = o.partner2 && o.partner2.alive ? o.partner2 : null; A.opt = o;
     if (typeof Pad !== 'undefined') Pad.reset();
     M.stop && M.stop();
     start(id);
@@ -113,6 +120,8 @@ const Arcade = (() => {
       Object.assign(G, { step: 'intro', st: 0, pos: 0, RX, RR: 54, ringT: 0, combo: 0, charge: 0, chargeT: rnd(2.5, 4), pushK: 0, shoves: 0 });
       ctl(p, sumoBrain(p, G));
       say(p, pick(['*SNIP SNIP* The ring is MINE, shrimp!', 'Nobody out-belly-flops the champ!', 'Hakkeyoi! Show me your belly!']), 2.2);
+    } else if (A.EXT[id]) {
+      A.EXT[id].start(G, M, p);
     } else if (id === 'tag') {
       Object.assign(G, { step: 'you', time: 18, st: 0, zone: [M.x - 280, M.x + 280], caught: false, survived: false, tagT: 0 });
       ctl(p, tagRun(p, G));
@@ -123,6 +132,7 @@ const Arcade = (() => {
     const G = A.g; if (!G || G.over) return;
     G.over = 0.01; G.win = win; G.msg = msg;
     if (pts) Save.addPoints(pts);
+    if (A.opt && A.opt.onEnd) { const cb = A.opt.onEnd; setTimeout(() => { try { cb(win, G); } catch (e) { console.error(e); } }, 1200); }
     HUD.toast(msg + (pts ? '  +' + pts : ''), { life: 2.8 });
     Game.sfx(win ? 'reward' : 'error');
     if (win && Save.discover('arcade.' + G.id)) Save.addPoints(100);
@@ -235,7 +245,17 @@ const Arcade = (() => {
     if (leafy && !Ar.def.noSky) return Paint.bush(M, 30, 20, (Math.random() * 999) | 0, { ramp: leafy, dots: M.flower || M.berry || null, nd: 4 });
     return Paint.rock(M, 30, 20, (Math.random() * 999) | 0, { ramp: M.rock || M.floor || leafy });
   }
+  // hiding spots: the real scenery around (houses, the bar, towers, palms, rocks, boats...)
+  function realSpots(x0) {
+    const Ar = Game.area, out = [];
+    const c = Ar.props.filter((p) => { const f = p.frames && p.frames[0]; return f && f.w >= 18 && f.h >= 18 && !p.hidden && Math.abs(p.x - x0) < 440 && Math.abs(p.x - x0) > 20 && !World.isWet(p.x, 6) && Math.abs(World.groundAt(p.x) - World.groundAt(x0)) < 60; })
+      .sort((a, b) => (b.frames[0].w * b.frames[0].h) - (a.frames[0].w * a.frames[0].h));
+    for (const p of c) { if (out.length >= 5) break; if (out.some((q) => Math.abs(q.x - p.x) < 44)) continue; const f = p.frames[0]; out.push({ x: p.x, prop: p, x0: p.x, real: true, big: f.w > 56, reach: Math.max(34, Math.min(70, f.w * 0.5 + 10)) }); }
+    return out.sort((a, b) => a.x - b.x);
+  }
   function makeBushes(G, x0) {
+    const real = realSpots(x0);
+    if (real.length >= 3) { G.bushes = real; return; }
     const Ar = Game.area, xs = [];
     for (let k = -2; k <= 2; k++) { let x = x0 + k * 62 + rnd(-8, 8); let tries = 0; while (World.isWet(x, 6) && tries++ < 8) x += 15; xs.push(x); }
     G.bushes = xs.map((x) => { const prop = Ar.put(bushSpr(), x, 3, { sink: 3, late: true }); return { x, prop, x0: prop.x }; });
@@ -265,11 +285,11 @@ const Arcade = (() => {
     }
   }
   function shakeBush(G, i, T) { G.shake = i; G.shakeT = T; }
-  function nearestBush(G) { const M = mk(); let bi = -1, bd = 34; G.bushes.forEach((b, i) => { const d = Math.abs(b.x - M.x); if (d < bd) { bd = d; bi = i; } }); return bi; }
+  function nearestBush(G) { const M = mk(); let bi = -1, bd = 1e9; G.bushes.forEach((b, i) => { const d = Math.abs(b.x - M.x); if (d < (b.reach || 34) && d < bd) { bd = d; bi = i; } }); return bi; }
   function updateSeek(G, dt) {
     G.st += dt;
     const M = mk();
-    if (G.shakeT > 0) { G.shakeT -= dt; const b = G.bushes[G.shake]; if (b) b.prop.x = b.x0 + Math.round(Math.sin(Game.t * 60) * 1.5); if (G.shakeT <= 0 && b) b.prop.x = b.x0; }
+    if (G.shakeT > 0) { G.shakeT -= dt; const b = G.bushes[G.shake]; if (b && !b.big) b.prop.x = b.x0 + Math.round(Math.sin(Game.t * 60) * 1.5); if (b && b.big && Math.random() < dt * 20) FX.add({ type: 'dust', x: b.x + rnd(-20, 20), y: gy(b.x) - 2, vx: rnd(-20, 20), vy: -rnd(5, 20), r: rnd(2, 3), life: 0.6, c: 0xffe8dcc0, c2: 0xffc0b090, layer: 3 }); if (G.shakeT <= 0 && b) b.prop.x = b.x0; }
     if (G.step === 'count') { if (G.st > 2.6) { G.step = 'search'; G.st = 0; G.rT = 1.4; if (M.say) M.say('Ready or not!', 1.2); } }
     else if (G.step === 'search') {
       G.rT -= dt;
@@ -412,6 +432,7 @@ const Arcade = (() => {
     else if (G.id === 'seek') updateSeek(G, dt);
     else if (G.id === 'tag') updateTag(G, dt);
     else if (G.id === 'sumo') updateSumo(G, dt);
+    else if (A.EXT[G.id]) A.EXT[G.id].update(G, dt);
   }
   // Mudkip's controls while playing: returns true when the game drives Mudkip (no free movement)
   function freeMove() { const G = A.g; return !!(A.live && G && !G.over && ((G.id === 'tag' && (G.step === 'you' || G.step === 'them')) || (G.id === 'seek' && G.step === 'search'))); }
@@ -436,8 +457,9 @@ const Arcade = (() => {
     if (!G || G.over) { if (G && G.over > 0.8 && k === 'ok') toMenu(); return; }
     if (G.id === 'battle' && typeof k === 'number' && k < 3) battlePick(k);
     if (G.id === 'sumo' && (k === 'ok' || k === 'up' || k === 'right')) sumoPush();
+    if (A.EXT[G.id] && A.EXT[G.id].act) A.EXT[G.id].act(G, k);
     if (G.id === 'rope' && k === 'ok' && G.step === 'go') { const M = mk(); M.jumpPress(); A.jumpT = 0.2; }
-    if (G.id === 'seek' && (k === 'ok' || k === 'search')) { const i = nearestBush(G); if (i >= 0) search(i); else HUD.toast('Walk up to a bush to search it!', { life: 1.4 }); }
+    if (G.id === 'seek' && (k === 'ok' || k === 'search')) { const i = nearestBush(G); if (i >= 0) search(i); else HUD.toast('Walk up to a hiding spot to search it!', { life: 1.4 }); }
   }
   const MOVE_KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's', 'Shift', 'z'];
   // returns true when the key was used by the game (the normal handler must not see it)
@@ -466,6 +488,7 @@ const Arcade = (() => {
     if (!A.live) return;
     const G = A.g;
     if (G && G.id === 'rope' && G.step !== 'intro') { if (back) { if (G.stake !== undefined) drawStake(fb, cx, cy, G.stake); drawRope(fb, cx, cy, G, false); } else drawRope(fb, cx, cy, G, true); }
+    if (G && A.EXT[G.id] && A.EXT[G.id].drawWorld) A.EXT[G.id].drawWorld(fb, cx, cy, t, back, G);
     if (back) return;
     if (G && G.id === 'sumo' && G.step === 'go' && !G.over) {
       const M = mk(), X = Math.round(G.RX + G.pos * G.RR - cx), Y = Math.round(M.y - 44 - cy);
@@ -539,7 +562,7 @@ const Arcade = (() => {
       title('Hide & Seek   round ' + Math.min(3, G.round + 1) + '/3   found ' + G.found);
       if (G.step === 'count') foot('Mudkip is counting... no peeking!');
       else if (G.step === 'search') {
-        foot('Walk to a bush and press E / Space.  Tries: ' + G.tries);
+        foot('Walk to a hiding spot and press E / Space.  Tries: ' + G.tries);
         if (typeof Pad !== 'undefined' && Pad.touch) { const sw = 58, sx = W - sw - 10, sy = H - bh - 70; btn(fb, sx, sy, sw, 22, 'SEARCH', '#4ac860', () => act('search')); }
         const i = nearestBush(G); if (i >= 0) { const b = G.bushes[i], [ux, uy] = Talk.toUI(b.x, gy(b.x) - 30); Font.draw(fb, '?', Math.round(ux), Math.round(uy + Math.sin(t * 6) * 2), 0xffffe070, { font: 'title', align: 'center', outline: INK }); }
       }
@@ -552,6 +575,8 @@ const Arcade = (() => {
       UI.rect(fb, bx + Math.round(bw * k) - 2, byy - 2, 4, 10, WHITE);
       Font.draw(fb, 'You', bx - 4, byy - 1, 0xffffe0a0, { font: 'small', align: 'right', outline: INK }); Font.draw(fb, 'Champ', bx + bw + 4, byy - 1, 0xffa0c0ff, { font: 'small', outline: INK });
       foot(G.step === 'intro' ? 'Mash Space / tap to shove. Hit when the ring is GREEN!' : 'Space / tap!  Green ring = BELLY BUMP' + (G.combo > 1 ? '  combo x' + G.combo : ''));
+    } else if (A.EXT[G.id]) {
+      A.EXT[G.id].drawUI(fb, t, G, { title, foot, bh, btn: (x, y, w, h, label, col, fn, sub, on) => btn(fb, x, y, w, h, label, col, fn, sub, on) });
     } else if (G.id === 'tag') {
       const T = Math.max(0, G.time);
       title(G.step === 'you' ? 'You\'re it! Catch ' + nameOf(p) + '!' : G.step === 'them' ? 'Run! ' + nameOf(p) + ' is it!' : 'Tag!', G.step === 'them' ? hex('#ff8a8a') : WHITE);
@@ -567,5 +592,6 @@ const Arcade = (() => {
     }
   }
   U.on && U.on('area', () => { A.live = false; A.phase = 'off'; A.g = null; A.bars = 0; A.fx.length = 0; A.partner = A.partner2 = null; Game.camFocus = null; });
-  return Object.assign(A, { open, challenge, leave, update, drive, freeMove, key, down, drawWorld, drawUI, GAMES });
+  A.H = { ctl, release: (m) => release(m), walkThen, idleFace, say, finish: (w, m, p) => finish(w, m, p), nameOf, okMate, hit };
+  return Object.assign(A, { open, openMenu, challenge, leave, update, drive, freeMove, key, down, drawWorld, drawUI, GAMES });
 })();

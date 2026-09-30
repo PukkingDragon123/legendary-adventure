@@ -74,8 +74,112 @@ Areas.beach = (() => {
       roof: ['#6e2a26', '#9a3a30', '#c4543e', '#e2785a'],
       wall: ['#b8a890', '#d8ccb4', '#f2ead8'],
       glowP: { c: ['#6af0ff', '#d0ffff'], emit: true },
+      // distant city: cool concrete, warm stucco, blue glass, unlit windows, far forest
+      bldA: { c: ['#5a6680', '#78869e', '#9aa8bc', '#c0cad8', '#e4eaf0'], noSeason: true },
+      bldB: { c: ['#8c6456', '#aa8270', '#c8a28a', '#e4c6aa'], noSeason: true },
+      bldC: { c: ['#284462', '#3a5e84', '#5684aa', '#8ab4d4'], noSeason: true },
+      winD: { c: ['#1c2638', '#34435c'], noSeason: true },
+      treeF: ['#1a3a30', '#285240', '#3a6a4a', '#588a5a'],
+      // deep sea rock, abyssal sediment, bioluminescence
+      bedDeep: ['#141a2c', '#1e2638', '#2a3446', '#3a4658', '#4e5a68'],
+      glowB: { c: ['#3ad8ff', '#b8ffff'], emit: true },
+      glowV: { c: ['#b070ff', '#f0d0ff'], emit: true },
     },
   };
+
+  /* ---------------- a hand-painted distant town (indexed sprite painter) ----------------
+     s: the layer sprite, lit: a matching sprite of window lights shown at dusk/night.
+     o: { x0, x1, ground(x) → base y, maxH, seed, rows, harbour: [x0, x1], trees } */
+  const paintTown = (s, lit, M, o) => {
+    const r = rng(o.seed || 1), P = Props.pick;
+    const span = o.x1 - o.x0;
+    const env = (x) => { const u = (x - o.x0) / span; return (o.env ? o.env(u) : Math.pow(Math.max(0, Math.sin(u * Math.PI)), 0.6)); };
+    const put = (x, y, v) => s.set(x, y, v);
+    const light = (x, y, k) => { if (lit && hash(x, y, o.seed || 1) < k) lit.set(x, y, M.win[hash(x, y, 7) > 0.7 ? 1 : 0]); };
+    const building = (x, by, w, h, kind, ramp) => {
+      const n = ramp.length;
+      if (kind === 'tower') { // glass tower: mullions, a stepped crown and an antenna
+        for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) {
+          const edge = xx === 0 ? 1 : xx >= w - 2 ? -1 : 0;
+          let c = M.bldC[edge > 0 ? 3 : edge < 0 ? 0 : (xx % 3 === 0 ? 1 : 2)];
+          if (yy % 3 === 0 && xx > 0 && xx < w - 1) c = M.bldC[1];
+          if (hash(x + xx, yy, 3) > 0.93 && yy > 3) c = M.bldC[3];
+          put(x + xx, by - yy, c);
+          if (xx % 3 && yy % 3 && xx < w - 1 && yy > 2) light(x + xx, by - yy, 0.35);
+        }
+        const cw = Math.max(2, w - 4); for (let yy = 0; yy < 3; yy++) for (let xx = 0; xx < cw; xx++) put(x + 2 + xx, by - h - yy, M.bldA[xx === 0 ? 3 : 1]);
+        for (let yy = 0; yy < 5 + (h >> 3); yy++) put(x + (w >> 1), by - h - 3 - yy, M.bldA[0]);
+        if (lit) lit.set(x + (w >> 1), by - h - 8 - (h >> 3), M.lhR[2]);
+        return;
+      }
+      for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) {
+        let t = xx === 0 ? 0.9 : xx >= w - 2 ? 0.28 : 0.62 + (hash(x + xx, yy >> 1, 5) - 0.5) * 0.12;
+        if (yy === h - 1) t = 0.95; else if (yy === h - 2) t -= 0.12;
+        let c = P(ramp, t, x + xx, yy);
+        const wx = xx % 3 === 1, wy = yy % 3 === 1 && yy < h - 2;
+        if (w > 5 && xx > 0 && xx < w - 2 && wx && wy && yy > 1) { c = M.winD[xx < w * 0.4 ? 1 : 0]; light(x + xx, by - yy, 0.42); }
+        if (kind === 'shop' && yy < 3 && xx > 0 && xx < w - 1) c = (xx >> 1) % 2 ? M.tWhite[1] : (x % 3 ? M.tRed[1] : M.umbA[1]);
+        put(x + xx, by - yy, c);
+      }
+      const top = by - h;
+      if (kind === 'house') { // pitched tiled roof with a ridge line
+        const rp = [M.roof, M.boatB, M.roof, M.coralO][(x >> 3) % 4];
+        const rh = Math.max(3, (w >> 1) - 1);
+        for (let yy = 0; yy < rh; yy++) for (let xx = yy - 1; xx <= w - yy; xx++) put(x + xx, top - rh + yy + 1, yy === 0 ? rp[3] : xx < w / 2 ? rp[2] : rp[1]);
+        if (r() < 0.4) { put(x + w - 3, top - rh, M.wall[0]); put(x + w - 3, top - rh - 1, M.wall[0]); }
+      } else if (kind === 'dome') { // Contest-Hall dome with a flag
+        const R = w / 2;
+        for (let yy = 0; yy <= R * 0.8; yy++) for (let xx = 0; xx < w; xx++) { const dx = (xx + 0.5 - R) / R, dy = yy / (R * 0.8); if (dx * dx + dy * dy <= 1) put(x + xx, top - yy, M.bldC[dx < -0.3 ? 3 : dx < 0.3 ? 2 : 1]); }
+        const fy = top - Math.round(R * 0.8); for (let yy = 1; yy < 7; yy++) put(x + Math.round(R), fy - yy, M.bldA[0]);
+        for (let xx = 1; xx < 5; xx++) { put(x + Math.round(R) + xx, fy - 6, M.tRed[2]); put(x + Math.round(R) + xx, fy - 5, M.tRed[1]); }
+      } else { // flat roof: parapet, water tanks, vents
+        for (let xx = -1; xx <= w; xx++) put(x + xx, top, ramp[n - 1]);
+        if (w > 8 && r() < 0.55) { const tx = x + 2 + Math.floor(r() * (w - 6)); for (let yy = 1; yy < 4; yy++) for (let xx = 0; xx < 3; xx++) put(tx + xx, top - yy, M.wood[yy === 3 ? 4 : 2]); put(tx, top - 4, M.wood[1]); put(tx + 2, top - 4, M.wood[1]); }
+        if (r() < 0.5) { const vx = x + 1 + Math.floor(r() * (w - 2)); put(vx, top - 1, M.metal[2]); put(vx + 1, top - 1, M.metal[1]); }
+      }
+    };
+    // two rows of buildings: the back row taller (downtown), the front row low houses and shops
+    for (const row of [0, 1]) {
+      for (let x = o.x0; x < o.x1;) {
+        const e = env(x);
+        const bw = row ? 6 + Math.floor(r() * 8) : 7 + Math.floor(r() * 12);
+        if (e < 0.05) { x += bw; continue; }
+        const by = Math.round(o.ground(x + bw / 2)) - (row ? 0 : 4);
+        let kind = 'house', ramp = pick2(r, [M.wall, M.bldB, M.bldA]);
+        let bh = row ? 5 + Math.floor(r() * 6) : Math.round(6 + r() * 6 + e * o.maxH * (0.35 + r() * 0.65));
+        if (!row) { const q = r(); kind = q < 0.25 * e ? 'tower' : q < 0.8 ? 'block' : 'house'; if (bh > o.maxH * 0.55 && kind === 'house') kind = 'block'; ramp = pick2(r, [M.bldA, M.bldA, M.bldB, M.wall]); }
+        else if (r() < 0.25) kind = 'shop';
+        if (o.dome && !row && Math.abs(x - o.dome) < 10) { kind = 'dome'; bh = 10; }
+        building(x, by, bw, bh, kind, ramp);
+        x += bw + (r() < 0.25 ? 2 + Math.floor(r() * 5) : 0);
+        // street trees in the front row
+        if (row && o.trees !== false && r() < 0.45) { const tx = x - 1, ty = Math.round(o.ground(tx)); const R = 2 + Math.floor(r() * 3); for (let yy = -R; yy <= R; yy++) for (let xx = -R; xx <= R; xx++) if (xx * xx + yy * yy <= R * R + 1) put(tx + xx, ty - R - 1 + yy, M.treeF[Math.max(0, Math.min(3, 2 - yy + (xx < 0 ? 1 : -1) + (hash(tx + xx, yy, 2) > 0.6 ? 1 : 0)))]); put(tx, ty, M.wood[1]); }
+      }
+    }
+    // the harbour: quay wall, gantry cranes and a container ship
+    if (o.harbour) {
+      const [h0, h1] = o.harbour, qy = Math.round(o.ground(h0));
+      for (let x = h0; x < h1; x++) { put(x, qy + 1, M.bldA[3]); put(x, qy + 2, M.bldA[1]); put(x, qy + 3, M.bldA[0]); }
+      // ship: dark hull, white bridge, coloured containers
+      const sx = h0 + Math.round((h1 - h0) * 0.3), sl = Math.min(70, Math.round((h1 - h0) * 0.4));
+      for (let yy = 0; yy < 5; yy++) for (let xx = yy; xx < sl - (yy >> 1); xx++) put(sx + xx, qy + 2 - yy, yy === 4 ? M.tRed[1] : M.boatB[yy < 2 ? 0 : 1]);
+      const CC = [M.tRed, M.umbA, M.coralO, M.grass, M.umbB, M.boatB];
+      for (let cx = sx + 6; cx < sx + sl - 16; cx += 4) { const st = 1 + Math.floor(r() * 3), c = CC[Math.floor(r() * CC.length)]; for (let k = 0; k < st; k++) for (let xx = 0; xx < 4; xx++) for (let yy = 0; yy < 2; yy++) put(cx + xx, qy - 3 - k * 2 - yy, xx === 3 ? c[0] : c[yy ? 1 : 2]); }
+      for (let yy = 0; yy < 9; yy++) for (let xx = 0; xx < 7; xx++) { put(sx + sl - 14 + xx, qy - 3 - yy, yy % 3 === 1 && xx % 2 ? M.winD[0] : M.tWhite[xx < 2 ? 2 : 1]); if (yy % 3 === 1 && xx % 2) light(sx + sl - 14 + xx, qy - 3 - yy, 0.8); }
+      for (let yy = 0; yy < 4; yy++) put(sx + sl - 11, qy - 12 - yy, M.tRed[1]);
+      // gantry cranes: two legs, a cross beam, a long boom over the water
+      for (let cx = h0 + 8; cx < h1 - 10; cx += 26 + Math.floor(r() * 10)) {
+        const ch = 26 + Math.floor(r() * 8), cr = cx % 2 ? M.tRed : M.umbB;
+        for (let yy = 0; yy < ch; yy++) { put(cx, qy - yy, cr[1]); put(cx + 7, qy - yy, cr[0]); if (yy % 6 === 3) for (let xx = 1; xx < 7; xx++) put(cx + xx, qy - yy, cr[0]); }
+        for (let xx = -14; xx < 20; xx++) { put(cx + xx, qy - ch, cr[2]); put(cx + xx, qy - ch + 1, cr[0]); }
+        for (let yy = 1; yy < 6; yy++) { put(cx + 3, qy - ch - yy, cr[1]); put(cx + 4, qy - ch - yy, cr[0]); }
+        for (let k = 0; k < 10; k++) { put(cx + 3 + Math.round(k * 1.6), qy - ch - 5 + Math.round(k * 0.5), M.metal[1]); put(cx + 3 - Math.round(k * 1.4), qy - ch - 5 + Math.round(k * 0.5), M.metal[1]); }
+        for (let yy = 2; yy < 8; yy++) put(cx - 10, qy - ch + yy, M.metal[0]);
+        if (lit) lit.set(cx + 3, qy - ch - 6, M.lhR[2]);
+      }
+    }
+  };
+  def.paintTown = paintTown;
 
   /* ---------------- colours of the sea ---------------- */
   const SEAC = {
@@ -271,49 +375,60 @@ Areas.beach = (() => {
     for (let x = 12; x < 300; x += 9 + r() * 12) put(Paint.tuft(M, 10 + r() * 8, 8 + r() * 8, Math.floor(x), { flowers: r() < 0.3 ? [M.flowerP] : null }), x, 3 + r() * 2, { windFrames: true, sink: 0 });
     for (let x = 300; x < 900; x += 60 + r() * 90) put(Paint.tuft(M, 8 + r() * 6, 6 + r() * 6, Math.floor(x), { ramp: M.grass }), x, -4, { windFrames: true, sink: 0 });
     // ---- background layers ----
-    // horizon: a smoking volcano island, a green headland with a lighthouse, and a hillside port town
+    // horizon: a smoking volcano island, Slateport City on its hills (downtown towers, the Contest Hall dome,
+    // the harbour with gantry cranes and a container ship, a breakwater lighthouse) and a forested headland
     {
-      const w = 1000, h = 84, s = new ISpr(w, h);
-      // far volcano (left) with a smoke plume
-      Paint.ridge(s, M, { ramp: M.far || M.hill, base: h, amp: 20, seed: 21, freq: 0.02, peaks: [[150, 150, 1.25]] });
-      for (let k = 0; k < 26; k++) { const cx0 = 150 + k * 2.2 + Math.sin(k) * 3, cy0 = h - 64 - k * 1.5, rr = 3 + k * 0.28; for (let y = -rr; y <= rr; y++) for (let x = -rr; x <= rr; x++) if (x * x + y * y <= rr * rr && hash(Math.round(cx0 + x), Math.round(cy0 + y), 4) > 0.25) s.set(Math.round(cx0 + x), Math.round(cy0 + y), M.sail[(y < 0 ? 1 : 0)]); }
-      // rolling green hills behind the town, with a textured tree canopy
-      const hill = new ISpr(w, h);
-      Paint.treeline(hill, { ramp: M.hill, base: h - 18, size: 7, seed: 31, jag: 4 });
-      for (let x = 0; x < w; x++) { const top = h - 22 - Math.max(0, Math.sin((x - 280) / 420 * Math.PI)) * 16; for (let y = Math.round(top); y < h; y++) if (x > 250 && x < 720) hill.set(x, y, Props.pick(M.hill, 0.75 - (y - top) / 30, x, y)); }
-      for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) { const v = hill.get(x, y); if (v && (x > 240 && x < 740)) s.set(x, y, v); }
-      // port town: little houses stepping up the hill (coloured roofs, lit windows)
-      const roofs = [M.roof, M.boatB || M.roof, M.city];
-      for (let i = 0; i < 34; i++) {
-        const hx = 290 + Math.floor(r() * 400), bw = 7 + Math.floor(r() * 7), bh = 5 + Math.floor(r() * 5);
-        const top = h - 20 - Math.max(0, Math.sin((hx - 280) / 420 * Math.PI)) * 14 - Math.floor(r() * 6);
-        const rp = roofs[i % 3];
-        for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) s.set(hx + x, top - bh + y, x === bw - 1 ? M.wall[0] : (y % 3 === 1 && x % 3 === 1) ? M.win[0] : M.wall[2 - (x > bw / 2 ? 1 : 0)]);
-        for (let y = 0; y < 3; y++) for (let x = -1 + y; x <= bw - y; x++) s.set(hx + x, top - bh - 3 + y, rp[(y === 2 ? 1 : 2)] ?? rp[0]);
-      }
-      // harbour wall + cranes + a church spire
-      for (let x = 280; x < 720; x++) { s.set(x, h - 4, M.city[1]); s.set(x, h - 3, M.city[0]); }
-      for (const cx1 of [610, 650]) { for (let y = 0; y < 18; y++) s.set(cx1, h - 4 - y, M.roof[1]); for (let x = 0; x < 12; x++) s.set(cx1 - 3 + x, h - 22, M.roof[1]); }
-      for (let y = 0; y < 22; y++) { const hw = Math.max(0, Math.round((y - 6) * 0.2)); for (let x = -hw; x <= hw; x++) s.set(470 + x, h - 44 + y, y < 8 ? M.roof[0] : M.wall[1]); }
-      // headland (right) with a forest cap and a red-and-white lighthouse
+      const w = 1500, h = 120, s = new ISpr(w, h), lit = new ISpr(w, h);
+      const P = Props.pick;
+      // far volcano (left) with a drifting smoke plume, faint snow streaks
+      Paint.ridge(s, M, { ramp: M.far || M.hill, base: h, amp: 22, seed: 21, freq: 0.02, peaks: [[150, 150, 1.25]] });
+      for (let k = 0; k < 34; k++) { const cx0 = 150 + k * 2.6 + Math.sin(k * 0.7) * 4, cy0 = h - 68 - k * 1.4, rr = 3 + k * 0.3; for (let y = -rr; y <= rr; y++) for (let x = -rr; x <= rr; x++) if (x * x + y * y <= rr * rr && hash(Math.round(cx0 + x), Math.round(cy0 + y), 4) > 0.2 + k / 60) s.set(Math.round(cx0 + x), Math.round(cy0 + y), M.sail[(y < -rr * 0.3 ? 1 : 0)]); }
+      // rolling hills behind the city: two ridges, a forest canopy on the nearer one
+      const hillTop = (x) => h - 20 - Math.max(0, Math.sin((x - 250) / 700 * Math.PI)) * 30 - fbm(x * 0.012, 2, 9, 3) * 12;
+      const back = new ISpr(w, h); Paint.ridge(back, M, { ramp: M.hill, base: h - 10, amp: 56, seed: 71, freq: 0.006, peaks: [[560, 260, 0.8], [1180, 200, 0.9]] });
+      for (let x = 250; x < w; x++) for (let y = 0; y < h; y++) { const v = back.get(x, y); if (v && x < 1480 - (y < 60 ? 0 : 0)) s.set(x, y, hash(x, y, 3) > 0.5 && back.get(x, y - 1) ? M.hill[Math.max(0, M.hill.indexOf(v) - 1)] : v); }
+      const canopy = new ISpr(w, h); Paint.treeline(canopy, { ramp: M.treeF, base: h - 30, size: 5, seed: 31, jag: 6 });
+      for (let x = 240; x < w - 10; x++) { const top = Math.round(hillTop(x)); for (let y = top - 6; y < h; y++) { const v = canopy.get(x, y - (top - (h - 34))); if (y >= top) s.set(x, y, v && y < top + 10 ? v : P(M.hill, 0.6 - (y - top) / 40, x, y)); else if (v && hash(x, 0, 8) > 0.35) s.set(x, y, v); } }
+      // the city: stepping up the hill, densest downtown
+      const cityG = (x) => Math.min(h - 8, hillTop(x) + 12 - (x > 600 && x < 880 ? 0 : 0));
+      paintTown(s, lit, M, { x0: 300, x1: 900, ground: (x) => x > 610 ? h - 8 : Math.min(h - 8, cityG(x) + (x - 300) * 0.04), maxH: 46, seed: 5, dome: 520, env: (u) => 0.25 + 0.75 * Math.exp(-((u - 0.55) ** 2) / 0.06), harbour: [612, 880] });
+      // a sea wall + breakwater with a small lighthouse at its tip
+      for (let x = 300; x < 930; x++) { s.set(x, h - 7, M.bldA[2]); s.set(x, h - 6, M.bldA[1]); s.set(x, h - 5, M.bldA[0]); }
+      for (let y = 0; y < 14; y++) for (let x = -1; x <= 1; x++) s.set(928 + x, h - 7 - y, y > 11 ? M.ink[1] : Math.floor(y / 3) % 2 ? M.tRed[1] : M.tWhite[x < 0 ? 2 : 1]);
+      lit.set(928, h - 20, M.lhLight[1]);
+      // headland (right) with a forest cap, villas and the red-and-white lighthouse, tapering into the sea
       const hd = new ISpr(w, h);
-      Paint.ridge(hd, M, { ramp: M.hill, base: h, amp: 40, seed: 4, freq: 0.012, peaks: [[880, 150, 0.9], [760, 90, 0.4]] });
-      for (let x = 740; x < w; x++) for (let y = 0; y < h; y++) { const v = hd.get(x, y); if (v) s.set(x, y, v); }
-      const trees = new ISpr(w, h); Paint.treeline(trees, { ramp: M.hill, base: h - 30, size: 6, seed: 41, jag: 5 });
-      for (let x = 760; x < w; x++) { let top = 0; while (top < h && !hd.get(x, top)) top++; for (let y = top; y < Math.min(h, top + 6); y++) if (trees.get(x, y) || y < top + 3) s.set(x, y, Props.pick(M.hill, 0.9 - (y - top) / 8, x, y)); }
-      { let top = 0; while (top < h && !hd.get(900, top)) top++; for (let y = 0; y < 18; y++) for (let x = -2; x <= 2; x++) s.set(900 + x, top - 18 + y, Math.floor(y / 4) % 2 ? M.roof[2] : M.wall[3]); for (let x = -3; x <= 3; x++) s.set(900 + x, top - 19, M.ink[1]); s.set(900, top - 21, M.win[1]); s.set(899, top - 20, M.win[1]); s.set(901, top - 20, M.win[1]); A.farLight = [900, top - 20]; }
-      A.layer(s, 0.03, { haze: 0.55, base: h - 1, x: -60 });
+      Paint.ridge(hd, M, { ramp: M.hill, base: h, amp: 44, seed: 4, freq: 0.01, peaks: [[1200, 200, 0.95], [1050, 110, 0.5]] });
+      const hx0 = 960, hx1 = 1470;
+      for (let x = hx0; x < hx1; x++) { const taper = Math.min(1, (x - hx0) / 60, (hx1 - x) / 90); for (let y = 0; y < h; y++) { const v = hd.get(x, y); if (v && y > h - (h - hdTop(hd, x)) * taper) s.set(x, y, v); } }
+      function hdTop(sp, x) { let t = 0; while (t < h && !sp.get(x, t)) t++; return t; }
+      const hTop = (x) => { let t = 0; while (t < h && !s.get(x, t)) t++; return t; };
+      const trees = new ISpr(w, h); Paint.treeline(trees, { ramp: M.treeF, base: h - 30, size: 5, seed: 41, jag: 5 });
+      for (let x = hx0 + 20; x < hx1 - 20; x++) { const top = hTop(x); for (let y = top - 4; y < Math.min(h, top + 8); y++) { const v = trees.get(x, y - top + (h - 34)); if (v) s.set(x, y, v); } }
+      paintTown(s, lit, M, { x0: 1060, x1: 1150, ground: (x) => hTop(x) + 5, maxH: 4, seed: 9, trees: false });
+      { const lx = 1240, top = hTop(lx); for (let y = 0; y < 20; y++) for (let x = -2; x <= 2; x++) s.set(lx + x, top - 18 + y, Math.floor(y / 4) % 2 ? M.roof[2] : M.wall[x < 0 ? 2 : 1]); for (let x = -3; x <= 3; x++) s.set(lx + x, top - 19, M.ink[1]); s.set(lx, top - 21, M.win[1]); s.set(lx - 1, top - 20, M.win[1]); s.set(lx + 1, top - 20, M.win[1]); A.farLight = [lx, top - 20]; }
+      const L = A.layer(s, 0.03, { haze: 0.42, base: h - 1, x: -60 });
+      L.draw = (fb, sx, sy, pal, t) => { const hr = Stage.S.hour; if (hr === 'night' || hr === 'dusk') Paint.blit(fb, lit, sx, sy, pal, { fade: hr === 'dusk' ? 0.45 : 0 }); };
     }
-    // sailboats and far rocks
+    // sailboats, a ferry and far rocks on the sea band
     {
-      const w = 1200, h = 40, s = new ISpr(w, h);
-      for (const bx of [140, 470, 820, 1060]) {
-        const sh = 14 + r() * 8;
-        for (let y = 0; y < sh; y++) { const hw = Math.round((y / sh) * 6); for (let k = 0; k <= hw; k++) s.set(bx + k, h - 8 - sh + y, M.sail[k < hw - 1 ? 1 : 0]); }
-        for (let k = -8; k <= 8; k++) { s.set(bx + k, h - 7, M.boatB[1]); if (Math.abs(k) < 7) s.set(bx + k, h - 6, M.boatB[0]); }
-        for (let y = 0; y < sh; y++) s.set(bx - 1, h - 8 - sh + y, M.wood[1]);
+      const w = 1400, h = 44, s = new ISpr(w, h);
+      const SC2 = [M.tRed, M.umbA, M.umbB, M.coralP];
+      for (const [bx, big] of [[140, 1], [330, 0], [470, 1], [700, 0], [820, 1], [1060, 1], [1250, 0]]) {
+        const sh = big ? 18 + r() * 6 : 11 + r() * 4, c = SC2[Math.floor(r() * 4)], wl = h - 9;
+        // mainsail (lit/shaded, a coloured stripe) + jib
+        for (let y = 0; y < sh; y++) { const hw = Math.round((y / sh) * (big ? 8 : 5)); for (let k = 1; k <= hw; k++) s.set(bx + k, wl - sh + y, Math.abs(y - sh * 0.6) < 1 ? c[1] : M.sail[k < hw - 1 ? 1 : 0]); }
+        for (let y = 3; y < sh - 1; y++) { const hw = Math.round(((y - 3) / sh) * (big ? 5 : 3)); for (let k = 1; k <= hw; k++) s.set(bx - k, wl - sh + y + 1, M.sail[k === hw ? 0 : 1]); }
+        for (let y = 0; y < sh + 1; y++) s.set(bx, wl - sh + y, M.wood[1]);
+        const hl = big ? 10 : 7;
+        for (let k = -hl; k <= hl; k++) { s.set(bx + k, wl + 1, c[2] ?? c[1]); if (Math.abs(k) < hl) s.set(bx + k, wl + 2, c[0]); if (Math.abs(k) < hl - 2) s.set(bx + k, wl + 3, M.boatB[0]); }
+        for (let k = -hl - 2; k <= hl + 2; k += 2) s.set(bx + k, wl + 4, M.shell[3]);
       }
-      A.layer(s, 0.14, { haze: 0.5, base: h - 5, x: 80 });
+      // a white ferry heading for Slateport
+      { const fx = 560, wl = h - 8; for (let y = 0; y < 5; y++) for (let x = y; x < 46 - y; x++) s.set(fx + x, wl - y + 4, y < 2 ? M.boatB[1] : M.tWhite[x < 20 ? 2 : 1]); for (let y = 0; y < 5; y++) for (let x = 10; x < 34; x++) s.set(fx + x, wl - 1 - y, y === 2 && x % 3 ? M.winD[0] : M.tWhite[x < 14 ? 2 : 1]); for (let y = 0; y < 5; y++) for (let x = 18; x < 22; x++) s.set(fx + x, wl - 6 - y, y < 2 ? M.ink[1] : M.tRed[1]); for (let x = -8; x < 0; x++) if (x % 2) s.set(fx + x, wl + 4, M.shell[3]); }
+      // wave-washed rocks
+      for (const rx of [260, 940, 1180]) { const rk = Paint.rock(M, 16 + r() * 12, 7 + r() * 4, rx, { cracks: 0 }); s.paste(rk, rx, h - 5 - rk.h); for (let k = -2; k < rk.w + 2; k += 2) s.set(rx + k, h - 5, M.shell[3]); }
+      A.layer(s, 0.14, { haze: 0.45, base: h - 5, x: 80 });
     }
     // sandbar island with palms (right, over the sea)
     {
