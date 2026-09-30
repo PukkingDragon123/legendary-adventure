@@ -65106,7 +65106,7 @@ const Dex = (() => {
       D.closing += dt;
       if (D.closing > 0.5) { D.isOpen = false; Game.mode = 'explore'; D.closing = 0; const f = D.after; D.after = null; if (f) try { f(); } catch (e) { console.error(e); } }
     }
-    D.trans = Math.min(1, D.trans + dt * 4.5);
+    D.trans = Math.min(1, D.trans + dt * (D.zoom ? 3 : 4.5));
     D.keyV += (-Math.sin(D.keyAng) * 18 - D.keyV * 2.2) * dt; D.keyAng += D.keyV * dt;
     D.mudYaw += dt * 0.9;
     D.selT = (D.selT || 0) + dt;
