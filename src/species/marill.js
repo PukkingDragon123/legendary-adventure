@@ -159,7 +159,7 @@ const Marill = (() => {
       const c = add(ec, sc(Yy, 5.5));
       prims.push(ellAx(c, X, Yy, Z, [4.2, 11.8, 12.6], id, id, earMat));
       anchors[sd > 0 ? 'earN' : 'earF'] = add(c, sc(Yy, 11.8));
-      top = Math.max(top, c[1] + 10.8);
+      top = Math.max(top, c[1] + 11.8);
     }
     anchors.top = [bodyF.t[0], top, 0];
 

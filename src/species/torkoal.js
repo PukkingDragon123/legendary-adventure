@@ -96,13 +96,13 @@ const Torkoal = (() => {
     closed: ['k.k', '.k.'], closedN: ['k.', '.k'], closedF: ['k'],
   };
   const EYES_L = {
-    open: ['kkkk', 'kggk', 'kgpk', '.kk.'], openN: ['kkk', 'kgk', 'kpk', '.k.'], openF: ['kk', 'gk', 'k.'],
+    open: ['.kkkk.', 'kkkkkk', 'k.gp.k'], openN: ['.kkk.', 'kkkkk', 'k.p.k'], openF: ['kk', 'gk', 'k.'],
     happy: ['.kk.', 'k..k'], happyN: ['.k.', 'k.k'], happyF: ['.k', 'k.'],
     blink: ['....', 'kkkk', '.kk.'], blinkN: ['...', 'kkk'], blinkF: ['..', 'kk'],
     closed: ['k..k', '.kk.'], closedN: ['k.k', '.k.'], closedF: ['k.', '.k'],
   };
   const EYES_XL = {
-    open: ['.kkkk.', 'kkkkkk', 'kgggpk', 'kggppk', '.kkkk.'], openN: ['.kkk.', 'kkkkk', 'kggpk', 'kgppk', '.kkk.'], openF: ['.k', 'kk', 'gk', 'kk'],
+    open: ['..kkkk..', '.kkkkkk.', 'kk.gpp.k', '........'], openN: ['.kkkk.', 'kkkkkk', 'k.gp.k'], openF: ['.k', 'kk', 'gk', 'kk'],
     happy: ['.kkkk.', 'kk..kk', 'k....k'], happyN: ['.kkk.', 'kk.kk', 'k...k'], happyF: ['.k', 'k.'],
     blink: ['......', '......', 'kkkkkk', '.kkkk.'], blinkN: ['.....', '.....', 'kkkkk', '.kkk.'], blinkF: ['..', 'kk'],
     closed: ['k....k', 'kk..kk', '.kkkk.'], closedN: ['k...k', 'kk.kk', '.kkk.'], closedF: ['k.', '.k'],
@@ -190,7 +190,7 @@ const Torkoal = (() => {
     for (const sd of [1, -1]) {
       const s = [EYE_S[0], EYE_S[1], EYE_S[2] * sd];
       const at = { prim: headPrim, p: inF(head, [HEAD_R[0] * s[0], HEAD_R[1] * s[1], HEAD_R[2] * s[2]]), s };
-      stamps.push({ at, sd, colors: EYEC, kind, near: 0.7, far: 0.4, minFacing: 0.12 });
+      stamps.push({ at, sd, colors: EYEC, kind, near: 0.45, far: 0.18, minFacing: 0.08 });
       anchors[sd > 0 ? 'eyeN' : 'eyeF'] = at.p;
     }
 
