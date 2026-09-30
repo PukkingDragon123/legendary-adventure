@@ -22274,7 +22274,7 @@ const Swellow = (() => {
       // turn the blade edge-up so its broad side faces the camera side
       const Rs2 = frameUV(U, cross(U, dirF(root, [0, 0, 1])));
       const tip = add(add(tb, [0, 0, k * 2.5]), sc(U, 96));
-      prims.push(plate(add(tb, [0, 0, k * 2.5]), Rs2 || Rs, 9, 9, STR_G, 1.8));
+      prims.push(plate(add(tb, [0, 0, k * 2.5]), Rs2 || Rs, 9, 9, STR_G, 2.4));
       if (!tipTop || tip[1] > tipTop[1]) tipTop = tip;
     }
     anchors.tail = tipTop;
@@ -22290,7 +22290,7 @@ const Swellow = (() => {
       const standAnk = [6 + (walking ? 3 * Math.cos(ph) : 0), 5 + lift, sd * 10];
       const tuckAnk = inF(root, [-12, -24, sd * 7]);
       const ank = [lerp(standAnk[0], tuckAnk[0], tuck), lerp(standAnk[1], tuckAnk[1], tuck), lerp(standAnk[2], tuckAnk[2], tuck)];
-      prims.push(seg(hip, ank, 3, 3, id, id, M_LEG, [1, 0, 0], 1.1));
+      prims.push(seg(hip, ank, 2.6, 2.6, id, id, M_LEG, [1, 0, 0], 1.1));
       const toeRot = lerp(0, -1.2, tuck);
       for (const [a, len] of [[0.4, 9], [0, 10.5], [-0.4, 9], [Math.PI, 6]]) {
         const d = nrm([Math.cos(a) * Math.cos(toeRot), -0.45 + Math.sin(toeRot) * (a === Math.PI ? -1 : 1), Math.sin(a) * 0.9]);
@@ -50035,7 +50035,7 @@ const Swellow = (() => {
       // turn the blade edge-up so its broad side faces the camera side
       const Rs2 = frameUV(U, cross(U, dirF(root, [0, 0, 1])));
       const tip = add(add(tb, [0, 0, k * 2.5]), sc(U, 96));
-      prims.push(plate(add(tb, [0, 0, k * 2.5]), Rs2 || Rs, 9, 9, STR_G, 1.8));
+      prims.push(plate(add(tb, [0, 0, k * 2.5]), Rs2 || Rs, 9, 9, STR_G, 2.4));
       if (!tipTop || tip[1] > tipTop[1]) tipTop = tip;
     }
     anchors.tail = tipTop;
@@ -50051,7 +50051,7 @@ const Swellow = (() => {
       const standAnk = [6 + (walking ? 3 * Math.cos(ph) : 0), 5 + lift, sd * 10];
       const tuckAnk = inF(root, [-12, -24, sd * 7]);
       const ank = [lerp(standAnk[0], tuckAnk[0], tuck), lerp(standAnk[1], tuckAnk[1], tuck), lerp(standAnk[2], tuckAnk[2], tuck)];
-      prims.push(seg(hip, ank, 3, 3, id, id, M_LEG, [1, 0, 0], 1.1));
+      prims.push(seg(hip, ank, 2.6, 2.6, id, id, M_LEG, [1, 0, 0], 1.1));
       const toeRot = lerp(0, -1.2, tuck);
       for (const [a, len] of [[0.4, 9], [0, 10.5], [-0.4, 9], [Math.PI, 6]]) {
         const d = nrm([Math.cos(a) * Math.cos(toeRot), -0.45 + Math.sin(toeRot) * (a === Math.PI ? -1 : 1), Math.sin(a) * 0.9]);
