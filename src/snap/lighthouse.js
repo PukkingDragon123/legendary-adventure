@@ -28,12 +28,12 @@ const Lighthouse = (() => {
   }
   const floor = (x0, x1, y) => ({ x0, x1, y, kind: 'floor' });
   const PL = {
-    f1: flight(150, 190, 974, 540, 880, 624),
-    f2: flight(16, 110, 760, 520, 854, 596),
-    fl1: floor(44, 624, 734),
-    f3: flight(80, 130, 708, 560, 610, 624),
-    f4: flight(16, 110, 490, 530, 584, 596),
-    fl2: floor(44, 624, 464),
+    f1: flight(150, 190, 974, 540, 880, W),
+    f2: flight(0, 110, 760, 520, 854, 596),
+    fl1: floor(44, W, 734),
+    f3: flight(80, 130, 708, 560, 610, W),
+    f4: flight(0, 110, 490, 530, 584, 596),
+    fl2: floor(44, W, 464),
   };
   const PAGES = [{ id: 'lh.page1', x: 566, y: G0 }, { id: 'lh.page2', x: 40, y: 760 }, { id: 'lh.page3', x: 604, y: 610 }];
   const LENS = 330, GDOOR = 606, EXIT = 44;

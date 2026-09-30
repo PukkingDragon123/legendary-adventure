@@ -146,7 +146,6 @@ const Cards = (() => {
     drawCards(G, n);
     pickIntent(G);
     C.sel = G.hand.length ? 0 : -1;
-    if (G.turn === 1) HUD.toast('Your turn! Play cards, then End Turn (E).', { life: 2.4 });
   }
   function drawCards(G, n) {
     for (let i = 0; i < n; i++) {
@@ -431,7 +430,8 @@ const Cards = (() => {
     // camera frames both
     const midX = (G.mx + G.fx) / 2, top = Math.min(M.headPt()[1], F.headPt()[1]);
     const span = Math.abs(G.fx - G.mx) + 90;
-    Game.camFocus = { x: midX, y: (top + Math.max(M.y, F.y)) / 2 - 6, zoom: clamp(Game.VW / span * 0.5, 1.0, 1.3), speed: 4 };
+    const zf = clamp(Game.VW / span * 0.5, 1.0, 1.3), feet = Math.max(M.y, F.y);
+    Game.camFocus = { x: midX, y: Math.max((top + feet) / 2 - 6, feet - Game.VH / zf * 0.5 + Game.VH / zf * 0.36), zoom: clamp(Game.VW / span * 0.5, 1.0, 1.3), speed: 4 };
   }
   function pose(m, u, bx, dir) {
     const o = u.off;
@@ -610,13 +610,13 @@ const Cards = (() => {
     // hand
     const n = G.hand.length, cw = clamp(Math.round(W * 0.13), 56, 72), ch = Math.round(cw * 1.36);
     const handW = Math.min(W - 150, n * (cw + 4)), step = n > 1 ? Math.min(cw + 4, (handW - cw) / (n - 1)) : 0;
-    const x0 = Math.round(W / 2 - ((n - 1) * step + cw) / 2), yBase = H - ch - 4 + Math.round(ch * 0.2);
+    const x0 = Math.round(W / 2 - ((n - 1) * step + cw) / 2), yBase = H - Math.round(ch * 0.6);
     const order = G.hand.map((h, i) => i).filter((i) => i !== C.sel); if (C.sel >= 0 && C.sel < n) order.push(C.sel);
     for (const i of order) {
       const h = G.hand[i], sel = i === C.sel, ok = canPlay(G, i);
       const mid = (i - (n - 1) / 2), arc = Math.round(mid * mid * 1.2);
       const deal = clamp(h.t / 0.25, 0, 1);
-      const x = Math.round(x0 + i * step + (h.shake ? Math.sin(h.shake * 60) * 3 : 0)), y = Math.round(yBase + arc - (sel ? Math.round(ch * 0.28) : 0) + (1 - deal) * 40);
+      const x = Math.round(x0 + i * step + (h.shake ? Math.sin(h.shake * 60) * 3 : 0)), y = Math.round(yBase + arc - (sel ? Math.round(ch * 0.4) + 2 : 0) + (1 - deal) * 40);
       cardFace(fb, h.id, x, y, cw, ch, { sel, dim: !ok && G.step === 'you' });
       if (n <= 9) txt(fb, String(i + 1), x + cw / 2, y - 8, sel ? hex('#ffe070') : 0xffb0b8c8, { align: 'center' });
       C.btns.push({ x, y: y - 8, w: sel ? cw : Math.max(8, Math.round(step)), h: ch + 8, fn: () => { if (G.step !== 'you' || G.seq) return; if (C.sel === i) play(i); else { C.sel = i; sfx('blip', null, 0.4); } } });
@@ -634,7 +634,7 @@ const Cards = (() => {
     const noMoves = my2 && !G.hand.some((h, i) => canPlay(G, i));
     const ew = 64, eh = 24;
     btn(fb, W - ew - 8, H - eh - 14, ew, eh, my2 ? 'End Turn (E)' : G.step === 'them' ? 'Foe turn...' : '...', my2 ? (noMoves ? '#3ab860' : '#2a8a4a') : '#46505e', endTurn, { dim: !my2, on: noMoves && ((t * 3) | 0) % 2 === 0 });
-    if (G.step === 'you' && G.turn === 1 && !G.seq) txt(fb, Pad && Pad.touch ? 'Tap a card, tap again to play' : '1-9 or arrows + Space to play, E ends turn', W / 2, H - ch - 16, 0xffd8e0f0, { align: 'center' });
+    if (G.step === 'you' && G.turn === 1 && !G.seq) txt(fb, Pad && Pad.touch ? 'Tap a card, tap again to play' : '1-9 or arrows + Space to play, E ends turn', W / 2, bh + 4, 0xffd8e0f0, { align: 'center' });
     if (G.over) {
       const w = 180, h = 40, x = Math.round(W / 2 - w / 2), y = Math.round(H * 0.3);
       UI.panel(fb, x, y, w, h, { r: 8, ol: INK, fill: G.win ? 0xff2a7a3a : 0xff3a2a6a });
