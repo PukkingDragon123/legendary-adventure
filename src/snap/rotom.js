@@ -1,8 +1,10 @@
 /* ------------------------------------------------------------------
-   Rotom — the Rotom Dex companion that flies around Mudkip. A small
-   toon-shaded red device (lightning antenna, big eyes on a black
-   bridge, cyan face with a toothy grin, floating hands, pointed tail)
-   drawn crisp on the UI canvas. It bobs, orbits, looks at Pokémon,
+   Rotom — the Rotom Dex companion that flies around Mudkip, drawn as
+   a small toon pixel sprite of the official Rotom Dex: a tilted red
+   body with a spike antenna, a white screen showing Rotom's face (blue
+   eyes on a dark bridge, light-blue face with a toothy grin) and two
+   floating lightning-bolt arms ending in flat panels, crisp on the UI
+   canvas. It bobs, orbits, looks at Pokémon,
    peeks at unregistered species (marking them "seen" in the Dex),
    points at the tracked quest, and chatters in speech bubbles.
    Poke it (tap / click, or O) for jokes and hints. Reactions: Flash
@@ -16,7 +18,10 @@ const Rotom = (() => {
   const { clamp, lerp, hex, mix, pick, rnd } = U;
   const R = { x: 0, y: 0, vx: 0, vy: 0, on: false, st: 'follow', stT: 0, yaw: 0, spin: 0, lx: 0, ly: 0, mood: 'norm', moodT: 0, blinkT: 0, nextBlink: 2, talkT: 0,
     chatT: 12, pokes: [], wet: 0, drips: [], sparks: [], sulk: 0, tgt: null, hop: 0, peeked: {}, cd: {}, seenN: -1, lv: null, rain: false, hide: 0, box: null, pointAt: null, pointT: 40, orbitT: 25, outT: 0 };
-  const C = { b: hex('#e03a3c'), l: hex('#ff7466'), ll: hex('#ffb6a6'), d: hex('#a41c2a'), dd: hex('#6c0f1e'), ink: hex('#2a0710'), scr: hex('#a7b3ef'), face: hex('#b2effe'), faceD: hex('#3692b8'), eye: hex('#0e0c1c'), mouth: hex('#2c0f30'), grey: hex('#b9c0cd'), greyD: hex('#737b90'), gold: hex('#ffd23a'), leaf: hex('#4ab860'), leafD: hex('#2a7a3a') };
+  // colours of the official Rotom Dex art
+  const C = { b: hex('#e4524a'), l: hex('#f78a7e'), ll: hex('#ffc2b4'), d: hex('#b93a36'), dd: hex('#8a2226'), ink: hex('#4a1216'), btn: hex('#cc463f'),
+    scr: hex('#f8fafc'), scrD: hex('#d3dde8'), face: hex('#76c6ee'), faceD: hex('#4c9fd8'), bridge: hex('#26262e'), bridgeL: hex('#4a4b56'), mouth: hex('#2a1030'), mouthO: hex('#1e2a44'),
+    eyeO: hex('#1c2230'), iris: hex('#2f64d8'), irisD: hex('#1d3c96'), ring: hex('#dde5ee'), grey: hex('#b9c0cd'), greyD: hex('#7a808c'), gold: hex('#ffd23a'), leaf: hex('#4ab860'), leafD: hex('#2a7a3a') };
   const cfg = () => Save.data.rotom || (Save.data.rotom = { off: false, chat: 1 });
   const nm = (k) => (DexData.S[k] ? DexData.S[k].name : k);
 
@@ -182,77 +187,151 @@ const Rotom = (() => {
     say(Math.random() < 0.5 ? pick(JOKES) : pick(['Hi hi! ', 'Bzzt? ', 'Zzt! ']) + hint(), 4.5);
   }
 
-  /* ---------- drawing ---------- */
-  function ell(fb, cx, cy, rx, ry, c) { for (let y = -ry; y <= ry; y++) { const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y / (ry + 0.3)) ** 2))); UI.hline(fb, Math.round(cx - hw), Math.round(cx + hw), Math.round(cy + y), c); } }
+  /* ---------- drawing: the official Rotom Dex, as a small toon pixel sprite ----------
+     Designed in its own units (the body is ~31 x 28, centre 0,0, y down): a slightly tilted red body
+     with a tall spike antenna at the top left and a pointed fin on the left, a white screen showing
+     Rotom's face (blue eyes on a dark bridge, a light-blue face with a toothy grin and the little
+     "magnifier" handle), a thumb and a tail tab, and two floating lightning-bolt arms ending in flat
+     panels with round buttons. Rasterised straight to the UI canvas every frame (turntable squash
+     when it spins). */
+  const BODY = [[-11.6, -13.4], [-8.6, -30.5], [-1.8, -13.6], [12.8, -13.6], [16.3, -10.8], [16.3, 10.6], [13.6, 14.2], [-11.8, 14.2], [-14.6, 11], [-14.6, 7.6], [-22, -0.6], [-14.6, -8.2], [-14.6, -10.6]];
+  const SCREEN = { x0: -12, y0: -3.2, x1: 11.4, y1: 12.2 };
+  const ARM_R = { bolt: [[16, 3.2], [20.8, 1.4], [19.6, -2.2], [23.6, -3.4]], panel: [[21.2, -12.8], [30.2, -17.2], [35, -6.4], [26, 3.2]], btn: [28.2, -7, 2.7, 3.7], root: [16, 3.2] };
+  const ARM_L = { bolt: [[-13.6, 12.4], [-18, 11.6], [-16.6, 15.2], [-20.4, 15.8]], panel: [[-33, 11.4], [-20, 12.2], [-16.4, 21.8], [-29.8, 23.6]], btn: [-25, 17.4, 3.8, 2.6], root: [-13.6, 12.4], grey: true };
+  const TILT = -0.12;
+  function segD(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy, t = l ? clamp(((px - ax) * dx + (py - ay) * dy) / l, 0, 1) : 0; return Math.hypot(px - ax - dx * t, py - ay - dy * t); }
+  function inPoly(pts, x, y) { let ins = false; for (let a = 0, b = pts.length - 1; a < pts.length; b = a++) { const [xa, ya] = pts[a], [xb, yb] = pts[b]; if ((ya > y) !== (yb > y) && x < ((xb - xa) * (y - ya)) / (yb - ya) + xa) ins = !ins; } return ins; }
+  // unit <-> pixel (tilt in the body's plane, then the turntable squash)
+  const toPx = (T, x, y) => { const x1 = x * T.ct - y * T.st, y1 = x * T.st + y * T.ct; return [T.X + x1 * T.s * T.cs, T.Y + y1 * T.s]; };
+  const toU = (T, px, py) => { const x1 = (px - T.X) / (T.s * T.cs), y1 = (py - T.Y) / T.s; return [x1 * T.ct + y1 * T.st, -x1 * T.st + y1 * T.ct]; };
+  // rasterise one shape with a 1px ink outline; fill(ux, uy, lit, shade) picks each pixel's colour
+  function shape(fb, T, bb, inside, fill, ink = C.ink) {
+    const cs = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[0], bb[3]], [bb[2], bb[3]]].map(([x, y]) => toPx(T, x, y));
+    const x0 = Math.floor(Math.min(...cs.map((c) => c[0]))) - 1, x1 = Math.ceil(Math.max(...cs.map((c) => c[0]))) + 1;
+    const y0 = Math.floor(Math.min(...cs.map((c) => c[1]))) - 1, y1 = Math.ceil(Math.max(...cs.map((c) => c[1]))) + 1;
+    const w = x1 - x0 + 1, h = y1 - y0 + 1; if (w <= 0 || h <= 0 || w * h > 40000) return;
+    const m = new Uint8Array(w * h), uu = new Float32Array(w * h * 2);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const [ux, uy] = toU(T, x0 + i + 0.5, y0 + j + 0.5); if (inside(ux, uy)) { const p = j * w + i; m[p] = 1; uu[p * 2] = ux; uu[p * 2 + 1] = uy; } }
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const p = j * w + i, up = j > 0 && m[p - w], dn = j < h - 1 && m[p + w], lf = i > 0 && m[p - 1], rt = i < w - 1 && m[p + 1];
+      if (m[p]) { const c = fill(uu[p * 2], uu[p * 2 + 1], !up || !lf, !dn || !rt); if (c) UI.put(fb, x0 + i, y0 + j, c); }
+      else if (ink && (up || dn || lf || rt)) UI.put(fb, x0 + i, y0 + j, ink);
+    }
+  }
+  const redFill = (body, lt, dk) => (ux, uy, lit, shd) => (lit ? lt : shd ? dk : body);
+  function oval(ux, uy, o) { return ((ux - o[0]) / o[2]) ** 2 + ((uy - o[1]) / o[3]) ** 2; }
+  function arm(fb, T, A, off, rot, body, t) {
+    // move the arm around its root: rotate by rot, then offset (the arms float free of the body)
+    const [rx, ry] = A.root, cr = Math.cos(rot), sr = Math.sin(rot);
+    const tf = ([x, y]) => { const dx = x - rx, dy = y - ry; return [rx + dx * cr - dy * sr + off[0], ry + dx * sr + dy * cr + off[1]]; };
+    const bolt = A.bolt.map(tf), panel = A.panel.map(tf), [bx, by] = tf([A.btn[0], A.btn[1]]), bt = [bx, by, A.btn[2], A.btn[3]];
+    const all = bolt.concat(panel), bb = [Math.min(...all.map((p) => p[0])) - 2, Math.min(...all.map((p) => p[1])) - 2, Math.max(...all.map((p) => p[0])) + 2, Math.max(...all.map((p) => p[1])) + 2];
+    const inB = (x, y) => { for (let i = 0; i < 3; i++) if (segD(x, y, bolt[i][0], bolt[i][1], bolt[i + 1][0], bolt[i + 1][1]) <= 1.5) return true; return false; };
+    shape(fb, T, bb, (x, y) => inB(x, y) || inPoly(panel, x, y), (x, y, lit, shd) => {
+      const o = oval(x, y, bt);
+      if (o <= 1) { if (o > 0.55) return C.d; if (A.grey && o < 0.26) return C.greyD; return C.btn; }
+      if (o <= 1.45 && y > by) return lit ? C.l : C.ll;
+      return lit ? C.l : shd ? C.d : body;
+    });
+  }
   function draw(fb, t) {
     if (!visible() || R.hide) { R.box = null; return; }
     const [ux, uy] = Talk.toUI(R.x, R.y - R.hop * 4);
-    const k = clamp(Game.zoom / Game.US, 1, 2.4), H = Math.round(15 * k), W = Math.round(H * 0.8);
+    const k = clamp(Game.zoom / Game.US, 1, 2.4), H = Math.round(17 * k), s = H / 29;
     const X = Math.round(ux), Y = Math.round(uy);
-    if (X < -40 || X > fb.w + 40 || Y < -50 || Y > fb.h + 50) { R.box = null; return; }
-    R.box = { x: X - W, y: Y - H, w: W * 2, h: H * 2 };
+    if (X < -60 || X > fb.w + 60 || Y < -60 || Y > fb.h + 60) { R.box = null; return; }
+    R.box = { x: X - Math.round(20 * s), y: Y - Math.round(28 * s), w: Math.round(40 * s), h: Math.round(44 * s) };
     const night = Game.hour() === 'night' || Game.hour() === 'dusk';
-    if (night) for (let y = -H * 1.4; y <= H * 1.4; y++) for (let x = -H * 1.4; x <= H * 1.4; x++) { const d = Math.hypot(x, y) / (H * 1.4); if (d < 1) UI.blend(fb, X + x, Y + y, hex('#bff4ff'), 0.18 * (1 - d)); }
-    // turntable yaw (spins), front width shrinks, a side band shows
+    if (night) { const g = H * 1.3; for (let y = -g; y <= g; y++) for (let x = -g; x <= g; x++) { const d = Math.hypot(x, y) / g; if (d < 1) UI.blend(fb, X + x, Y + y, hex('#bff4ff'), 0.16 * (1 - d)); } }
+    // turntable yaw (spins): the front squashes, past 90 degrees we see the back
     const yaw = R.yaw + (R.spin > 0.5 ? (t * R.spin) % (Math.PI * 2) : 0);
-    const cs = Math.cos(yaw), sn = Math.sin(yaw), front = cs > 0;
-    const fw = Math.max(2, Math.round(W * Math.abs(cs))), sw = Math.round(H * 0.28 * Math.abs(sn)), tw = fw + sw;
-    const x0 = X - (tw >> 1), y0 = Y - (H >> 1) + (R.sulk > 0.5 ? 1 : 0);
-    const shake = R.wet > 0.4 || R.st === 'startle' && R.stT > 0 ? Math.round(Math.sin(t * 50)) : 0;
-    const bx = x0 + shake, fx0 = bx + (sn > 0 ? sw : 0), sx0 = sn > 0 ? bx : bx + fw;
-    const body = R.wet > 0.2 ? mix(C.b, hex('#5a6ad8'), R.wet * 0.3) : C.b;
-    // antenna bolt
-    const ax = fx0 + Math.round(fw * 0.38), at = y0 - Math.round(H * 0.45);
-    const pts = [[ax, y0 + 1], [ax - Math.round(H * 0.14), y0 - Math.round(H * 0.2)], [ax + Math.round(H * 0.1), y0 - Math.round(H * 0.24)], [ax - 1, at]];
-    const sparkT = R.sparks.length > 0;
-    for (const pass of [0, 1]) for (let i = 0; i < 3; i++) { const [a, b] = [pts[i], pts[i + 1]]; const n = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])) + 1; for (let s = 0; s <= n; s++) { const px = Math.round(lerp(a[0], b[0], s / n)), py = Math.round(lerp(a[1], b[1], s / n)), r = pass ? (i === 2 ? 0 : 1) : (i === 2 ? 1 : 2); for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) if (Math.abs(xx) + Math.abs(yy) <= r) UI.put(fb, px + xx, py + yy, pass ? (i === 2 && sparkT ? C.gold : xx < 0 ? C.l : body) : C.ink); } }
-    // tail tip
-    for (let j = 0; j <= Math.round(H * 0.28); j++) { const hw = Math.round((W * 0.2) * (1 - j / (H * 0.28))); UI.hline(fb, X - hw - 1 + shake, X + hw + 1 + shake, y0 + H - 2 + j, C.ink); if (hw > 0) UI.hline(fb, X - hw + shake, X + hw + shake, y0 + H - 2 + j, j < 2 ? body : C.d); }
-    // body silhouette + shading
-    UI.rrect(fb, bx - 1, y0 - 1, tw + 2, H + 2, Math.round(H * 0.3), C.ink);
-    const r = Math.round(H * 0.28);
-    for (let j = 0; j < H; j++) { let ins = 0; if (j < r) ins = r - Math.round(Math.sqrt(r * r - (r - j - 0.5) ** 2)); else if (j >= H - r) ins = r - Math.round(Math.sqrt(r * r - (j - (H - r) + 0.5) ** 2)); for (let i = ins; i < tw - ins; i++) { const inSide = sw && (i + bx >= sx0 && i + bx < sx0 + sw); let c = inSide ? (sn > 0 ? C.l : C.d) : body; if (!inSide) { if (j < 2) c = C.ll; else if (j > H - 3) c = C.d; else if (i === ins) c = C.l; } UI.put(fb, bx + i, y0 + j, c); } }
-    if (front && fw > 6) face(fb, fx0, y0, fw, H, t);
-    else if (!front) { for (let i = 0; i < 3; i++) UI.hline(fb, fx0 + 3, fx0 + fw - 4, y0 + Math.round(H * 0.3) + i * 3, C.dd); }
-    // floating hands
-    const hr = Math.max(2, Math.round(H * 0.12));
-    const hand = (hx, hy) => { UI.disc(fb, hx, hy, hr + 1, C.ink); UI.disc(fb, hx, hy, hr, body); UI.put(fb, hx - 1, hy - 1, C.ll); };
-    const wav = Math.round(Math.sin(t * 6) * 2);
-    if (R.st === 'ouch' && R.stT < 1.2) { hand(fx0 + Math.round(fw * 0.3), y0 + Math.round(H * 0.28)); hand(fx0 + Math.round(fw * 0.7), y0 + Math.round(H * 0.28)); }
-    else {
-      let lhx = bx - hr - 2, lhy = Y + wav, rhx = bx + tw + hr + 1, rhy = Y - wav;
-      if (R.st === 'point' && R.pointAt) { const dir = Math.sign(R.pointAt[0] - R.x) || 1; if (dir > 0) { rhx += 4; rhy = Y - 4; } else { lhx -= 4; lhy = Y - 4; } }
-      if (R.st === 'cheer' || R.st === 'poke') { lhy = y0 - 1 + wav; rhy = y0 - 1 - wav; }
-      hand(lhx, lhy); hand(rhx, rhy);
-      // leaf umbrella in the rain
-      if (R.sulk > 0.5) { UI.vline(fb, rhx, rhy - H, rhy - hr, C.leafD); const ur = Math.round(W * 0.75); for (let y = 0; y <= Math.round(ur * 0.5); y++) { const hw = Math.round(ur * Math.sqrt(1 - (y / (ur * 0.5 + 0.5)) ** 2)); UI.hline(fb, rhx - hw, rhx + hw, rhy - H - y, y === 0 ? C.leafD : C.leaf); } }
+    const cy = Math.cos(yaw), front = cy > 0, shake = R.wet > 0.4 || (R.st === 'startle' && R.stT > 0) ? Math.round(Math.sin(t * 50)) : 0;
+    const T = { X: X + shake, Y: Y + (R.sulk > 0.5 ? 1 : 0), s, cs: Math.sign(cy || 1) * Math.max(0.14, Math.abs(cy)), ct: Math.cos(TILT), st: Math.sin(TILT) };
+    const body = R.wet > 0.2 ? mix(C.b, hex('#5a6ad8'), R.wet * 0.3) : C.b, lt = mix(body, C.ll, 0.55), dk = C.d;
+    // the arms float around the body
+    const bob = Math.sin(t * 3.2), bob2 = Math.cos(t * 3.2 + 1);
+    let offR = [0.8 + bob * 0.5, bob * 1.1], offL = [-0.8 - bob2 * 0.5, bob2 * 1.1], rotR = 0, rotL = 0;
+    const ouch = R.st === 'ouch' && R.stT < 1.2;
+    if (R.st === 'cheer' || R.st === 'poke') { const wv = Math.sin(t * 9); rotR = -0.45 + wv * 0.2; offR = [1, -3 + wv]; rotL = 0.3 - wv * 0.2; offL = [-1, -13 - wv]; }
+    else if (R.st === 'point' && R.pointAt) { const dir = Math.sign(R.pointAt[0] - R.x) || 1; if (dir * T.cs > 0) { offR = [4, -1]; rotR = 0.35; } else { offL = [-4, -2]; rotL = -0.35; } }
+    else if (R.sulk > 0.5) { rotR = -0.5; offR = [0, -2]; }
+    if (!ouch) { arm(fb, T, ARM_L, offL, rotL, body, t); arm(fb, T, ARM_R, offR, rotR, body, t); }
+    // the tail tab
+    shape(fb, T, [-3, 12, 4, 20.5], (x, y) => y > 12 && ((x - 0.5) / 3) ** 2 + ((y - 15.8) / 4.6) ** 2 <= 1, (x, y, lit, shd) => (shd ? C.dd : lit ? C.d : mix(C.d, body, 0.4)));
+    // the body with its spike antenna and the fin
+    const spark = R.sparks.length > 0;
+    shape(fb, T, [-23, -31.5, 17.5, 15], (x, y) => inPoly(BODY, x, y), (x, y, lit, shd) => {
+      if (y < -24 && spark) return C.gold;
+      if (lit) return y < -14 && x > -10.4 && x < -7.4 ? C.ll : lt;
+      if (shd) return dk;
+      if (x > 11.6 && y < 9.5 && y > -10) return mix(body, dk, 0.35);   // the right side turns away from the light
+      return body;
+    });
+    if (front) {
+      // four little holes on the shell
+      for (const [hx, hy] of [[11.2, -10.6], [12.2, -6.2], [-17.2, -2.2], [-16, 2.4]]) { const [px, py] = toPx(T, hx, hy); UI.put(fb, Math.round(px), Math.round(py), C.ink); if (s > 1.3) UI.put(fb, Math.round(px) + 1, Math.round(py), C.ink); }
+      drawScreen(fb, T, t);
+      // the thumb holding the screen
+      if (!ouch) shape(fb, T, [7.5, 9, 15, 16.8], (x, y) => ((x - 11.2) / 3) ** 2 + ((y - 12.9) / 3.3) ** 2 <= 1, redFill(body, lt, dk));
+    } else {
+      // the back: a darker panel and two vents
+      shape(fb, T, [-10, -9, 10, 10], (x, y) => x > -9 && x < 9.5 && y > -8 && y < 9, (x, y, lit, shd) => (lit ? C.dd : shd ? lt : C.d), 0);
+      for (const hy of [-4, -1, 2]) { const [a1, b1] = toPx(T, -5, hy), [a2, b2] = toPx(T, 5, hy); UI.line(fb, Math.round(a1), Math.round(b1), Math.round(a2), Math.round(b2), C.dd); }
+    }
+    if (ouch) {
+      // both panels pressed over its eyes
+      arm(fb, T, ARM_L, [15, -17], 0.2, body, t); arm(fb, T, ARM_R, [-19, 3], -0.1, body, t);
+    }
+    // leaf umbrella in the rain
+    if (R.sulk > 0.5 && !ouch) {
+      const [hx, hy] = toPx(T, 27, -14); const ux2 = Math.round(hx), uy2 = Math.round(hy), ur = Math.round(13 * s);
+      UI.vline(fb, ux2, uy2 - Math.round(12 * s), uy2, C.leafD);
+      for (let y = 0; y <= Math.round(ur * 0.5); y++) { const hw = Math.round(ur * Math.sqrt(1 - (y / (ur * 0.5 + 0.5)) ** 2)); UI.hline(fb, ux2 - hw, ux2 + hw, uy2 - Math.round(12 * s) - y, y === 0 ? C.leafD : C.leaf); }
     }
     // electric sparks, drips
-    for (const p of R.sparks) { const rn = U.rng(Math.floor(p.seed)); let x = X + Math.cos(p.a) * p.r * k * 0.7, y = Y + Math.sin(p.a) * p.r * k * 0.7; for (let s = 0; s < 3; s++) { const nx = x + (rn() - 0.5) * 6, ny = y + (rn() - 0.5) * 6; UI.line(fb, Math.round(x), Math.round(y), Math.round(nx), Math.round(ny), s % 2 ? C.gold : 0xffffffff); x = nx; y = ny; } }
+    for (const p of R.sparks) { const rn = U.rng(Math.floor(p.seed)); let x = X + Math.cos(p.a) * p.r * k * 0.8, y = Y + Math.sin(p.a) * p.r * k * 0.8; for (let q = 0; q < 3; q++) { const nx = x + (rn() - 0.5) * 6, ny = y + (rn() - 0.5) * 6; UI.line(fb, Math.round(x), Math.round(y), Math.round(nx), Math.round(ny), q % 2 ? C.gold : 0xffffffff); x = nx; y = ny; } }
     for (const p of R.drips) { const [dx, dy] = Talk.toUI(p.x, p.y); UI.put(fb, Math.round(dx), Math.round(dy), hex('#8ac8ff')); UI.put(fb, Math.round(dx), Math.round(dy) - 1, 0xffffffff); }
   }
-  function face(fb, fx, y0, fw, H, t) {
-    // screen, cyan face, eyes on a black bridge, grin
-    const sx = fx + Math.round(fw * 0.12), sw = fw - Math.round(fw * 0.24), sy = y0 + Math.round(H * 0.12), sh = Math.round(H * 0.5);
-    UI.rrect(fb, sx - 1, sy - 1, sw + 2, sh + 2, 2, C.ink); UI.rrect(fb, sx, sy, sw, sh, 1, C.scr);
-    const cx = sx + (sw >> 1), rx = Math.round(sw * 0.42), ry = Math.round(sh * 0.62), ey = sy + Math.round(sh * 0.3);
-    for (let y = 0; y <= ry; y++) { const hw = Math.floor(rx * Math.sqrt(Math.max(0, 1 - (y / (ry + 0.5)) ** 2))); UI.hline(fb, cx - hw, cx + hw, ey + y, y === ry || hw < 1 ? C.faceD : C.face); }
-    const ex = Math.max(2, Math.round(sw * 0.24)), erx = Math.max(1, Math.round(sw * 0.15)), ery = Math.max(2, Math.round(sh * 0.22));
-    UI.rect(fb, cx - ex, ey - (ery >> 1), ex * 2, ery, C.eye);
-    const m = R.mood, blink = R.blinkT > 0;
-    for (const sd of [-1, 1]) {
-      const ecx = cx + sd * ex; ell(fb, ecx, ey, erx + 1, ery + 1, C.eye);
-      if (blink || (m === 'happy')) { ell(fb, ecx, ey, erx, ery, 0xffffffff); ell(fb, ecx, ey + Math.max(1, ery >> 1) + 1, erx + 1, ery, C.eye); if (blink) UI.hline(fb, ecx - erx, ecx + erx, ey, hex('#3a3858')); continue; }
-      ell(fb, ecx, ey, erx, ery, 0xffffffff);
-      if (m === 'x') { for (let q = -erx; q <= erx; q++) { UI.put(fb, ecx + q, ey + q, C.eye); UI.put(fb, ecx + q, ey - q, C.eye); } continue; }
-      const pr = m === 'wow' ? 0 : Math.max(0, erx - 1), px = ecx + Math.round(R.lx * Math.max(0, erx - pr - 0.4)), py = ey + Math.round(R.ly * Math.max(0, ery - 1));
-      ell(fb, px, py, pr, Math.max(1, ery - 1), C.eye); UI.put(fb, px - (pr > 0 ? 1 : 0), py - 1, 0xffffffff);
-      if (m === 'sad') UI.hline(fb, ecx - erx - 1, ecx + erx + 1, ey - ery, C.eye);
+  // the screen: white glass, Rotom's light-blue face with the magnifier handle, a grin, blue eyes on a dark bridge
+  function drawScreen(fb, T, t) {
+    const S = SCREEN, m = R.mood, blink = R.blinkT > 0;
+    shape(fb, T, [S.x0 - 1, S.y0 - 1, S.x1 + 1, S.y1 + 1], (x, y) => x > S.x0 && x < S.x1 && y > S.y0 && y < S.y1 && !((x < S.x0 + 1.4 || x > S.x1 - 1.4) && (y < S.y0 + 1.4 || y > S.y1 - 1.4)), (x, y, lit, shd) => {
+      const fx = x + 3.4, fy = y - 3, fr = Math.hypot(fx, fy);
+      if (fr < 7.6) return fr > 6.5 ? C.faceD : C.face;
+      if (segD(x, y, 3.8, 6.8, 10.2, 11) < 1.1) return C.face;               // the magnifier handle
+      return shd ? C.scrD : C.scr;
+    }, C.ink);
+    // the dark bridge between the eyes (a half disc)
+    shape(fb, T, [-7.8, -9, 2.6, -1], (x, y) => y < -2 && ((x + 2.6) / 4.5) ** 2 + ((y + 2) / 5.4) ** 2 <= 1, (x, y) => (y < -5.4 && x < -2.6 ? C.bridgeL : C.bridge), 0);
+    // the grin
+    const talk = R.talkT > 0 ? Math.abs(Math.sin(t * 16)) : 0, happy = m === 'happy';
+    if (m === 'wow') shape(fb, T, [-5, 1.5, -1, 5.5], (x, y) => ((x + 3) / 1.6) ** 2 + ((y - 3.5) / 1.8) ** 2 <= 1, () => C.mouth, C.mouthO);
+    else if (m === 'sad' || m === 'x') shape(fb, T, [-7, 2, 1, 6], (x, y) => y > 3.4 + ((x + 3) / 3.6) ** 2 * -1.2 && y < 4.6 + ((x + 3) / 3.6) ** 2 * -1.2 && Math.abs(x + 3) < 3.6, () => C.mouthO, 0);
+    else {
+      const w = happy ? 4.6 : 4, hgt = (happy ? 3.6 : 2.4) + talk * 1.6;
+      shape(fb, T, [-8, 0, 2, 7.5], (x, y) => { const kx = (x + 3) / w; if (Math.abs(kx) > 1) return false; const top = 2.1 - kx * 0.5, bot = top + hgt * Math.sqrt(1 - kx * kx); return y >= top && y <= bot; }, (x, y) => {
+        const kx = (x + 3) / w, top = 2.1 - kx * 0.5, bot = top + hgt * Math.sqrt(1 - kx * kx);
+        if ((talk > 0.2 || happy) && y > top + 1.1 && y < bot - 0.9) return C.mouth;
+        return Math.abs(((x + 3) % 1.9 + 1.9) % 1.9 - 0.95) < 0.22 && T.s > 0.9 ? C.scrD : 0xffffffff;
+      }, C.mouthO);
     }
-    const my = ey + Math.round(ry * 0.62), mw = Math.max(2, Math.round(rx * 0.55)), open = R.talkT > 0 ? Math.abs(Math.sin(t * 16)) : m === 'happy' ? 1 : 0.5;
-    if (m === 'sad') UI.hline(fb, cx - mw + 1, cx + mw - 1, my + 1, C.eye);
-    else if (m === 'wow') UI.rect(fb, cx - 1, my, 2, 2, C.mouth);
-    else { const mh = Math.max(1, Math.round((H / 12) * (0.6 + open))); for (let x = -mw; x <= mw; x++) { const yb = my + Math.round(mh * Math.sqrt(1 - (x / (mw + 0.5)) ** 2)); UI.vline(fb, cx + x, my, yb, C.mouth); if ((x + mw) % 2 === 0 && Math.abs(x) < mw) UI.put(fb, cx + x, my, 0xffffffff); } }
+    // eyes: white rings, blue irises that follow what Rotom looks at
+    for (const [ex, ey] of [[-8.8, -3.2], [3.6, -4]]) {
+      if (blink || happy) {
+        // closed / happy: a curved line (happy arcs up)
+        if (happy) shape(fb, T, [ex - 5, ey - 4, ex + 5, ey + 4], (x, y) => { const kx = (x - ex) / 4.2; if (Math.abs(kx) > 1) return false; const c = ey + 1.6 - (1 - kx * kx) * 3; return Math.abs(y - c) < 1.15; }, () => 0xffffffff, C.eyeO);
+        else shape(fb, T, [ex - 5, ey - 3, ex + 5, ey + 3], (x, y) => ((x - ex) / 4.4) ** 2 + ((y - ey - 0.6) / 1.3) ** 2 <= 1, (x, y) => (y > ey + 0.6 ? C.ring : 0xffffffff), C.eyeO);
+        continue;
+      }
+      shape(fb, T, [ex - 5.5, ey - 5.5, ex + 5.5, ey + 5.5], (x, y) => ((x - ex) / 4.6) ** 2 + ((y - ey) / 4.8) ** 2 <= 1, (x, y) => {
+        const dx = x - ex, dy = y - ey;
+        if (m === 'x') return Math.abs(Math.abs(dx) - Math.abs(dy)) < 0.8 && Math.abs(dx) < 2.6 ? C.eyeO : 0xffffffff;
+        const ir = m === 'wow' ? 1.7 : 2.9, ix = ex + R.lx * 1.2, iy = ey + R.ly * 1.1 + (m === 'sad' ? 0.8 : 0), id = Math.hypot((x - ix) / ir, (y - iy) / (ir * 1.15));
+        if (id <= 1) { if (Math.hypot(x - ix + 0.9, y - iy + 1) < 0.75) return 0xffffffff; return id > 0.72 ? C.irisD : C.iris; }
+        if (m === 'sad' && dy < -2) return C.eyeO;
+        return Math.hypot(dx, dy) > 3.8 ? C.ring : 0xffffffff;
+      }, C.eyeO);
+    }
   }
 
   /* ---------- hooks ---------- */

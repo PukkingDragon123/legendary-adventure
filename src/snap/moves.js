@@ -167,7 +167,8 @@ const Moves = (() => {
   function drawWheel(fb, S, t) {
     const W = M.wheel; if (!W) return;
     const k = U.ease.outBack(Math.min(1, W.t / 0.22));
-    const cx = Math.round(fb.w / 2), cy = Math.round(fb.h / 2), R = Math.round(Math.min(fb.w, fb.h) * 0.3 * k), r = Math.max(9, Math.round(Math.min(fb.w, fb.h) * 0.055));
+    // more moves (the boss TMs) → a wider ring with slightly smaller slots so they never overlap
+    const many = LIST.length > 14, cx = Math.round(fb.w / 2), cy = Math.round(fb.h / 2) + (many ? 2 : 0), R = Math.round(Math.min(fb.w, fb.h) * (many ? 0.37 : 0.3) * k), r = Math.max(many ? 8 : 9, Math.round(Math.min(fb.w, fb.h) * (many ? 0.045 : 0.055)));
     W.L = { cx, cy, R, r };
     UI.rectA(fb, 0, 0, fb.w, fb.h, 0xff0a0e20, 0.45 * Math.min(1, W.t / 0.15));
     // ring

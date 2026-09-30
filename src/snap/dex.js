@@ -1600,7 +1600,7 @@ const Dex = (() => {
   }
   function pageProg(fb, G, t) {
     const Q = content(G);
-    if (Q.w >= 200) {
+    if (Q.w >= 270) {
       const [L, R] = split(Q, 0.42, 3);
       card(fb, L); card(fb, R);
       scrollPanel(fb, 'progL', { x: L.x + 2, y: L.y + 2, w: L.w - 4, h: L.h - 4 }, (b, y0) => progSummary(b, L.x + 6, y0 + 4, L.w - 12, L.w >= 90) + 8);
@@ -1645,7 +1645,7 @@ const Dex = (() => {
       UI.rrect(b, x, y, w, h - 1, 3, on ? P.red : P.scrDD); UI.rrect(b, x + 1, y + 1, w - 2, h - 3, 2, on ? P.white : unread ? P.card : P.scrLL);
       const ps = h - 6, tt = DexData.S[m.sp] ? thumb(m.sp, ps, false) : null;
       if (tt) UI.img(b, tt, x + 2 + Math.round((ps - tt.w) / 2), y + 2 + Math.round((ps - tt.h) / 2)); else portrait(b, x + 2, y + 2, ps, m.sp);
-      const tx = x + ps + 5, big = h >= 26;
+      const tx = x + ps + 5, big = h >= 26 && w >= 150;
       Font.draw(b, fit(m.from.toUpperCase(), w - ps - 12), tx, y + 3, unread ? P.redD : P.faint, { font: 'small' });
       Font.draw(b, fit(m.subj, w - ps - 8, big ? 'body' : 'small'), tx, y + (big ? 12 : 11), unread ? P.text : P.dim, { font: big ? 'body' : 'small' });
       if (unread) UI.disc(b, x + w - 5, y + 5, 2, P.red);
@@ -1951,10 +1951,10 @@ const Dex = (() => {
     }
     const LQ = { x: R.x, y: R.y + th, w: R.w, h: R.h - th }, rh = C ? 21 : 26;
     listView(fb, 'shop', LQ, rows.length, rh, -1, (g, i, x, y, w, h) => {
-      const r = rows[i], afford = pts >= r.price, bw = w >= 140 ? 48 : 38, bh = 11;
+      const r = rows[i], afford = pts >= r.price, bw = w >= 140 ? 48 : 38, bh = 11, bigF = h >= 26 && w >= 190;
       UI.rrect(g, x, y, w, h - 1, 3, P.scrDD); UI.rrect(g, x + 1, y + 1, w - 2, h - 3, 2, r.owned ? P.white : P.card);
-      Font.draw(g, fit(r.name, w - bw - 10, h >= 26 ? 'body' : 'small'), x + 4, y + (h >= 26 ? 2 : 3), P.text, { font: h >= 26 ? 'body' : 'small' });
-      Font.draw(g, fit(r.desc || '', w - bw - 10), x + 4, y + (h >= 26 ? 15 : 12), P.faint, { font: 'small' });
+      Font.draw(g, fit(r.name, w - bw - 10, bigF ? 'body' : 'small'), x + 4, y + (bigF ? 2 : 4), P.text, { font: bigF ? 'body' : 'small' });
+      Font.draw(g, fit(r.desc || '', w - bw - 10), x + 4, y + (bigF ? 15 : 13), P.faint, { font: 'small' });
       pill(g, x + w - 3 - bw, y + Math.round((h - 1 - bh) / 2), bw, bh, r.owned ? P.grey : afford ? P.red : hex('#6a6a80'), 0xffffffff, r.owned ? 'OWNED' : '{coin}' + r.price, { hi: !r.owned });
     }, (i) => {
       const r = rows[i]; if (r.owned) return;
