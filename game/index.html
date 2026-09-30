@@ -6997,8 +6997,9 @@ const Flygon = (() => {
       const sweep = lerp(0.85, 0.12, spread);         // back from straight out
       const U = nrm([-Math.sin(sweep) * Math.cos(elev), Math.sin(elev), sd * Math.cos(sweep) * Math.cos(elev)]);
       const back = nrm(cross([0, 1, 0], U));
-      // pitch the chord axis a little with the body
-      const chord = nrm(add(back, [0, -0.25 * sd * 0, 0]));
+      // chord axis pointing forward, its leading edge twisted up so the broad face shows in 3/4 views
+      const fwdC = sd > 0 ? back : sc(back, -1);
+      const chord = nrm(sub(add(fwdC, [0, 0.55, 0]), sc(U, dot(add(fwdC, [0, 0.55, 0]), U))));
       const N = nrm(cross(U, chord));
       prims.push(PL(root, M3.cols(U, cross(N, U), N), id, id, WING_G, 1.4));
       anchors[sd > 0 ? 'wingN' : 'wingF'] = add(root, sc(U, 168));
@@ -18948,7 +18949,7 @@ const Slaking = (() => {
       if (sd < 0) {
         // lying: the left elbow on the ground, forearm up, hand under the cheek
         const cheek = onHead(-1.1, -0.5, 4);
-        const elL = [cheek[0] - 4, 13, cheek[2] + 12];
+        const elL = [cheek[0] - 4, 19, cheek[2] + 12];
         const wrL = add(cheek, [-4, -24, 4]);
         el = lerp3(el, elL, lie); wr = lerp3(wr, wrL, lie);
         hd = nrm(lerp3(hd, [0.35, 1, 0.3], lie)); palm = nrm(lerp3(palm, [0.2, 0, 1], lie));
@@ -18983,14 +18984,16 @@ const Slaking = (() => {
       const kick = moving ? Math.sin(ph) : 0;
       const hip = S([6, 22, 36 * sd]);
       const kneeS = [66, 44 + 6 * kick, 46 * sd], footS = [104 + 8 * kick, -4 + 4 * Math.max(0, kick), 50 * sd];
-      const kneeL = sd > 0 ? [50 + 10 * kick, -30, 34] : [30, -44, -30];
-      const footL = sd > 0 ? [26 + 12 * kick, -92, 38] : [8, -104, -30];
-      const knee = S(lerp3(kneeS, kneeL, lie)), foot = S(lerp3(footS, footL, lie));
+      // lying: both legs rest along the ground behind it, the top (right) one bent forward over the other
+      const kneeL = sd > 0 ? add(hip, [-34, 20, 42 + 8 * kick]) : add(hip, [-56, 0, 14]);
+      const footL = sd > 0 ? add(hip, [-92 + 10 * kick, 6, 40]) : add(hip, [-112, 0, 10]);
+      kneeL[1] = Math.max(kneeL[1], 24); footL[1] = Math.max(footL[1], 18);
+      const knee = lerp3(S(kneeS), kneeL, lie), foot = lerp3(S(footS), footL, lie);
       prims.push(seg(hip, knee, 25, 25, M3.v(Rw, [0, 1, 0]), id, id, M_FUR, 1.15));
       prims.push(seg(knee, foot, 21, 21, M3.v(Rw, [0, 1, 0]), id, id, M_FUR, 1.12));
       // two-toed beige foot, toes pointing forward/up
-      const fdir = nrm(M3.v(Rw, lerp3([0.25, 0.9, 0.1 * sd], [1, -0.1, 0.1 * sd], lie)));
-      const fup = nrm(M3.v(Rw, lerp3([-1, 0.2, 0], [0, 1, 0], lie)));
+      const fdir = nrm(lerp3(M3.v(Rw, [0.25, 0.9, 0.1 * sd]), [0.15, 0.3, 1], lie));
+      const fup = nrm(lerp3(M3.v(Rw, [-1, 0.2, 0]), [-1, 0.1, 0], lie));
       const Rf = axesAlong(fdir, fup);
       const X = [Rf[0], Rf[3], Rf[6]], Y = [Rf[1], Rf[4], Rf[7]], Z = [Rf[2], Rf[5], Rf[8]];
       const fc = add(foot, sc(X, 4));
@@ -19003,9 +19006,12 @@ const Slaking = (() => {
       anchors[sd > 0 ? 'footN' : 'footF'] = add(fc, sc(X, 20));
     }
 
-    // --- centre the lying body along x (it is long)
+    // --- re-ground on the lowest part, and centre the lying body along x (it is long)
+    let g = Infinity;
+    for (const q of prims) g = Math.min(g, lowY(q));
     const cx = lie * -44;
-    if (cx) { for (const q of prims) q.c = add(q.c, [cx, 0, 0]); for (const k in anchors) anchors[k] = add(anchors[k], [cx, 0, 0]); }
+    for (const q of prims) q.c = add(q.c, [cx, -g, 0]);
+    for (const k in anchors) anchors[k] = add(anchors[k], [cx, -g, 0]);
 
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
     for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
@@ -22033,6 +22039,283 @@ const Swampert = (() => {
 })();
 
 /* ------------------------------------------------------------------
+   Swellow — the Swallow Pokémon (0.7 m ≈ 122 units from the feet to the
+   top of the head at scale 1; the tail streamers rise higher). Taillow's
+   evolution. A posable 3D model rendered straight to pixel art by the
+   shared Creature pipeline (see src/creature.js, dev/CREATURE_GUIDE.md).
+   Model space: x = forward, y = up, z = near side at yaw 0, ground (the
+   toes when perched) at y = 0.
+
+   Design (official art / HOME model): a sleek swallow. Glossy navy crown,
+   nape and back with a spiky crest swept back from the back of the head;
+   a crimson face and throat, a navy chevron "V" across the chest with
+   more crimson below it and a white belly; a short pointed yellow beak;
+   stern black eyes under the navy brow. Long pointed navy wings (folded
+   along the body, tips crossing past the tail, or spread), a long
+   pointed tail, and two very long thin tail streamers tipped in crimson,
+   raised up and back when perched. Thin crimson legs, dark claws.
+
+   Pose parameters (all optional):
+     flap    radians  wing-beat phase (the spread wings beat with sin(flap));
+                      continuous
+     spread  0..1     wings folded along the body -> fully spread
+     dive    0..1     steep dive: nose down, wings swept back tight, legs
+                      tucked, streamers straight back
+     perch   0..1     1 = perched upright on its feet (the default); 0 = level
+                      flight posture (legs tucked back, streamers trail)
+     walk    radians  hopping walk when perched (legs step, body bobs);
+                      exactly 0 = still
+     mouth   0..1     beak open (`bill` accepted as an alias)
+     eyes    'open' | 'happy' | 'blink' | 'closed'
+     side    −1..1    ≈ cos(yaw), passed by the game (accepted, unused)
+
+   Anchors: top (highest point: streamer tip or head), head (head centre),
+   mouth, beak (beak tip), eyeN, eyeF, body (body centre), crest,
+   wingTipN / wingTipF, tail (streamer tip), feet (between the feet).
+------------------------------------------------------------------- */
+const Swellow = (() => {
+  const { chain, T, R, F, code } = Creature;
+
+  // ---- materials
+  const NAVY = 1, RED = 2, WHITE = 3, BEAK = 4, LEG = 5, CLAW = 6, MOUTH = 7, EYEK = 8, EYEW = 9;
+  const MAT = { NAVY, RED, WHITE, BEAK, LEG, CLAW, MOUTH, EYEK, EYEW };
+  const PAL = Creature.palette({
+    [NAVY]:  { r: ['#0e1e40', '#162c5a', '#1f4078', '#305a9a', '#5480bc'], od: '#060c1e', ol: '#10204a', ln: '#0c1a3c' },
+    [RED]:   { r: ['#860c2a', '#ae1438', '#d6234c', '#ec5270', '#fc92a4'], od: '#46040f', ol: '#7a0a24', ln: '#700a22' },
+    [WHITE]: { r: ['#a4aabe', '#c8cede', '#eceff6', '#fafbfd', '#ffffff'], od: '#3c4460', ol: '#68708c', ln: '#8088a4' },
+    [BEAK]:  { r: ['#b8860c', '#d8a818', '#f2c82a', '#fadd66', '#fff2b0'], od: '#5c4204', ol: '#94700a', ln: '#8e6a0c' },
+    [LEG]:   { r: ['#8e1030', '#b41c40', '#d83456', '#ee6078', '#fc9eae'], od: '#46040f', ol: '#7a0a24', ln: '#700a22' },
+    [CLAW]:  { r: ['#22242c', '#30323c', '#40444e', '#585c68', '#80848e'], od: '#0e1014', ol: '#22242c', ln: '#1a1c22' },
+    [MOUTH]: { r: ['#4e1224', '#6a1c30', '#86283e', '#a03c50', '#b85668'], od: '#2a0610', ol: '#4e1224', ln: '#46101e' },
+    [EYEK]:  { r: ['#08090e', '#0c0e14', '#10141c', '#181e28', '#242c38'], od: '#040508', ol: '#040508', ln: '#040508' },
+    [EYEW]:  { r: ['#dde2ec', '#f0f3f8', '#ffffff', '#ffffff', '#ffffff'], od: '#303844', ol: '#303844', ln: '#303844' },
+  });
+  const GLOSSY = { [NAVY]: 1, [BEAK]: 1 };
+  const C_NAVY = code(NAVY), C_RED = code(RED), C_WHITE = code(WHITE), C_BEAK = code(BEAK), C_BEAK_D = code(BEAK, -1);
+  const C_LEG = code(LEG), C_CLAW = code(CLAW), C_MOUTH = code(MOUTH), C_EYEK = code(EYEK), C_EYEW = code(EYEW);
+  const M_NAVY = () => C_NAVY, M_LEG = () => C_LEG, M_CLAW = () => C_CLAW;
+
+  // ---- helpers
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const add = V3.add, sub = V3.sub, sc = V3.scale, cross = V3.cross, nrm = V3.norm, dot = V3.dot;
+  const len3 = (a) => Math.hypot(a[0], a[1], a[2]);
+  const inF = (f, p) => add(f.t, M3.v(f.L, p));
+  const dirF = (f, d) => nrm(M3.v(f.L, d));
+  const E = (c, L, part, grp, mat) => ({ kind: 'ell', part, grp, c, L, mat });
+  const ellF = (f, r, part, grp, mat) => E(f.t, M3.mul(f.L, M3.diag(r[0], r[1], r[2])), part, grp, mat);
+  const transpose = (m) => [m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]];
+  function frameAlong(d, fwd) {
+    const Y = nrm(d);
+    let X = sub(fwd, sc(Y, dot(fwd, Y)));
+    if (len3(X) < 1e-4) X = cross(Y, [0, 0, 1]);
+    X = nrm(X);
+    return [X, Y, cross(X, Y)];
+  }
+  function seg(p0, p1, rx, rz, part, grp, mat, fwd = [1, 0, 0], ext = 1) {
+    const d = sub(p1, p0), l = len3(d);
+    const [X, Y, Z] = frameAlong(d, fwd);
+    return E(sc(add(p0, p1), 0.5), M3.cols(sc(X, rx), sc(Y, (l / 2) * ext), sc(Z, rz)), part, grp, mat);
+  }
+  // rotation with columns U (along), V (in plane), U × V
+  function frameUV(U, Vh) {
+    const u = nrm(U), v = nrm(sub(Vh, sc(u, dot(Vh, u))));
+    return M3.cols(u, v, cross(u, v));
+  }
+  function rotAxis(a, t) {
+    const c = Math.cos(t), s = Math.sin(t), C = 1 - c, [x, y, z] = a;
+    return [c + x * x * C, x * y * C - z * s, x * z * C + y * s, y * x * C + z * s, c + y * y * C, y * z * C - x * s, z * x * C - y * s, z * y * C + x * s, c + z * z * C];
+  }
+  function slerpM(A, B, t) {
+    const Q = M3.mul(transpose(A), B);
+    const ang = Math.acos(clamp((Q[0] + Q[4] + Q[8] - 1) / 2, -1, 1));
+    if (ang < 1e-5) return A;
+    const ax = [Q[7] - Q[5], Q[2] - Q[6], Q[3] - Q[1]];
+    if (len3(ax) < 1e-6) return t < 0.5 ? A : B;
+    return M3.mul(A, rotAxis(nrm(ax), ang * t));
+  }
+  const plate = (c, L, part, grp, shape, thick = 1.6) => ({ kind: 'plate', part, grp, c, L, shape, thick });
+
+  let curScale = 1;
+
+  /* ---------- head: navy cap and nape, crimson face; decal eyes under the brow ---------- */
+  const HR = [21, 20, 19.5];
+  const EYE_AZ = 0.62, EYE_V = 0.2;
+  const capLine = (s) => 0.4 - 0.12 * s[0] - 0.1 * Math.max(0, Math.abs(Math.atan2(s[2], s[0])) - 0.6);
+  function eyePix(s, kind) {
+    const az = Math.atan2(Math.abs(s[2]), s[0]);
+    const px = 1 / (curScale * HR[1]);
+    const a = (az - EYE_AZ) / Math.max(0.2, 2.2 * px), b = (s[1] - EYE_V) / Math.max(0.15, 1.8 * px);
+    const ain = -a; // + toward the beak
+    if (Math.abs(a) > 1.1 || Math.abs(b) > 1.4) return 0;
+    const lw = Math.max(0.22, 0.9 * px / Math.max(0.15, 1.8 * px));
+    if (kind === 'open') {
+      const top = 0.55 - 0.55 * ain; // stern brow sloping down toward the beak
+      const bot = -0.9 * Math.sqrt(Math.max(0, 1 - a * a));
+      if (Math.abs(a) > 1 || b > top + lw || b < bot) return 0;
+      if (b > top - lw * 0.4) return C_NAVY; // brow (the cap edge)
+      const pa = (ain - 0.2) / 0.62, pb = (b + 0.05) / 0.75;
+      return pa * pa + pb * pb < 1 ? C_EYEK : C_EYEW;
+    }
+    if (Math.abs(a) > 1) return 0;
+    let yc;
+    if (kind === 'happy') yc = -0.3 + 0.8 * (1 - a * a);
+    else if (kind === 'blink') yc = 0.1 - 0.3 * ain;
+    else yc = 0.15 - 0.3 * ain - 0.3 * (1 - a * a);
+    return Math.abs(b - yc) < lw ? C_EYEK : 0;
+  }
+  const headMat = (kind) => (s) => {
+    if (s[1] > capLine(s) || s[0] < -0.45 + 0.35 * Math.max(0, -s[1])) return C_NAVY;
+    if (s[0] > 0.05) { const e = eyePix(s, kind); if (e) return e; }
+    return C_RED;
+  };
+  // neck: red throat in front, navy nape
+  const neckMat = (s) => (s[0] > -0.25 + 0.4 * s[1] ? C_RED : C_NAVY);
+  // body (body frame, x forward along the body axis): red chest with a navy V, white belly, navy back
+  function bodyMat(s) {
+    const w = Math.abs(s[2]);
+    if (s[0] > 0.05 && s[1] > -0.2 - 0.9 * s[0]) {
+      const vl = 0.45 - 0.9 * s[0] + 1.25 * w; // chevron (point down at the front)
+      if (w < 0.8) {
+        if (Math.abs(s[1] - vl) < 0.1) return C_NAVY;
+        if (s[1] > vl && w < 0.62 + 0.2 * s[1]) return C_RED;
+        if (s[1] > vl - 0.32) return C_RED;
+      }
+    }
+    if (s[1] < 0.1 - 0.8 * Math.max(0, s[0] + 0.2) && s[0] > -0.75 && Math.abs(s[2]) < 0.93) return C_WHITE;
+    return C_NAVY;
+  }
+
+  /* ---------- plates ---------- */
+  // long pointed swallow wing: u = root → tip, v = leading edge (+)
+  const WING_G = bakeShape(Shape2D.poly([[0, -10], [0, 11], [16, 12.5], [38, 9.5], [60, 4.5], [82, 0.6], [62, -3.2], [40, -6.5], [18, -10]], C_NAVY, 8));
+  const WING_LN = Shape2D.catmull([[6, -4], [30, -2.5], [58, -0.6]], false, 4);
+  // streamer: long thin blade, crimson tip
+  const STR_G = bakeShape(Shape2D.poly([[0, -2.6], [30, -2.2], [62, -1.6], [88, -0.6], [96, 0], [88, 1.2], [62, 2.2], [30, 2.6], [0, 2.8]], C_NAVY, 6, (u) => (u > 60 ? C_RED : C_NAVY)));
+  // pointed lower tail
+  const TAIL_G = bakeShape(Shape2D.poly([[0, -6], [18, -5], [36, -2.5], [48, 0], [36, 2.5], [18, 5], [0, 6]], C_NAVY, 6));
+  // crest spike
+  const CREST_G = bakeShape(Shape2D.poly([[0, -3.5], [9, -2.6], [18, -0.4], [9, 2.2], [0, 3.5]], C_NAVY, 5));
+
+  const DEFAULT = { flap: 0, spread: 0, dive: 0, perch: 1, walk: 0, mouth: 0, eyes: 'open', side: 1 };
+  // 1 body, 2 head, 3 neck, 4 beak, 5 lower beak, 6 mouth, 7/8 wings, 9 streamers, 10 tail, 11 crest, 12/13 legs
+  const PRI = { 1: 0, 2: 1, 3: 0, 4: 3, 5: 3, 6: 2, 7: 3, 8: 3, 9: 0, 10: 0, 11: 0, 12: 1, 13: 1 };
+
+  function build(pose) {
+    const P = Object.assign({}, DEFAULT, pose);
+    const prims = [], anchors = {};
+    const sp0 = clamp(+P.spread || 0, 0, 1), fl = +P.flap || 0;
+    const dv = clamp(+P.dive || 0, 0, 1), pe = clamp(P.perch === undefined ? 1 : +P.perch, 0, 1);
+    const sp = sp0 * (1 - dv);
+    const st = +P.walk || 0, walking = st !== 0 && pe > 0.5;
+    const bo = clamp(+(pose && pose.bill !== undefined ? pose.bill : P.mouth) || 0, 0, 1);
+    const kind = ['open', 'happy', 'blink', 'closed'].includes(P.eyes) ? P.eyes : 'open';
+    const hop = walking ? 3.5 * Math.abs(Math.sin(st)) : 0;
+    // body pitch: perched upright, level in flight, nose down in a dive
+    const pitch = lerp(0.05, 0.5, pe) * (1 - dv) - 0.95 * dv;
+    const root = chain(T(0, 50 + hop, 0), R(M3.rz(pitch)));
+
+    /* --- body --- */
+    prims.push(ellF(root, [36, 22, 21], 1, 1, bodyMat));
+    anchors.body = root.t;
+
+    /* --- neck + head (the head stays level-ish when perched) --- */
+    const neckF = chain(root, T(27, 17, 0));
+    prims.push(ellF(chain(neckF, R(M3.rz(0.5))), [15, 17, 15], 3, 3, neckMat));
+    const head = chain(root, T(33, 34, 0), R(M3.rz(-pitch * 0.75 - 0.04 * bo + (walking ? 0.04 * Math.sin(2 * st) : 0))));
+    const headPrim = ellF(head, HR, 2, 2, headMat(kind));
+    prims.push(headPrim);
+    anchors.head = head.t;
+    const onHead = (az, v) => { const s = Creature.sph(az, v); return inF(head, [HR[0] * s[0], HR[1] * s[1], HR[2] * s[2]]); };
+    anchors.eyeN = onHead(EYE_AZ, EYE_V); anchors.eyeF = onHead(-EYE_AZ, EYE_V);
+    // beak: short, pointed, yellow; lower half opens
+    const hinge = chain(head, T(17, 0.5, 0));
+    const ub = chain(hinge, R(M3.rz(bo * 0.15)));
+    prims.push(ellF(chain(ub, T(7, 0.6, 0), R(M3.rz(-0.12))), [11, 3.4, 4.6], 4, 4, () => C_BEAK));
+    const lb = chain(hinge, R(M3.rz(-0.1 - bo * 0.55)));
+    prims.push(ellF(chain(lb, T(6, -1.4, 0)), [9, 2.2, 3.8], 5, 5, () => C_BEAK_D));
+    if (bo > 0.05) prims.push(ellF(chain(hinge, T(3.5, -1.5, 0), R(M3.rz(-bo * 0.25))), [6, 1.4 + bo * 2, 4], 6, 6, () => C_MOUTH));
+    anchors.beak = inF(ub, [17, -0.6, 0]);
+    anchors.mouth = inF(hinge, [4, -1.5, 0]);
+    // crest: three navy spikes swept back from the back of the head
+    const cb = inF(head, [-15, 8, 0]);
+    for (const [a, z, l] of [[0.35, 0, 1.25], [0.05, 4.5, 1], [0.05, -4.5, 1], [-0.25, 0, 0.9]]) {
+      const U = dirF(head, [-Math.cos(a), Math.sin(a), z * 0.03]);
+      const L = M3.mul(frameUV(U, dirF(head, [0, 1, 0.2 * Math.sign(z || 1)])), M3.diag(l, 1, 1));
+      prims.push(plate(add(cb, dirF(head, [0, 0, z])), L, 11, 11, CREST_G, 2.2));
+    }
+    anchors.crest = add(cb, sc(dirF(head, [-Math.cos(0.35), Math.sin(0.35), 0]), 22));
+
+    /* --- wings: folded along the body, or spread and beating --- */
+    const beat = Math.sin(fl);
+    for (const sd of [1, -1]) {
+      const id = sd > 0 ? 7 : 8;
+      // body frame directions (z mirrored per side)
+      const zf = (v) => [v[0], v[1], v[2] * sd];
+      const Rfold = frameUV(dirF(root, zf([-0.97, -0.2 - 0.08 * dv, 0.12])), dirF(root, zf([0.15, 1, 0.1])));
+      const el = 0.28 + 0.85 * beat;
+      const Rspr = frameUV(dirF(root, zf([-0.28, Math.sin(el), Math.cos(el)])), dirF(root, zf([1, 0.15 - 0.3 * beat, 0])));
+      const Rw = slerpM(Rfold, Rspr, sp);
+      const sh = inF(root, [lerp(10, 12, sp), lerp(8, 12, sp), sd * lerp(17, 12, sp)]);
+      const w = plate(sh, Rw, id, id, WING_G, 2);
+      w.lines = [{ pts: WING_LN.map(([u, v]) => [u, v * (sd > 0 ? 1 : 1), 0]), mat: NAVY, useLn: true }];
+      prims.push(w);
+      anchors[sd > 0 ? 'wingTipN' : 'wingTipF'] = add(sh, M3.v(Rw, [82, 0.6, 0]));
+    }
+
+    /* --- tail: pointed lower tail + two long streamers --- */
+    const tb = inF(root, [-32, 2, 0]);
+    prims.push(plate(tb, frameUV(dirF(root, [-1, -0.08, 0]), dirF(root, [0, 0.15, 1])), 10, 10, TAIL_G, 2.4));
+    const sa = lerp(0.14, 1.15, pe) * (1 - dv);
+    let tipTop = null;
+    for (const [k, da] of [[1, 0.08], [-1, -0.1]]) {
+      const U = dirF(root, [-Math.cos(sa + da), Math.sin(sa + da), k * 0.12]);
+      const Rs = frameUV(U, dirF(root, [0, 0.3, 1]).map((v) => v));
+      // turn the blade edge-up so its broad side faces the camera side
+      const Rs2 = frameUV(U, cross(U, dirF(root, [0, 0, 1])));
+      const tip = add(add(tb, [0, 0, k * 2.5]), sc(U, 96));
+      prims.push(plate(add(tb, [0, 0, k * 2.5]), Rs2 || Rs, 9, 9, STR_G, 1.8));
+      if (!tipTop || tip[1] > tipTop[1]) tipTop = tip;
+    }
+    anchors.tail = tipTop;
+
+    /* --- legs: thin crimson legs, three toes forward + one back, dark claws --- */
+    const feet = [];
+    const tuck = Math.max(1 - pe, dv);
+    for (const sd of [1, -1]) {
+      const id = sd > 0 ? 12 : 13;
+      const ph = st + (sd > 0 ? 0 : Math.PI);
+      const lift = walking ? 3 * Math.max(0, Math.sin(ph)) : 0;
+      const hip = inF(root, [2, -17, sd * 9]);
+      const standAnk = [6 + (walking ? 3 * Math.cos(ph) : 0), 5 + lift, sd * 10];
+      const tuckAnk = inF(root, [-12, -24, sd * 7]);
+      const ank = [lerp(standAnk[0], tuckAnk[0], tuck), lerp(standAnk[1], tuckAnk[1], tuck), lerp(standAnk[2], tuckAnk[2], tuck)];
+      prims.push(seg(hip, ank, 3, 3, id, id, M_LEG, [1, 0, 0], 1.1));
+      const toeRot = lerp(0, -1.2, tuck);
+      for (const [a, len] of [[0.4, 9], [0, 10.5], [-0.4, 9], [Math.PI, 6]]) {
+        const d = nrm([Math.cos(a) * Math.cos(toeRot), -0.45 + Math.sin(toeRot) * (a === Math.PI ? -1 : 1), Math.sin(a) * 0.9]);
+        const te = add(ank, sc(d, len));
+        prims.push(seg(ank, te, 1.5, 1.5, id, id, M_LEG, [0, 1, 0], 1.1));
+        prims.push(seg(te, add(te, sc(nrm([d[0], d[1] - 0.6, d[2]]), 3.2)), 1.1, 1.1, id, id, M_CLAW, [0, 1, 0]));
+      }
+      feet.push(ank);
+    }
+    anchors.feet = sc(add(feet[0], feet[1]), 0.5);
+
+    const headTop = inF(head, [0, HR[1], 0]);
+    anchors.top = tipTop[1] > headTop[1] ? tipTop : headTop;
+    return { prims, stamps: [], dots: [], anchors, pose: P, headPrim, pri: PRI, glossy: GLOSSY, baseMat: NAVY, shadowSteps: 12 };
+  }
+
+  function render(model, opt) {
+    curScale = opt.scale || 1;
+    return Creature.render(model, opt);
+  }
+
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.7, bw: 250, bh: 240, oy: 0.84 } };
+})();
+
+/* ------------------------------------------------------------------
    Taillow — the TinySwallow Pokémon (0.3 m ≈ 53 units from the feet to
    the top of the head). A posable 3D model rendered straight to pixel art
    by the shared Creature renderer.
@@ -23741,6 +24024,9 @@ const Vibrava = (() => {
       if (i < 2) anchors[sd > 0 ? 'footN' : 'footF'] = [foot[0], 0, foot[2]];
     });
 
+    // centre the long body (head to tail tip) on the origin
+    for (const q of prims) q.c = add(q.c, [40, 0, 0]);
+    for (const k in anchors) anchors[k] = add(anchors[k], [40, 0, 0]);
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
     for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
     return { prims, stamps: [], dots: [], anchors, pose: P, headPrim, pri: PRI, glossy: GLOSSY, baseMat: BODY, shadowSteps: 12 };
@@ -26615,7 +26901,7 @@ const Zigzagoon = (() => {
   return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.4, bw: 152, bh: 96, oy: 0.89 } };
 })();
 
-const SP = { Mudkip: typeof Mudkip !== 'undefined' ? Mudkip : null, Altaria: typeof Altaria !== 'undefined' ? Altaria : null, Anorith: typeof Anorith !== 'undefined' ? Anorith : null, Azumarill: typeof Azumarill !== 'undefined' ? Azumarill : null, Azurill: typeof Azurill !== 'undefined' ? Azurill : null, Bagon: typeof Bagon !== 'undefined' ? Bagon : null, Breloom: typeof Breloom !== 'undefined' ? Breloom : null, Budew: typeof Budew !== 'undefined' ? Budew : null, Carvanha: typeof Carvanha !== 'undefined' ? Carvanha : null, Castform: typeof Castform !== 'undefined' ? Castform : null, Chatot: typeof Chatot !== 'undefined' ? Chatot : null, Chinchou: typeof Chinchou !== 'undefined' ? Chinchou : null, Clamperl: typeof Clamperl !== 'undefined' ? Clamperl : null, Corphish: typeof Corphish !== 'undefined' ? Corphish : null, Corsola: typeof Corsola !== 'undefined' ? Corsola : null, Crawdaunt: typeof Crawdaunt !== 'undefined' ? Crawdaunt : null, Deoxys: typeof Deoxys !== 'undefined' ? Deoxys : null, Dialga: typeof Dialga !== 'undefined' ? Dialga : null, Feebas: typeof Feebas !== 'undefined' ? Feebas : null, Flygon: typeof Flygon !== 'undefined' ? Flygon : null, Groudon: typeof Groudon !== 'undefined' ? Groudon : null, Illumise: typeof Illumise !== 'undefined' ? Illumise : null, Jirachi: typeof Jirachi !== 'undefined' ? Jirachi : null, Kecleon: typeof Kecleon !== 'undefined' ? Kecleon : null, Kyogre: typeof Kyogre !== 'undefined' ? Kyogre : null, Latias: typeof Latias !== 'undefined' ? Latias : null, Latios: typeof Latios !== 'undefined' ? Latios : null, Lileep: typeof Lileep !== 'undefined' ? Lileep : null, Linoone: typeof Linoone !== 'undefined' ? Linoone : null, Lombre: typeof Lombre !== 'undefined' ? Lombre : null, Lotad: typeof Lotad !== 'undefined' ? Lotad : null, Ludicolo: typeof Ludicolo !== 'undefined' ? Ludicolo : null, Lunatone: typeof Lunatone !== 'undefined' ? Lunatone : null, Luvdisc: typeof Luvdisc !== 'undefined' ? Luvdisc : null, Mantine: typeof Mantine !== 'undefined' ? Mantine : null, Marill: typeof Marill !== 'undefined' ? Marill : null, Marshtomp: typeof Marshtomp !== 'undefined' ? Marshtomp : null, Masquerain: typeof Masquerain !== 'undefined' ? Masquerain : null, Meloetta: typeof Meloetta !== 'undefined' ? Meloetta : null, Milotic: typeof Milotic !== 'undefined' ? Milotic : null, Minior: typeof Minior !== 'undefined' ? Minior : null, Minun: typeof Minun !== 'undefined' ? Minun : null, Nincada: typeof Nincada !== 'undefined' ? Nincada : null, Numel: typeof Numel !== 'undefined' ? Numel : null, Nuzleaf: typeof Nuzleaf !== 'undefined' ? Nuzleaf : null, Palkia: typeof Palkia !== 'undefined' ? Palkia : null, Pelipper: typeof Pelipper !== 'undefined' ? Pelipper : null, Plusle: typeof Plusle !== 'undefined' ? Plusle : null, Rayquaza: typeof Rayquaza !== 'undefined' ? Rayquaza : null, Regice: typeof Regice !== 'undefined' ? Regice : null, Relicanth: typeof Relicanth !== 'undefined' ? Relicanth : null, Remoraid: typeof Remoraid !== 'undefined' ? Remoraid : null, Sealeo: typeof Sealeo !== 'undefined' ? Sealeo : null, Seedot: typeof Seedot !== 'undefined' ? Seedot : null, Sharpedo: typeof Sharpedo !== 'undefined' ? Sharpedo : null, Shroomish: typeof Shroomish !== 'undefined' ? Shroomish : null, Slaking: typeof Slaking !== 'undefined' ? Slaking : null, Slakoth: typeof Slakoth !== 'undefined' ? Slakoth : null, Slugma: typeof Slugma !== 'undefined' ? Slugma : null, Snorunt: typeof Snorunt !== 'undefined' ? Snorunt : null, Solrock: typeof Solrock !== 'undefined' ? Solrock : null, Spheal: typeof Spheal !== 'undefined' ? Spheal : null, Spinda: typeof Spinda !== 'undefined' ? Spinda : null, Starmie: typeof Starmie !== 'undefined' ? Starmie : null, Staryu: typeof Staryu !== 'undefined' ? Staryu : null, Surskit: typeof Surskit !== 'undefined' ? Surskit : null, Swablu: typeof Swablu !== 'undefined' ? Swablu : null, Swampert: typeof Swampert !== 'undefined' ? Swampert : null, Taillow: typeof Taillow !== 'undefined' ? Taillow : null, Tentacool: typeof Tentacool !== 'undefined' ? Tentacool : null, Torkoal: typeof Torkoal !== 'undefined' ? Torkoal : null, Trapinch: typeof Trapinch !== 'undefined' ? Trapinch : null, Tropius: typeof Tropius !== 'undefined' ? Tropius : null, Vibrava: typeof Vibrava !== 'undefined' ? Vibrava : null, Vigoroth: typeof Vigoroth !== 'undefined' ? Vigoroth : null, Volbeat: typeof Volbeat !== 'undefined' ? Volbeat : null, Wailmer: typeof Wailmer !== 'undefined' ? Wailmer : null, Wailord: typeof Wailord !== 'undefined' ? Wailord : null, Walrein: typeof Walrein !== 'undefined' ? Walrein : null, Wingull: typeof Wingull !== 'undefined' ? Wingull : null, Wobbuffet: typeof Wobbuffet !== 'undefined' ? Wobbuffet : null, Wynaut: typeof Wynaut !== 'undefined' ? Wynaut : null, Zigzagoon: typeof Zigzagoon !== 'undefined' ? Zigzagoon : null };
+const SP = { Mudkip: typeof Mudkip !== 'undefined' ? Mudkip : null, Altaria: typeof Altaria !== 'undefined' ? Altaria : null, Anorith: typeof Anorith !== 'undefined' ? Anorith : null, Azumarill: typeof Azumarill !== 'undefined' ? Azumarill : null, Azurill: typeof Azurill !== 'undefined' ? Azurill : null, Bagon: typeof Bagon !== 'undefined' ? Bagon : null, Breloom: typeof Breloom !== 'undefined' ? Breloom : null, Budew: typeof Budew !== 'undefined' ? Budew : null, Carvanha: typeof Carvanha !== 'undefined' ? Carvanha : null, Castform: typeof Castform !== 'undefined' ? Castform : null, Chatot: typeof Chatot !== 'undefined' ? Chatot : null, Chinchou: typeof Chinchou !== 'undefined' ? Chinchou : null, Clamperl: typeof Clamperl !== 'undefined' ? Clamperl : null, Corphish: typeof Corphish !== 'undefined' ? Corphish : null, Corsola: typeof Corsola !== 'undefined' ? Corsola : null, Crawdaunt: typeof Crawdaunt !== 'undefined' ? Crawdaunt : null, Deoxys: typeof Deoxys !== 'undefined' ? Deoxys : null, Dialga: typeof Dialga !== 'undefined' ? Dialga : null, Feebas: typeof Feebas !== 'undefined' ? Feebas : null, Flygon: typeof Flygon !== 'undefined' ? Flygon : null, Groudon: typeof Groudon !== 'undefined' ? Groudon : null, Illumise: typeof Illumise !== 'undefined' ? Illumise : null, Jirachi: typeof Jirachi !== 'undefined' ? Jirachi : null, Kecleon: typeof Kecleon !== 'undefined' ? Kecleon : null, Kyogre: typeof Kyogre !== 'undefined' ? Kyogre : null, Latias: typeof Latias !== 'undefined' ? Latias : null, Latios: typeof Latios !== 'undefined' ? Latios : null, Lileep: typeof Lileep !== 'undefined' ? Lileep : null, Linoone: typeof Linoone !== 'undefined' ? Linoone : null, Lombre: typeof Lombre !== 'undefined' ? Lombre : null, Lotad: typeof Lotad !== 'undefined' ? Lotad : null, Ludicolo: typeof Ludicolo !== 'undefined' ? Ludicolo : null, Lunatone: typeof Lunatone !== 'undefined' ? Lunatone : null, Luvdisc: typeof Luvdisc !== 'undefined' ? Luvdisc : null, Mantine: typeof Mantine !== 'undefined' ? Mantine : null, Marill: typeof Marill !== 'undefined' ? Marill : null, Marshtomp: typeof Marshtomp !== 'undefined' ? Marshtomp : null, Masquerain: typeof Masquerain !== 'undefined' ? Masquerain : null, Meloetta: typeof Meloetta !== 'undefined' ? Meloetta : null, Milotic: typeof Milotic !== 'undefined' ? Milotic : null, Minior: typeof Minior !== 'undefined' ? Minior : null, Minun: typeof Minun !== 'undefined' ? Minun : null, Nincada: typeof Nincada !== 'undefined' ? Nincada : null, Numel: typeof Numel !== 'undefined' ? Numel : null, Nuzleaf: typeof Nuzleaf !== 'undefined' ? Nuzleaf : null, Palkia: typeof Palkia !== 'undefined' ? Palkia : null, Pelipper: typeof Pelipper !== 'undefined' ? Pelipper : null, Plusle: typeof Plusle !== 'undefined' ? Plusle : null, Rayquaza: typeof Rayquaza !== 'undefined' ? Rayquaza : null, Regice: typeof Regice !== 'undefined' ? Regice : null, Relicanth: typeof Relicanth !== 'undefined' ? Relicanth : null, Remoraid: typeof Remoraid !== 'undefined' ? Remoraid : null, Sealeo: typeof Sealeo !== 'undefined' ? Sealeo : null, Seedot: typeof Seedot !== 'undefined' ? Seedot : null, Sharpedo: typeof Sharpedo !== 'undefined' ? Sharpedo : null, Shroomish: typeof Shroomish !== 'undefined' ? Shroomish : null, Slaking: typeof Slaking !== 'undefined' ? Slaking : null, Slakoth: typeof Slakoth !== 'undefined' ? Slakoth : null, Slugma: typeof Slugma !== 'undefined' ? Slugma : null, Snorunt: typeof Snorunt !== 'undefined' ? Snorunt : null, Solrock: typeof Solrock !== 'undefined' ? Solrock : null, Spheal: typeof Spheal !== 'undefined' ? Spheal : null, Spinda: typeof Spinda !== 'undefined' ? Spinda : null, Starmie: typeof Starmie !== 'undefined' ? Starmie : null, Staryu: typeof Staryu !== 'undefined' ? Staryu : null, Surskit: typeof Surskit !== 'undefined' ? Surskit : null, Swablu: typeof Swablu !== 'undefined' ? Swablu : null, Swampert: typeof Swampert !== 'undefined' ? Swampert : null, Swellow: typeof Swellow !== 'undefined' ? Swellow : null, Taillow: typeof Taillow !== 'undefined' ? Taillow : null, Tentacool: typeof Tentacool !== 'undefined' ? Tentacool : null, Torkoal: typeof Torkoal !== 'undefined' ? Torkoal : null, Trapinch: typeof Trapinch !== 'undefined' ? Trapinch : null, Tropius: typeof Tropius !== 'undefined' ? Tropius : null, Vibrava: typeof Vibrava !== 'undefined' ? Vibrava : null, Vigoroth: typeof Vigoroth !== 'undefined' ? Vigoroth : null, Volbeat: typeof Volbeat !== 'undefined' ? Volbeat : null, Wailmer: typeof Wailmer !== 'undefined' ? Wailmer : null, Wailord: typeof Wailord !== 'undefined' ? Wailord : null, Walrein: typeof Walrein !== 'undefined' ? Walrein : null, Wingull: typeof Wingull !== 'undefined' ? Wingull : null, Wobbuffet: typeof Wobbuffet !== 'undefined' ? Wobbuffet : null, Wynaut: typeof Wynaut !== 'undefined' ? Wynaut : null, Zigzagoon: typeof Zigzagoon !== 'undefined' ? Zigzagoon : null };
 function crop(r) {
   const { buf } = r; const W = buf.w, H = buf.h, d = buf.d;
   let x0 = W, y0 = H, x1 = -1, y1 = -1;
@@ -26633,7 +26919,7 @@ onmessage = (e) => {
 postMessage({ ready: true });
 </script>
 <script>
-const SPECIES_LIST = ["Mudkip","Altaria","Anorith","Azumarill","Azurill","Bagon","Breloom","Budew","Carvanha","Castform","Chatot","Chinchou","Clamperl","Corphish","Corsola","Crawdaunt","Deoxys","Dialga","Feebas","Flygon","Groudon","Illumise","Jirachi","Kecleon","Kyogre","Latias","Latios","Lileep","Linoone","Lombre","Lotad","Ludicolo","Lunatone","Luvdisc","Mantine","Marill","Marshtomp","Masquerain","Meloetta","Milotic","Minior","Minun","Nincada","Numel","Nuzleaf","Palkia","Pelipper","Plusle","Rayquaza","Regice","Relicanth","Remoraid","Sealeo","Seedot","Sharpedo","Shroomish","Slaking","Slakoth","Slugma","Snorunt","Solrock","Spheal","Spinda","Starmie","Staryu","Surskit","Swablu","Swampert","Taillow","Tentacool","Torkoal","Trapinch","Tropius","Vibrava","Vigoroth","Volbeat","Wailmer","Wailord","Walrein","Wingull","Wobbuffet","Wynaut","Zigzagoon"];
+const SPECIES_LIST = ["Mudkip","Altaria","Anorith","Azumarill","Azurill","Bagon","Breloom","Budew","Carvanha","Castform","Chatot","Chinchou","Clamperl","Corphish","Corsola","Crawdaunt","Deoxys","Dialga","Feebas","Flygon","Groudon","Illumise","Jirachi","Kecleon","Kyogre","Latias","Latios","Lileep","Linoone","Lombre","Lotad","Ludicolo","Lunatone","Luvdisc","Mantine","Marill","Marshtomp","Masquerain","Meloetta","Milotic","Minior","Minun","Nincada","Numel","Nuzleaf","Palkia","Pelipper","Plusle","Rayquaza","Regice","Relicanth","Remoraid","Sealeo","Seedot","Sharpedo","Shroomish","Slaking","Slakoth","Slugma","Snorunt","Solrock","Spheal","Spinda","Starmie","Staryu","Surskit","Swablu","Swampert","Swellow","Taillow","Tentacool","Torkoal","Trapinch","Tropius","Vibrava","Vigoroth","Volbeat","Wailmer","Wailord","Walrein","Wingull","Wobbuffet","Wynaut","Zigzagoon"];
 /* ==== src/px.js ==== */
 /* ------------------------------------------------------------------
    PX — tiny pixel-art framebuffer toolkit.
@@ -34423,8 +34709,9 @@ const Flygon = (() => {
       const sweep = lerp(0.85, 0.12, spread);         // back from straight out
       const U = nrm([-Math.sin(sweep) * Math.cos(elev), Math.sin(elev), sd * Math.cos(sweep) * Math.cos(elev)]);
       const back = nrm(cross([0, 1, 0], U));
-      // pitch the chord axis a little with the body
-      const chord = nrm(add(back, [0, -0.25 * sd * 0, 0]));
+      // chord axis pointing forward, its leading edge twisted up so the broad face shows in 3/4 views
+      const fwdC = sd > 0 ? back : sc(back, -1);
+      const chord = nrm(sub(add(fwdC, [0, 0.55, 0]), sc(U, dot(add(fwdC, [0, 0.55, 0]), U))));
       const N = nrm(cross(U, chord));
       prims.push(PL(root, M3.cols(U, cross(N, U), N), id, id, WING_G, 1.4));
       anchors[sd > 0 ? 'wingN' : 'wingF'] = add(root, sc(U, 168));
@@ -46411,7 +46698,7 @@ const Slaking = (() => {
       if (sd < 0) {
         // lying: the left elbow on the ground, forearm up, hand under the cheek
         const cheek = onHead(-1.1, -0.5, 4);
-        const elL = [cheek[0] - 4, 13, cheek[2] + 12];
+        const elL = [cheek[0] - 4, 19, cheek[2] + 12];
         const wrL = add(cheek, [-4, -24, 4]);
         el = lerp3(el, elL, lie); wr = lerp3(wr, wrL, lie);
         hd = nrm(lerp3(hd, [0.35, 1, 0.3], lie)); palm = nrm(lerp3(palm, [0.2, 0, 1], lie));
@@ -46446,14 +46733,16 @@ const Slaking = (() => {
       const kick = moving ? Math.sin(ph) : 0;
       const hip = S([6, 22, 36 * sd]);
       const kneeS = [66, 44 + 6 * kick, 46 * sd], footS = [104 + 8 * kick, -4 + 4 * Math.max(0, kick), 50 * sd];
-      const kneeL = sd > 0 ? [50 + 10 * kick, -30, 34] : [30, -44, -30];
-      const footL = sd > 0 ? [26 + 12 * kick, -92, 38] : [8, -104, -30];
-      const knee = S(lerp3(kneeS, kneeL, lie)), foot = S(lerp3(footS, footL, lie));
+      // lying: both legs rest along the ground behind it, the top (right) one bent forward over the other
+      const kneeL = sd > 0 ? add(hip, [-34, 20, 42 + 8 * kick]) : add(hip, [-56, 0, 14]);
+      const footL = sd > 0 ? add(hip, [-92 + 10 * kick, 6, 40]) : add(hip, [-112, 0, 10]);
+      kneeL[1] = Math.max(kneeL[1], 24); footL[1] = Math.max(footL[1], 18);
+      const knee = lerp3(S(kneeS), kneeL, lie), foot = lerp3(S(footS), footL, lie);
       prims.push(seg(hip, knee, 25, 25, M3.v(Rw, [0, 1, 0]), id, id, M_FUR, 1.15));
       prims.push(seg(knee, foot, 21, 21, M3.v(Rw, [0, 1, 0]), id, id, M_FUR, 1.12));
       // two-toed beige foot, toes pointing forward/up
-      const fdir = nrm(M3.v(Rw, lerp3([0.25, 0.9, 0.1 * sd], [1, -0.1, 0.1 * sd], lie)));
-      const fup = nrm(M3.v(Rw, lerp3([-1, 0.2, 0], [0, 1, 0], lie)));
+      const fdir = nrm(lerp3(M3.v(Rw, [0.25, 0.9, 0.1 * sd]), [0.15, 0.3, 1], lie));
+      const fup = nrm(lerp3(M3.v(Rw, [-1, 0.2, 0]), [-1, 0.1, 0], lie));
       const Rf = axesAlong(fdir, fup);
       const X = [Rf[0], Rf[3], Rf[6]], Y = [Rf[1], Rf[4], Rf[7]], Z = [Rf[2], Rf[5], Rf[8]];
       const fc = add(foot, sc(X, 4));
@@ -46466,9 +46755,12 @@ const Slaking = (() => {
       anchors[sd > 0 ? 'footN' : 'footF'] = add(fc, sc(X, 20));
     }
 
-    // --- centre the lying body along x (it is long)
+    // --- re-ground on the lowest part, and centre the lying body along x (it is long)
+    let g = Infinity;
+    for (const q of prims) g = Math.min(g, lowY(q));
     const cx = lie * -44;
-    if (cx) { for (const q of prims) q.c = add(q.c, [cx, 0, 0]); for (const k in anchors) anchors[k] = add(anchors[k], [cx, 0, 0]); }
+    for (const q of prims) q.c = add(q.c, [cx, -g, 0]);
+    for (const k in anchors) anchors[k] = add(anchors[k], [cx, -g, 0]);
 
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
     for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
@@ -49506,6 +49798,284 @@ const Swampert = (() => {
   return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 1.5, bw: 330, bh: 340, oy: 0.94 } };
 })();
 
+/* ==== src/species/swellow.js ==== */
+/* ------------------------------------------------------------------
+   Swellow — the Swallow Pokémon (0.7 m ≈ 122 units from the feet to the
+   top of the head at scale 1; the tail streamers rise higher). Taillow's
+   evolution. A posable 3D model rendered straight to pixel art by the
+   shared Creature pipeline (see src/creature.js, dev/CREATURE_GUIDE.md).
+   Model space: x = forward, y = up, z = near side at yaw 0, ground (the
+   toes when perched) at y = 0.
+
+   Design (official art / HOME model): a sleek swallow. Glossy navy crown,
+   nape and back with a spiky crest swept back from the back of the head;
+   a crimson face and throat, a navy chevron "V" across the chest with
+   more crimson below it and a white belly; a short pointed yellow beak;
+   stern black eyes under the navy brow. Long pointed navy wings (folded
+   along the body, tips crossing past the tail, or spread), a long
+   pointed tail, and two very long thin tail streamers tipped in crimson,
+   raised up and back when perched. Thin crimson legs, dark claws.
+
+   Pose parameters (all optional):
+     flap    radians  wing-beat phase (the spread wings beat with sin(flap));
+                      continuous
+     spread  0..1     wings folded along the body -> fully spread
+     dive    0..1     steep dive: nose down, wings swept back tight, legs
+                      tucked, streamers straight back
+     perch   0..1     1 = perched upright on its feet (the default); 0 = level
+                      flight posture (legs tucked back, streamers trail)
+     walk    radians  hopping walk when perched (legs step, body bobs);
+                      exactly 0 = still
+     mouth   0..1     beak open (`bill` accepted as an alias)
+     eyes    'open' | 'happy' | 'blink' | 'closed'
+     side    −1..1    ≈ cos(yaw), passed by the game (accepted, unused)
+
+   Anchors: top (highest point: streamer tip or head), head (head centre),
+   mouth, beak (beak tip), eyeN, eyeF, body (body centre), crest,
+   wingTipN / wingTipF, tail (streamer tip), feet (between the feet).
+------------------------------------------------------------------- */
+const Swellow = (() => {
+  const { chain, T, R, F, code } = Creature;
+
+  // ---- materials
+  const NAVY = 1, RED = 2, WHITE = 3, BEAK = 4, LEG = 5, CLAW = 6, MOUTH = 7, EYEK = 8, EYEW = 9;
+  const MAT = { NAVY, RED, WHITE, BEAK, LEG, CLAW, MOUTH, EYEK, EYEW };
+  const PAL = Creature.palette({
+    [NAVY]:  { r: ['#0e1e40', '#162c5a', '#1f4078', '#305a9a', '#5480bc'], od: '#060c1e', ol: '#10204a', ln: '#0c1a3c' },
+    [RED]:   { r: ['#860c2a', '#ae1438', '#d6234c', '#ec5270', '#fc92a4'], od: '#46040f', ol: '#7a0a24', ln: '#700a22' },
+    [WHITE]: { r: ['#a4aabe', '#c8cede', '#eceff6', '#fafbfd', '#ffffff'], od: '#3c4460', ol: '#68708c', ln: '#8088a4' },
+    [BEAK]:  { r: ['#b8860c', '#d8a818', '#f2c82a', '#fadd66', '#fff2b0'], od: '#5c4204', ol: '#94700a', ln: '#8e6a0c' },
+    [LEG]:   { r: ['#8e1030', '#b41c40', '#d83456', '#ee6078', '#fc9eae'], od: '#46040f', ol: '#7a0a24', ln: '#700a22' },
+    [CLAW]:  { r: ['#22242c', '#30323c', '#40444e', '#585c68', '#80848e'], od: '#0e1014', ol: '#22242c', ln: '#1a1c22' },
+    [MOUTH]: { r: ['#4e1224', '#6a1c30', '#86283e', '#a03c50', '#b85668'], od: '#2a0610', ol: '#4e1224', ln: '#46101e' },
+    [EYEK]:  { r: ['#08090e', '#0c0e14', '#10141c', '#181e28', '#242c38'], od: '#040508', ol: '#040508', ln: '#040508' },
+    [EYEW]:  { r: ['#dde2ec', '#f0f3f8', '#ffffff', '#ffffff', '#ffffff'], od: '#303844', ol: '#303844', ln: '#303844' },
+  });
+  const GLOSSY = { [NAVY]: 1, [BEAK]: 1 };
+  const C_NAVY = code(NAVY), C_RED = code(RED), C_WHITE = code(WHITE), C_BEAK = code(BEAK), C_BEAK_D = code(BEAK, -1);
+  const C_LEG = code(LEG), C_CLAW = code(CLAW), C_MOUTH = code(MOUTH), C_EYEK = code(EYEK), C_EYEW = code(EYEW);
+  const M_NAVY = () => C_NAVY, M_LEG = () => C_LEG, M_CLAW = () => C_CLAW;
+
+  // ---- helpers
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const add = V3.add, sub = V3.sub, sc = V3.scale, cross = V3.cross, nrm = V3.norm, dot = V3.dot;
+  const len3 = (a) => Math.hypot(a[0], a[1], a[2]);
+  const inF = (f, p) => add(f.t, M3.v(f.L, p));
+  const dirF = (f, d) => nrm(M3.v(f.L, d));
+  const E = (c, L, part, grp, mat) => ({ kind: 'ell', part, grp, c, L, mat });
+  const ellF = (f, r, part, grp, mat) => E(f.t, M3.mul(f.L, M3.diag(r[0], r[1], r[2])), part, grp, mat);
+  const transpose = (m) => [m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]];
+  function frameAlong(d, fwd) {
+    const Y = nrm(d);
+    let X = sub(fwd, sc(Y, dot(fwd, Y)));
+    if (len3(X) < 1e-4) X = cross(Y, [0, 0, 1]);
+    X = nrm(X);
+    return [X, Y, cross(X, Y)];
+  }
+  function seg(p0, p1, rx, rz, part, grp, mat, fwd = [1, 0, 0], ext = 1) {
+    const d = sub(p1, p0), l = len3(d);
+    const [X, Y, Z] = frameAlong(d, fwd);
+    return E(sc(add(p0, p1), 0.5), M3.cols(sc(X, rx), sc(Y, (l / 2) * ext), sc(Z, rz)), part, grp, mat);
+  }
+  // rotation with columns U (along), V (in plane), U × V
+  function frameUV(U, Vh) {
+    const u = nrm(U), v = nrm(sub(Vh, sc(u, dot(Vh, u))));
+    return M3.cols(u, v, cross(u, v));
+  }
+  function rotAxis(a, t) {
+    const c = Math.cos(t), s = Math.sin(t), C = 1 - c, [x, y, z] = a;
+    return [c + x * x * C, x * y * C - z * s, x * z * C + y * s, y * x * C + z * s, c + y * y * C, y * z * C - x * s, z * x * C - y * s, z * y * C + x * s, c + z * z * C];
+  }
+  function slerpM(A, B, t) {
+    const Q = M3.mul(transpose(A), B);
+    const ang = Math.acos(clamp((Q[0] + Q[4] + Q[8] - 1) / 2, -1, 1));
+    if (ang < 1e-5) return A;
+    const ax = [Q[7] - Q[5], Q[2] - Q[6], Q[3] - Q[1]];
+    if (len3(ax) < 1e-6) return t < 0.5 ? A : B;
+    return M3.mul(A, rotAxis(nrm(ax), ang * t));
+  }
+  const plate = (c, L, part, grp, shape, thick = 1.6) => ({ kind: 'plate', part, grp, c, L, shape, thick });
+
+  let curScale = 1;
+
+  /* ---------- head: navy cap and nape, crimson face; decal eyes under the brow ---------- */
+  const HR = [21, 20, 19.5];
+  const EYE_AZ = 0.62, EYE_V = 0.2;
+  const capLine = (s) => 0.4 - 0.12 * s[0] - 0.1 * Math.max(0, Math.abs(Math.atan2(s[2], s[0])) - 0.6);
+  function eyePix(s, kind) {
+    const az = Math.atan2(Math.abs(s[2]), s[0]);
+    const px = 1 / (curScale * HR[1]);
+    const a = (az - EYE_AZ) / Math.max(0.2, 2.2 * px), b = (s[1] - EYE_V) / Math.max(0.15, 1.8 * px);
+    const ain = -a; // + toward the beak
+    if (Math.abs(a) > 1.1 || Math.abs(b) > 1.4) return 0;
+    const lw = Math.max(0.22, 0.9 * px / Math.max(0.15, 1.8 * px));
+    if (kind === 'open') {
+      const top = 0.55 - 0.55 * ain; // stern brow sloping down toward the beak
+      const bot = -0.9 * Math.sqrt(Math.max(0, 1 - a * a));
+      if (Math.abs(a) > 1 || b > top + lw || b < bot) return 0;
+      if (b > top - lw * 0.4) return C_NAVY; // brow (the cap edge)
+      const pa = (ain - 0.2) / 0.62, pb = (b + 0.05) / 0.75;
+      return pa * pa + pb * pb < 1 ? C_EYEK : C_EYEW;
+    }
+    if (Math.abs(a) > 1) return 0;
+    let yc;
+    if (kind === 'happy') yc = -0.3 + 0.8 * (1 - a * a);
+    else if (kind === 'blink') yc = 0.1 - 0.3 * ain;
+    else yc = 0.15 - 0.3 * ain - 0.3 * (1 - a * a);
+    return Math.abs(b - yc) < lw ? C_EYEK : 0;
+  }
+  const headMat = (kind) => (s) => {
+    if (s[1] > capLine(s) || s[0] < -0.45 + 0.35 * Math.max(0, -s[1])) return C_NAVY;
+    if (s[0] > 0.05) { const e = eyePix(s, kind); if (e) return e; }
+    return C_RED;
+  };
+  // neck: red throat in front, navy nape
+  const neckMat = (s) => (s[0] > -0.25 + 0.4 * s[1] ? C_RED : C_NAVY);
+  // body (body frame, x forward along the body axis): red chest with a navy V, white belly, navy back
+  function bodyMat(s) {
+    const w = Math.abs(s[2]);
+    if (s[0] > 0.05 && s[1] > -0.2 - 0.9 * s[0]) {
+      const vl = 0.45 - 0.9 * s[0] + 1.25 * w; // chevron (point down at the front)
+      if (w < 0.8) {
+        if (Math.abs(s[1] - vl) < 0.1) return C_NAVY;
+        if (s[1] > vl && w < 0.62 + 0.2 * s[1]) return C_RED;
+        if (s[1] > vl - 0.32) return C_RED;
+      }
+    }
+    if (s[1] < 0.1 - 0.8 * Math.max(0, s[0] + 0.2) && s[0] > -0.75 && Math.abs(s[2]) < 0.93) return C_WHITE;
+    return C_NAVY;
+  }
+
+  /* ---------- plates ---------- */
+  // long pointed swallow wing: u = root → tip, v = leading edge (+)
+  const WING_G = bakeShape(Shape2D.poly([[0, -10], [0, 11], [16, 12.5], [38, 9.5], [60, 4.5], [82, 0.6], [62, -3.2], [40, -6.5], [18, -10]], C_NAVY, 8));
+  const WING_LN = Shape2D.catmull([[6, -4], [30, -2.5], [58, -0.6]], false, 4);
+  // streamer: long thin blade, crimson tip
+  const STR_G = bakeShape(Shape2D.poly([[0, -2.6], [30, -2.2], [62, -1.6], [88, -0.6], [96, 0], [88, 1.2], [62, 2.2], [30, 2.6], [0, 2.8]], C_NAVY, 6, (u) => (u > 60 ? C_RED : C_NAVY)));
+  // pointed lower tail
+  const TAIL_G = bakeShape(Shape2D.poly([[0, -6], [18, -5], [36, -2.5], [48, 0], [36, 2.5], [18, 5], [0, 6]], C_NAVY, 6));
+  // crest spike
+  const CREST_G = bakeShape(Shape2D.poly([[0, -3.5], [9, -2.6], [18, -0.4], [9, 2.2], [0, 3.5]], C_NAVY, 5));
+
+  const DEFAULT = { flap: 0, spread: 0, dive: 0, perch: 1, walk: 0, mouth: 0, eyes: 'open', side: 1 };
+  // 1 body, 2 head, 3 neck, 4 beak, 5 lower beak, 6 mouth, 7/8 wings, 9 streamers, 10 tail, 11 crest, 12/13 legs
+  const PRI = { 1: 0, 2: 1, 3: 0, 4: 3, 5: 3, 6: 2, 7: 3, 8: 3, 9: 0, 10: 0, 11: 0, 12: 1, 13: 1 };
+
+  function build(pose) {
+    const P = Object.assign({}, DEFAULT, pose);
+    const prims = [], anchors = {};
+    const sp0 = clamp(+P.spread || 0, 0, 1), fl = +P.flap || 0;
+    const dv = clamp(+P.dive || 0, 0, 1), pe = clamp(P.perch === undefined ? 1 : +P.perch, 0, 1);
+    const sp = sp0 * (1 - dv);
+    const st = +P.walk || 0, walking = st !== 0 && pe > 0.5;
+    const bo = clamp(+(pose && pose.bill !== undefined ? pose.bill : P.mouth) || 0, 0, 1);
+    const kind = ['open', 'happy', 'blink', 'closed'].includes(P.eyes) ? P.eyes : 'open';
+    const hop = walking ? 3.5 * Math.abs(Math.sin(st)) : 0;
+    // body pitch: perched upright, level in flight, nose down in a dive
+    const pitch = lerp(0.05, 0.5, pe) * (1 - dv) - 0.95 * dv;
+    const root = chain(T(0, 50 + hop, 0), R(M3.rz(pitch)));
+
+    /* --- body --- */
+    prims.push(ellF(root, [36, 22, 21], 1, 1, bodyMat));
+    anchors.body = root.t;
+
+    /* --- neck + head (the head stays level-ish when perched) --- */
+    const neckF = chain(root, T(27, 17, 0));
+    prims.push(ellF(chain(neckF, R(M3.rz(0.5))), [15, 17, 15], 3, 3, neckMat));
+    const head = chain(root, T(33, 34, 0), R(M3.rz(-pitch * 0.75 - 0.04 * bo + (walking ? 0.04 * Math.sin(2 * st) : 0))));
+    const headPrim = ellF(head, HR, 2, 2, headMat(kind));
+    prims.push(headPrim);
+    anchors.head = head.t;
+    const onHead = (az, v) => { const s = Creature.sph(az, v); return inF(head, [HR[0] * s[0], HR[1] * s[1], HR[2] * s[2]]); };
+    anchors.eyeN = onHead(EYE_AZ, EYE_V); anchors.eyeF = onHead(-EYE_AZ, EYE_V);
+    // beak: short, pointed, yellow; lower half opens
+    const hinge = chain(head, T(17, 0.5, 0));
+    const ub = chain(hinge, R(M3.rz(bo * 0.15)));
+    prims.push(ellF(chain(ub, T(7, 0.6, 0), R(M3.rz(-0.12))), [11, 3.4, 4.6], 4, 4, () => C_BEAK));
+    const lb = chain(hinge, R(M3.rz(-0.1 - bo * 0.55)));
+    prims.push(ellF(chain(lb, T(6, -1.4, 0)), [9, 2.2, 3.8], 5, 5, () => C_BEAK_D));
+    if (bo > 0.05) prims.push(ellF(chain(hinge, T(3.5, -1.5, 0), R(M3.rz(-bo * 0.25))), [6, 1.4 + bo * 2, 4], 6, 6, () => C_MOUTH));
+    anchors.beak = inF(ub, [17, -0.6, 0]);
+    anchors.mouth = inF(hinge, [4, -1.5, 0]);
+    // crest: three navy spikes swept back from the back of the head
+    const cb = inF(head, [-15, 8, 0]);
+    for (const [a, z, l] of [[0.35, 0, 1.25], [0.05, 4.5, 1], [0.05, -4.5, 1], [-0.25, 0, 0.9]]) {
+      const U = dirF(head, [-Math.cos(a), Math.sin(a), z * 0.03]);
+      const L = M3.mul(frameUV(U, dirF(head, [0, 1, 0.2 * Math.sign(z || 1)])), M3.diag(l, 1, 1));
+      prims.push(plate(add(cb, dirF(head, [0, 0, z])), L, 11, 11, CREST_G, 2.2));
+    }
+    anchors.crest = add(cb, sc(dirF(head, [-Math.cos(0.35), Math.sin(0.35), 0]), 22));
+
+    /* --- wings: folded along the body, or spread and beating --- */
+    const beat = Math.sin(fl);
+    for (const sd of [1, -1]) {
+      const id = sd > 0 ? 7 : 8;
+      // body frame directions (z mirrored per side)
+      const zf = (v) => [v[0], v[1], v[2] * sd];
+      const Rfold = frameUV(dirF(root, zf([-0.97, -0.2 - 0.08 * dv, 0.12])), dirF(root, zf([0.15, 1, 0.1])));
+      const el = 0.28 + 0.85 * beat;
+      const Rspr = frameUV(dirF(root, zf([-0.28, Math.sin(el), Math.cos(el)])), dirF(root, zf([1, 0.15 - 0.3 * beat, 0])));
+      const Rw = slerpM(Rfold, Rspr, sp);
+      const sh = inF(root, [lerp(10, 12, sp), lerp(8, 12, sp), sd * lerp(17, 12, sp)]);
+      const w = plate(sh, Rw, id, id, WING_G, 2);
+      w.lines = [{ pts: WING_LN.map(([u, v]) => [u, v * (sd > 0 ? 1 : 1), 0]), mat: NAVY, useLn: true }];
+      prims.push(w);
+      anchors[sd > 0 ? 'wingTipN' : 'wingTipF'] = add(sh, M3.v(Rw, [82, 0.6, 0]));
+    }
+
+    /* --- tail: pointed lower tail + two long streamers --- */
+    const tb = inF(root, [-32, 2, 0]);
+    prims.push(plate(tb, frameUV(dirF(root, [-1, -0.08, 0]), dirF(root, [0, 0.15, 1])), 10, 10, TAIL_G, 2.4));
+    const sa = lerp(0.14, 1.15, pe) * (1 - dv);
+    let tipTop = null;
+    for (const [k, da] of [[1, 0.08], [-1, -0.1]]) {
+      const U = dirF(root, [-Math.cos(sa + da), Math.sin(sa + da), k * 0.12]);
+      const Rs = frameUV(U, dirF(root, [0, 0.3, 1]).map((v) => v));
+      // turn the blade edge-up so its broad side faces the camera side
+      const Rs2 = frameUV(U, cross(U, dirF(root, [0, 0, 1])));
+      const tip = add(add(tb, [0, 0, k * 2.5]), sc(U, 96));
+      prims.push(plate(add(tb, [0, 0, k * 2.5]), Rs2 || Rs, 9, 9, STR_G, 1.8));
+      if (!tipTop || tip[1] > tipTop[1]) tipTop = tip;
+    }
+    anchors.tail = tipTop;
+
+    /* --- legs: thin crimson legs, three toes forward + one back, dark claws --- */
+    const feet = [];
+    const tuck = Math.max(1 - pe, dv);
+    for (const sd of [1, -1]) {
+      const id = sd > 0 ? 12 : 13;
+      const ph = st + (sd > 0 ? 0 : Math.PI);
+      const lift = walking ? 3 * Math.max(0, Math.sin(ph)) : 0;
+      const hip = inF(root, [2, -17, sd * 9]);
+      const standAnk = [6 + (walking ? 3 * Math.cos(ph) : 0), 5 + lift, sd * 10];
+      const tuckAnk = inF(root, [-12, -24, sd * 7]);
+      const ank = [lerp(standAnk[0], tuckAnk[0], tuck), lerp(standAnk[1], tuckAnk[1], tuck), lerp(standAnk[2], tuckAnk[2], tuck)];
+      prims.push(seg(hip, ank, 3, 3, id, id, M_LEG, [1, 0, 0], 1.1));
+      const toeRot = lerp(0, -1.2, tuck);
+      for (const [a, len] of [[0.4, 9], [0, 10.5], [-0.4, 9], [Math.PI, 6]]) {
+        const d = nrm([Math.cos(a) * Math.cos(toeRot), -0.45 + Math.sin(toeRot) * (a === Math.PI ? -1 : 1), Math.sin(a) * 0.9]);
+        const te = add(ank, sc(d, len));
+        prims.push(seg(ank, te, 1.5, 1.5, id, id, M_LEG, [0, 1, 0], 1.1));
+        prims.push(seg(te, add(te, sc(nrm([d[0], d[1] - 0.6, d[2]]), 3.2)), 1.1, 1.1, id, id, M_CLAW, [0, 1, 0]));
+      }
+      feet.push(ank);
+    }
+    anchors.feet = sc(add(feet[0], feet[1]), 0.5);
+
+    const headTop = inF(head, [0, HR[1], 0]);
+    anchors.top = tipTop[1] > headTop[1] ? tipTop : headTop;
+    return { prims, stamps: [], dots: [], anchors, pose: P, headPrim, pri: PRI, glossy: GLOSSY, baseMat: NAVY, shadowSteps: 12 };
+  }
+
+  function render(model, opt) {
+    curScale = opt.scale || 1;
+    return Creature.render(model, opt);
+  }
+
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.7, bw: 250, bh: 240, oy: 0.84 } };
+})();
+
 /* ==== src/species/taillow.js ==== */
 /* ------------------------------------------------------------------
    Taillow — the TinySwallow Pokémon (0.3 m ≈ 53 units from the feet to
@@ -51221,6 +51791,9 @@ const Vibrava = (() => {
       if (i < 2) anchors[sd > 0 ? 'footN' : 'footF'] = [foot[0], 0, foot[2]];
     });
 
+    // centre the long body (head to tail tip) on the origin
+    for (const q of prims) q.c = add(q.c, [40, 0, 0]);
+    for (const k in anchors) anchors[k] = add(anchors[k], [40, 0, 0]);
     for (const q of prims) { q.c = sc(q.c, SIZE); q.L = q.L.map((v) => v * SIZE); }
     for (const k in anchors) anchors[k] = sc(anchors[k], SIZE);
     return { prims, stamps: [], dots: [], anchors, pose: P, headPrim, pri: PRI, glossy: GLOSSY, baseMat: BODY, shadowSteps: 12 };

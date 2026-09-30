@@ -278,8 +278,9 @@ const Flygon = (() => {
       const sweep = lerp(0.85, 0.12, spread);         // back from straight out
       const U = nrm([-Math.sin(sweep) * Math.cos(elev), Math.sin(elev), sd * Math.cos(sweep) * Math.cos(elev)]);
       const back = nrm(cross([0, 1, 0], U));
-      // pitch the chord axis a little with the body
-      const chord = nrm(add(back, [0, -0.25 * sd * 0, 0]));
+      // chord axis pointing forward, its leading edge twisted up so the broad face shows in 3/4 views
+      const fwdC = sd > 0 ? back : sc(back, -1);
+      const chord = nrm(sub(add(fwdC, [0, 0.55, 0]), sc(U, dot(add(fwdC, [0, 0.55, 0]), U))));
       const N = nrm(cross(U, chord));
       prims.push(PL(root, M3.cols(U, cross(N, U), N), id, id, WING_G, 1.4));
       anchors[sd > 0 ? 'wingN' : 'wingF'] = add(root, sc(U, 168));
