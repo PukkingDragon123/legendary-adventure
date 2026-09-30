@@ -1395,7 +1395,7 @@ const Dex = (() => {
     }
     for (const b of Quests.BIRCH || []) if (d.quests[b.id]) out.push({ id: 'm.b.' + b.id, from: 'Prof. Birch', sp: 'birch', subj: 'Request complete!', body: '"' + b.t + '" - splendid work! I have sent your reward: ' + rewardLabel(b.reward) + '. Keep it up!', t: d.quests[b.id] });
     const R = (d.rmail = d.rmail || {});
-    out.sort((a, b) => (!!R[a.id] - !!R[b.id]) || (b.t - a.t));
+    void R; out.sort((a, b) => b.t - a.t);
     D.mailC = { t: D.rt || 0, list: out };
     return out;
   }
@@ -1426,7 +1426,7 @@ const Dex = (() => {
     UI.rrect(fb, x - 1, y - 1, ps + 2, ps + 2, 4, P.scrL);
     if (tt) UI.img(fb, tt, x + Math.round((ps - tt.w) / 2), y + Math.round((ps - tt.h) / 2)); else portrait(fb, x, y, ps, m.sp);
     Font.draw(fb, 'FROM: ' + m.from.toUpperCase(), x + ps + 6, y + 2, P.faint, { font: 'small' });
-    textLines(fb, m.subj, x + ps + 6, y + 11, w - ps - 6, P.text, 2, 11, 'body');
+    Font.draw(fb, fit(m.subj, w - ps - 6, 'body'), x + ps + 6, y + 12, P.text, { font: 'body' });
     y += ps + 6;
     UI.hline(fb, x, x + w, y, P.scrL); y += 5;
     const bh = C ? 12 : 14, maxL = Math.max(1, Math.floor((R.y + R.h - 6 - (m.act ? bh + 4 : 0) - y) / 9));

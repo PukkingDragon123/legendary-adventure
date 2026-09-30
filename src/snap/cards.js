@@ -817,7 +817,7 @@ const Cards = (() => {
     }
     drawBubbles(fb, t, G, M, F);
     // title + flee / deck buttons in the top bar
-    if (battle || G.step === 'reward') {
+    if (battle) {
       const ty = Math.max(3, Math.round(bh / 2 - 4));
       Font.draw(fb, (G.step === 'reward' ? 'VICTORY! ' : (C.arena ? 'BOSS: ' : 'vs. ')) + nameOf(F).toUpperCase(), W / 2, ty, hex('#ffe070'), { font: 'body', align: 'center', outline: INK });
       if (G.step !== 'reward' && G.step !== 'ko') {
@@ -981,7 +981,7 @@ const Cards = (() => {
     const n = R.opts.length, cw = D.bw, ch = D.bh, gap = Math.max(10, Math.round(W * 0.04));
     const x0 = Math.round(W / 2 - (cw * n + gap * (n - 1)) / 2), y0 = ty + (H >= 250 ? 42 : 30);
     R.opts.forEach((o, i) => {
-      const sel = C.sel === i, x = x0 + i * (cw + gap), y = y0 - (sel ? 4 : 0) + Math.round(Math.sin(t * 3 + i) * 1.5) + Math.round((1 - ease((R.t - i * 0.12) / 0.4)) * H);
+      const sel = C.sel === i, x = x0 + i * (cw + gap), y = y0 - (sel ? 4 : 0) + Math.round(Math.sin(t * 3 + i) * 1.5) + Math.round((1 - ease((R.t - i * 0.08) / 0.25)) * H);
       drawCard(fb, o.t === 'up' ? o.to : o.id, x, y, cw, D, { glow: sel ? hex('#ffe070') : 0, dim: 0 });
       // label ribbon
       const lab = o.lab, lw = Font.measure(lab, 'small') + 10, lx = Math.round(x + cw / 2 - lw / 2), ly = y - 12;
@@ -991,7 +991,7 @@ const Cards = (() => {
         const sx = x + cw / 2, sy = y + ch * 0.42;
         for (let d = -2; d <= 2; d++) { UI.line(fb, Math.round(sx - cw * 0.3), Math.round(sy - cw * 0.3) + d, Math.round(sx + cw * 0.3), Math.round(sy + cw * 0.3) + d, hex('#e83a3a')); UI.line(fb, Math.round(sx + cw * 0.3), Math.round(sy - cw * 0.3) + d, Math.round(sx - cw * 0.3), Math.round(sy + cw * 0.3) + d, hex('#e83a3a')); }
       }
-      if (o.t === 'up') txt(fb, def(o.id).name + ' > ' + def(o.to).name, x + cw / 2, y + ch + 3, hex(GRN), { align: 'center' });
+      if (o.t === 'up') txt(fb, '> ' + (def(o.to).short || def(o.to).name), x + cw / 2, y + ch + 3, hex(GRN), { align: 'center' });
       else if (o.t === 'rm') txt(fb, 'Thin your deck', x + cw / 2, y + ch + 3, 0xffffc0c0, { align: 'center' });
       else if (o.t === 'tm') txt(fb, '+1 copy', x + cw / 2, y + ch + 3, hex('#8ad8ff'), { align: 'center' });
       else txt(fb, 'Max HP ' + maxHP() + ' > ' + (maxHP() + 4), x + cw / 2, y + ch + 3, hex('#8aff8a'), { align: 'center' });
