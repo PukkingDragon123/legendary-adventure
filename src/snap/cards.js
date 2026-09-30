@@ -195,7 +195,19 @@ const Cards = (() => {
     for (const id of tmMoves()) { const e = s.tm[id] || {}; for (let k = 0; k < 1 + (e.n || 0); k++) deck.push(e.up ? id + '+' : id); }
     return deck;
   }
-  const maxHP = () => 40 + Math.min(20, (store().wins || 0) * 2) + (store().hp || 0);
+  /* ---------- levels: Mudkip's level gives real perks; foes scale with their level vs Mudkip's ---------- */
+  const kipLv = () => (typeof Progress !== 'undefined' && Progress.level ? Progress.level() : 1);
+  // +3 max HP per level, +1 card drawn at Lv 5 and Lv 11, +1 energy at Lv 8 and Lv 14
+  const perks = (lv = kipLv()) => ({ hp: 3 * (lv - 1), draw: (lv >= 5 ? 1 : 0) + (lv >= 11 ? 1 : 0), energy: (lv >= 8 ? 1 : 0) + (lv >= 14 ? 1 : 0) });
+  const PERK_LV = [[5, '+1 card drawn each turn'], [8, '+1 energy each turn'], [11, '+1 card drawn each turn'], [14, '+1 energy each turn']];
+  // a foe definition at level lv (vs Mudkip's level): HP and attack/block numbers scale with the gap
+  function scaleFoe(fd, lv) {
+    if (!lv) return fd;
+    const gap = lv - kipLv(), hk = clamp(1 + gap * 0.1, 0.6, 1.9), ak = clamp(1 + gap * 0.09, 0.6, 1.7);
+    const sc = (v, k) => (v ? Math.max(1, Math.round(v * k)) : v);
+    return Object.assign({}, fd, { hp: Math.max(8, Math.round(fd.hp * hk)), lv, gap, moves: fd.moves.map((m) => Object.assign({}, m, { a: sc(m.a, ak), b: sc(m.b, hk) })) });
+  }
+  const maxHP = () => 40 + Math.min(20, (store().wins || 0) * 2) + (store().hp || 0) + perks().hp;
   function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
   /* ---------- battle state ---------- */
@@ -204,7 +216,7 @@ const Cards = (() => {
     const M = mk();
     if (!M || !foe || !foe.alive || C.live || Game.mode !== 'explore') return false;
     if (typeof Arcade !== 'undefined' && Arcade.live) return false;
-    const fd = foeDef(foe), side = foe.x >= M.x ? 1 : -1;
+    const fd = scaleFoe(o.fd || foeDef(foe), o.lv), side = foe.x >= M.x ? 1 : -1;
     const arena = o.arena !== false && typeof Arena !== 'undefined';
     // boss battles open with a walk-in: both fighters walk up to their marks (Arena.plan picks safe ground)
     const plan = arena && o.walk !== false && Arena.plan ? Arena.plan(M, foe, side) : null;
@@ -212,7 +224,7 @@ const Cards = (() => {
     if (plan) { mx = plan.mx; fx = plan.fx; }
     else { const dx = Math.abs(foe.x - M.x), land = foe.mode === 'land' && !foe.plat && Math.abs(foe.y - World.groundAt(foe.x)) < 6; fx = land && (dx > 130 || dx < 96) ? M.x + side * 112 : foe.x; }
     const G = C.g = {
-      foe, fd, side, o, t: 0, step: plan ? 'walk' : 'intro', turn: 0, energy: 0, maxE: 3,
+      foe, fd, side, o, t: 0, step: plan ? 'walk' : 'intro', turn: 0, energy: 0, maxE: 3 + perks().energy, drawN: 5 + perks().draw,
       you: unit(maxHP()), them: unit(fd.hp), draw: shuffle(battleDeck()), hand: [], disc: [], exh: [], fly: [], parts: [], bubbles: [],
       mx, fx0: plan ? fx : foe.x, fx, intent: null, mi: (Math.random() * fd.moves.length) | 0, seq: null, pops: [], impact: null, prize: null, over: 0, msg: '',
       handK: 0, zoom: null, cam: null, lineTurn: -1, saidLow: false, dealt: 0, taken: 0, flashT: 0, banner: null, autoT: 0, prizeT: 0, crowd: [],
@@ -290,7 +302,7 @@ const Cards = (() => {
     sfx('select', null, 0.6);
     const Y = G.you;
     if (Y.st.sun > 0) heal(G, 'you', Y.st.sun);
-    const n = 5 - (Y.st.dizzy > 0 ? 1 : 0); if (Y.st.dizzy > 0) Y.st.dizzy--;
+    const n = (G.drawN || 5) - (Y.st.dizzy > 0 ? 1 : 0); if (Y.st.dizzy > 0) Y.st.dizzy--;
     drawCards(G, n);
     pickIntent(G);
     C.sel = -1;
@@ -806,10 +818,10 @@ const Cards = (() => {
     UI.rect(fb, x + 3, y + 1, w - 6, 1, U.mix(fill, WHITE, 0.25));
     // name + tag
     const name = isYou ? 'MUDKIP' : nameOf(G.foe).toUpperCase();
-    const B = G.o && G.o.boss, tag = isYou ? 'Lv ' + (typeof Progress !== 'undefined' && Progress.level ? Progress.level() : 1) : C.arena ? (B && B.boss ? 'BOSS' : 'RIVAL') : '';
+    const B = G.o && G.o.boss, tag = isYou ? 'Lv ' + kipLv() : (C.arena ? (B && B.boss ? 'BOSS' : 'RIVAL') : G.o && G.o.punk ? 'PUNK' : '') + (G.fd.lv ? (C.arena || (G.o && G.o.punk) ? ' ' : '') + 'Lv ' + G.fd.lv : '');
     const nw = Font.measure(name, 'small'), nx = right ? x + w - 5 - nw : x + 5;
     txt(fb, name, nx, y + 3, WHITE);
-    if (tag) { const tw = Font.measure(tag, 'small') + 5, tx = right ? nx - tw - 3 : nx + nw + 3; UI.rrect(fb, tx, y + 2, tw, 8, 2, isYou ? hex('#3a78e8') : B && B.boss ? hex('#e8a020') : hex('#8a3a5a')); txt(fb, tag, tx + tw / 2, y + 3, WHITE, { align: 'center', outline: undefined }); }
+    if (tag) { const tw = Font.measure(tag, 'small') + 5, tx = right ? nx - tw - 3 : nx + nw + 3; UI.rrect(fb, tx, y + 2, tw, 8, 2, isYou ? hex('#3a78e8') : G.fd.gap >= 3 ? hex('#d02a2a') : B && B.boss ? hex('#e8a020') : hex('#8a3a5a')); txt(fb, tag, tx + tw / 2, y + 3, WHITE, { align: 'center', outline: undefined }); }
     // HP bar: the damage chunk lingers (gold) before it drains; the bar empties toward the middle of the screen
     const bx = x + 4, by = y + 12, bw = w - 8, bh = 7;
     UI.rect(fb, bx - 1, by - 1, bw + 2, bh + 2, INK);
@@ -1121,6 +1133,7 @@ const Cards = (() => {
     copy: ['EXTRA TM CARD!', (P) => P.who + ' drilled you on ' + tmName(P.tm) + '.', 'Another copy joins your deck!'],
     rematch: ['REMATCH WON!', (P) => P.who + ' tips its hat to you.', 'No TM this time: points and XP.'],
     win: ['VICTORY!', (P) => P.who + ' gives up!', ''],
+    punk: ['STREET CRED!', (P) => P.who + ': ' + (P.line || 'OK OK, you win!'), (P) => (P.upg ? 'Card upgrade: ' + P.upg + '!' : P.rematch ? 'Rematch: smaller rewards.' : '')],
   };
   const tmName = (id) => { const d = typeof Moves !== 'undefined' && Moves.DEF[id]; return d ? d.name : 'its move'; };
   function tmDisc(fb, cx, cy, R, col, t) {
@@ -1183,7 +1196,8 @@ const Cards = (() => {
     // the footer: rewards, what is next, and the button
     const fy = H - 36;
     const rw = (P.pts ? '+' + P.pts + ' pts' : '') + (P.xp ? '   +' + P.xp + ' XP' : '');
-    if (L[2]) Font.draw(fb, L[2], W / 2, fy, 0xffd8e0f0, { font: 'small', align: 'center', outline: INK });
+    const sub = typeof L[2] === 'function' ? L[2](P) : L[2];
+    if (sub) Font.draw(fb, sub, W / 2, fy, 0xffd8e0f0, { font: 'small', align: 'center', outline: INK });
     if (P.next) Font.draw(fb, '{spark} NEXT: ' + P.next, W / 2, fy + 9, hex('#ffd23a'), { font: 'small', align: 'center', outline: INK });
     else if (rw) Font.draw(fb, rw, W / 2, fy + 9, hex('#8aff8a'), { font: 'small', align: 'center', outline: INK });
     if (T0 > 0.6) {
@@ -1271,5 +1285,5 @@ const Cards = (() => {
   // mouse hover lifts cards (HUD.hover gets the pointer when no button is held)
   if (typeof HUD !== 'undefined' && HUD.hover) { const h0 = HUD.hover; HUD.hover = function (x, y) { if (C.live) { hover(x, y); return; } return h0.apply(this, arguments); }; }
   U.on && U.on('area', () => { if (C.live) close(); C.bars = 0; });
-  return Object.assign(C, { CARDS, FOES, STARTER, FLY, def, describe, start, play, endTurn, finish, flee, close, update, key, down, hover, drawUI, drawWorld, store, battleDeck, tmMoves, foeDef, canPlay, maxHP, cardOf });
+  return Object.assign(C, { CARDS, FOES, STARTER, FLY, def, describe, start, play, endTurn, finish, flee, close, update, key, down, hover, drawUI, drawWorld, store, battleDeck, tmMoves, foeDef, canPlay, maxHP, cardOf, perks, PERK_LV, scaleFoe, kipLv });
 })();
