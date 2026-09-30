@@ -17998,6 +17998,260 @@ const Remoraid = (() => {
 })();
 
 /* ------------------------------------------------------------------
+   Rotom Dex — Rotom living inside a Pokédex (0.3 m). Not a wild
+   species: this is the flying companion drawn by src/snap/rotom.js
+   (no Dex entry, no accessories, never a photo subject).
+   Model space: x = forward (the screen faces +x, so yaw ≈ π/2 shows the
+   front), y = up, z = near side at yaw 0, ground at y = 0.
+
+   Design (official art / 3D model): a salmon-red rounded body shaped like
+   a squat house — narrow at the bottom, widest at two pointed upper
+   corners (two little holes on each), a roof rising to a tall cone
+   antenna. A white screen shows Rotom's light-blue face: big white-rimmed
+   blue eyes on a dark bridge, a toothy grin and the magnifier-handle tail
+   running to the lower corner. Two flat lightning-bolt arms zig-zag out
+   to big flat panels with oval buttons; two stubby round feet.
+
+   Pose params:
+     float   radians  bob phase (body rises/falls a little, feet dangle)
+     armN / armF      arm raise angle (radians, + = up) of the near (+z) and far arm
+     armL / armR      aliases: L = screen-left from the front = near arm, R = far arm
+     tilt    radians  roll in the screen plane (+ = leans to screen right)
+     lean    radians  pitch (+ = top tips toward the camera / forward)
+     squash  −1..1    + squashed (poke), − stretched (zip)
+     mouth   0..1     open amount;  smile: 'grin'|'open'|'o'|'frown'|'wavy'|'flat'
+     eyes    'open'|'happy'|'blink'|'x'|'angry'|'dizzy'|'sad'|'wow'
+     lookX / lookY −1..1  iris offset (screen right / up)
+     screen  ''|'heart'|'!'|'?'|'note'|'sweat'|'zzz'|'static'  icon on the screen
+     glow    0..1     antenna tip sparks (yellow)
+   Spin/yaw is the renderer's.
+   Anchors: top (antenna tip), head (screen centre), handN, handF, body, feet.
+------------------------------------------------------------------- */
+const RotomDex = (() => {
+  const { chain, T, R, S, code } = Creature;
+  const BODY = 1, SCREEN = 2, FACE = 3, BRIDGE = 4, EYEW = 5, IRIS = 6, IRISD = 7, INK = 8, TEETH = 9, MOUTH = 10, HOLE = 11, BTN = 12, PINK = 13, YEL = 14, FACED = 15, SCRD = 16;
+  const MAT = { BODY, SCREEN, FACE, BRIDGE, EYEW, IRIS, IRISD, INK, TEETH, MOUTH, HOLE, BTN, PINK, YEL, FACED, SCRD };
+  const flat = (c, od = '#1a1c2a') => ({ r: [c, c, c, c, c], od, ol: od, ln: od });
+  const PAL = Creature.palette({
+    [BODY]:   { r: ['#9a3a38', '#c24f49', '#e2685b', '#f28a78', '#ffbba6'], od: '#521618', ol: '#84282a', ln: '#7c2629' },
+    [BTN]:    { r: ['#7c2a2a', '#9c3634', '#b8443f', '#cc564e', '#e0786c'], od: '#521618', ol: '#84282a', ln: '#6a2022' },
+    [SCREEN]: { r: ['#d8e2ec', '#e8eff5', '#f4f8fb', '#fbfdfe', '#ffffff'], od: '#2a3040', ol: '#3a4254', ln: '#4a5266' },
+    [SCRD]:   flat('#c9d6e4', '#2a3040'),
+    [FACE]:   { r: ['#62aee0', '#74bdea', '#86caf2', '#9ad6f7', '#b6e4fb'], od: '#1a3a66', ol: '#2a5a8a', ln: '#2a5a8a' },
+    [FACED]:  flat('#4f97d2', '#1a3a66'),
+    [BRIDGE]: { r: ['#1c1e26', '#24262f', '#2e303a', '#3c3e4a', '#4c4e5c'], od: '#101118', ol: '#1c1e26', ln: '#101118' },
+    [EYEW]:   flat('#ffffff'),
+    [IRIS]:   flat('#2a66dc', '#0c1a4a'),
+    [IRISD]:  flat('#163c9c', '#0c1a4a'),
+    [INK]:    flat('#1a1c2a'),
+    [TEETH]:  flat('#ffffff'),
+    [MOUTH]:  flat('#4a1a36'),
+    [HOLE]:   flat('#6a1e22', '#521618'),
+    [PINK]:   flat('#ff5a94', '#7a1a3a'),
+    [YEL]:    flat('#ffd83a', '#7a5a10'),
+  });
+  const GLOSSY = { [BODY]: 1, [BTN]: 1 };
+  const C = Object.fromEntries(Object.entries(MAT).map(([k, v]) => [k, code(v)]));
+  const C_BODY_L = code(BODY, 1);
+
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const add = V3.add, sc = V3.scale;
+  const inF = (f, p) => add(f.t, M3.v(f.L, p));
+  const segD = Shape2D.segDist;
+  let curScale = 1;
+  const px = (n) => n / Math.max(0.2, curScale);        // n screen pixels in model units
+  const lw = (u) => Math.max(u, px(0.95));              // a line at least ~1px wide
+
+  /* ---------- body silhouette (front view: w = |horizontal|, y = up, body-centre units) ---------- */
+  const SIL = Shape2D.catmull([[0, -17.5], [12.5, -17.5], [16.4, -15], [17.2, -4], [18.6, 5], [23.6, 10.8], [25.4, 14.4], [22.4, 16.6], [13, 19.6], [5, 22.2], [0, 23]], false, 6);
+  const SILP = SIL.concat(SIL.slice(1, -1).reverse().map(([w, y]) => [-w, y]));
+  const SILG = bakeShape({ bb: [-25, -21, 25, 26], test: (u, v) => (Shape2D.inPoly(u, v, SILP) ? 1 : 0) });
+  const HOLES = [[17.6, 12.4], [20.4, 11.4], [22.1, 14]];
+  const BR = [12, 34, 34]; // body ellipsoid radii (x depth, y, z)
+  function bodyMat(s) {
+    const x = BR[0] * s[0], y = BR[1] * s[1], z = BR[2] * s[2];
+    if (!SILG.test(z, y)) return 0;
+    if (x > 2) { const w = Math.abs(z); for (const [hw, hy] of HOLES) if ((w - hw) ** 2 + (y - hy) ** 2 < lw(0.9) ** 2) return C.HOLE; }
+    return C.BODY;
+  }
+
+  /* ---------- the screen plate: face, eyes, bridge, mouth, icons (u = screen right, v = up) ---------- */
+  const SR = { u0: -12, u1: 12, v0: -14, v1: 6.8, r: 2 };
+  const EYE = [[-6.8, 9.6], [6.8, 9.6]], ER = 6.4;
+  const inRect = (u, v) => {
+    if (u < SR.u0 || u > SR.u1 || v < SR.v0 || v > SR.v1) return false;
+    const cx = clamp(u, SR.u0 + SR.r, SR.u1 - SR.r), cy = clamp(v, SR.v0 + SR.r, SR.v1 - SR.r);
+    return (u - cx) ** 2 + (v - cy) ** 2 <= SR.r * SR.r;
+  };
+  const ICON = [8.3, 1.2];
+  function icon(kind, u, v) {
+    const x = u - ICON[0], y = v - ICON[1];
+    if (kind === 'heart') { const a = x / 3.2, b = y / 3.2 - 0.25; return (a * a + b * b - 0.3) ** 3 - a * a * b * b * b < 0 ? C.PINK : 0; }
+    if (kind === '!') return (Math.abs(x) < 1.1 && y > -0.8 && y < 4) || Math.hypot(x, y + 2.6) < 1.1 ? C.PINK : 0;
+    if (kind === '?') { const r = Math.hypot(x, y - 2), a = Math.atan2(y - 2, x); if (Math.abs(r - 1.9) < 0.8 && (a > -1.2 || a < -2.6)) return C.FACED; if (Math.abs(x) < 0.8 && y > -1.2 && y < 0.6) return C.FACED; return Math.hypot(x, y + 2.9) < 0.9 ? C.FACED : 0; }
+    if (kind === 'note') { if (Math.hypot((x + 1.2) / 1.5, (y + 2) / 1.1) < 1) return C.INK; if (Math.abs(x - 0.2) < 0.55 && y > -2 && y < 3.6) return C.INK; return y > 2.4 && y < 3.8 && x > 0 && x < 2.6 - (3.8 - y) * 0.4 ? C.INK : 0; }
+    if (kind === 'sweat') { const a = x / 1.9, b = (y + 0.6) / 2.1; return (b < 0 ? a * a + b * b < 1 : Math.abs(a) < 1 - b * 0.8 && b < 1.25) ? C.FACED : 0; }
+    if (kind === 'zzz') { const zz = (ox, oy, s) => { const X = x - ox, Y = y - oy; if (Math.abs(X) > s || Math.abs(Y) > s) return false; return Math.abs(Y - s) < 0.55 || Math.abs(Y + s) < 0.55 || Math.abs(Y + X) < 0.6; }; return zz(-1, -1.6, 1.6) || zz(1.6, 2.2, 1.1) ? C.FACED : 0; }
+    return 0;
+  }
+  function screenShape(P, t) {
+    const eyes = P.eyes, mo = clamp(+P.mouth || 0, 0, 1), sm = P.smile || 'grin', lx = clamp(+P.lookX || 0, -1, 1), ly = clamp(+P.lookY || 0, -1, 1);
+    const scr = P.screen || '';
+    return {
+      bb: [-14, -15.5, 14, 16.5],
+      test(u, v) {
+        const L = lw(0.7);
+        // eyes (over everything)
+        for (let k = 0; k < 2; k++) {
+          const [ex, ey] = EYE[k], dx = u - ex, dy = v - ey, d = Math.hypot(dx, dy), side = k ? 1 : -1;
+          if (eyes === 'happy') {
+            // ^ arcs: a thick white band with ink edges
+            const kx = dx / (ER * 0.85); if (Math.abs(kx) > 1.1) continue;
+            const c = ey - 2 + (1 - kx * kx) * 4.2, e = Math.abs(dy - (c - ey)), W = 1.5;
+            if (Math.abs(kx) <= 1 && e < W) return C.EYEW;
+            if (Math.abs(kx) <= 1.1 && e < W + L) return C.INK;
+            continue;
+          }
+          if (eyes === 'blink') {
+            const e = Math.hypot(dx / (ER * 0.9), (dy + 0.5) / 1.6);
+            if (e < 1) return Math.abs(dy + 0.5) < L * 0.6 ? C.INK : C.EYEW;
+            if (Math.hypot(dx / (ER * 0.9 + L), (dy + 0.5) / (1.6 + L)) < 1) return C.INK;
+            continue;
+          }
+          if (d > ER) continue;
+          if (d > ER - L) return C.INK;
+          if (eyes === 'x') { const ax = Math.abs(dx), ay = Math.abs(dy); return Math.abs(ax - ay) < lw(0.85) && ax < 3.4 ? C.INK : C.EYEW; }
+          if (eyes === 'dizzy') { const a = Math.atan2(dy, dx * side) + Math.PI, r = d / 0.62; const ph = ((r - a) / (2 * Math.PI)) % 1; return r < 7.5 && Math.abs(ph - 0.5) < 0.2 ? C.INK : C.EYEW; }
+          // lids: angry slants inward-down, sad droops outward-down
+          if (eyes === 'angry') { const lid = ey + 2.2 - (dx * -side) * 0.55; if (v > lid) return v > lid + L ? 0 : C.INK; }
+          if (eyes === 'sad') { const lid = ey + 2.4 - (dx * side) * 0.45; if (v > lid) return v > lid + L ? 0 : C.INK; }
+          const ir = eyes === 'wow' ? 2.4 : 3.9, ix = ex + lx * 1.3, iy = ey + ly * 1.2 - (eyes === 'sad' ? 0.8 : 0);
+          const id = Math.hypot(u - ix, v - iy) / ir;
+          if (id <= 1) {
+            if (Math.hypot(u - ix + ir * 0.34, v - iy - ir * 0.36) < Math.max(ir * 0.3, px(0.7))) return C.EYEW;
+            return id > 0.66 || v - iy < -ir * 0.45 ? C.IRISD : C.IRIS;
+          }
+          return C.EYEW;
+        }
+        // the dark bridge between the eyes (a dome resting on the face)
+        const inScr = inRect(u, v);
+        if (eyes !== 'happy' && eyes !== 'blink' && Math.hypot(u, v - 7) < 7.6 && v > 3.5) return C.BRIDGE;
+        if (!inScr) return 0;
+        // screen edge: a thin darker bezel
+        if (!inRect(u + (u > 0 ? 1 : -1) * L, v) || !inRect(u, v + (v > 0 ? 1 : -1) * L)) return C.SCRD;
+        if (scr === 'static' && (Math.floor(v * 1.3 + Math.sin(u * 7.1) * 0.7) & 1)) return (Math.floor(u * 3.7 + v * 5.3) & 3) ? C.SCRD : C.SCREEN;
+        // mouth (on the face)
+        const mx = -1.2, my = 1.4;
+        {
+          const X = u - mx, Y = v - my;
+          if (sm === 'o' || (sm === 'open' && mo > 0.2)) {
+            const rw = sm === 'o' ? 1.8 + mo : 3 + mo * 1.2, rh = sm === 'o' ? 2 + mo * 1.2 : 1.6 + mo * 2.4;
+            const e = Math.hypot(X / rw, (Y + rh * 0.4) / rh);
+            if (e < 1) return e > 1 - L / rh ? C.INK : Y + rh * 0.4 < -rh * 0.5 ? C.PINK : C.MOUTH;
+          } else if (sm === 'frown' || sm === 'wavy' || sm === 'flat') {
+            const W = 3.4; if (Math.abs(X) < W) { const c = sm === 'frown' ? -1.4 + (1 - (X / W) ** 2) * 1.4 : sm === 'wavy' ? Math.sin(X * 2.1) * 0.6 - 0.6 : -0.6; if (Math.abs(Y - c) < lw(0.55)) return C.INK; }
+          } else {
+            // the grin: flat top, round bottom, a row of teeth
+            const W = 5.2 + mo * 0.4, Hh = 3 + mo * 2.2, kx = X / W;
+            if (Math.abs(kx) <= 1) {
+              const top = 0.7 + kx * kx * 0.5, bot = top - Hh * Math.sqrt(Math.max(0, 1 - kx * kx));
+              if (Y <= top && Y >= bot) {
+                if (Y > top - L || Y < bot + L || Math.abs(kx) > 1 - L / W) return C.INK;
+                if (mo > 0.25 && Y < top - 1.6) return Y < bot + 1.3 ? C.PINK : C.MOUTH;
+                return Math.abs(((X + 20) % 1.9) - 0.95) < lw(0.3) * 0.5 && curScale > 1.2 ? C.SCRD : C.TEETH;
+              }
+            }
+          }
+        }
+        // Rotom's light-blue face with its magnifier-handle tail running to the lower right corner
+        const fr = Math.hypot((u + 1.4) / 9.6, (v - 1.6) / 9.2);
+        const tail = segD(u, v, 3.5, -5.5, 12.6, -14) < 2.4;
+        if (fr < 1 || tail) {
+          if (scr && scr !== 'static') { const ic = icon(scr, u, v); if (ic) return ic; }
+          return (fr > 1 - lw(0.5) / 9 && !tail) || (tail && fr >= 1 && segD(u, v, 3.5, -5.5, 12.6, -14) > 2.4 - lw(0.5)) ? C.FACED : C.FACE;
+        }
+        if (scr && scr !== 'static') { const ic = icon(scr, u, v); if (ic) return ic; }
+        return C.SCREEN;
+      },
+    };
+  }
+
+  /* ---------- arms: flat lightning bolts ending in big panels (u = outward, v = up, from the shoulder) ---------- */
+  const BOLT = [[-2, 0], [8, 0.8], [5.4, 6.8], [13.5, 7.6]];
+  // a rounded parallelogram: corners chamfered then smoothed a little
+  const roundPoly = (pts, r) => { const o = []; const n = pts.length; for (let i = 0; i < n; i++) { const p = pts[i], a = pts[(i + n - 1) % n], b = pts[(i + 1) % n]; const da = Math.hypot(a[0] - p[0], a[1] - p[1]), db = Math.hypot(b[0] - p[0], b[1] - p[1]); o.push([p[0] + (a[0] - p[0]) * r / da, p[1] + (a[1] - p[1]) * r / da], [p[0] + (b[0] - p[0]) * r / db, p[1] + (b[1] - p[1]) * r / db]); } return Shape2D.catmull(o, true, 3); };
+  const PANEL = roundPoly([[12.5, 11], [32, 8.2], [30.4, -8.6], [11.2, -5.6]], 2.6);
+  const BTN_C = [21.4, 1.2], BTN_R = [5.2, 3.1];
+  const BOLTG = bakeShape({ bb: [-4, -3, 16, 10], test: (u, v) => { for (let i = 0; i < 3; i++) if (segD(u, v, ...BOLT[i], ...BOLT[i + 1]) < 1.9) return C.BODY; return 0; } });
+  const PANELG = bakeShape({ bb: [9, -11, 34, 13], test: (u, v) => {
+    if (!Shape2D.inPoly(u, v, PANEL)) return 0;
+    return Shape2D.polyDist ? (Shape2D.polyDist(u, v, PANEL) < 1.1 && v > 0 ? C_BODY_L : C.BODY) : C.BODY;
+  } });
+
+  const DEFAULT = { float: 0, armN: 0, armF: 0, tilt: 0, lean: 0, squash: 0, mouth: 0, smile: 'grin', eyes: 'open', lookX: 0, lookY: 0, screen: '', glow: 0 };
+  // 1 body + antenna, 2 screen, 3/4 arm bolts, 5/6 panels, 7/8 buttons, 9/10 feet, 11 sparks
+  const PRI = { 1: 1, 2: 3, 3: 2, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9: 0, 10: 0, 11: 4 };
+
+  function build(pose) {
+    const P = Object.assign({}, DEFAULT, pose);
+    if (pose && pose.armL !== undefined) P.armN = pose.armL;
+    if (pose && pose.armR !== undefined) P.armF = pose.armR;
+    const prims = [], anchors = {};
+    const fl = +P.float || 0, bob = Math.sin(fl) * 1.6, sq = clamp(+P.squash || 0, -1, 1);
+    const root = chain(T(0, 24 + bob, 0), R(M3.rx(+P.tilt || 0)), R(M3.rz(-(+P.lean || 0))), S(1 + sq * 0.14, 1 - sq * 0.2, 1 + sq * 0.14));
+    const put = (q) => { q.c = inF(root, q.c); q.L = M3.mul(root.L, q.L); prims.push(q); return q; };
+    const E = (c, r, part, mat) => put({ kind: 'ell', part, grp: part, c, L: M3.diag(r[0], r[1], r[2]), mat });
+    // front frame: a = screen right (−z), v = up, n = out of the screen (+x)
+    const A = [0, 0, -1], V = [0, 1, 0], N = [1, 0, 0];
+
+    /* body + antenna (one group: seamless) */
+    E([0, 0, 0], BR, 1, bodyMat);
+    const AN = 26;
+    for (let i = 0; i < AN; i++) {
+      const t = i / (AN - 1), y = 19 + t * 33 - (1 - t) * 3, r = 6.4 * (1 - t) ** 0.9 + 1.1;
+      const spark = P.glow > 0.3 && t > 0.8;
+      E([-0.4 * t, y, 0], [r * 0.85, 8 * (1 - t) + 1.6, r], 1, spark ? () => C.YEL : () => C.BODY);
+    }
+    anchors.top = inF(root, [0, 53.5, 0]);
+    anchors.body = inF(root, [0, 0, 0]);
+
+    /* screen */
+    put({ kind: 'plate', part: 2, grp: 2, c: [12.5, -1.5, 0], L: M3.cols(A, V, N), shape: screenShape(P), thick: 1.2 });
+    anchors.head = inF(root, [12.6, 0, 0]);
+
+    /* arms */
+    for (const sd of [1, -1]) {
+      const near = sd > 0, th = +(near ? P.armN : P.armF) || 0;
+      const out = [0, 0, sd], ct = Math.cos(th), st = Math.sin(th);
+      const U = add(sc(out, ct), sc(V, st)), Vv = add(sc(out, -st), sc(V, ct));
+      // mirrored so that +v stays up: u runs outward on both sides
+      const sh = [0.5, -4.5, sd * 16.4];
+      const Lb = M3.cols(U, Vv, N);
+      put({ kind: 'plate', part: near ? 3 : 4, grp: near ? 3 : 4, c: sh, L: Lb, shape: BOLTG, thick: 3 });
+      // panel: slightly turned toward the camera
+      const Np = V3.norm(add(N, sc(U, -0.22))), Up = V3.norm(V3.sub(U, sc(Np, V3.dot(U, Np))));
+      const Lp = M3.cols(Up, Vv, Np);
+      put({ kind: 'plate', part: near ? 5 : 6, grp: near ? 5 : 6, c: sh, L: Lp, shape: PANELG, thick: 3 });
+      const bc = add(add(sh, add(sc(Up, BTN_C[0]), sc(Vv, BTN_C[1]))), sc(Np, 0.9));
+      put({ kind: 'ell', part: near ? 7 : 8, grp: near ? 7 : 8, c: bc, L: M3.cols(sc(Up, BTN_R[0]), sc(Vv, BTN_R[1]), sc(Np, 1.5)), mat: (s) => (s[1] > 0.35 ? code(BTN, 1) : C.BTN) });
+      anchors[near ? 'handN' : 'handF'] = inF(root, add(sh, add(sc(Up, 20), sc(Vv, 0))));
+    }
+
+    /* stubby feet (dangle a little with the bob) */
+    for (const sd of [1, -1]) {
+      const sw = Math.sin(fl + (sd > 0 ? 0.6 : 0)) * 0.8;
+      E([1.2, -19.4 - bob * 0.4 + sw, sd * 7.4], [5.6, 4.6, 5], sd > 0 ? 9 : 10, () => C.BODY);
+    }
+    anchors.feet = inF(root, [1, -24, 0]);
+    return { prims, stamps: [], dots: [], anchors, pose: P, pri: PRI, glossy: GLOSSY, baseMat: BODY, shadowSteps: 12 };
+  }
+
+  function render(model, opt) { curScale = opt.scale || 1; return Creature.render(model, opt); }
+
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.3, bw: 132, bh: 104, oy: 0.95 } };
+})();
+
+/* ------------------------------------------------------------------
    Sealeo — the Ball Roll Pokémon. An upright seal with a bristly
    white moustache that balances things on the tip of its nose.
    Model space: x = forward, y = up, z = near side at yaw 0, ground at y = 0.
@@ -27509,7 +27763,7 @@ const Zigzagoon = (() => {
   return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.4, bw: 152, bh: 96, oy: 0.89 } };
 })();
 
-const SP = { Mudkip: typeof Mudkip !== 'undefined' ? Mudkip : null, Altaria: typeof Altaria !== 'undefined' ? Altaria : null, Anorith: typeof Anorith !== 'undefined' ? Anorith : null, Azumarill: typeof Azumarill !== 'undefined' ? Azumarill : null, Azurill: typeof Azurill !== 'undefined' ? Azurill : null, Bagon: typeof Bagon !== 'undefined' ? Bagon : null, Breloom: typeof Breloom !== 'undefined' ? Breloom : null, Budew: typeof Budew !== 'undefined' ? Budew : null, Carvanha: typeof Carvanha !== 'undefined' ? Carvanha : null, Castform: typeof Castform !== 'undefined' ? Castform : null, Chatot: typeof Chatot !== 'undefined' ? Chatot : null, Chinchou: typeof Chinchou !== 'undefined' ? Chinchou : null, Clamperl: typeof Clamperl !== 'undefined' ? Clamperl : null, Corphish: typeof Corphish !== 'undefined' ? Corphish : null, Corsola: typeof Corsola !== 'undefined' ? Corsola : null, Crawdaunt: typeof Crawdaunt !== 'undefined' ? Crawdaunt : null, Deoxys: typeof Deoxys !== 'undefined' ? Deoxys : null, Dialga: typeof Dialga !== 'undefined' ? Dialga : null, Feebas: typeof Feebas !== 'undefined' ? Feebas : null, Flygon: typeof Flygon !== 'undefined' ? Flygon : null, Groudon: typeof Groudon !== 'undefined' ? Groudon : null, Illumise: typeof Illumise !== 'undefined' ? Illumise : null, Jirachi: typeof Jirachi !== 'undefined' ? Jirachi : null, Kecleon: typeof Kecleon !== 'undefined' ? Kecleon : null, Kyogre: typeof Kyogre !== 'undefined' ? Kyogre : null, Latias: typeof Latias !== 'undefined' ? Latias : null, Latios: typeof Latios !== 'undefined' ? Latios : null, Lileep: typeof Lileep !== 'undefined' ? Lileep : null, Linoone: typeof Linoone !== 'undefined' ? Linoone : null, Lombre: typeof Lombre !== 'undefined' ? Lombre : null, Lotad: typeof Lotad !== 'undefined' ? Lotad : null, Ludicolo: typeof Ludicolo !== 'undefined' ? Ludicolo : null, Lunatone: typeof Lunatone !== 'undefined' ? Lunatone : null, Luvdisc: typeof Luvdisc !== 'undefined' ? Luvdisc : null, Mantine: typeof Mantine !== 'undefined' ? Mantine : null, Marill: typeof Marill !== 'undefined' ? Marill : null, Marshtomp: typeof Marshtomp !== 'undefined' ? Marshtomp : null, Masquerain: typeof Masquerain !== 'undefined' ? Masquerain : null, Meloetta: typeof Meloetta !== 'undefined' ? Meloetta : null, Milotic: typeof Milotic !== 'undefined' ? Milotic : null, Minior: typeof Minior !== 'undefined' ? Minior : null, Minun: typeof Minun !== 'undefined' ? Minun : null, Nincada: typeof Nincada !== 'undefined' ? Nincada : null, Numel: typeof Numel !== 'undefined' ? Numel : null, Nuzleaf: typeof Nuzleaf !== 'undefined' ? Nuzleaf : null, Palkia: typeof Palkia !== 'undefined' ? Palkia : null, Pelipper: typeof Pelipper !== 'undefined' ? Pelipper : null, Plusle: typeof Plusle !== 'undefined' ? Plusle : null, Rayquaza: typeof Rayquaza !== 'undefined' ? Rayquaza : null, Regice: typeof Regice !== 'undefined' ? Regice : null, Relicanth: typeof Relicanth !== 'undefined' ? Relicanth : null, Remoraid: typeof Remoraid !== 'undefined' ? Remoraid : null, Sealeo: typeof Sealeo !== 'undefined' ? Sealeo : null, Seedot: typeof Seedot !== 'undefined' ? Seedot : null, Sharpedo: typeof Sharpedo !== 'undefined' ? Sharpedo : null, Shroomish: typeof Shroomish !== 'undefined' ? Shroomish : null, Slaking: typeof Slaking !== 'undefined' ? Slaking : null, Slakoth: typeof Slakoth !== 'undefined' ? Slakoth : null, Slugma: typeof Slugma !== 'undefined' ? Slugma : null, Snorunt: typeof Snorunt !== 'undefined' ? Snorunt : null, Solrock: typeof Solrock !== 'undefined' ? Solrock : null, Spheal: typeof Spheal !== 'undefined' ? Spheal : null, Spinda: typeof Spinda !== 'undefined' ? Spinda : null, Starmie: typeof Starmie !== 'undefined' ? Starmie : null, Staryu: typeof Staryu !== 'undefined' ? Staryu : null, Surskit: typeof Surskit !== 'undefined' ? Surskit : null, Swablu: typeof Swablu !== 'undefined' ? Swablu : null, Swampert: typeof Swampert !== 'undefined' ? Swampert : null, Swellow: typeof Swellow !== 'undefined' ? Swellow : null, Taillow: typeof Taillow !== 'undefined' ? Taillow : null, Tentacool: typeof Tentacool !== 'undefined' ? Tentacool : null, Torkoal: typeof Torkoal !== 'undefined' ? Torkoal : null, Trapinch: typeof Trapinch !== 'undefined' ? Trapinch : null, Tropius: typeof Tropius !== 'undefined' ? Tropius : null, Vibrava: typeof Vibrava !== 'undefined' ? Vibrava : null, Vigoroth: typeof Vigoroth !== 'undefined' ? Vigoroth : null, Volbeat: typeof Volbeat !== 'undefined' ? Volbeat : null, Wailmer: typeof Wailmer !== 'undefined' ? Wailmer : null, Wailord: typeof Wailord !== 'undefined' ? Wailord : null, Walrein: typeof Walrein !== 'undefined' ? Walrein : null, Wingull: typeof Wingull !== 'undefined' ? Wingull : null, Wobbuffet: typeof Wobbuffet !== 'undefined' ? Wobbuffet : null, Wynaut: typeof Wynaut !== 'undefined' ? Wynaut : null, Zigzagoon: typeof Zigzagoon !== 'undefined' ? Zigzagoon : null };
+const SP = { Mudkip: typeof Mudkip !== 'undefined' ? Mudkip : null, Altaria: typeof Altaria !== 'undefined' ? Altaria : null, Anorith: typeof Anorith !== 'undefined' ? Anorith : null, Azumarill: typeof Azumarill !== 'undefined' ? Azumarill : null, Azurill: typeof Azurill !== 'undefined' ? Azurill : null, Bagon: typeof Bagon !== 'undefined' ? Bagon : null, Breloom: typeof Breloom !== 'undefined' ? Breloom : null, Budew: typeof Budew !== 'undefined' ? Budew : null, Carvanha: typeof Carvanha !== 'undefined' ? Carvanha : null, Castform: typeof Castform !== 'undefined' ? Castform : null, Chatot: typeof Chatot !== 'undefined' ? Chatot : null, Chinchou: typeof Chinchou !== 'undefined' ? Chinchou : null, Clamperl: typeof Clamperl !== 'undefined' ? Clamperl : null, Corphish: typeof Corphish !== 'undefined' ? Corphish : null, Corsola: typeof Corsola !== 'undefined' ? Corsola : null, Crawdaunt: typeof Crawdaunt !== 'undefined' ? Crawdaunt : null, Deoxys: typeof Deoxys !== 'undefined' ? Deoxys : null, Dialga: typeof Dialga !== 'undefined' ? Dialga : null, Feebas: typeof Feebas !== 'undefined' ? Feebas : null, Flygon: typeof Flygon !== 'undefined' ? Flygon : null, Groudon: typeof Groudon !== 'undefined' ? Groudon : null, Illumise: typeof Illumise !== 'undefined' ? Illumise : null, Jirachi: typeof Jirachi !== 'undefined' ? Jirachi : null, Kecleon: typeof Kecleon !== 'undefined' ? Kecleon : null, Kyogre: typeof Kyogre !== 'undefined' ? Kyogre : null, Latias: typeof Latias !== 'undefined' ? Latias : null, Latios: typeof Latios !== 'undefined' ? Latios : null, Lileep: typeof Lileep !== 'undefined' ? Lileep : null, Linoone: typeof Linoone !== 'undefined' ? Linoone : null, Lombre: typeof Lombre !== 'undefined' ? Lombre : null, Lotad: typeof Lotad !== 'undefined' ? Lotad : null, Ludicolo: typeof Ludicolo !== 'undefined' ? Ludicolo : null, Lunatone: typeof Lunatone !== 'undefined' ? Lunatone : null, Luvdisc: typeof Luvdisc !== 'undefined' ? Luvdisc : null, Mantine: typeof Mantine !== 'undefined' ? Mantine : null, Marill: typeof Marill !== 'undefined' ? Marill : null, Marshtomp: typeof Marshtomp !== 'undefined' ? Marshtomp : null, Masquerain: typeof Masquerain !== 'undefined' ? Masquerain : null, Meloetta: typeof Meloetta !== 'undefined' ? Meloetta : null, Milotic: typeof Milotic !== 'undefined' ? Milotic : null, Minior: typeof Minior !== 'undefined' ? Minior : null, Minun: typeof Minun !== 'undefined' ? Minun : null, Nincada: typeof Nincada !== 'undefined' ? Nincada : null, Numel: typeof Numel !== 'undefined' ? Numel : null, Nuzleaf: typeof Nuzleaf !== 'undefined' ? Nuzleaf : null, Palkia: typeof Palkia !== 'undefined' ? Palkia : null, Pelipper: typeof Pelipper !== 'undefined' ? Pelipper : null, Plusle: typeof Plusle !== 'undefined' ? Plusle : null, Rayquaza: typeof Rayquaza !== 'undefined' ? Rayquaza : null, Regice: typeof Regice !== 'undefined' ? Regice : null, Relicanth: typeof Relicanth !== 'undefined' ? Relicanth : null, Remoraid: typeof Remoraid !== 'undefined' ? Remoraid : null, Rotomdex: typeof Rotomdex !== 'undefined' ? Rotomdex : null, Sealeo: typeof Sealeo !== 'undefined' ? Sealeo : null, Seedot: typeof Seedot !== 'undefined' ? Seedot : null, Sharpedo: typeof Sharpedo !== 'undefined' ? Sharpedo : null, Shroomish: typeof Shroomish !== 'undefined' ? Shroomish : null, Slaking: typeof Slaking !== 'undefined' ? Slaking : null, Slakoth: typeof Slakoth !== 'undefined' ? Slakoth : null, Slugma: typeof Slugma !== 'undefined' ? Slugma : null, Snorunt: typeof Snorunt !== 'undefined' ? Snorunt : null, Solrock: typeof Solrock !== 'undefined' ? Solrock : null, Spheal: typeof Spheal !== 'undefined' ? Spheal : null, Spinda: typeof Spinda !== 'undefined' ? Spinda : null, Starmie: typeof Starmie !== 'undefined' ? Starmie : null, Staryu: typeof Staryu !== 'undefined' ? Staryu : null, Surskit: typeof Surskit !== 'undefined' ? Surskit : null, Swablu: typeof Swablu !== 'undefined' ? Swablu : null, Swampert: typeof Swampert !== 'undefined' ? Swampert : null, Swellow: typeof Swellow !== 'undefined' ? Swellow : null, Taillow: typeof Taillow !== 'undefined' ? Taillow : null, Tentacool: typeof Tentacool !== 'undefined' ? Tentacool : null, Torkoal: typeof Torkoal !== 'undefined' ? Torkoal : null, Trapinch: typeof Trapinch !== 'undefined' ? Trapinch : null, Tropius: typeof Tropius !== 'undefined' ? Tropius : null, Vibrava: typeof Vibrava !== 'undefined' ? Vibrava : null, Vigoroth: typeof Vigoroth !== 'undefined' ? Vigoroth : null, Volbeat: typeof Volbeat !== 'undefined' ? Volbeat : null, Wailmer: typeof Wailmer !== 'undefined' ? Wailmer : null, Wailord: typeof Wailord !== 'undefined' ? Wailord : null, Walrein: typeof Walrein !== 'undefined' ? Walrein : null, Wingull: typeof Wingull !== 'undefined' ? Wingull : null, Wobbuffet: typeof Wobbuffet !== 'undefined' ? Wobbuffet : null, Wynaut: typeof Wynaut !== 'undefined' ? Wynaut : null, Zigzagoon: typeof Zigzagoon !== 'undefined' ? Zigzagoon : null };
 function crop(r) {
   const { buf } = r; const W = buf.w, H = buf.h, d = buf.d;
   let x0 = W, y0 = H, x1 = -1, y1 = -1;
@@ -27527,7 +27781,7 @@ onmessage = (e) => {
 postMessage({ ready: true });
 </script>
 <script>
-const SPECIES_LIST = ["Mudkip","Altaria","Anorith","Azumarill","Azurill","Bagon","Breloom","Budew","Carvanha","Castform","Chatot","Chinchou","Clamperl","Corphish","Corsola","Crawdaunt","Deoxys","Dialga","Feebas","Flygon","Groudon","Illumise","Jirachi","Kecleon","Kyogre","Latias","Latios","Lileep","Linoone","Lombre","Lotad","Ludicolo","Lunatone","Luvdisc","Mantine","Marill","Marshtomp","Masquerain","Meloetta","Milotic","Minior","Minun","Nincada","Numel","Nuzleaf","Palkia","Pelipper","Plusle","Rayquaza","Regice","Relicanth","Remoraid","Sealeo","Seedot","Sharpedo","Shroomish","Slaking","Slakoth","Slugma","Snorunt","Solrock","Spheal","Spinda","Starmie","Staryu","Surskit","Swablu","Swampert","Swellow","Taillow","Tentacool","Torkoal","Trapinch","Tropius","Vibrava","Vigoroth","Volbeat","Wailmer","Wailord","Walrein","Wingull","Wobbuffet","Wynaut","Zigzagoon"];
+const SPECIES_LIST = ["Mudkip","Altaria","Anorith","Azumarill","Azurill","Bagon","Breloom","Budew","Carvanha","Castform","Chatot","Chinchou","Clamperl","Corphish","Corsola","Crawdaunt","Deoxys","Dialga","Feebas","Flygon","Groudon","Illumise","Jirachi","Kecleon","Kyogre","Latias","Latios","Lileep","Linoone","Lombre","Lotad","Ludicolo","Lunatone","Luvdisc","Mantine","Marill","Marshtomp","Masquerain","Meloetta","Milotic","Minior","Minun","Nincada","Numel","Nuzleaf","Palkia","Pelipper","Plusle","Rayquaza","Regice","Relicanth","Remoraid","Rotomdex","Sealeo","Seedot","Sharpedo","Shroomish","Slaking","Slakoth","Slugma","Snorunt","Solrock","Spheal","Spinda","Starmie","Staryu","Surskit","Swablu","Swampert","Swellow","Taillow","Tentacool","Torkoal","Trapinch","Tropius","Vibrava","Vigoroth","Volbeat","Wailmer","Wailord","Walrein","Wingull","Wobbuffet","Wynaut","Zigzagoon"];
 /* ==== src/px.js ==== */
 /* ------------------------------------------------------------------
    PX — tiny pixel-art framebuffer toolkit.
@@ -46349,6 +46603,261 @@ const Remoraid = (() => {
   return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.6, bw: 224, bh: 208, oy: 0.68 } };
 })();
 
+/* ==== src/species/rotomdex.js ==== */
+/* ------------------------------------------------------------------
+   Rotom Dex — Rotom living inside a Pokédex (0.3 m). Not a wild
+   species: this is the flying companion drawn by src/snap/rotom.js
+   (no Dex entry, no accessories, never a photo subject).
+   Model space: x = forward (the screen faces +x, so yaw ≈ π/2 shows the
+   front), y = up, z = near side at yaw 0, ground at y = 0.
+
+   Design (official art / 3D model): a salmon-red rounded body shaped like
+   a squat house — narrow at the bottom, widest at two pointed upper
+   corners (two little holes on each), a roof rising to a tall cone
+   antenna. A white screen shows Rotom's light-blue face: big white-rimmed
+   blue eyes on a dark bridge, a toothy grin and the magnifier-handle tail
+   running to the lower corner. Two flat lightning-bolt arms zig-zag out
+   to big flat panels with oval buttons; two stubby round feet.
+
+   Pose params:
+     float   radians  bob phase (body rises/falls a little, feet dangle)
+     armN / armF      arm raise angle (radians, + = up) of the near (+z) and far arm
+     armL / armR      aliases: L = screen-left from the front = near arm, R = far arm
+     tilt    radians  roll in the screen plane (+ = leans to screen right)
+     lean    radians  pitch (+ = top tips toward the camera / forward)
+     squash  −1..1    + squashed (poke), − stretched (zip)
+     mouth   0..1     open amount;  smile: 'grin'|'open'|'o'|'frown'|'wavy'|'flat'
+     eyes    'open'|'happy'|'blink'|'x'|'angry'|'dizzy'|'sad'|'wow'
+     lookX / lookY −1..1  iris offset (screen right / up)
+     screen  ''|'heart'|'!'|'?'|'note'|'sweat'|'zzz'|'static'  icon on the screen
+     glow    0..1     antenna tip sparks (yellow)
+   Spin/yaw is the renderer's.
+   Anchors: top (antenna tip), head (screen centre), handN, handF, body, feet.
+------------------------------------------------------------------- */
+const RotomDex = (() => {
+  const { chain, T, R, S, code } = Creature;
+  const BODY = 1, SCREEN = 2, FACE = 3, BRIDGE = 4, EYEW = 5, IRIS = 6, IRISD = 7, INK = 8, TEETH = 9, MOUTH = 10, HOLE = 11, BTN = 12, PINK = 13, YEL = 14, FACED = 15, SCRD = 16;
+  const MAT = { BODY, SCREEN, FACE, BRIDGE, EYEW, IRIS, IRISD, INK, TEETH, MOUTH, HOLE, BTN, PINK, YEL, FACED, SCRD };
+  const flat = (c, od = '#1a1c2a') => ({ r: [c, c, c, c, c], od, ol: od, ln: od });
+  const PAL = Creature.palette({
+    [BODY]:   { r: ['#9a3a38', '#c24f49', '#e2685b', '#f28a78', '#ffbba6'], od: '#521618', ol: '#84282a', ln: '#7c2629' },
+    [BTN]:    { r: ['#7c2a2a', '#9c3634', '#b8443f', '#cc564e', '#e0786c'], od: '#521618', ol: '#84282a', ln: '#6a2022' },
+    [SCREEN]: { r: ['#d8e2ec', '#e8eff5', '#f4f8fb', '#fbfdfe', '#ffffff'], od: '#2a3040', ol: '#3a4254', ln: '#4a5266' },
+    [SCRD]:   flat('#c9d6e4', '#2a3040'),
+    [FACE]:   { r: ['#62aee0', '#74bdea', '#86caf2', '#9ad6f7', '#b6e4fb'], od: '#1a3a66', ol: '#2a5a8a', ln: '#2a5a8a' },
+    [FACED]:  flat('#4f97d2', '#1a3a66'),
+    [BRIDGE]: { r: ['#1c1e26', '#24262f', '#2e303a', '#3c3e4a', '#4c4e5c'], od: '#101118', ol: '#1c1e26', ln: '#101118' },
+    [EYEW]:   flat('#ffffff'),
+    [IRIS]:   flat('#2a66dc', '#0c1a4a'),
+    [IRISD]:  flat('#163c9c', '#0c1a4a'),
+    [INK]:    flat('#1a1c2a'),
+    [TEETH]:  flat('#ffffff'),
+    [MOUTH]:  flat('#4a1a36'),
+    [HOLE]:   flat('#6a1e22', '#521618'),
+    [PINK]:   flat('#ff5a94', '#7a1a3a'),
+    [YEL]:    flat('#ffd83a', '#7a5a10'),
+  });
+  const GLOSSY = { [BODY]: 1, [BTN]: 1 };
+  const C = Object.fromEntries(Object.entries(MAT).map(([k, v]) => [k, code(v)]));
+  const C_BODY_L = code(BODY, 1);
+
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const add = V3.add, sc = V3.scale;
+  const inF = (f, p) => add(f.t, M3.v(f.L, p));
+  const segD = Shape2D.segDist;
+  let curScale = 1;
+  const px = (n) => n / Math.max(0.2, curScale);        // n screen pixels in model units
+  const lw = (u) => Math.max(u, px(0.95));              // a line at least ~1px wide
+
+  /* ---------- body silhouette (front view: w = |horizontal|, y = up, body-centre units) ---------- */
+  const SIL = Shape2D.catmull([[0, -17.5], [12.5, -17.5], [16.4, -15], [17.2, -4], [18.6, 5], [23.6, 10.8], [25.4, 14.4], [22.4, 16.6], [13, 19.6], [5, 22.2], [0, 23]], false, 6);
+  const SILP = SIL.concat(SIL.slice(1, -1).reverse().map(([w, y]) => [-w, y]));
+  const SILG = bakeShape({ bb: [-25, -21, 25, 26], test: (u, v) => (Shape2D.inPoly(u, v, SILP) ? 1 : 0) });
+  const HOLES = [[17.6, 12.4], [20.4, 11.4], [22.1, 14]];
+  const BR = [12, 34, 34]; // body ellipsoid radii (x depth, y, z)
+  function bodyMat(s) {
+    const x = BR[0] * s[0], y = BR[1] * s[1], z = BR[2] * s[2];
+    if (!SILG.test(z, y)) return 0;
+    if (x > 2) { const w = Math.abs(z); for (const [hw, hy] of HOLES) if ((w - hw) ** 2 + (y - hy) ** 2 < lw(0.9) ** 2) return C.HOLE; }
+    return C.BODY;
+  }
+
+  /* ---------- the screen plate: face, eyes, bridge, mouth, icons (u = screen right, v = up) ---------- */
+  const SR = { u0: -12, u1: 12, v0: -14, v1: 6.8, r: 2 };
+  const EYE = [[-6.8, 9.6], [6.8, 9.6]], ER = 6.4;
+  const inRect = (u, v) => {
+    if (u < SR.u0 || u > SR.u1 || v < SR.v0 || v > SR.v1) return false;
+    const cx = clamp(u, SR.u0 + SR.r, SR.u1 - SR.r), cy = clamp(v, SR.v0 + SR.r, SR.v1 - SR.r);
+    return (u - cx) ** 2 + (v - cy) ** 2 <= SR.r * SR.r;
+  };
+  const ICON = [8.3, 1.2];
+  function icon(kind, u, v) {
+    const x = u - ICON[0], y = v - ICON[1];
+    if (kind === 'heart') { const a = x / 3.2, b = y / 3.2 - 0.25; return (a * a + b * b - 0.3) ** 3 - a * a * b * b * b < 0 ? C.PINK : 0; }
+    if (kind === '!') return (Math.abs(x) < 1.1 && y > -0.8 && y < 4) || Math.hypot(x, y + 2.6) < 1.1 ? C.PINK : 0;
+    if (kind === '?') { const r = Math.hypot(x, y - 2), a = Math.atan2(y - 2, x); if (Math.abs(r - 1.9) < 0.8 && (a > -1.2 || a < -2.6)) return C.FACED; if (Math.abs(x) < 0.8 && y > -1.2 && y < 0.6) return C.FACED; return Math.hypot(x, y + 2.9) < 0.9 ? C.FACED : 0; }
+    if (kind === 'note') { if (Math.hypot((x + 1.2) / 1.5, (y + 2) / 1.1) < 1) return C.INK; if (Math.abs(x - 0.2) < 0.55 && y > -2 && y < 3.6) return C.INK; return y > 2.4 && y < 3.8 && x > 0 && x < 2.6 - (3.8 - y) * 0.4 ? C.INK : 0; }
+    if (kind === 'sweat') { const a = x / 1.9, b = (y + 0.6) / 2.1; return (b < 0 ? a * a + b * b < 1 : Math.abs(a) < 1 - b * 0.8 && b < 1.25) ? C.FACED : 0; }
+    if (kind === 'zzz') { const zz = (ox, oy, s) => { const X = x - ox, Y = y - oy; if (Math.abs(X) > s || Math.abs(Y) > s) return false; return Math.abs(Y - s) < 0.55 || Math.abs(Y + s) < 0.55 || Math.abs(Y + X) < 0.6; }; return zz(-1, -1.6, 1.6) || zz(1.6, 2.2, 1.1) ? C.FACED : 0; }
+    return 0;
+  }
+  function screenShape(P, t) {
+    const eyes = P.eyes, mo = clamp(+P.mouth || 0, 0, 1), sm = P.smile || 'grin', lx = clamp(+P.lookX || 0, -1, 1), ly = clamp(+P.lookY || 0, -1, 1);
+    const scr = P.screen || '';
+    return {
+      bb: [-14, -15.5, 14, 16.5],
+      test(u, v) {
+        const L = lw(0.7);
+        // eyes (over everything)
+        for (let k = 0; k < 2; k++) {
+          const [ex, ey] = EYE[k], dx = u - ex, dy = v - ey, d = Math.hypot(dx, dy), side = k ? 1 : -1;
+          if (eyes === 'happy') {
+            // ^ arcs: a thick white band with ink edges
+            const kx = dx / (ER * 0.85); if (Math.abs(kx) > 1.1) continue;
+            const c = ey - 2 + (1 - kx * kx) * 4.2, e = Math.abs(dy - (c - ey)), W = 1.5;
+            if (Math.abs(kx) <= 1 && e < W) return C.EYEW;
+            if (Math.abs(kx) <= 1.1 && e < W + L) return C.INK;
+            continue;
+          }
+          if (eyes === 'blink') {
+            const e = Math.hypot(dx / (ER * 0.9), (dy + 0.5) / 1.6);
+            if (e < 1) return Math.abs(dy + 0.5) < L * 0.6 ? C.INK : C.EYEW;
+            if (Math.hypot(dx / (ER * 0.9 + L), (dy + 0.5) / (1.6 + L)) < 1) return C.INK;
+            continue;
+          }
+          if (d > ER) continue;
+          if (d > ER - L) return C.INK;
+          if (eyes === 'x') { const ax = Math.abs(dx), ay = Math.abs(dy); return Math.abs(ax - ay) < lw(0.85) && ax < 3.4 ? C.INK : C.EYEW; }
+          if (eyes === 'dizzy') { const a = Math.atan2(dy, dx * side) + Math.PI, r = d / 0.62; const ph = ((r - a) / (2 * Math.PI)) % 1; return r < 7.5 && Math.abs(ph - 0.5) < 0.2 ? C.INK : C.EYEW; }
+          // lids: angry slants inward-down, sad droops outward-down
+          if (eyes === 'angry') { const lid = ey + 2.2 - (dx * -side) * 0.55; if (v > lid) return v > lid + L ? 0 : C.INK; }
+          if (eyes === 'sad') { const lid = ey + 2.4 - (dx * side) * 0.45; if (v > lid) return v > lid + L ? 0 : C.INK; }
+          const ir = eyes === 'wow' ? 2.4 : 3.9, ix = ex + lx * 1.3, iy = ey + ly * 1.2 - (eyes === 'sad' ? 0.8 : 0);
+          const id = Math.hypot(u - ix, v - iy) / ir;
+          if (id <= 1) {
+            if (Math.hypot(u - ix + ir * 0.34, v - iy - ir * 0.36) < Math.max(ir * 0.3, px(0.7))) return C.EYEW;
+            return id > 0.66 || v - iy < -ir * 0.45 ? C.IRISD : C.IRIS;
+          }
+          return C.EYEW;
+        }
+        // the dark bridge between the eyes (a dome resting on the face)
+        const inScr = inRect(u, v);
+        if (eyes !== 'happy' && eyes !== 'blink' && Math.hypot(u, v - 7) < 7.6 && v > 3.5) return C.BRIDGE;
+        if (!inScr) return 0;
+        // screen edge: a thin darker bezel
+        if (!inRect(u + (u > 0 ? 1 : -1) * L, v) || !inRect(u, v + (v > 0 ? 1 : -1) * L)) return C.SCRD;
+        if (scr === 'static' && (Math.floor(v * 1.3 + Math.sin(u * 7.1) * 0.7) & 1)) return (Math.floor(u * 3.7 + v * 5.3) & 3) ? C.SCRD : C.SCREEN;
+        // mouth (on the face)
+        const mx = -1.2, my = 1.4;
+        {
+          const X = u - mx, Y = v - my;
+          if (sm === 'o' || (sm === 'open' && mo > 0.2)) {
+            const rw = sm === 'o' ? 1.8 + mo : 3 + mo * 1.2, rh = sm === 'o' ? 2 + mo * 1.2 : 1.6 + mo * 2.4;
+            const e = Math.hypot(X / rw, (Y + rh * 0.4) / rh);
+            if (e < 1) return e > 1 - L / rh ? C.INK : Y + rh * 0.4 < -rh * 0.5 ? C.PINK : C.MOUTH;
+          } else if (sm === 'frown' || sm === 'wavy' || sm === 'flat') {
+            const W = 3.4; if (Math.abs(X) < W) { const c = sm === 'frown' ? -1.4 + (1 - (X / W) ** 2) * 1.4 : sm === 'wavy' ? Math.sin(X * 2.1) * 0.6 - 0.6 : -0.6; if (Math.abs(Y - c) < lw(0.55)) return C.INK; }
+          } else {
+            // the grin: flat top, round bottom, a row of teeth
+            const W = 5.2 + mo * 0.4, Hh = 3 + mo * 2.2, kx = X / W;
+            if (Math.abs(kx) <= 1) {
+              const top = 0.7 + kx * kx * 0.5, bot = top - Hh * Math.sqrt(Math.max(0, 1 - kx * kx));
+              if (Y <= top && Y >= bot) {
+                if (Y > top - L || Y < bot + L || Math.abs(kx) > 1 - L / W) return C.INK;
+                if (mo > 0.25 && Y < top - 1.6) return Y < bot + 1.3 ? C.PINK : C.MOUTH;
+                return Math.abs(((X + 20) % 1.9) - 0.95) < lw(0.3) * 0.5 && curScale > 1.2 ? C.SCRD : C.TEETH;
+              }
+            }
+          }
+        }
+        // Rotom's light-blue face with its magnifier-handle tail running to the lower right corner
+        const fr = Math.hypot((u + 1.4) / 9.6, (v - 1.6) / 9.2);
+        const tail = segD(u, v, 3.5, -5.5, 12.6, -14) < 2.4;
+        if (fr < 1 || tail) {
+          if (scr && scr !== 'static') { const ic = icon(scr, u, v); if (ic) return ic; }
+          return (fr > 1 - lw(0.5) / 9 && !tail) || (tail && fr >= 1 && segD(u, v, 3.5, -5.5, 12.6, -14) > 2.4 - lw(0.5)) ? C.FACED : C.FACE;
+        }
+        if (scr && scr !== 'static') { const ic = icon(scr, u, v); if (ic) return ic; }
+        return C.SCREEN;
+      },
+    };
+  }
+
+  /* ---------- arms: flat lightning bolts ending in big panels (u = outward, v = up, from the shoulder) ---------- */
+  const BOLT = [[-2, 0], [8, 0.8], [5.4, 6.8], [13.5, 7.6]];
+  // a rounded parallelogram: corners chamfered then smoothed a little
+  const roundPoly = (pts, r) => { const o = []; const n = pts.length; for (let i = 0; i < n; i++) { const p = pts[i], a = pts[(i + n - 1) % n], b = pts[(i + 1) % n]; const da = Math.hypot(a[0] - p[0], a[1] - p[1]), db = Math.hypot(b[0] - p[0], b[1] - p[1]); o.push([p[0] + (a[0] - p[0]) * r / da, p[1] + (a[1] - p[1]) * r / da], [p[0] + (b[0] - p[0]) * r / db, p[1] + (b[1] - p[1]) * r / db]); } return Shape2D.catmull(o, true, 3); };
+  const PANEL = roundPoly([[12.5, 11], [32, 8.2], [30.4, -8.6], [11.2, -5.6]], 2.6);
+  const BTN_C = [21.4, 1.2], BTN_R = [5.2, 3.1];
+  const BOLTG = bakeShape({ bb: [-4, -3, 16, 10], test: (u, v) => { for (let i = 0; i < 3; i++) if (segD(u, v, ...BOLT[i], ...BOLT[i + 1]) < 1.9) return C.BODY; return 0; } });
+  const PANELG = bakeShape({ bb: [9, -11, 34, 13], test: (u, v) => {
+    if (!Shape2D.inPoly(u, v, PANEL)) return 0;
+    return Shape2D.polyDist ? (Shape2D.polyDist(u, v, PANEL) < 1.1 && v > 0 ? C_BODY_L : C.BODY) : C.BODY;
+  } });
+
+  const DEFAULT = { float: 0, armN: 0, armF: 0, tilt: 0, lean: 0, squash: 0, mouth: 0, smile: 'grin', eyes: 'open', lookX: 0, lookY: 0, screen: '', glow: 0 };
+  // 1 body + antenna, 2 screen, 3/4 arm bolts, 5/6 panels, 7/8 buttons, 9/10 feet, 11 sparks
+  const PRI = { 1: 1, 2: 3, 3: 2, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9: 0, 10: 0, 11: 4 };
+
+  function build(pose) {
+    const P = Object.assign({}, DEFAULT, pose);
+    if (pose && pose.armL !== undefined) P.armN = pose.armL;
+    if (pose && pose.armR !== undefined) P.armF = pose.armR;
+    const prims = [], anchors = {};
+    const fl = +P.float || 0, bob = Math.sin(fl) * 1.6, sq = clamp(+P.squash || 0, -1, 1);
+    const root = chain(T(0, 24 + bob, 0), R(M3.rx(+P.tilt || 0)), R(M3.rz(-(+P.lean || 0))), S(1 + sq * 0.14, 1 - sq * 0.2, 1 + sq * 0.14));
+    const put = (q) => { q.c = inF(root, q.c); q.L = M3.mul(root.L, q.L); prims.push(q); return q; };
+    const E = (c, r, part, mat) => put({ kind: 'ell', part, grp: part, c, L: M3.diag(r[0], r[1], r[2]), mat });
+    // front frame: a = screen right (−z), v = up, n = out of the screen (+x)
+    const A = [0, 0, -1], V = [0, 1, 0], N = [1, 0, 0];
+
+    /* body + antenna (one group: seamless) */
+    E([0, 0, 0], BR, 1, bodyMat);
+    const AN = 26;
+    for (let i = 0; i < AN; i++) {
+      const t = i / (AN - 1), y = 19 + t * 33 - (1 - t) * 3, r = 6.4 * (1 - t) ** 0.9 + 1.1;
+      const spark = P.glow > 0.3 && t > 0.8;
+      E([-0.4 * t, y, 0], [r * 0.85, 8 * (1 - t) + 1.6, r], 1, spark ? () => C.YEL : () => C.BODY);
+    }
+    anchors.top = inF(root, [0, 53.5, 0]);
+    anchors.body = inF(root, [0, 0, 0]);
+
+    /* screen */
+    put({ kind: 'plate', part: 2, grp: 2, c: [12.5, -1.5, 0], L: M3.cols(A, V, N), shape: screenShape(P), thick: 1.2 });
+    anchors.head = inF(root, [12.6, 0, 0]);
+
+    /* arms */
+    for (const sd of [1, -1]) {
+      const near = sd > 0, th = +(near ? P.armN : P.armF) || 0;
+      const out = [0, 0, sd], ct = Math.cos(th), st = Math.sin(th);
+      const U = add(sc(out, ct), sc(V, st)), Vv = add(sc(out, -st), sc(V, ct));
+      // mirrored so that +v stays up: u runs outward on both sides
+      const sh = [0.5, -4.5, sd * 16.4];
+      const Lb = M3.cols(U, Vv, N);
+      put({ kind: 'plate', part: near ? 3 : 4, grp: near ? 3 : 4, c: sh, L: Lb, shape: BOLTG, thick: 3 });
+      // panel: slightly turned toward the camera
+      const Np = V3.norm(add(N, sc(U, -0.22))), Up = V3.norm(V3.sub(U, sc(Np, V3.dot(U, Np))));
+      const Lp = M3.cols(Up, Vv, Np);
+      put({ kind: 'plate', part: near ? 5 : 6, grp: near ? 5 : 6, c: sh, L: Lp, shape: PANELG, thick: 3 });
+      const bc = add(add(sh, add(sc(Up, BTN_C[0]), sc(Vv, BTN_C[1]))), sc(Np, 0.9));
+      put({ kind: 'ell', part: near ? 7 : 8, grp: near ? 7 : 8, c: bc, L: M3.cols(sc(Up, BTN_R[0]), sc(Vv, BTN_R[1]), sc(Np, 1.5)), mat: (s) => (s[1] > 0.35 ? code(BTN, 1) : C.BTN) });
+      anchors[near ? 'handN' : 'handF'] = inF(root, add(sh, add(sc(Up, 20), sc(Vv, 0))));
+    }
+
+    /* stubby feet (dangle a little with the bob) */
+    for (const sd of [1, -1]) {
+      const sw = Math.sin(fl + (sd > 0 ? 0.6 : 0)) * 0.8;
+      E([1.2, -19.4 - bob * 0.4 + sw, sd * 7.4], [5.6, 4.6, 5], sd > 0 ? 9 : 10, () => C.BODY);
+    }
+    anchors.feet = inF(root, [1, -24, 0]);
+    return { prims, stamps: [], dots: [], anchors, pose: P, pri: PRI, glossy: GLOSSY, baseMat: BODY, shadowSteps: 12 };
+  }
+
+  function render(model, opt) { curScale = opt.scale || 1; return Creature.render(model, opt); }
+
+  return { build, render, PAL, MAT, DEFAULT, meta: { heightM: 0.3, bw: 132, bh: 104, oy: 0.95 } };
+})();
+
 /* ==== src/species/sealeo.js ==== */
 /* ------------------------------------------------------------------
    Sealeo — the Ball Roll Pokémon. An upright seal with a bristly
@@ -62903,46 +63412,29 @@ const HUD = (() => {
   }
   const TOPI = { dex: (fb, x, y, S, t) => icoDex(fb, x, y, S), map: (fb, x, y) => icoMap(fb, x, y), bag: (fb, x, y) => icoBag(fb, x, y), style: (fb, x, y, S, t) => icoHat(fb, x, y, t), snd: (fb, x, y) => icoSound(fb, x, y, Sound.on), games: (fb, x, y, S, t) => { UI.disc(fb, x, y + 1, 7, INK); UI.disc(fb, x, y, 6, U.hex('#ff5a4a')); UI.rect(fb, x - 6, y, 13, 1, INK); UI.disc(fb, x, y, 2, 0xffffffff); UI.put(fb, x - 3, y - 3, 0xffffc0c0); } };
   function drawTop(fb, S, t) {
-    // right: Pokédex, map, bag, wardrobe, sound — icon buttons, no words
-    const bw = 24, y = 6;
-    const items = [
-      { id: 'dex', fn: () => (Game.mode === 'dex' ? Dex.close() : Dex.open()), badge: Quests.unseen() },
-      { id: 'map', fn: () => (Game.mode === 'map' ? WorldMap.close() : WorldMap.open()) },
-      { id: 'bag', fn: () => Bag.open(), badge: typeof Bag !== 'undefined' && Bag.fresh && Bag.fresh() },
-      { id: 'style', fn: () => Style.open(), badge: typeof Style !== 'undefined' && Style.fresh && Style.fresh() },
-      { id: 'snd', fn: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); } },
-    ].filter((it) => typeof Progress === 'undefined' || Progress.hudOk(it.id));
-    if (typeof Progress !== 'undefined') items.unshift({ id: 'quests', fn: () => Progress.openLog(), badge: Progress.logBadge() });
-    items.forEach((it, i) => {
-      const x = fb.w - 6 - (items.length - i) * (bw + 3);
-      const p = pressed(it.id) ? 1 : 0, hov = H.hoverId === it.id;
-      UI.rrect(fb, x, y + 2, bw, bw, 6, 0xff0a0e1a);
-      const fill = it.id === 'dex' ? S.body : hov ? U.tweak(S.btn, 0, 1, 0.08) : S.btn;
-      UI.panel(fb, x, y + p, bw, bw, { r: 6, ol: S.ink, fill, hi: U.tweak(fill, 0, 1, 0.16) });
-      if (TOPI[it.id]) TOPI[it.id](fb, x + bw / 2, y + p + bw / 2, S, t); else if (it.id === 'quests') Progress.icon(fb, x + bw / 2, y + p + bw / 2, t);
-      btn(it.id, x - 1, y - 1, bw + 2, bw + 4, it.fn);
-      if (it.badge) { UI.disc(fb, x + bw - 2, y + 2, 3, 0xffff3a4a); UI.put(fb, x + bw - 2, y + 2, 0xffffffff); }
-      if (hov) Font.draw(fb, { dex: 'Pokédex (P)', map: 'Map (M)', bag: 'Bag (B)', style: 'Wardrobe (V)', snd: 'Sound', games: 'Playground (H)', quests: 'Quests (L)' }[it.id], x + bw / 2, y + bw + 5, 0xffffffff, { font: 'small', align: 'center', outline: INK });
-    });
-    // left: clock (tap = let time pass) + points
-    const hr = Game.hour();
-    const x = 6;
-    const p = pressed('clock') ? 1 : 0;
-    UI.rrect(fb, x, y + 2, 24, 24, 6, 0xff0a0e1a);
-    UI.panel(fb, x, y + p, 24, 24, { r: 6, ol: S.ink, fill: S.btn });
-    Font.icon(fb, hr === 'night' || hr === 'dusk' ? 'moon' : 'sun', x + 5, y + 5 + p, 2);
-    btn('clock', x - 1, y - 1, 26, 28, () => Game.tryTime());
-    UI.panel(fb, x + 28, y + 4, 64, 16, { r: 4, ol: S.ink, fill: U.mix(S.btn, 0xff000000, 0.2), hi: null, sh: null });
-    Font.draw(fb, '{coin}' + Save.data.points, x + 32, y + 9, 0xffffffff, { font: 'small' });
-    // season chip (tap = next season)
-    if (typeof Seasons !== 'undefined' && (typeof Progress === 'undefined' || Progress.has('season'))) {
-      const sx = x + 96, ps = pressed('season') ? 1 : 0, sn = Seasons.cur;
-      UI.rrect(fb, sx, y + 2, 24, 24, 6, 0xff0a0e1a);
-      UI.panel(fb, sx, y + ps, 24, 24, { r: 6, ol: S.ink, fill: U.mix(S.btn, U.hex({ spring: '#ff9ec4', summer: '#4ab860', autumn: '#e2741c', winter: '#9ad8ff' }[sn]), 0.25) });
-      Seasons.icon(fb, sx + 12, y + 12 + ps, sn, t);
-      btn('season', sx - 1, y - 1, 26, 28, () => Seasons.next());
-      if (H.hoverId === 'season') Font.draw(fb, Seasons.NAME[sn] + ' (N)', sx + 12, y + 29, 0xffffffff, { font: 'small', align: 'center', outline: INK });
-    }
+    // right: ONE Rotom Dex button — map, bag, wardrobe, quests, clock, seasons, sound... are apps inside it
+    const bw = 30, y = 5, x = fb.w - 6 - bw, id = 'dex';
+    const p = pressed(id) ? 1 : 0, hov = H.hoverId === id;
+    const n = typeof Dex !== 'undefined' && Dex.anyBadge ? Dex.anyBadge() : 0;
+    const bob = Math.round(Math.sin(t * 2.2) * 1);
+    UI.rrect(fb, x, y + 2, bw, bw, 7, 0xff0a0e1a);
+    const fill = hov ? U.hex('#f0464a') : U.hex('#dc2f33');
+    UI.panel(fb, x, y + p, bw, bw, { r: 7, ol: INK, fill, hi: U.tweak(fill, 0, 1, 0.16) });
+    // a tiny Rotom Dex face: periwinkle screen, two big eyes, a grin
+    const cx = x + bw / 2, cy = y + p + bw / 2 + bob;
+    UI.rrect(fb, cx - 10, cy - 5, 20, 13, 3, INK); UI.rrect(fb, cx - 9, cy - 4, 18, 11, 2, U.hex('#8fb0e0'));
+    UI.disc(fb, cx, cy + 3, 4, U.hex('#7afcfe'));
+    UI.hline(fb, cx - 2, cx + 2, cy + 4, WHITE); UI.put(fb, cx - 2, cy + 3, INK); UI.put(fb, cx + 2, cy + 3, INK);
+    const bl = (t % 4) < 0.12;
+    for (const sd of [-1, 1]) { const ex = cx + sd * 5, ey = cy - 5; UI.disc(fb, ex, ey, 4, INK); UI.disc(fb, ex, ey, 3, WHITE); if (bl) UI.hline(fb, ex - 3, ex + 3, ey, INK); else UI.rect(fb, ex - 1 + sd, ey - 1, 2, 3, INK); }
+    // antenna bolt
+    UI.put(fb, cx, cy - 10, U.hex('#ffd23a')); UI.put(fb, cx + 1, cy - 11, U.hex('#ffd23a')); UI.put(fb, cx, cy - 12, U.hex('#ffd23a'));
+    btn(id, x - 3, y - 2, bw + 6, bw + 6, () => (Game.mode === 'dex' ? Dex.close() : Dex.open()));
+    if (n) { const k = Math.min(1, ((H.badgeT = (H.badgeN === n ? H.badgeT || 0 : 0) + 1 / 60) / 0.25)); H.badgeN = n; const r = Math.max(1, Math.round(5 * U.ease.outBack(k))); UI.disc(fb, x + bw - 2, y + 3, r + 1, WHITE); UI.disc(fb, x + bw - 2, y + 3, r, 0xff3a30e8); if (k >= 1) Font.draw(fb, n > 9 ? '+' : String(n), x + bw - 1, y + 1, WHITE, { font: 'small', align: 'center' }); }
+    if (hov) Font.draw(fb, 'Rotom Dex (P)', x + bw, y + bw + 6, 0xffffffff, { font: 'small', align: 'right', outline: INK });
+    // left: points
+    UI.panel(fb, 6, y + 4, 64, 16, { r: 4, ol: S.ink, fill: U.mix(S.btn, 0xff000000, 0.2), hi: null, sh: null });
+    Font.draw(fb, '{coin}' + Save.data.points, 10, y + 9, 0xffffffff, { font: 'small' });
   }
   // throw a berry at the nearest Pokémon in front (or just ahead)
   function throwBerry() {
@@ -63008,7 +63500,7 @@ const HUD = (() => {
     H.btns.length = 0;
     const S = UI.skin();
     if (Game.mode === 'title') { drawTitle(fb, t); return; }
-    if (Game.mode === 'dex') { Dex.draw(fb, t); drawToasts(fb, S, t, true); return; }
+    if (Game.mode === 'dex') { Dex.draw(fb, t); return; }
     if (Game.mode === 'map') { WorldMap.draw(fb, t); if (typeof Mailman !== 'undefined') Mailman.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'bag') { Bag.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'style') { Style.draw(fb, t); drawToasts(fb, S, t, true); return; }
@@ -64457,7 +64949,7 @@ const Dex = (() => {
     thumbs: new Map(), imgs: new Map(), confirm: null, album: 0, styleSlot: 'hat', mudYaw: 1.1,
     s: 1, G: null, mouse: null, mouseT: -9, hoverId: null, faceK: 0, lookAt: null, line: null, idleT: 8,
     face: { lx: 0, ly: 0, blinkT: 0, nextBlink: 2, mood: 'norm', moodT: 0, talk: 0, pop: 1, zaps: [], zapT: 1, wx: 0, wy: 0, wanderT: 0, spark: 0 },
-    home: { pg: 0, sel: 0, slide: 0 }, filter: 'all', lsel: {}, tab: {}, after: null, ensure: null, chat: [], mailC: null,
+    home: { pg: 0, sel: 0, slide: 0 }, bounce: {}, shake: 0, zoom: null, filter: 'all', lsel: {}, tab: {}, after: null, ensure: null, chat: [], mailC: null,
   };
   // the Rotom screen of the reference: soft periwinkle glass with faint dots, navy ink, Rotom's cyan face
   const P = {
@@ -64488,7 +64980,7 @@ const Dex = (() => {
     { id: 'ency', name: 'Encyclopedia', col: '#35ad63' },
     { id: 'quests', name: 'Quests', col: '#f09a30' },
     { id: 'prog', name: 'Progress', col: '#8a5ee6' },
-    { id: 'map', name: 'Map', col: '#2f9fdc', launch: () => WorldMap.open(), lock: () => locked('map') },
+    { id: 'map', name: 'Map', col: '#2f9fdc', launch: () => WorldMap.open() },
     { id: 'album', name: 'Photos', col: '#f36fa8' },
     { id: 'mail', name: 'Mail', col: '#5673ee' },
     { id: 'settings', name: 'Settings', col: '#67728c' },
@@ -64499,8 +64991,15 @@ const Dex = (() => {
     { id: 'time', name: 'Day/Night', col: '#34449e' },
     { id: 'chat', name: 'Chat', col: '#2fb8e4' },
     { id: 'help', name: 'Help', col: '#8f9d3c' },
-    { id: 'bag', name: 'Bag', col: '#b8742e', launch: () => Bag.open(), lock: () => locked('bag') },
+    { id: 'bag', name: 'Bag', col: '#b8742e', launch: () => Bag.open(), feat: 'bag' },
+    { id: 'music', name: 'Guitar', col: '#e0506a', launch: () => Rhythm.open(0), feat: 'music' },
+    { id: 'games', name: 'Playground', col: '#f0b030', launch: () => Arcade.open(), feat: 'games' },
+    { id: 'sound', name: 'Sound', col: '#4a9a8a', toggle: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); say(v ? 'Sound on! Bzzt!' : 'Shh... Rotom is quiet now.', { mood: v ? 'happy' : 'norm' }); } },
   ];
+  // feature unlocks (progress.js): a locked app is greyed out with the level that opens it
+  const FEAT = { map: 'map', style: 'style', time: 'time', tms: 'wheel', bag: 'bag', music: 'music', games: 'games' };
+  const featLv = (id) => { if (!hasP() || !FEAT[id]) return 0; if (Progress.has(FEAT[id])) return 0; const f = Progress.FEATS.find((q) => q.id === FEAT[id]); return f ? f.lv : 0; };
+  for (const a0 of APPS) a0.lock = () => featLv(a0.id) > 0;
   for (const a of APPS) a.c = hex(a.col);
   const APP = Object.fromEntries(APPS.map((a) => [a.id, a]));
   const TITLE = { entry: 'Pokédex', home: 'Rotom Dex' };
@@ -64551,6 +65050,7 @@ const Dex = (() => {
     if (D.page === 'entry' && !(D.sel && DexData.S[D.sel])) D.page = 'dex';
     if (!PAGES[D.page]) D.page = 'dex';
     D.faceK = D.page === 'home' ? 1 : 0;
+    D.homeT = -0.45; D.zoom = null; D.bounce = {};
     D.mailC = null;
     Quests.seen();
     SFX.dexOpen();
@@ -64563,6 +65063,8 @@ const Dex = (() => {
   function go(page, o = {}) {
     if (page === D.page && !o.force) return;
     D.prev = D.page; D.page = page; D.trans = 0; D.dir = o.dir ?? 1;
+    if (page === 'home') D.homeT = 0.1;
+    if (D.prev !== 'home') D.zoom = null;
     if (o.sel !== undefined) D.sel = o.sel;
     SFX.page(); zap(2);
     if (page !== 'entry' && page !== 'dex' && LINES[page] && Math.random() < 0.7) say(pick(LINES[page]));
@@ -64573,7 +65075,10 @@ const Dex = (() => {
     else go('home', { dir: -1 });
   }
   function launch(a) {
-    if (a.lock && a.lock()) { SFX.error(); say('That app is still locked! Level up to open it. Bzzt!', { mood: 'sad' }); return; }
+    if (a.lock && a.lock()) { SFX.error(); D.shake = 0.35; say('Locked! ' + a.name + ' opens at Lv ' + featLv(a.id) + '. Bzzt!', { mood: 'sad' }); return; }
+    D.bounce[a.id] = 1;
+    if (a.toggle) { a.toggle(); return; }
+    const tp = D.page === 'home' && D.tilePos && D.tilePos[a.id]; D.zoom = tp && !a.launch ? { x: tp[0], y: tp[1], c: a.c } : null;
     if (a.launch) { say('Opening the ' + a.name + '! Zzt!'); close(a.launch); return; }
     go(a.id, { dir: 1 });
   }
@@ -64606,9 +65111,15 @@ const Dex = (() => {
     D.mudYaw += dt * 0.9;
     D.selT = (D.selT || 0) + dt;
     D.faceK += ((D.page === 'home' ? 1 : 0) - D.faceK) * Math.min(1, dt * 10);
+    D.homeT = (D.homeT || 0) + dt;
+    for (const k in D.bounce) { D.bounce[k] = Math.max(0, D.bounce[k] - dt * 2.2); if (!D.bounce[k]) delete D.bounce[k]; }
+    D.shake = Math.max(0, D.shake - dt);
+    if (D.trans >= 1) D.zoom = null;
     D.home.slide *= Math.exp(-dt * 16); if (Math.abs(D.home.slide) < 0.5) D.home.slide = 0;
     const F = D.face;
     F.pop = clamp((D.t - 0.36) / 0.22, 0, 1);
+    // boot: Rotom wakes up — eyes pop open surprised, a zap, then a grin
+    if (!D.closing && D.t - dt < 0.78 && D.t >= 0.78) { mood('wow', 0.45); zap(3); }
     F.nextBlink -= dt;
     if (F.nextBlink <= 0) { F.blinkT = 0.13; F.nextBlink = 1.8 + Math.random() * 3.4; F.dbl = Math.random() < 0.2; }
     if (F.blinkT > 0) { F.blinkT -= dt; if (F.blinkT <= 0 && F.dbl) { F.dbl = false; F.blinkT = 0.11; } }
@@ -64690,7 +65201,7 @@ const Dex = (() => {
   function flipHome(d) {
     const pages = Math.ceil(APPS.length / 8), H = D.home, n = clamp(H.pg + d, 0, pages - 1);
     if (n === H.pg) { H.slide = -d * 10; return; }
-    H.pg = n; H.slide = d * 60; SFX.page(); zap(1);
+    H.pg = n; H.slide = d * 60; D.homeT = 0.12; SFX.page(); zap(1);
   }
   function key(k) {
     if (k === 'p' || k === 'Tab') { close(); return; }
@@ -64805,6 +65316,9 @@ const Dex = (() => {
   }
   function stars(fb, n, x, y, max = 4) { for (let i = 0; i < max; i++) Font.icon(fb, i < n ? 'star' : 'star0', x + i * 8, y, 1); }
   function medal(fb, m, x, y) { const mc = [0, 0xff3a7ac0, 0xffd0c0b8, 0xff3ac8ff, 0xfffff09a][m] || 0xff808080; UI.disc(fb, x, y, 4, INK); UI.disc(fb, x, y, 3, mc); UI.put(fb, x - 1, y - 1, 0xffffffff); }
+  // real Pokédex data the species file doesn't carry: category and weight (kg)
+  const INFO = Object.fromEntries('tentacool Jellyfish 45.5|staryu Star Shape 34.5|starmie Mysterious 80|chinchou Angler 12|marill Aqua Mouse 8.5|azumarill Aqua Rabbit 28.5|wobbuffet Patient 28.5|slugma Lava 35|corsola Coral 5|remoraid Jet 12|mantine Kite 220|marshtomp Mud Fish 28|swampert Mud Fish 81.9|zigzagoon Tiny Raccoon 17.5|linoone Rushing 32.5|lotad Water Weed 2.6|lombre Jolly 32.5|ludicolo Carefree 55|seedot Acorn 4|nuzleaf Wily 28|taillow Tiny Swallow 2.3|swellow Swallow 19.8|wingull Seagull 9.5|pelipper Water Bird 28|surskit Pond Skater 1.7|masquerain Eyeball 3.6|shroomish Mushroom 4.5|breloom Mushroom 39.2|slakoth Slacker 24|vigoroth Wild Monkey 46.5|slaking Lazy 130.5|nincada Trainee 5.5|azurill Polka Dot 2|plusle Cheering 4.2|minun Cheering 4.2|volbeat Firefly 17.7|illumise Firefly 17.7|carvanha Savage 20.8|sharpedo Brutal 88.8|wailmer Ball Whale 130|wailord Float Whale 398|numel Numb 24|torkoal Coal 80.4|spinda Spot Panda 5|trapinch Ant Pit 15|vibrava Vibration 15.3|flygon Mystic 82|swablu Cotton Bird 1.2|altaria Humming 20.6|lunatone Meteorite 168|solrock Meteorite 154|corphish Ruffian 11.5|crawdaunt Rogue 32.8|lileep Sea Lily 23.8|anorith Old Shrimp 12.5|feebas Fish 7.4|milotic Tender 162|castform Weather 0.8|kecleon Color Swap 22|tropius Fruit 100|wynaut Bright 14|snorunt Snow Hat 16.8|spheal Clap 39.5|sealeo Ball Roll 87.6|walrein Ice Break 150.6|clamperl Bivalve 52.5|relicanth Longevity 23.4|luvdisc Rendezvous 8.7|bagon Rock Head 42.1|regice Iceberg 175|latias Eon 40|latios Eon 60|kyogre Sea Basin 352|groudon Continent 950|rayquaza Sky High 206.5|jirachi Wish 1.1|deoxys DNA 60.8|budew Bud 1.2|chatot Music Note 1.9|dialga Temporal 683|palkia Spatial 336|meloetta Melody 6.5|minior Meteor 40|mudkip Mud Fish 7.6'.split('|').map((r) => { const a = r.split(' '); return [a[0], { cat: a.slice(1, -1).join(' ') + ' Pokémon', wt: +a[a.length - 1] }]; }));
+  const info = (sp) => INFO[sp] || { cat: 'Unknown Pokémon', wt: 0 };
   function speciesDone(sp) {
     const d = DexData.S[sp], ph = Save.data.photos[sp] || {};
     const beh = Object.keys(d.beh).length, got = Object.keys(Save.data.beh[sp] || {}).length;
@@ -65209,7 +65723,7 @@ const Dex = (() => {
     // gaze
     const lx = F.lx, ly = F.ly;
     D.eyeAt = [cx, Math.round(Y(12))];
-    const blink = F.blinkT > 0 || F.pop < 0.9;
+    const blink = F.blinkT > 0 || F.pop < 0.9 || (D.t < 0.78 && !D.closing);
     for (const sd of [-1, 1]) {
       // tall ovals whose tops lean outwards; the pupil is a wide dark band across the middle
       const ex = X(sd * 18.9), ey = Y(10.4), rx = 9.6 * k, ry = 16 * k, th = sd * 0.32, cs = Math.cos(th), sn = Math.sin(th);
@@ -65460,6 +65974,22 @@ const Dex = (() => {
         fill(rbox(0.3, 0.6, 0.7, 0.84, 0.06), H('#ffb866'));
         fill(box(0.45, 0.44, 0.55, 0.56), H('#ffd23a'));
       },
+      music() {
+        fill(ell(0.3, 0.74, 0.15, 0.12), W_); fill(ell(0.74, 0.64, 0.15, 0.12), W_);
+        fill(box(0.4, 0.2, 0.47, 0.74), W_); fill(box(0.84, 0.12, 0.9, 0.64), W_);
+        fill(poly([[0.4, 0.2], [0.9, 0.08], [0.9, 0.26], [0.4, 0.38]]), W_);
+        fill(ell(0.26, 0.71, 0.05, 0.03), H('#ffe0a0'));
+      },
+      games() {
+        fill(rbox(0.06, 0.3, 0.94, 0.8, 0.18), W_);
+        fill(box(0.2, 0.5, 0.38, 0.58), H('#3a3a5a')); fill(box(0.25, 0.44, 0.33, 0.64), H('#3a3a5a'));
+        fill(ell(0.68, 0.48, 0.06), H('#ff4a5a')); fill(ell(0.8, 0.6, 0.06), H('#4a8aff'));
+      },
+      sound() {
+        fill(box(0.12, 0.38, 0.3, 0.62), W_); fill(poly([[0.3, 0.38], [0.52, 0.18], [0.52, 0.82], [0.3, 0.62]]), W_);
+        fill(and(ell(0.52, 0.5, 0.26), not(ell(0.52, 0.5, 0.18)), (u) => u > 0.62), W_);
+        fill(and(ell(0.52, 0.5, 0.42), not(ell(0.52, 0.5, 0.34)), (u) => u > 0.7), W_);
+      },
     };
     (G[id] || G.dex)();
     // sticker outline
@@ -65470,8 +66000,8 @@ const Dex = (() => {
     return b;
   }
   // a chunky rounded app tile: dark hue outline, glossy lighter top, darker base, a soft blue shadow ring
-  function appTile(fb, a, x, y, sz, t, on, pr) {
-    const r = Math.max(3, Math.round(sz * 0.2)), c = a.c, lt = mix(c, 0xffffffff, 0.24), dk = mix(c, 0xff000000, 0.18), ol = mix(c, 0xff30100a, 0.62);
+  function appTile(fb, a, x, y, sz, t, on, pr, lk) {
+    const r = Math.max(3, Math.round(sz * 0.2)), c = lk ? mix(a.c, 0xff9098a8, 0.75) : a.c, lt = mix(c, 0xffffffff, 0.24), dk = mix(c, 0xff000000, 0.18), ol = mix(c, 0xff30100a, 0.62);
     const o = pr ? 1 : 0, y2 = y + o;
     UI.rrect(fb, x - 1, y - 1 + 2, sz + 2, sz + 2, r + 1, P.icoSh);
     UI.rrect(fb, x - 1, y2 - 1, sz + 2, sz + 2, r + 1, on ? 0xffffffff : P.icoRing);
@@ -65487,20 +66017,23 @@ const Dex = (() => {
     });
     // darker corner accents on the outline, like the reference tiles
     for (const [cx2, cy2] of [[x + 1, y2 + 1], [x + sz - 2, y2 + 1], [x + 1, y2 + sz - 2], [x + sz - 2, y2 + sz - 2]]) UI.put(fb, cx2, cy2, mix(ol, 0xff000000, 0.3));
-    const gs = Math.round(sz * 0.72), g = glyph(a.id, gs, ol);
+    const gs = Math.round(sz * 0.72), g = glyph(a.id === 'sound' && !Sound.on ? 'sound' : a.id, gs, ol);
     const bob = on ? Math.round(Math.sin(t * 5) * 1) : 0;
     UI.img(fb, g, x + Math.round((sz - gs) / 2), y2 + Math.round((sz - gs) / 2) + bob, 1);
   }
-  function badge(fb, x, y, n) {
+  function badge(fb, x, y, n, k = 1) {
     const s = n > 9 ? '9+' : n === true ? '!' : String(n), w = Math.max(9, Font.measure(s, 'small') + 5);
+    if (k < 0.999) { const r = Math.max(1, Math.round(5 * k)); UI.disc(fb, x, y, r + 1, 0xffffffff); UI.disc(fb, x, y, r, 0xff3a30e8); return; }
     UI.disc(fb, x, y, 5, 0xffffffff); UI.rrect(fb, x - (w >> 1), y - 4, w, 9, 4, 0xffffffff);
-    UI.rrect(fb, x - (w >> 1) + 1, y - 3, w - 2, 7, 3, 0xff2c20e8);
+    UI.rrect(fb, x - (w >> 1) + 1, y - 3, w - 2, 7, 3, 0xff3a30e8);
     Font.draw(fb, s, x + 1, y - 2, 0xffffffff, { font: 'small', align: 'center' });
   }
   function appBadge(id) {
     if (id === 'mail') return mailUnread();
     if (id === 'quests') { const n = questList().filter((e) => e.s === 'ready').length; return n || 0; }
     if (id === 'dex') return Quests.unseen() ? true : 0;
+    if (id === 'bag') return typeof Bag !== 'undefined' && Bag.fresh && Bag.fresh() ? true : 0;
+    if (id === 'style') return typeof Style !== 'undefined' && Style.fresh && Style.fresh() ? true : 0;
     return 0;
   }
 
@@ -65518,16 +66051,30 @@ const Dex = (() => {
       if (x + isz < s.x + 2 || x > s.x + s.w - 2) continue;
       const id = 'app-' + a.id, on = H.sel === i, pr = D.press && D.press.b && D.press.b.id === id;
       const lk = a.lock && a.lock();
-      appTile(fb, a, x, y - (on ? 1 : 0), isz, t, on, pr);
-      if (lk) { UI.rectA(fb, x + 1, y + 1 - (on ? 1 : 0), isz - 2, isz - 2, 0xff4b1e1a, 0.45); Font.icon(fb, 'lock', cx - 2, cy - 4 - (on ? 1 : 0), 1); }
-      const bn = appBadge(a.id); if (bn) badge(fb, x + isz - 3, y + 2 - (on ? 1 : 0), bn);
+      // entry cascade, hover lift, press squash and a springy bounce after a tap
+      const intro = clamp((D.homeT - 0.05 * i) / 0.28, 0, 1), ik = intro < 1 ? U.ease.outBack(intro) : 1;
+      const bo = D.bounce[a.id] || 0, bz = Math.round(Math.sin(bo * Math.PI * 3) * bo * 3);
+      const hv = D.hoverId === id;
+      const sz = Math.max(4, Math.round(isz * ik + (pr ? -2 : 0) + (hv && !pr ? 1 : 0) + (bo ? Math.abs(bz) * 0.6 : 0)));
+      const lift = (on ? 1 : 0) + (hv && !pr ? 1 : 0) + bz + Math.round(Math.sin(t * 2.4 + i * 0.8) * 0.6 * (on ? 1 : 0));
+      const x2 = cx - (sz >> 1), y2 = cy - (sz >> 1) - lift + (D.shake && on ? 0 : 0);
+      const shx = lk && on && D.shake > 0 ? Math.round(Math.sin(D.shake * 60) * 2) : 0;
+      if (ik > 0.05) appTile(fb, a, x2 + shx, y2, sz, t, on, pr, lk);
+      if (lk && ik >= 1) {
+        UI.rectA(fb, x2 + 1 + shx, y2 + 1, sz - 2, sz - 2, 0xff303850, 0.5);
+        Font.icon(fb, 'lock', cx - 3 + shx, cy - 6 - lift, 1);
+        const lt = 'LV' + featLv(a.id); UI.rrect(fb, cx - 9 + shx, cy + 2 - lift, 18, 8, 3, P.rim); Font.draw(fb, lt, cx + shx, cy + 3 - lift, 0xffffffff, { font: 'small', align: 'center' });
+      }
+      const bn = lk ? 0 : appBadge(a.id);
+      if (bn && ik >= 1) { const bp = clamp((D.homeT - 0.3 - 0.05 * i) / 0.25, 0, 1); if (bp > 0) badge(fb, x2 + sz - 3 + shx, y2 + 2, bn, U.ease.outBack(bp)); }
+      (D.tilePos || (D.tilePos = {}))[a.id] = [cx, cy];
       if (on) { D.lookAt = [cx, cy]; selA = a; }
-      btn(id, x - 3, y - 3, isz + 6, isz + 6, () => { H.sel = i; SFX.select(); launch(a); }, { silent: true, hov: () => { if (H.sel !== i) { H.sel = i; } } });
+      btn(id, x - 3, y - 3, isz + 6, isz + 6, () => { H.sel = i; SFX.select(); launch(a); }, { silent: true, hov: () => { if (H.sel !== i) { H.sel = i; SFX.blip && Math.random() < 0 && SFX.blip(); } } });
     }
     // the page bar between the rows:  ◀ ═══ ▶  (the selected app's name sits in the pill)
     const by = G.Y(96.5), bh = Math.max(7, Math.round(9.5 * k)), bw = Math.round(54 * k) + (G.C ? 10 : 0), bx = G.cx - (bw >> 1);
     lens(fb, bx, by - (bh >> 1), bw, bh);
-    if (selA) Font.draw(fb, fit(selA.name.toUpperCase(), bw - 8), G.cx, by - 2, 0xff7e3a1d, { font: 'small', align: 'center' });
+    if (selA) Font.draw(fb, fit((selA.lock && selA.lock() ? '{lock}' : '') + (selA.id === 'sound' ? (Sound.on ? 'SOUND ON' : 'SOUND OFF') : selA.name.toUpperCase()), bw - 8), G.cx, by - 2, 0xff7e3a1d, { font: 'small', align: 'center' });
     btn('pgbar', bx, by - bh, bw, bh * 2, () => { if (selA) { SFX.select(); launch(selA); } });
     const arrow = (dir) => {
       const en = dir < 0 ? H.pg > 0 : H.pg < pages - 1, id = 'pgarr' + dir, hv = D.hoverId === id && en;
@@ -65578,7 +66125,7 @@ const Dex = (() => {
     pill(fb, L.x, L.y, cw, chH, D.hoverId === id ? P.white : P.scrLL, P.text, lab);
     btn(id, L.x - 2, L.y - 3, cw + 4, chH + 6, () => { D.filter = FILTERS[(Math.max(0, fi) + 1) % 3][0]; D.scroll.dex = 0; SFX.page(); }, { silent: true });
     Font.draw(fb, String(list.length), L.x + L.w - 1, L.y + 3, P.text, { font: 'small', align: 'right' });
-    const LQ = { x: L.x, y: L.y + chH + 3, w: L.w, h: L.h - chH - 3 }, rh = tiny ? 15 : G.L ? 21 : 18;
+    const LQ = { x: L.x, y: L.y + chH + 3, w: L.w, h: L.h - chH - 3 }, rh = tiny ? 19 : G.L ? 22 : 20;
     const si = list.indexOf(D.sel);
     if (!list.length) Font.draw(fb, D.filter === 'miss' ? 'ALL CAUGHT!' : 'NOBODY HERE', LQ.x + LQ.w / 2, LQ.y + 16, P.text, { font: 'small', align: 'center' });
     const s2 = listView(fb, 'dex', LQ, list.length, rh, si, (b, i, x2, y, w, h, on) => dexRow(b, list[i], x2, y, w, h, on, G), (i) => { const sp = list[i]; if (D.sel === sp) openEntry(sp); else selectSp(sp); });
@@ -65586,22 +66133,29 @@ const Dex = (() => {
     dexDetail(fb, G, R, D.sel, t);
   }
   function dexRow(b, sp, x, y, w, h, on, G) {
-    const st = stat(sp), d = DexData.S[sp], big = h >= 18;
+    const st = stat(sp), d = DexData.S[sp];
     UI.rrect(b, x, y, w, h - 1, 3, on ? P.red : P.scrDD);
     UI.rrect(b, x + 1, y + 1, w - 2, h - 3, 2, on ? P.white : st === 2 ? P.card : st === 1 ? P.scrLL : P.scrL);
-    const ts = h - 4, th = thumb(sp, ts, st < 2), tx = x + 2, ty = y + 1;
+    if (on) UI.rect(b, x + 1, y + 2, 2, h - 5, P.red);
+    const ts = Math.min(h - 4, 18), th = thumb(sp, ts, st < 2), tx = x + 3, ty = y + 1 + ((h - 3 - ts) >> 1);
     if (th) UI.img(b, th, tx + Math.round((ts + 1 - th.w) / 2), ty + Math.round((ts - th.h) / 2), 1, st === 1 ? { tint: P.scrDD, tintK: 0.35 } : st === 0 ? { tint: P.faint, tintK: 0.3 } : {});
     else if (th === undefined) Font.draw(b, '..', tx + ts / 2, ty + ts / 2 - 2, P.dim, { font: 'small', align: 'center' });
-    const nx = tx + ts + 3, icon = st === 2 && w - (nx - x) > 52;
-    const nm = st ? d.name : big ? '???' : pad3(d.no);
-    const ny = y + Math.round((h - 1 - 5) / 2) - (big && w > 90 ? 3 : 0);
-    Font.draw(b, fit(nm, w - (nx - x) - (icon ? 11 : 3)), nx, ny, st ? P.text : P.faint, { font: 'small' });
-    if (big && w > 90) Font.draw(b, 'NO.' + pad3(d.no), nx, ny + 8, P.faint, { font: 'small' });
-    if (icon) Font.icon(b, 'pb', x + w - 10, y + Math.round((h - 1) / 2) - 4, 1);
-    else if (st === 1 && w - (nx - x) > 52) eyeIcon(b, x + w - 10, y + Math.round((h - 1) / 2) - 2);
+    const nx = tx + ts + 3, room = x + w - nx - 2;
+    const two = h >= 15, ny = two ? y + Math.round((h - 1) / 2) - 7 : y + Math.round((h - 6) / 2);
+    // status icon: Poké Ball = caught (photographed), eye = seen
+    const ix = x + w - 10, iy = y + Math.round((h - 1) / 2) - 4;
+    if (st === 2) Font.icon(b, 'pb', ix, two ? ny + 8 : iy, 1); else if (st === 1) eyeIcon(b, ix, (two ? ny + 8 : iy) + 2);
+    Font.draw(b, fit(st ? d.name : '???', room), nx, ny, st ? P.text : P.faint, { font: 'small' });
+    if (two) {
+      const nt = (room >= 56 ? 'No.' : '') + pad3(d.no);
+      Font.draw(b, nt, nx, ny + 9, P.faint, { font: 'small' });
+      if (st) { let cx = nx + Font.measure(nt, 'small') + 3; for (const ty2 of d.type) { if (cx + 5 > ix - 2 || room < 60) break; UI.rrect(b, cx, ny + 9, 5, 5, 2, typeCol(ty2)); cx += 7; } }
+    }
   }
   function eyeIcon(fb, x, y) { const c = P.dim; UI.hline(fb, x + 1, x + 5, y, c); UI.put(fb, x, y + 1, c); UI.put(fb, x + 6, y + 1, c); UI.hline(fb, x + 1, x + 5, y + 3, c); UI.put(fb, x, y + 2, c); UI.put(fb, x + 6, y + 2, c); UI.rect(fb, x + 2, y + 1, 3, 2, 0xff4b1e1a); }
-  function typePill(fb, ty, x, y) { const w = Font.measure(ty.toUpperCase(), 'small') + 8; UI.rrect(fb, x, y, w, 9, 3, mix(hex(DexData.TYPES[ty] || '#888888'), 0xff000000, 0.35)); UI.rrect(fb, x, y, w, 8, 3, hex(DexData.TYPES[ty] || '#888888')); Font.draw(fb, ty.toUpperCase(), x + w / 2, y + 2, 0xffffffff, { font: 'small', align: 'center' }); return w; }
+  const TYPE_COL = { Normal: '#9fa19f', Fire: '#e62829', Water: '#2980ef', Grass: '#3fa129', Electric: '#fac000', Ice: '#3dcef3', Fighting: '#ff8000', Poison: '#9141cb', Ground: '#915121', Flying: '#81b9ef', Psychic: '#ef4179', Bug: '#91a119', Rock: '#afa981', Ghost: '#704170', Dragon: '#5060e1', Dark: '#624d4e', Steel: '#60a1b8', Fairy: '#ef70ef' };
+  const typeCol = (ty) => hex(TYPE_COL[ty] || (DexData.TYPES[ty]) || '#888888');
+  function typePill(fb, ty, x, y) { const w = Font.measure(ty.toUpperCase(), 'small') + 8; UI.rrect(fb, x, y, w, 9, 3, mix(typeCol(ty), 0xff000000, 0.35)); UI.rrect(fb, x, y, w, 8, 3, typeCol(ty)); UI.hline(fb, x + 2, x + w - 3, y + 1, mix(typeCol(ty), 0xffffffff, 0.3)); Font.draw(fb, ty.toUpperCase(), x + w / 2, y + 2, 0xffffffff, { font: 'small', align: 'center' }); return w; }
   function stage(fb, x, y, w, h, area, st, t) {
     const [sky, gnd] = areaCols(area), dark = st === 0;
     rrFill(fb, x, y, w, h, 4, (i, j) => {
@@ -65643,7 +66197,7 @@ const Dex = (() => {
       const tws = d.type.map((ty) => Font.measure(ty.toUpperCase(), 'small') + 8), tot = tws.reduce((a2, b2) => a2 + b2 + 2, 0);
       const roomT = R.y + R.h - 4 - (tiny ? 12 : 13) - 3 - y;
       if (tot <= w + 2 || roomT >= 21) { let tx = x; d.type.forEach((ty, i) => { if (tx > x && tx + tws[i] > x + w) { tx = x; y += 10; } typePill(fb, ty, tx, y); tx += tws[i] + 2; }); }
-      else { let tx = x; for (const ty of d.type) { const c = hex(DexData.TYPES[ty] || '#888888'), cw = Math.floor((w - 2) / d.type.length) - 2; UI.rrect(fb, tx, y, cw, 8, 3, mix(c, 0xff000000, 0.35)); UI.rrect(fb, tx, y, cw, 7, 3, c); Font.draw(fb, fit(ty.toUpperCase().slice(0, 3), cw - 2), tx + cw / 2, y + 1, 0xffffffff, { font: 'small', align: 'center' }); tx += cw + 2; } }
+      else { let tx = x; for (const ty of d.type) { const c = typeCol(ty), cw = Math.floor((w - 2) / d.type.length) - 2; UI.rrect(fb, tx, y, cw, 8, 3, mix(c, 0xff000000, 0.35)); UI.rrect(fb, tx, y, cw, 7, 3, c); Font.draw(fb, fit(ty.toUpperCase().slice(0, 3), cw - 2), tx + cw / 2, y + 1, 0xffffffff, { font: 'small', align: 'center' }); tx += cw + 2; } }
       y += 11;
     }
     const btnH = tiny ? 12 : 13, bottom = R.y + R.h - 4;
@@ -65653,7 +66207,7 @@ const Dex = (() => {
     if (room >= 9) {
       const lines = [];
       const hab = (d.area || []).map(areaName).join(', ') || '???';
-      if (st === 2) { lines.push(['{star} ' + dn.st + '/4  BEH ' + dn.got + '/' + dn.beh, P.text]); lines.push(['HT ' + d.h + ' M · ' + hab, P.dim]); }
+      if (st === 2) { lines.push([info(sp).cat, P.dim]); lines.push(['{star} ' + dn.st + '/4  BEH ' + dn.got + '/' + dn.beh, P.text]); lines.push([d.h + ' m · ' + info(sp).wt + ' kg', P.dim]); lines.push([hab, P.dim]); }
       else if (st === 1) lines.push(['SEEN NEAR ' + hab.toUpperCase(), P.dim]);
       else lines.push(['HABITAT ' + ((d.area || []).length ? hab : '???'), P.dim]);
       let yy = y;
@@ -65740,8 +66294,23 @@ const Dex = (() => {
       const nf = nameFont(w);
       Font.draw(b, fit(stat(sp) ? d.name : '???', w, nf), x, y, P.text, { font: nf }); y += fontH(nf);
       y = typeRow(b, d.type, x, y, w) + 1;
-      y += textLines(b, 'HT ' + d.h + ' M · ' + (d.area || []).map(areaName).join(', '), x, y, w, P.dim, 2, 8) + 2;
-      y += textLines(b, d.blurb, x, y, w, P.text, 99, 9) + 5;
+      const IN = info(sp), st0 = stat(sp), dn = speciesDone(sp);
+      y += textLines(b, st0 ? IN.cat : '??? Pokémon', x, y, w, P.dim, 2, 8) + 2;
+      // height / weight chips, like the real Pokédex
+      for (const [lab, val] of [['HEIGHT', st0 ? d.h.toFixed(1) + ' m' : '?.? m'], ['WEIGHT', st0 ? IN.wt.toFixed(1) + ' kg' : '?.? kg']]) {
+        UI.rrect(b, x - 1, y, w + 2, 11, 3, P.scrD); UI.rrect(b, x, y + 1, w, 9, 2, P.white);
+        const vw = Font.measure(val, 'small');
+        Font.draw(b, fit(w - vw >= 48 ? lab : lab.slice(0, 2), w - vw - 6), x + 3, y + 3, P.redD, { font: 'small' }); Font.draw(b, val, x + w - 3, y + 3, P.text, { font: 'small', align: 'right' });
+        y += 12;
+      }
+      y += 2;
+      Font.draw(b, fit('HABITAT', w), x, y, hc, { font: 'small' }); y += 9;
+      y += textLines(b, (d.area || []).map((a) => areaName(a) + (DexData.AREAS[a] && DexData.AREAS[a].sub ? ' (' + DexData.AREAS[a].sub + ')' : '')).join(', ') || '???', x, y, w, P.dim, 3, 8) + 3;
+      y += textLines(b, st0 === 2 ? d.blurb : 'Photograph it to read its full entry!', x, y, w, P.text, 99, 9) + 4;
+      // research completion
+      const pct = Math.round(dn.pct * 100);
+      Font.draw(b, fit('RESEARCH', w - 22), x, y, hc, { font: 'small' }); Font.draw(b, pct + '%', x + w, y, P.text, { font: 'small', align: 'right' }); y += 9;
+      UI.rrect(b, x, y, w, 6, 3, P.scrD); if (pct) UI.rrect(b, x, y, Math.max(5, Math.round(w * pct / 100)), 6, 3, pct >= 100 ? P.gold : P.green); y += 10;
       Font.draw(b, fit('BEHAVIOURS', w), x, y, hc, { font: 'small' }); y += 10;
       const seenB = Save.data.beh[sp] || {};
       for (const k in d.beh) {
@@ -66522,7 +67091,7 @@ const Dex = (() => {
     const dimK = clamp(D.t / 0.3, 0, 1) * (D.closing ? 1 - D.closing / 0.5 : 1);
     if (!D.bare) UI.rectA(fb, 0, 0, W, H, 0xff200e0a, 0.62 * dimK);
     // rise in / drop out, then a gentle hover
-    const rise = D.closing ? U.ease.inCubic(clamp((D.closing - 0.16) / 0.34, 0, 1)) : 1 - U.ease.outBack(clamp(D.t / 0.34, 0, 1));
+    const rise = D.closing ? U.ease.inCubic(clamp((D.closing - 0.16) / 0.34, 0, 1)) : 1 - U.ease.outBack(clamp(D.t / 0.42, 0, 1));
     const dy = D.bare ? 0 : Math.round(rise * (H - G.top + 8)) + Math.round(Math.sin(t * 2.2) * 1.2);
     G.top += dy; G.oy += dy; G.scr.y += dy;
     drawShell(fb, G, FR, t);
@@ -66533,7 +67102,17 @@ const Dex = (() => {
     if (pw >= 1) {
       const fn = PAGES[D.page] || pageDex, Scr = G.scr;
       const k = U.ease.outCubic(D.trans), slide = Math.round((1 - k) * 36 * D.dir);
-      if (slide) {
+      if (D.zoom && k < 1) {
+        // app open: the page grows out of the tapped icon
+        const L2 = D.tmp2 && D.tmp2.w === W && D.tmp2.h === H ? D.tmp2 : (D.tmp2 = new PX.Buf(W, H));
+        L2.d.fill(0); fn(L2, G, t);
+        const zk = 0.12 + 0.88 * k, zx = D.zoom.x, zy = D.zoom.y;
+        for (let y = Math.max(0, Scr.y + 2); y < Math.min(H, Scr.y + Scr.h - 1); y++) for (let x = Math.max(0, Scr.x + 1); x < Math.min(W, Scr.x + Scr.w - 1); x++) {
+          const sx = Math.round(zx + (x - zx) / zk), sy = Math.round(zy + (y - zy) / zk);
+          if (sx < Scr.x + 1 || sx >= Scr.x + Scr.w - 1 || sy < Scr.y + 2 || sy >= Scr.y + Scr.h - 1) continue;
+          const v = L2.d[sy * W + sx]; if (v) fb.d[y * W + x] = k < 0.5 ? mix(D.zoom.c, v, k * 2) : v;
+        }
+      } else if (slide) {
         const L2 = D.tmp2 && D.tmp2.w === W && D.tmp2.h === H ? D.tmp2 : (D.tmp2 = new PX.Buf(W, H));
         L2.d.fill(0);
         fn(L2, G, t);
@@ -66569,7 +67148,11 @@ const Dex = (() => {
     entry: () => { const L = DexData.ORDER.filter((s) => stat(s) > 0); return (L.indexOf(D.sel) + 1) + '/' + L.length; },
   };
 
-  return Object.assign(D, { cancel, open, close, go, back, update, draw, down, move, up, wheel, key, hover, thumb, say, mood, zap, stat, counts, SECRETS, APPS, LINES });
+  // the HUD's Rotom Dex button shows one badge for all apps
+  function anyBadge() { let n = 0; for (const a of APPS) { if (a.lock && a.lock()) continue; const v = appBadge(a.id); n += v === true ? 1 : v || 0; } if (hasP() && Progress.logBadge()) n = Math.max(n, 1); return n; }
+  // open the Dex straight to an app (keyboard shortcuts)
+  function openApp(id) { const a = APP[id]; if (!a) return open(); if (Game.mode !== 'dex') { open(); D.page = 'home'; D.faceK = 1; } const i = APPS.indexOf(a); D.home.pg = (i / 8) | 0; D.home.sel = i % 8; launch(a); }
+  return Object.assign(D, { anyBadge, openApp, cancel, open, close, go, back, update, draw, down, move, up, wheel, key, hover, thumb, say, mood, zap, stat, counts, SECRETS, APPS, LINES });
 })();
 
 /* ==== src/snap/worldmap.js ==== */
@@ -84777,11 +85360,10 @@ const Punks = (() => {
 /* ==== src/snap/rotom.js ==== */
 /* ------------------------------------------------------------------
    Rotom — the Rotom Dex companion that flies around Mudkip, drawn as
-   a small toon pixel sprite of the official Rotom Dex: a tilted red
-   body with a spike antenna, a white screen showing Rotom's face (blue
-   eyes on a dark bridge, light-blue face with a toothy grin) and two
-   floating lightning-bolt arms ending in flat panels, crisp on the UI
-   canvas. It bobs, orbits, looks at Pokémon,
+   the 3D RotomDex model (src/species/rotomdex.js) rendered to pixel
+   art and cached per pose / yaw, on the UI canvas (so it never shows
+   up in photos and never gets an accessory). It banks, waves, spins,
+   squashes when poked and shows expressive screen faces. It bobs, orbits, looks at Pokémon,
    peeks at unregistered species (marking them "seen" in the Dex),
    points at the tracked quest, and chatters in speech bubbles.
    Poke it (tap / click, or O) for jokes and hints. Reactions: Flash
@@ -84964,151 +85546,81 @@ const Rotom = (() => {
     say(Math.random() < 0.5 ? pick(JOKES) : pick(['Hi hi! ', 'Bzzt? ', 'Zzt! ']) + hint(), 4.5);
   }
 
-  /* ---------- drawing: the official Rotom Dex, as a small toon pixel sprite ----------
-     Designed in its own units (the body is ~31 x 28, centre 0,0, y down): a slightly tilted red body
-     with a tall spike antenna at the top left and a pointed fin on the left, a white screen showing
-     Rotom's face (blue eyes on a dark bridge, a light-blue face with a toothy grin and the little
-     "magnifier" handle), a thumb and a tail tab, and two floating lightning-bolt arms ending in flat
-     panels with round buttons. Rasterised straight to the UI canvas every frame (turntable squash
-     when it spins). */
-  const BODY = [[-11.6, -13.4], [-8.6, -30.5], [-1.8, -13.6], [12.8, -13.6], [16.3, -10.8], [16.3, 10.6], [13.6, 14.2], [-11.8, 14.2], [-14.6, 11], [-14.6, 7.6], [-22, -0.6], [-14.6, -8.2], [-14.6, -10.6]];
-  const SCREEN = { x0: -12, y0: -3.2, x1: 11.4, y1: 12.2 };
-  const ARM_R = { bolt: [[16, 3.2], [20.8, 1.4], [19.6, -2.2], [23.6, -3.4]], panel: [[21.2, -12.8], [30.2, -17.2], [35, -6.4], [26, 3.2]], btn: [28.2, -7, 2.7, 3.7], root: [16, 3.2] };
-  const ARM_L = { bolt: [[-13.6, 12.4], [-18, 11.6], [-16.6, 15.2], [-20.4, 15.8]], panel: [[-33, 11.4], [-20, 12.2], [-16.4, 21.8], [-29.8, 23.6]], btn: [-25, 17.4, 3.8, 2.6], root: [-13.6, 12.4], grey: true };
-  const TILT = -0.12;
-  function segD(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy, t = l ? clamp(((px - ax) * dx + (py - ay) * dy) / l, 0, 1) : 0; return Math.hypot(px - ax - dx * t, py - ay - dy * t); }
-  function inPoly(pts, x, y) { let ins = false; for (let a = 0, b = pts.length - 1; a < pts.length; b = a++) { const [xa, ya] = pts[a], [xb, yb] = pts[b]; if ((ya > y) !== (yb > y) && x < ((xb - xa) * (y - ya)) / (yb - ya) + xa) ins = !ins; } return ins; }
-  // unit <-> pixel (tilt in the body's plane, then the turntable squash)
-  const toPx = (T, x, y) => { const x1 = x * T.ct - y * T.st, y1 = x * T.st + y * T.ct; return [T.X + x1 * T.s * T.cs, T.Y + y1 * T.s]; };
-  const toU = (T, px, py) => { const x1 = (px - T.X) / (T.s * T.cs), y1 = (py - T.Y) / T.s; return [x1 * T.ct + y1 * T.st, -x1 * T.st + y1 * T.ct]; };
-  // rasterise one shape with a 1px ink outline; fill(ux, uy, lit, shade) picks each pixel's colour
-  function shape(fb, T, bb, inside, fill, ink = C.ink) {
-    const cs = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[0], bb[3]], [bb[2], bb[3]]].map(([x, y]) => toPx(T, x, y));
-    const x0 = Math.floor(Math.min(...cs.map((c) => c[0]))) - 1, x1 = Math.ceil(Math.max(...cs.map((c) => c[0]))) + 1;
-    const y0 = Math.floor(Math.min(...cs.map((c) => c[1]))) - 1, y1 = Math.ceil(Math.max(...cs.map((c) => c[1]))) + 1;
-    const w = x1 - x0 + 1, h = y1 - y0 + 1; if (w <= 0 || h <= 0 || w * h > 40000) return;
-    const m = new Uint8Array(w * h), uu = new Float32Array(w * h * 2);
-    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const [ux, uy] = toU(T, x0 + i + 0.5, y0 + j + 0.5); if (inside(ux, uy)) { const p = j * w + i; m[p] = 1; uu[p * 2] = ux; uu[p * 2 + 1] = uy; } }
-    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-      const p = j * w + i, up = j > 0 && m[p - w], dn = j < h - 1 && m[p + w], lf = i > 0 && m[p - 1], rt = i < w - 1 && m[p + 1];
-      if (m[p]) { const c = fill(uu[p * 2], uu[p * 2 + 1], !up || !lf, !dn || !rt); if (c) UI.put(fb, x0 + i, y0 + j, c); }
-      else if (ink && (up || dn || lf || rt)) UI.put(fb, x0 + i, y0 + j, ink);
-    }
+  /* ---------- drawing: the 3D Rotom Dex model (src/species/rotomdex.js) rendered to pixel art ----------
+     Each distinct (pose, yaw, scale, time-of-day) combination is rendered once and cached; the pose is
+     quantised so a handful of frames cover the bob, arm waves, banking, spins and every screen face. */
+  const cache = new Map();
+  const qz = (v, s) => Math.round(v / s) * s;
+  function sprite(pose, yaw, sc) {
+    const P = Game.P || Times.compile('noon');
+    const key = (P.key || '') + '|' + sc + '|' + yaw.toFixed(2) + '|' + JSON.stringify(pose);
+    let e = cache.get(key);
+    if (e) { cache.delete(key); cache.set(key, e); return e; }
+    const g = P.gradePal(RotomDex.PAL, 'rotomdex');
+    const W = Math.ceil(150 * sc), H = Math.ceil(130 * sc), ox = W >> 1, oy = Math.round(H * 0.72);
+    const r = RotomDex.render(RotomDex.build(pose), { yaw, pitch: 0.12, scale: sc, W, H, ox, oy, pal: g.pal, light: g.light });
+    const d = r.buf.d; let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[y * W + x]) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; y1 = y; }
+    const b = r.anchors.body;
+    e = { buf: r.buf, bx: Math.round(b[0]), by: Math.round(b[1]), x0, y0, x1, y1, head: r.anchors.head };
+    cache.set(key, e);
+    if (cache.size > 400) cache.delete(cache.keys().next().value);
+    return e;
   }
-  const redFill = (body, lt, dk) => (ux, uy, lit, shd) => (lit ? lt : shd ? dk : body);
-  function oval(ux, uy, o) { return ((ux - o[0]) / o[2]) ** 2 + ((uy - o[1]) / o[3]) ** 2; }
-  function arm(fb, T, A, off, rot, body, t) {
-    // move the arm around its root: rotate by rot, then offset (the arms float free of the body)
-    const [rx, ry] = A.root, cr = Math.cos(rot), sr = Math.sin(rot);
-    const tf = ([x, y]) => { const dx = x - rx, dy = y - ry; return [rx + dx * cr - dy * sr + off[0], ry + dx * sr + dy * cr + off[1]]; };
-    const bolt = A.bolt.map(tf), panel = A.panel.map(tf), [bx, by] = tf([A.btn[0], A.btn[1]]), bt = [bx, by, A.btn[2], A.btn[3]];
-    const all = bolt.concat(panel), bb = [Math.min(...all.map((p) => p[0])) - 2, Math.min(...all.map((p) => p[1])) - 2, Math.max(...all.map((p) => p[0])) + 2, Math.max(...all.map((p) => p[1])) + 2];
-    const inB = (x, y) => { for (let i = 0; i < 3; i++) if (segD(x, y, bolt[i][0], bolt[i][1], bolt[i + 1][0], bolt[i + 1][1]) <= 1.5) return true; return false; };
-    shape(fb, T, bb, (x, y) => inB(x, y) || inPoly(panel, x, y), (x, y, lit, shd) => {
-      const o = oval(x, y, bt);
-      if (o <= 1) { if (o > 0.55) return C.d; if (A.grey && o < 0.26) return C.greyD; return C.btn; }
-      if (o <= 1.45 && y > by) return lit ? C.l : C.ll;
-      return lit ? C.l : shd ? C.d : body;
-    });
+  // the pose + face for this frame, from Rotom's state
+  function poseNow(t) {
+    const m = R.mood, st = R.st, act = R.stT > 0, talk = R.talkT > 0 && Math.sin(t * 16) > 0;
+    const p = { armN: qz(Math.sin(t * 3.2) * 0.16, 0.08), armF: qz(Math.sin(t * 3.2 + 1.7) * 0.16, 0.08), eyes: 'open', smile: 'grin', mouth: talk ? 0.8 : 0, screen: '', lookX: qz(-R.lx, 0.5), lookY: qz(-R.ly, 0.5) };
+    const wave = (f, a) => qz(Math.sin(t * f) * a, 0.1);
+    if (m === 'happy') { p.eyes = 'happy'; p.mouth = talk ? 1 : 0.7; }
+    else if (m === 'wow') { p.eyes = 'wow'; p.smile = 'o'; p.mouth = talk ? 0.8 : 0.3; }
+    else if (m === 'sad') { p.eyes = 'sad'; p.smile = 'frown'; }
+    else if (m === 'x') { p.eyes = 'x'; p.smile = 'wavy'; }
+    if (st === 'cheer' && act) { p.armN = 1 + wave(10, 0.35); p.armF = 1 - wave(10, 0.35); p.screen = 'heart'; }
+    else if (st === 'orbit' && act) { p.armN = 0.5 + wave(6, 0.3); p.armF = 0.5 - wave(6, 0.3); }
+    else if (st === 'ouch' && act) { p.eyes = 'x'; p.smile = 'wavy'; p.screen = R.stT > 1.2 ? 'static' : '!'; p.armN = 1.3 + wave(22, 0.3); p.armF = 1.3 - wave(22, 0.3); }
+    else if (st === 'soak' && act) { p.eyes = R.stT > 1.2 ? 'x' : 'dizzy'; p.smile = 'wavy'; p.screen = 'sweat'; p.armN = -0.5 + wave(14, 0.3); p.armF = -0.5 - wave(14, 0.3); }
+    else if (st === 'startle' && act) { p.eyes = 'wow'; p.smile = 'o'; p.mouth = 0.8; p.screen = '!'; p.armN = p.armF = 0.9; }
+    else if (st === 'peek' && act) { p.screen = '?'; p.armN = 0.3; p.armF = 0.3; }
+    else if (st === 'point' && R.pointAt && act) { const right = (R.pointAt[0] - R.x) > 0; if (right) p.armF = 0.35 + wave(8, 0.1); else p.armN = 0.35 + wave(8, 0.1); p.eyes = 'happy'; }
+    else if (st === 'poke' && act && m === 'x') { p.eyes = 'angry'; p.smile = 'frown'; p.screen = '!'; p.armN = p.armF = -0.3; }
+    else if (st === 'poke' && act) { p.armN = 0.7 + wave(12, 0.3); p.armF = 0.2 - wave(12, 0.3); }
+    else if (R.sulk > 0.5) { p.eyes = 'sad'; p.smile = 'frown'; p.armN = -0.6; p.armF = 0.25; }
+    else if ((Game.mudkip && Game.mudkip.idleT || 0) > 14) { p.eyes = 'blink'; p.smile = 'flat'; p.screen = 'zzz'; p.armN = p.armF = -0.4; }
+    if (R.blinkT > 0 && p.eyes === 'open') p.eyes = 'blink';
+    // banking into the flight direction, a squash when poked, a stretch when zipping up
+    p.tilt = qz(clamp(R.vx / 260, -0.4, 0.4), 0.08);
+    p.lean = qz(clamp(-R.vy / 400, -0.2, 0.2), 0.1);
+    p.squash = qz(R.hop > 0 ? Math.sin(R.hop * Math.PI) * 0.9 : clamp(-Math.abs(R.vy) / 500, -0.4, 0), 0.15);
+    p.glow = R.sparks.length ? 1 : 0;
+    return p;
   }
   function draw(fb, t) {
     if (!visible() || R.hide) { R.box = null; return; }
     const [ux, uy] = Talk.toUI(R.x, R.y - R.hop * 4);
-    const k = clamp(Game.zoom / Game.US, 1, 2.4), H = Math.round(17 * k), s = H / 29;
-    const X = Math.round(ux), Y = Math.round(uy);
-    if (X < -60 || X > fb.w + 60 || Y < -60 || Y > fb.h + 60) { R.box = null; return; }
-    R.box = { x: X - Math.round(20 * s), y: Y - Math.round(28 * s), w: Math.round(40 * s), h: Math.round(44 * s) };
+    const k = clamp(Game.zoom / Game.US, 1, 2.4), sc = qz(0.42 * k, 0.02);
+    const X = Math.round(ux), Y = Math.round(uy + Math.sin(t * 3.2) * 1.2 * k);
+    if (X < -80 || X > fb.w + 80 || Y < -80 || Y > fb.h + 80) { R.box = null; return; }
     const night = Game.hour() === 'night' || Game.hour() === 'dusk';
-    if (night) { const g = H * 1.3; for (let y = -g; y <= g; y++) for (let x = -g; x <= g; x++) { const d = Math.hypot(x, y) / g; if (d < 1) UI.blend(fb, X + x, Y + y, hex('#bff4ff'), 0.16 * (1 - d)); } }
-    // turntable yaw (spins): the front squashes, past 90 degrees we see the back
-    const yaw = R.yaw + (R.spin > 0.5 ? (t * R.spin) % (Math.PI * 2) : 0);
-    const cy = Math.cos(yaw), front = cy > 0, shake = R.wet > 0.4 || (R.st === 'startle' && R.stT > 0) ? Math.round(Math.sin(t * 50)) : 0;
-    const T = { X: X + shake, Y: Y + (R.sulk > 0.5 ? 1 : 0), s, cs: Math.sign(cy || 1) * Math.max(0.14, Math.abs(cy)), ct: Math.cos(TILT), st: Math.sin(TILT) };
-    const body = R.wet > 0.2 ? mix(C.b, hex('#5a6ad8'), R.wet * 0.3) : C.b, lt = mix(body, C.ll, 0.55), dk = C.d;
-    // the arms float around the body
-    const bob = Math.sin(t * 3.2), bob2 = Math.cos(t * 3.2 + 1);
-    let offR = [0.8 + bob * 0.5, bob * 1.1], offL = [-0.8 - bob2 * 0.5, bob2 * 1.1], rotR = 0, rotL = 0;
-    const ouch = R.st === 'ouch' && R.stT < 1.2;
-    if (R.st === 'cheer' || R.st === 'poke') { const wv = Math.sin(t * 9); rotR = -0.45 + wv * 0.2; offR = [1, -3 + wv]; rotL = 0.3 - wv * 0.2; offL = [-1, -13 - wv]; }
-    else if (R.st === 'point' && R.pointAt) { const dir = Math.sign(R.pointAt[0] - R.x) || 1; if (dir * T.cs > 0) { offR = [4, -1]; rotR = 0.35; } else { offL = [-4, -2]; rotL = -0.35; } }
-    else if (R.sulk > 0.5) { rotR = -0.5; offR = [0, -2]; }
-    if (!ouch) { arm(fb, T, ARM_L, offL, rotL, body, t); arm(fb, T, ARM_R, offR, rotR, body, t); }
-    // the tail tab
-    shape(fb, T, [-3, 12, 4, 20.5], (x, y) => y > 12 && ((x - 0.5) / 3) ** 2 + ((y - 15.8) / 4.6) ** 2 <= 1, (x, y, lit, shd) => (shd ? C.dd : lit ? C.d : mix(C.d, body, 0.4)));
-    // the body with its spike antenna and the fin
-    const spark = R.sparks.length > 0;
-    shape(fb, T, [-23, -31.5, 17.5, 15], (x, y) => inPoly(BODY, x, y), (x, y, lit, shd) => {
-      if (y < -24 && spark) return C.gold;
-      if (lit) return y < -14 && x > -10.4 && x < -7.4 ? C.ll : lt;
-      if (shd) return dk;
-      if (x > 11.6 && y < 9.5 && y > -10) return mix(body, dk, 0.35);   // the right side turns away from the light
-      return body;
-    });
-    if (front) {
-      // four little holes on the shell
-      for (const [hx, hy] of [[11.2, -10.6], [12.2, -6.2], [-17.2, -2.2], [-16, 2.4]]) { const [px, py] = toPx(T, hx, hy); UI.put(fb, Math.round(px), Math.round(py), C.ink); if (s > 1.3) UI.put(fb, Math.round(px) + 1, Math.round(py), C.ink); }
-      drawScreen(fb, T, t);
-      // the thumb holding the screen
-      if (!ouch) shape(fb, T, [7.5, 9, 15, 16.8], (x, y) => ((x - 11.2) / 3) ** 2 + ((y - 12.9) / 3.3) ** 2 <= 1, redFill(body, lt, dk));
-    } else {
-      // the back: a darker panel and two vents
-      shape(fb, T, [-10, -9, 10, 10], (x, y) => x > -9 && x < 9.5 && y > -8 && y < 9, (x, y, lit, shd) => (lit ? C.dd : shd ? lt : C.d), 0);
-      for (const hy of [-4, -1, 2]) { const [a1, b1] = toPx(T, -5, hy), [a2, b2] = toPx(T, 5, hy); UI.line(fb, Math.round(a1), Math.round(b1), Math.round(a2), Math.round(b2), C.dd); }
-    }
-    if (ouch) {
-      // both panels pressed over its eyes
-      arm(fb, T, ARM_L, [15, -17], 0.2, body, t); arm(fb, T, ARM_R, [-19, 3], -0.1, body, t);
-    }
+    if (night) { const g = 22 * k; for (let y = -g; y <= g; y++) for (let x = -g; x <= g; x++) { const d = Math.hypot(x, y) / g; if (d < 1) UI.blend(fb, X + x, Y + y, hex('#bff4ff'), 0.16 * (1 - d)); } }
+    // yaw: front-on (π/2), turned toward where it flies / looks, plus spins
+    const yaw0 = Math.PI / 2 + R.yaw + (R.spin > 0.5 ? (t * R.spin) % (Math.PI * 2) : 0);
+    const yaw = qz(((yaw0 % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2), Math.PI / 16);
+    const shake = R.wet > 0.4 || (R.st === 'startle' && R.stT > 0) ? Math.round(Math.sin(t * 50)) : 0;
+    const e = sprite(poseNow(t), yaw, sc);
+    const bx = X + shake - e.bx, by = Y + (R.sulk > 0.5 ? 1 : 0) - e.by;
+    const wet = R.wet > 0.2 ? { tint: hex('#5a6ad8'), tintK: R.wet * 0.3 } : {};
+    UI.img(fb, e.buf, bx, by, 1, wet);
+    R.box = { x: bx + e.x0, y: by + e.y0, w: e.x1 - e.x0 + 1, h: e.y1 - e.y0 + 1 };
     // leaf umbrella in the rain
-    if (R.sulk > 0.5 && !ouch) {
-      const [hx, hy] = toPx(T, 27, -14); const ux2 = Math.round(hx), uy2 = Math.round(hy), ur = Math.round(13 * s);
-      UI.vline(fb, ux2, uy2 - Math.round(12 * s), uy2, C.leafD);
-      for (let y = 0; y <= Math.round(ur * 0.5); y++) { const hw = Math.round(ur * Math.sqrt(1 - (y / (ur * 0.5 + 0.5)) ** 2)); UI.hline(fb, ux2 - hw, ux2 + hw, uy2 - Math.round(12 * s) - y, y === 0 ? C.leafD : C.leaf); }
+    if (R.sulk > 0.5 && R.st !== 'ouch') {
+      const ux2 = Math.round(bx + e.x1 - 4 * k), uy2 = Math.round(by + e.y0 + 10 * k), ur = Math.round(8 * k);
+      UI.vline(fb, ux2, uy2 - Math.round(8 * k), uy2 + Math.round(4 * k), C.leafD);
+      for (let y = 0; y <= Math.round(ur * 0.5); y++) { const hw = Math.round(ur * Math.sqrt(1 - (y / (ur * 0.5 + 0.5)) ** 2)); UI.hline(fb, ux2 - hw, ux2 + hw, uy2 - Math.round(8 * k) - y, y === 0 ? C.leafD : C.leaf); }
     }
     // electric sparks, drips
-    for (const p of R.sparks) { const rn = U.rng(Math.floor(p.seed)); let x = X + Math.cos(p.a) * p.r * k * 0.8, y = Y + Math.sin(p.a) * p.r * k * 0.8; for (let q = 0; q < 3; q++) { const nx = x + (rn() - 0.5) * 6, ny = y + (rn() - 0.5) * 6; UI.line(fb, Math.round(x), Math.round(y), Math.round(nx), Math.round(ny), q % 2 ? C.gold : 0xffffffff); x = nx; y = ny; } }
+    for (const p of R.sparks) { const rn = U.rng(Math.floor(p.seed)); let x = X + Math.cos(p.a) * p.r * k * 1.1, y = Y + Math.sin(p.a) * p.r * k * 1.1; for (let q = 0; q < 3; q++) { const nx = x + (rn() - 0.5) * 6, ny = y + (rn() - 0.5) * 6; UI.line(fb, Math.round(x), Math.round(y), Math.round(nx), Math.round(ny), q % 2 ? C.gold : 0xffffffff); x = nx; y = ny; } }
     for (const p of R.drips) { const [dx, dy] = Talk.toUI(p.x, p.y); UI.put(fb, Math.round(dx), Math.round(dy), hex('#8ac8ff')); UI.put(fb, Math.round(dx), Math.round(dy) - 1, 0xffffffff); }
-  }
-  // the screen: white glass, Rotom's light-blue face with the magnifier handle, a grin, blue eyes on a dark bridge
-  function drawScreen(fb, T, t) {
-    const S = SCREEN, m = R.mood, blink = R.blinkT > 0;
-    shape(fb, T, [S.x0 - 1, S.y0 - 1, S.x1 + 1, S.y1 + 1], (x, y) => x > S.x0 && x < S.x1 && y > S.y0 && y < S.y1 && !((x < S.x0 + 1.4 || x > S.x1 - 1.4) && (y < S.y0 + 1.4 || y > S.y1 - 1.4)), (x, y, lit, shd) => {
-      const fx = x + 3.4, fy = y - 3, fr = Math.hypot(fx, fy);
-      if (fr < 7.6) return fr > 6.5 ? C.faceD : C.face;
-      if (segD(x, y, 3.8, 6.8, 10.2, 11) < 1.1) return C.face;               // the magnifier handle
-      return shd ? C.scrD : C.scr;
-    }, C.ink);
-    // the dark bridge between the eyes (a half disc)
-    shape(fb, T, [-7.8, -9, 2.6, -1], (x, y) => y < -2 && ((x + 2.6) / 4.5) ** 2 + ((y + 2) / 5.4) ** 2 <= 1, (x, y) => (y < -5.4 && x < -2.6 ? C.bridgeL : C.bridge), 0);
-    // the grin
-    const talk = R.talkT > 0 ? Math.abs(Math.sin(t * 16)) : 0, happy = m === 'happy';
-    if (m === 'wow') shape(fb, T, [-5, 1.5, -1, 5.5], (x, y) => ((x + 3) / 1.6) ** 2 + ((y - 3.5) / 1.8) ** 2 <= 1, () => C.mouth, C.mouthO);
-    else if (m === 'sad' || m === 'x') shape(fb, T, [-7, 2, 1, 6], (x, y) => y > 3.4 + ((x + 3) / 3.6) ** 2 * -1.2 && y < 4.6 + ((x + 3) / 3.6) ** 2 * -1.2 && Math.abs(x + 3) < 3.6, () => C.mouthO, 0);
-    else {
-      const w = happy ? 4.6 : 4, hgt = (happy ? 3.6 : 2.4) + talk * 1.6;
-      shape(fb, T, [-8, 0, 2, 7.5], (x, y) => { const kx = (x + 3) / w; if (Math.abs(kx) > 1) return false; const top = 2.1 - kx * 0.5, bot = top + hgt * Math.sqrt(1 - kx * kx); return y >= top && y <= bot; }, (x, y) => {
-        const kx = (x + 3) / w, top = 2.1 - kx * 0.5, bot = top + hgt * Math.sqrt(1 - kx * kx);
-        if ((talk > 0.2 || happy) && y > top + 1.1 && y < bot - 0.9) return C.mouth;
-        return Math.abs(((x + 3) % 1.9 + 1.9) % 1.9 - 0.95) < 0.22 && T.s > 0.9 ? C.scrD : 0xffffffff;
-      }, C.mouthO);
-    }
-    // eyes: white rings, blue irises that follow what Rotom looks at
-    for (const [ex, ey] of [[-8.8, -3.2], [3.6, -4]]) {
-      if (blink || happy) {
-        // closed / happy: a curved line (happy arcs up)
-        if (happy) shape(fb, T, [ex - 5, ey - 4, ex + 5, ey + 4], (x, y) => { const kx = (x - ex) / 4.2; if (Math.abs(kx) > 1) return false; const c = ey + 1.6 - (1 - kx * kx) * 3; return Math.abs(y - c) < 1.15; }, () => 0xffffffff, C.eyeO);
-        else shape(fb, T, [ex - 5, ey - 3, ex + 5, ey + 3], (x, y) => ((x - ex) / 4.4) ** 2 + ((y - ey - 0.6) / 1.3) ** 2 <= 1, (x, y) => (y > ey + 0.6 ? C.ring : 0xffffffff), C.eyeO);
-        continue;
-      }
-      shape(fb, T, [ex - 5.5, ey - 5.5, ex + 5.5, ey + 5.5], (x, y) => ((x - ex) / 4.6) ** 2 + ((y - ey) / 4.8) ** 2 <= 1, (x, y) => {
-        const dx = x - ex, dy = y - ey;
-        if (m === 'x') return Math.abs(Math.abs(dx) - Math.abs(dy)) < 0.8 && Math.abs(dx) < 2.6 ? C.eyeO : 0xffffffff;
-        const ir = m === 'wow' ? 1.7 : 2.9, ix = ex + R.lx * 1.2, iy = ey + R.ly * 1.1 + (m === 'sad' ? 0.8 : 0), id = Math.hypot((x - ix) / ir, (y - iy) / (ir * 1.15));
-        if (id <= 1) { if (Math.hypot(x - ix + 0.9, y - iy + 1) < 0.75) return 0xffffffff; return id > 0.72 ? C.irisD : C.iris; }
-        if (m === 'sad' && dy < -2) return C.eyeO;
-        return Math.hypot(dx, dy) > 3.8 ? C.ring : 0xffffffff;
-      }, C.eyeO);
-    }
   }
 
   /* ---------- hooks ---------- */

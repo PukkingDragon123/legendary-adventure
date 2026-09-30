@@ -29,7 +29,7 @@ const Dex = (() => {
     thumbs: new Map(), imgs: new Map(), confirm: null, album: 0, styleSlot: 'hat', mudYaw: 1.1,
     s: 1, G: null, mouse: null, mouseT: -9, hoverId: null, faceK: 0, lookAt: null, line: null, idleT: 8,
     face: { lx: 0, ly: 0, blinkT: 0, nextBlink: 2, mood: 'norm', moodT: 0, talk: 0, pop: 1, zaps: [], zapT: 1, wx: 0, wy: 0, wanderT: 0, spark: 0 },
-    home: { pg: 0, sel: 0, slide: 0 }, filter: 'all', lsel: {}, tab: {}, after: null, ensure: null, chat: [], mailC: null,
+    home: { pg: 0, sel: 0, slide: 0 }, bounce: {}, shake: 0, zoom: null, filter: 'all', lsel: {}, tab: {}, after: null, ensure: null, chat: [], mailC: null,
   };
   // the Rotom screen of the reference: soft periwinkle glass with faint dots, navy ink, Rotom's cyan face
   const P = {
@@ -60,7 +60,7 @@ const Dex = (() => {
     { id: 'ency', name: 'Encyclopedia', col: '#35ad63' },
     { id: 'quests', name: 'Quests', col: '#f09a30' },
     { id: 'prog', name: 'Progress', col: '#8a5ee6' },
-    { id: 'map', name: 'Map', col: '#2f9fdc', launch: () => WorldMap.open(), lock: () => locked('map') },
+    { id: 'map', name: 'Map', col: '#2f9fdc', launch: () => WorldMap.open() },
     { id: 'album', name: 'Photos', col: '#f36fa8' },
     { id: 'mail', name: 'Mail', col: '#5673ee' },
     { id: 'settings', name: 'Settings', col: '#67728c' },
@@ -71,8 +71,15 @@ const Dex = (() => {
     { id: 'time', name: 'Day/Night', col: '#34449e' },
     { id: 'chat', name: 'Chat', col: '#2fb8e4' },
     { id: 'help', name: 'Help', col: '#8f9d3c' },
-    { id: 'bag', name: 'Bag', col: '#b8742e', launch: () => Bag.open(), lock: () => locked('bag') },
+    { id: 'bag', name: 'Bag', col: '#b8742e', launch: () => Bag.open(), feat: 'bag' },
+    { id: 'music', name: 'Guitar', col: '#e0506a', launch: () => Rhythm.open(0), feat: 'music' },
+    { id: 'games', name: 'Playground', col: '#f0b030', launch: () => Arcade.open(), feat: 'games' },
+    { id: 'sound', name: 'Sound', col: '#4a9a8a', toggle: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); say(v ? 'Sound on! Bzzt!' : 'Shh... Rotom is quiet now.', { mood: v ? 'happy' : 'norm' }); } },
   ];
+  // feature unlocks (progress.js): a locked app is greyed out with the level that opens it
+  const FEAT = { map: 'map', style: 'style', time: 'time', tms: 'wheel', bag: 'bag', music: 'music', games: 'games' };
+  const featLv = (id) => { if (!hasP() || !FEAT[id]) return 0; if (Progress.has(FEAT[id])) return 0; const f = Progress.FEATS.find((q) => q.id === FEAT[id]); return f ? f.lv : 0; };
+  for (const a0 of APPS) a0.lock = () => featLv(a0.id) > 0;
   for (const a of APPS) a.c = hex(a.col);
   const APP = Object.fromEntries(APPS.map((a) => [a.id, a]));
   const TITLE = { entry: 'Pokédex', home: 'Rotom Dex' };
@@ -123,6 +130,7 @@ const Dex = (() => {
     if (D.page === 'entry' && !(D.sel && DexData.S[D.sel])) D.page = 'dex';
     if (!PAGES[D.page]) D.page = 'dex';
     D.faceK = D.page === 'home' ? 1 : 0;
+    D.homeT = -0.45; D.zoom = null; D.bounce = {};
     D.mailC = null;
     Quests.seen();
     SFX.dexOpen();
@@ -135,6 +143,8 @@ const Dex = (() => {
   function go(page, o = {}) {
     if (page === D.page && !o.force) return;
     D.prev = D.page; D.page = page; D.trans = 0; D.dir = o.dir ?? 1;
+    if (page === 'home') D.homeT = 0.1;
+    if (D.prev !== 'home') D.zoom = null;
     if (o.sel !== undefined) D.sel = o.sel;
     SFX.page(); zap(2);
     if (page !== 'entry' && page !== 'dex' && LINES[page] && Math.random() < 0.7) say(pick(LINES[page]));
@@ -145,7 +155,10 @@ const Dex = (() => {
     else go('home', { dir: -1 });
   }
   function launch(a) {
-    if (a.lock && a.lock()) { SFX.error(); say('That app is still locked! Level up to open it. Bzzt!', { mood: 'sad' }); return; }
+    if (a.lock && a.lock()) { SFX.error(); D.shake = 0.35; say('Locked! ' + a.name + ' opens at Lv ' + featLv(a.id) + '. Bzzt!', { mood: 'sad' }); return; }
+    D.bounce[a.id] = 1;
+    if (a.toggle) { a.toggle(); return; }
+    const tp = D.page === 'home' && D.tilePos && D.tilePos[a.id]; D.zoom = tp && !a.launch ? { x: tp[0], y: tp[1], c: a.c } : null;
     if (a.launch) { say('Opening the ' + a.name + '! Zzt!'); close(a.launch); return; }
     go(a.id, { dir: 1 });
   }
@@ -178,9 +191,15 @@ const Dex = (() => {
     D.mudYaw += dt * 0.9;
     D.selT = (D.selT || 0) + dt;
     D.faceK += ((D.page === 'home' ? 1 : 0) - D.faceK) * Math.min(1, dt * 10);
+    D.homeT = (D.homeT || 0) + dt;
+    for (const k in D.bounce) { D.bounce[k] = Math.max(0, D.bounce[k] - dt * 2.2); if (!D.bounce[k]) delete D.bounce[k]; }
+    D.shake = Math.max(0, D.shake - dt);
+    if (D.trans >= 1) D.zoom = null;
     D.home.slide *= Math.exp(-dt * 16); if (Math.abs(D.home.slide) < 0.5) D.home.slide = 0;
     const F = D.face;
     F.pop = clamp((D.t - 0.36) / 0.22, 0, 1);
+    // boot: Rotom wakes up — eyes pop open surprised, a zap, then a grin
+    if (!D.closing && D.t - dt < 0.78 && D.t >= 0.78) { mood('wow', 0.45); zap(3); }
     F.nextBlink -= dt;
     if (F.nextBlink <= 0) { F.blinkT = 0.13; F.nextBlink = 1.8 + Math.random() * 3.4; F.dbl = Math.random() < 0.2; }
     if (F.blinkT > 0) { F.blinkT -= dt; if (F.blinkT <= 0 && F.dbl) { F.dbl = false; F.blinkT = 0.11; } }
@@ -262,7 +281,7 @@ const Dex = (() => {
   function flipHome(d) {
     const pages = Math.ceil(APPS.length / 8), H = D.home, n = clamp(H.pg + d, 0, pages - 1);
     if (n === H.pg) { H.slide = -d * 10; return; }
-    H.pg = n; H.slide = d * 60; SFX.page(); zap(1);
+    H.pg = n; H.slide = d * 60; D.homeT = 0.12; SFX.page(); zap(1);
   }
   function key(k) {
     if (k === 'p' || k === 'Tab') { close(); return; }
@@ -377,6 +396,9 @@ const Dex = (() => {
   }
   function stars(fb, n, x, y, max = 4) { for (let i = 0; i < max; i++) Font.icon(fb, i < n ? 'star' : 'star0', x + i * 8, y, 1); }
   function medal(fb, m, x, y) { const mc = [0, 0xff3a7ac0, 0xffd0c0b8, 0xff3ac8ff, 0xfffff09a][m] || 0xff808080; UI.disc(fb, x, y, 4, INK); UI.disc(fb, x, y, 3, mc); UI.put(fb, x - 1, y - 1, 0xffffffff); }
+  // real Pokédex data the species file doesn't carry: category and weight (kg)
+  const INFO = Object.fromEntries('tentacool Jellyfish 45.5|staryu Star Shape 34.5|starmie Mysterious 80|chinchou Angler 12|marill Aqua Mouse 8.5|azumarill Aqua Rabbit 28.5|wobbuffet Patient 28.5|slugma Lava 35|corsola Coral 5|remoraid Jet 12|mantine Kite 220|marshtomp Mud Fish 28|swampert Mud Fish 81.9|zigzagoon Tiny Raccoon 17.5|linoone Rushing 32.5|lotad Water Weed 2.6|lombre Jolly 32.5|ludicolo Carefree 55|seedot Acorn 4|nuzleaf Wily 28|taillow Tiny Swallow 2.3|swellow Swallow 19.8|wingull Seagull 9.5|pelipper Water Bird 28|surskit Pond Skater 1.7|masquerain Eyeball 3.6|shroomish Mushroom 4.5|breloom Mushroom 39.2|slakoth Slacker 24|vigoroth Wild Monkey 46.5|slaking Lazy 130.5|nincada Trainee 5.5|azurill Polka Dot 2|plusle Cheering 4.2|minun Cheering 4.2|volbeat Firefly 17.7|illumise Firefly 17.7|carvanha Savage 20.8|sharpedo Brutal 88.8|wailmer Ball Whale 130|wailord Float Whale 398|numel Numb 24|torkoal Coal 80.4|spinda Spot Panda 5|trapinch Ant Pit 15|vibrava Vibration 15.3|flygon Mystic 82|swablu Cotton Bird 1.2|altaria Humming 20.6|lunatone Meteorite 168|solrock Meteorite 154|corphish Ruffian 11.5|crawdaunt Rogue 32.8|lileep Sea Lily 23.8|anorith Old Shrimp 12.5|feebas Fish 7.4|milotic Tender 162|castform Weather 0.8|kecleon Color Swap 22|tropius Fruit 100|wynaut Bright 14|snorunt Snow Hat 16.8|spheal Clap 39.5|sealeo Ball Roll 87.6|walrein Ice Break 150.6|clamperl Bivalve 52.5|relicanth Longevity 23.4|luvdisc Rendezvous 8.7|bagon Rock Head 42.1|regice Iceberg 175|latias Eon 40|latios Eon 60|kyogre Sea Basin 352|groudon Continent 950|rayquaza Sky High 206.5|jirachi Wish 1.1|deoxys DNA 60.8|budew Bud 1.2|chatot Music Note 1.9|dialga Temporal 683|palkia Spatial 336|meloetta Melody 6.5|minior Meteor 40|mudkip Mud Fish 7.6'.split('|').map((r) => { const a = r.split(' '); return [a[0], { cat: a.slice(1, -1).join(' ') + ' Pokémon', wt: +a[a.length - 1] }]; }));
+  const info = (sp) => INFO[sp] || { cat: 'Unknown Pokémon', wt: 0 };
   function speciesDone(sp) {
     const d = DexData.S[sp], ph = Save.data.photos[sp] || {};
     const beh = Object.keys(d.beh).length, got = Object.keys(Save.data.beh[sp] || {}).length;
@@ -781,7 +803,7 @@ const Dex = (() => {
     // gaze
     const lx = F.lx, ly = F.ly;
     D.eyeAt = [cx, Math.round(Y(12))];
-    const blink = F.blinkT > 0 || F.pop < 0.9;
+    const blink = F.blinkT > 0 || F.pop < 0.9 || (D.t < 0.78 && !D.closing);
     for (const sd of [-1, 1]) {
       // tall ovals whose tops lean outwards; the pupil is a wide dark band across the middle
       const ex = X(sd * 18.9), ey = Y(10.4), rx = 9.6 * k, ry = 16 * k, th = sd * 0.32, cs = Math.cos(th), sn = Math.sin(th);
@@ -1032,6 +1054,22 @@ const Dex = (() => {
         fill(rbox(0.3, 0.6, 0.7, 0.84, 0.06), H('#ffb866'));
         fill(box(0.45, 0.44, 0.55, 0.56), H('#ffd23a'));
       },
+      music() {
+        fill(ell(0.3, 0.74, 0.15, 0.12), W_); fill(ell(0.74, 0.64, 0.15, 0.12), W_);
+        fill(box(0.4, 0.2, 0.47, 0.74), W_); fill(box(0.84, 0.12, 0.9, 0.64), W_);
+        fill(poly([[0.4, 0.2], [0.9, 0.08], [0.9, 0.26], [0.4, 0.38]]), W_);
+        fill(ell(0.26, 0.71, 0.05, 0.03), H('#ffe0a0'));
+      },
+      games() {
+        fill(rbox(0.06, 0.3, 0.94, 0.8, 0.18), W_);
+        fill(box(0.2, 0.5, 0.38, 0.58), H('#3a3a5a')); fill(box(0.25, 0.44, 0.33, 0.64), H('#3a3a5a'));
+        fill(ell(0.68, 0.48, 0.06), H('#ff4a5a')); fill(ell(0.8, 0.6, 0.06), H('#4a8aff'));
+      },
+      sound() {
+        fill(box(0.12, 0.38, 0.3, 0.62), W_); fill(poly([[0.3, 0.38], [0.52, 0.18], [0.52, 0.82], [0.3, 0.62]]), W_);
+        fill(and(ell(0.52, 0.5, 0.26), not(ell(0.52, 0.5, 0.18)), (u) => u > 0.62), W_);
+        fill(and(ell(0.52, 0.5, 0.42), not(ell(0.52, 0.5, 0.34)), (u) => u > 0.7), W_);
+      },
     };
     (G[id] || G.dex)();
     // sticker outline
@@ -1042,8 +1080,8 @@ const Dex = (() => {
     return b;
   }
   // a chunky rounded app tile: dark hue outline, glossy lighter top, darker base, a soft blue shadow ring
-  function appTile(fb, a, x, y, sz, t, on, pr) {
-    const r = Math.max(3, Math.round(sz * 0.2)), c = a.c, lt = mix(c, 0xffffffff, 0.24), dk = mix(c, 0xff000000, 0.18), ol = mix(c, 0xff30100a, 0.62);
+  function appTile(fb, a, x, y, sz, t, on, pr, lk) {
+    const r = Math.max(3, Math.round(sz * 0.2)), c = lk ? mix(a.c, 0xff9098a8, 0.75) : a.c, lt = mix(c, 0xffffffff, 0.24), dk = mix(c, 0xff000000, 0.18), ol = mix(c, 0xff30100a, 0.62);
     const o = pr ? 1 : 0, y2 = y + o;
     UI.rrect(fb, x - 1, y - 1 + 2, sz + 2, sz + 2, r + 1, P.icoSh);
     UI.rrect(fb, x - 1, y2 - 1, sz + 2, sz + 2, r + 1, on ? 0xffffffff : P.icoRing);
@@ -1059,20 +1097,23 @@ const Dex = (() => {
     });
     // darker corner accents on the outline, like the reference tiles
     for (const [cx2, cy2] of [[x + 1, y2 + 1], [x + sz - 2, y2 + 1], [x + 1, y2 + sz - 2], [x + sz - 2, y2 + sz - 2]]) UI.put(fb, cx2, cy2, mix(ol, 0xff000000, 0.3));
-    const gs = Math.round(sz * 0.72), g = glyph(a.id, gs, ol);
+    const gs = Math.round(sz * 0.72), g = glyph(a.id === 'sound' && !Sound.on ? 'sound' : a.id, gs, ol);
     const bob = on ? Math.round(Math.sin(t * 5) * 1) : 0;
     UI.img(fb, g, x + Math.round((sz - gs) / 2), y2 + Math.round((sz - gs) / 2) + bob, 1);
   }
-  function badge(fb, x, y, n) {
+  function badge(fb, x, y, n, k = 1) {
     const s = n > 9 ? '9+' : n === true ? '!' : String(n), w = Math.max(9, Font.measure(s, 'small') + 5);
+    if (k < 0.999) { const r = Math.max(1, Math.round(5 * k)); UI.disc(fb, x, y, r + 1, 0xffffffff); UI.disc(fb, x, y, r, 0xff3a30e8); return; }
     UI.disc(fb, x, y, 5, 0xffffffff); UI.rrect(fb, x - (w >> 1), y - 4, w, 9, 4, 0xffffffff);
-    UI.rrect(fb, x - (w >> 1) + 1, y - 3, w - 2, 7, 3, 0xff2c20e8);
+    UI.rrect(fb, x - (w >> 1) + 1, y - 3, w - 2, 7, 3, 0xff3a30e8);
     Font.draw(fb, s, x + 1, y - 2, 0xffffffff, { font: 'small', align: 'center' });
   }
   function appBadge(id) {
     if (id === 'mail') return mailUnread();
     if (id === 'quests') { const n = questList().filter((e) => e.s === 'ready').length; return n || 0; }
     if (id === 'dex') return Quests.unseen() ? true : 0;
+    if (id === 'bag') return typeof Bag !== 'undefined' && Bag.fresh && Bag.fresh() ? true : 0;
+    if (id === 'style') return typeof Style !== 'undefined' && Style.fresh && Style.fresh() ? true : 0;
     return 0;
   }
 
@@ -1090,16 +1131,30 @@ const Dex = (() => {
       if (x + isz < s.x + 2 || x > s.x + s.w - 2) continue;
       const id = 'app-' + a.id, on = H.sel === i, pr = D.press && D.press.b && D.press.b.id === id;
       const lk = a.lock && a.lock();
-      appTile(fb, a, x, y - (on ? 1 : 0), isz, t, on, pr);
-      if (lk) { UI.rectA(fb, x + 1, y + 1 - (on ? 1 : 0), isz - 2, isz - 2, 0xff4b1e1a, 0.45); Font.icon(fb, 'lock', cx - 2, cy - 4 - (on ? 1 : 0), 1); }
-      const bn = appBadge(a.id); if (bn) badge(fb, x + isz - 3, y + 2 - (on ? 1 : 0), bn);
+      // entry cascade, hover lift, press squash and a springy bounce after a tap
+      const intro = clamp((D.homeT - 0.05 * i) / 0.28, 0, 1), ik = intro < 1 ? U.ease.outBack(intro) : 1;
+      const bo = D.bounce[a.id] || 0, bz = Math.round(Math.sin(bo * Math.PI * 3) * bo * 3);
+      const hv = D.hoverId === id;
+      const sz = Math.max(4, Math.round(isz * ik + (pr ? -2 : 0) + (hv && !pr ? 1 : 0) + (bo ? Math.abs(bz) * 0.6 : 0)));
+      const lift = (on ? 1 : 0) + (hv && !pr ? 1 : 0) + bz + Math.round(Math.sin(t * 2.4 + i * 0.8) * 0.6 * (on ? 1 : 0));
+      const x2 = cx - (sz >> 1), y2 = cy - (sz >> 1) - lift + (D.shake && on ? 0 : 0);
+      const shx = lk && on && D.shake > 0 ? Math.round(Math.sin(D.shake * 60) * 2) : 0;
+      if (ik > 0.05) appTile(fb, a, x2 + shx, y2, sz, t, on, pr, lk);
+      if (lk && ik >= 1) {
+        UI.rectA(fb, x2 + 1 + shx, y2 + 1, sz - 2, sz - 2, 0xff303850, 0.5);
+        Font.icon(fb, 'lock', cx - 3 + shx, cy - 6 - lift, 1);
+        const lt = 'LV' + featLv(a.id); UI.rrect(fb, cx - 9 + shx, cy + 2 - lift, 18, 8, 3, P.rim); Font.draw(fb, lt, cx + shx, cy + 3 - lift, 0xffffffff, { font: 'small', align: 'center' });
+      }
+      const bn = lk ? 0 : appBadge(a.id);
+      if (bn && ik >= 1) { const bp = clamp((D.homeT - 0.3 - 0.05 * i) / 0.25, 0, 1); if (bp > 0) badge(fb, x2 + sz - 3 + shx, y2 + 2, bn, U.ease.outBack(bp)); }
+      (D.tilePos || (D.tilePos = {}))[a.id] = [cx, cy];
       if (on) { D.lookAt = [cx, cy]; selA = a; }
-      btn(id, x - 3, y - 3, isz + 6, isz + 6, () => { H.sel = i; SFX.select(); launch(a); }, { silent: true, hov: () => { if (H.sel !== i) { H.sel = i; } } });
+      btn(id, x - 3, y - 3, isz + 6, isz + 6, () => { H.sel = i; SFX.select(); launch(a); }, { silent: true, hov: () => { if (H.sel !== i) { H.sel = i; SFX.blip && Math.random() < 0 && SFX.blip(); } } });
     }
     // the page bar between the rows:  ◀ ═══ ▶  (the selected app's name sits in the pill)
     const by = G.Y(96.5), bh = Math.max(7, Math.round(9.5 * k)), bw = Math.round(54 * k) + (G.C ? 10 : 0), bx = G.cx - (bw >> 1);
     lens(fb, bx, by - (bh >> 1), bw, bh);
-    if (selA) Font.draw(fb, fit(selA.name.toUpperCase(), bw - 8), G.cx, by - 2, 0xff7e3a1d, { font: 'small', align: 'center' });
+    if (selA) Font.draw(fb, fit((selA.lock && selA.lock() ? '{lock}' : '') + (selA.id === 'sound' ? (Sound.on ? 'SOUND ON' : 'SOUND OFF') : selA.name.toUpperCase()), bw - 8), G.cx, by - 2, 0xff7e3a1d, { font: 'small', align: 'center' });
     btn('pgbar', bx, by - bh, bw, bh * 2, () => { if (selA) { SFX.select(); launch(selA); } });
     const arrow = (dir) => {
       const en = dir < 0 ? H.pg > 0 : H.pg < pages - 1, id = 'pgarr' + dir, hv = D.hoverId === id && en;
@@ -1150,7 +1205,7 @@ const Dex = (() => {
     pill(fb, L.x, L.y, cw, chH, D.hoverId === id ? P.white : P.scrLL, P.text, lab);
     btn(id, L.x - 2, L.y - 3, cw + 4, chH + 6, () => { D.filter = FILTERS[(Math.max(0, fi) + 1) % 3][0]; D.scroll.dex = 0; SFX.page(); }, { silent: true });
     Font.draw(fb, String(list.length), L.x + L.w - 1, L.y + 3, P.text, { font: 'small', align: 'right' });
-    const LQ = { x: L.x, y: L.y + chH + 3, w: L.w, h: L.h - chH - 3 }, rh = tiny ? 15 : G.L ? 21 : 18;
+    const LQ = { x: L.x, y: L.y + chH + 3, w: L.w, h: L.h - chH - 3 }, rh = tiny ? 19 : G.L ? 22 : 20;
     const si = list.indexOf(D.sel);
     if (!list.length) Font.draw(fb, D.filter === 'miss' ? 'ALL CAUGHT!' : 'NOBODY HERE', LQ.x + LQ.w / 2, LQ.y + 16, P.text, { font: 'small', align: 'center' });
     const s2 = listView(fb, 'dex', LQ, list.length, rh, si, (b, i, x2, y, w, h, on) => dexRow(b, list[i], x2, y, w, h, on, G), (i) => { const sp = list[i]; if (D.sel === sp) openEntry(sp); else selectSp(sp); });
@@ -1158,22 +1213,29 @@ const Dex = (() => {
     dexDetail(fb, G, R, D.sel, t);
   }
   function dexRow(b, sp, x, y, w, h, on, G) {
-    const st = stat(sp), d = DexData.S[sp], big = h >= 18;
+    const st = stat(sp), d = DexData.S[sp];
     UI.rrect(b, x, y, w, h - 1, 3, on ? P.red : P.scrDD);
     UI.rrect(b, x + 1, y + 1, w - 2, h - 3, 2, on ? P.white : st === 2 ? P.card : st === 1 ? P.scrLL : P.scrL);
-    const ts = h - 4, th = thumb(sp, ts, st < 2), tx = x + 2, ty = y + 1;
+    if (on) UI.rect(b, x + 1, y + 2, 2, h - 5, P.red);
+    const ts = Math.min(h - 4, 18), th = thumb(sp, ts, st < 2), tx = x + 3, ty = y + 1 + ((h - 3 - ts) >> 1);
     if (th) UI.img(b, th, tx + Math.round((ts + 1 - th.w) / 2), ty + Math.round((ts - th.h) / 2), 1, st === 1 ? { tint: P.scrDD, tintK: 0.35 } : st === 0 ? { tint: P.faint, tintK: 0.3 } : {});
     else if (th === undefined) Font.draw(b, '..', tx + ts / 2, ty + ts / 2 - 2, P.dim, { font: 'small', align: 'center' });
-    const nx = tx + ts + 3, icon = st === 2 && w - (nx - x) > 52;
-    const nm = st ? d.name : big ? '???' : pad3(d.no);
-    const ny = y + Math.round((h - 1 - 5) / 2) - (big && w > 90 ? 3 : 0);
-    Font.draw(b, fit(nm, w - (nx - x) - (icon ? 11 : 3)), nx, ny, st ? P.text : P.faint, { font: 'small' });
-    if (big && w > 90) Font.draw(b, 'NO.' + pad3(d.no), nx, ny + 8, P.faint, { font: 'small' });
-    if (icon) Font.icon(b, 'pb', x + w - 10, y + Math.round((h - 1) / 2) - 4, 1);
-    else if (st === 1 && w - (nx - x) > 52) eyeIcon(b, x + w - 10, y + Math.round((h - 1) / 2) - 2);
+    const nx = tx + ts + 3, room = x + w - nx - 2;
+    const two = h >= 15, ny = two ? y + Math.round((h - 1) / 2) - 7 : y + Math.round((h - 6) / 2);
+    // status icon: Poké Ball = caught (photographed), eye = seen
+    const ix = x + w - 10, iy = y + Math.round((h - 1) / 2) - 4;
+    if (st === 2) Font.icon(b, 'pb', ix, two ? ny + 8 : iy, 1); else if (st === 1) eyeIcon(b, ix, (two ? ny + 8 : iy) + 2);
+    Font.draw(b, fit(st ? d.name : '???', room), nx, ny, st ? P.text : P.faint, { font: 'small' });
+    if (two) {
+      const nt = (room >= 56 ? 'No.' : '') + pad3(d.no);
+      Font.draw(b, nt, nx, ny + 9, P.faint, { font: 'small' });
+      if (st) { let cx = nx + Font.measure(nt, 'small') + 3; for (const ty2 of d.type) { if (cx + 5 > ix - 2 || room < 60) break; UI.rrect(b, cx, ny + 9, 5, 5, 2, typeCol(ty2)); cx += 7; } }
+    }
   }
   function eyeIcon(fb, x, y) { const c = P.dim; UI.hline(fb, x + 1, x + 5, y, c); UI.put(fb, x, y + 1, c); UI.put(fb, x + 6, y + 1, c); UI.hline(fb, x + 1, x + 5, y + 3, c); UI.put(fb, x, y + 2, c); UI.put(fb, x + 6, y + 2, c); UI.rect(fb, x + 2, y + 1, 3, 2, 0xff4b1e1a); }
-  function typePill(fb, ty, x, y) { const w = Font.measure(ty.toUpperCase(), 'small') + 8; UI.rrect(fb, x, y, w, 9, 3, mix(hex(DexData.TYPES[ty] || '#888888'), 0xff000000, 0.35)); UI.rrect(fb, x, y, w, 8, 3, hex(DexData.TYPES[ty] || '#888888')); Font.draw(fb, ty.toUpperCase(), x + w / 2, y + 2, 0xffffffff, { font: 'small', align: 'center' }); return w; }
+  const TYPE_COL = { Normal: '#9fa19f', Fire: '#e62829', Water: '#2980ef', Grass: '#3fa129', Electric: '#fac000', Ice: '#3dcef3', Fighting: '#ff8000', Poison: '#9141cb', Ground: '#915121', Flying: '#81b9ef', Psychic: '#ef4179', Bug: '#91a119', Rock: '#afa981', Ghost: '#704170', Dragon: '#5060e1', Dark: '#624d4e', Steel: '#60a1b8', Fairy: '#ef70ef' };
+  const typeCol = (ty) => hex(TYPE_COL[ty] || (DexData.TYPES[ty]) || '#888888');
+  function typePill(fb, ty, x, y) { const w = Font.measure(ty.toUpperCase(), 'small') + 8; UI.rrect(fb, x, y, w, 9, 3, mix(typeCol(ty), 0xff000000, 0.35)); UI.rrect(fb, x, y, w, 8, 3, typeCol(ty)); UI.hline(fb, x + 2, x + w - 3, y + 1, mix(typeCol(ty), 0xffffffff, 0.3)); Font.draw(fb, ty.toUpperCase(), x + w / 2, y + 2, 0xffffffff, { font: 'small', align: 'center' }); return w; }
   function stage(fb, x, y, w, h, area, st, t) {
     const [sky, gnd] = areaCols(area), dark = st === 0;
     rrFill(fb, x, y, w, h, 4, (i, j) => {
@@ -1215,7 +1277,7 @@ const Dex = (() => {
       const tws = d.type.map((ty) => Font.measure(ty.toUpperCase(), 'small') + 8), tot = tws.reduce((a2, b2) => a2 + b2 + 2, 0);
       const roomT = R.y + R.h - 4 - (tiny ? 12 : 13) - 3 - y;
       if (tot <= w + 2 || roomT >= 21) { let tx = x; d.type.forEach((ty, i) => { if (tx > x && tx + tws[i] > x + w) { tx = x; y += 10; } typePill(fb, ty, tx, y); tx += tws[i] + 2; }); }
-      else { let tx = x; for (const ty of d.type) { const c = hex(DexData.TYPES[ty] || '#888888'), cw = Math.floor((w - 2) / d.type.length) - 2; UI.rrect(fb, tx, y, cw, 8, 3, mix(c, 0xff000000, 0.35)); UI.rrect(fb, tx, y, cw, 7, 3, c); Font.draw(fb, fit(ty.toUpperCase().slice(0, 3), cw - 2), tx + cw / 2, y + 1, 0xffffffff, { font: 'small', align: 'center' }); tx += cw + 2; } }
+      else { let tx = x; for (const ty of d.type) { const c = typeCol(ty), cw = Math.floor((w - 2) / d.type.length) - 2; UI.rrect(fb, tx, y, cw, 8, 3, mix(c, 0xff000000, 0.35)); UI.rrect(fb, tx, y, cw, 7, 3, c); Font.draw(fb, fit(ty.toUpperCase().slice(0, 3), cw - 2), tx + cw / 2, y + 1, 0xffffffff, { font: 'small', align: 'center' }); tx += cw + 2; } }
       y += 11;
     }
     const btnH = tiny ? 12 : 13, bottom = R.y + R.h - 4;
@@ -1225,7 +1287,7 @@ const Dex = (() => {
     if (room >= 9) {
       const lines = [];
       const hab = (d.area || []).map(areaName).join(', ') || '???';
-      if (st === 2) { lines.push(['{star} ' + dn.st + '/4  BEH ' + dn.got + '/' + dn.beh, P.text]); lines.push(['HT ' + d.h + ' M · ' + hab, P.dim]); }
+      if (st === 2) { lines.push([info(sp).cat, P.dim]); lines.push(['{star} ' + dn.st + '/4  BEH ' + dn.got + '/' + dn.beh, P.text]); lines.push([d.h + ' m · ' + info(sp).wt + ' kg', P.dim]); lines.push([hab, P.dim]); }
       else if (st === 1) lines.push(['SEEN NEAR ' + hab.toUpperCase(), P.dim]);
       else lines.push(['HABITAT ' + ((d.area || []).length ? hab : '???'), P.dim]);
       let yy = y;
@@ -1312,8 +1374,23 @@ const Dex = (() => {
       const nf = nameFont(w);
       Font.draw(b, fit(stat(sp) ? d.name : '???', w, nf), x, y, P.text, { font: nf }); y += fontH(nf);
       y = typeRow(b, d.type, x, y, w) + 1;
-      y += textLines(b, 'HT ' + d.h + ' M · ' + (d.area || []).map(areaName).join(', '), x, y, w, P.dim, 2, 8) + 2;
-      y += textLines(b, d.blurb, x, y, w, P.text, 99, 9) + 5;
+      const IN = info(sp), st0 = stat(sp), dn = speciesDone(sp);
+      y += textLines(b, st0 ? IN.cat : '??? Pokémon', x, y, w, P.dim, 2, 8) + 2;
+      // height / weight chips, like the real Pokédex
+      for (const [lab, val] of [['HEIGHT', st0 ? d.h.toFixed(1) + ' m' : '?.? m'], ['WEIGHT', st0 ? IN.wt.toFixed(1) + ' kg' : '?.? kg']]) {
+        UI.rrect(b, x - 1, y, w + 2, 11, 3, P.scrD); UI.rrect(b, x, y + 1, w, 9, 2, P.white);
+        const vw = Font.measure(val, 'small');
+        Font.draw(b, fit(w - vw >= 48 ? lab : lab.slice(0, 2), w - vw - 6), x + 3, y + 3, P.redD, { font: 'small' }); Font.draw(b, val, x + w - 3, y + 3, P.text, { font: 'small', align: 'right' });
+        y += 12;
+      }
+      y += 2;
+      Font.draw(b, fit('HABITAT', w), x, y, hc, { font: 'small' }); y += 9;
+      y += textLines(b, (d.area || []).map((a) => areaName(a) + (DexData.AREAS[a] && DexData.AREAS[a].sub ? ' (' + DexData.AREAS[a].sub + ')' : '')).join(', ') || '???', x, y, w, P.dim, 3, 8) + 3;
+      y += textLines(b, st0 === 2 ? d.blurb : 'Photograph it to read its full entry!', x, y, w, P.text, 99, 9) + 4;
+      // research completion
+      const pct = Math.round(dn.pct * 100);
+      Font.draw(b, fit('RESEARCH', w - 22), x, y, hc, { font: 'small' }); Font.draw(b, pct + '%', x + w, y, P.text, { font: 'small', align: 'right' }); y += 9;
+      UI.rrect(b, x, y, w, 6, 3, P.scrD); if (pct) UI.rrect(b, x, y, Math.max(5, Math.round(w * pct / 100)), 6, 3, pct >= 100 ? P.gold : P.green); y += 10;
       Font.draw(b, fit('BEHAVIOURS', w), x, y, hc, { font: 'small' }); y += 10;
       const seenB = Save.data.beh[sp] || {};
       for (const k in d.beh) {
@@ -2094,7 +2171,7 @@ const Dex = (() => {
     const dimK = clamp(D.t / 0.3, 0, 1) * (D.closing ? 1 - D.closing / 0.5 : 1);
     if (!D.bare) UI.rectA(fb, 0, 0, W, H, 0xff200e0a, 0.62 * dimK);
     // rise in / drop out, then a gentle hover
-    const rise = D.closing ? U.ease.inCubic(clamp((D.closing - 0.16) / 0.34, 0, 1)) : 1 - U.ease.outBack(clamp(D.t / 0.34, 0, 1));
+    const rise = D.closing ? U.ease.inCubic(clamp((D.closing - 0.16) / 0.34, 0, 1)) : 1 - U.ease.outBack(clamp(D.t / 0.42, 0, 1));
     const dy = D.bare ? 0 : Math.round(rise * (H - G.top + 8)) + Math.round(Math.sin(t * 2.2) * 1.2);
     G.top += dy; G.oy += dy; G.scr.y += dy;
     drawShell(fb, G, FR, t);
@@ -2105,7 +2182,17 @@ const Dex = (() => {
     if (pw >= 1) {
       const fn = PAGES[D.page] || pageDex, Scr = G.scr;
       const k = U.ease.outCubic(D.trans), slide = Math.round((1 - k) * 36 * D.dir);
-      if (slide) {
+      if (D.zoom && k < 1) {
+        // app open: the page grows out of the tapped icon
+        const L2 = D.tmp2 && D.tmp2.w === W && D.tmp2.h === H ? D.tmp2 : (D.tmp2 = new PX.Buf(W, H));
+        L2.d.fill(0); fn(L2, G, t);
+        const zk = 0.12 + 0.88 * k, zx = D.zoom.x, zy = D.zoom.y;
+        for (let y = Math.max(0, Scr.y + 2); y < Math.min(H, Scr.y + Scr.h - 1); y++) for (let x = Math.max(0, Scr.x + 1); x < Math.min(W, Scr.x + Scr.w - 1); x++) {
+          const sx = Math.round(zx + (x - zx) / zk), sy = Math.round(zy + (y - zy) / zk);
+          if (sx < Scr.x + 1 || sx >= Scr.x + Scr.w - 1 || sy < Scr.y + 2 || sy >= Scr.y + Scr.h - 1) continue;
+          const v = L2.d[sy * W + sx]; if (v) fb.d[y * W + x] = k < 0.5 ? mix(D.zoom.c, v, k * 2) : v;
+        }
+      } else if (slide) {
         const L2 = D.tmp2 && D.tmp2.w === W && D.tmp2.h === H ? D.tmp2 : (D.tmp2 = new PX.Buf(W, H));
         L2.d.fill(0);
         fn(L2, G, t);
@@ -2141,5 +2228,9 @@ const Dex = (() => {
     entry: () => { const L = DexData.ORDER.filter((s) => stat(s) > 0); return (L.indexOf(D.sel) + 1) + '/' + L.length; },
   };
 
-  return Object.assign(D, { cancel, open, close, go, back, update, draw, down, move, up, wheel, key, hover, thumb, say, mood, zap, stat, counts, SECRETS, APPS, LINES });
+  // the HUD's Rotom Dex button shows one badge for all apps
+  function anyBadge() { let n = 0; for (const a of APPS) { if (a.lock && a.lock()) continue; const v = appBadge(a.id); n += v === true ? 1 : v || 0; } if (hasP() && Progress.logBadge()) n = Math.max(n, 1); return n; }
+  // open the Dex straight to an app (keyboard shortcuts)
+  function openApp(id) { const a = APP[id]; if (!a) return open(); if (Game.mode !== 'dex') { open(); D.page = 'home'; D.faceK = 1; } const i = APPS.indexOf(a); D.home.pg = (i / 8) | 0; D.home.sel = i % 8; launch(a); }
+  return Object.assign(D, { anyBadge, openApp, cancel, open, close, go, back, update, draw, down, move, up, wheel, key, hover, thumb, say, mood, zap, stat, counts, SECRETS, APPS, LINES });
 })();
