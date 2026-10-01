@@ -344,7 +344,7 @@ const Arcade = (() => {
   // Mudkip and the champion lean into each other in the middle of the ring. Mash to shove; press right
   // as the shrinking ring meets the target for a big BELLY BUMP. Watch out when the champ charges (!).
   function* sumoBrain(p, G) { for (;;) { const dt = yield; p.o.clawN = 0.5 + Math.sin(G.t * 18) * 0.3 * (G.charge > 0 ? 1.6 : 0.6); p.o.clawF = 0.5 + Math.cos(G.t * 17) * 0.3; p.setAct('battle', 0.6); } }
-  function sumoWindow(G) { return G.ringT > 0.72 && G.ringT < 0.93; }
+  function sumoWindow(G) { return G.ringT > 0.62 && G.ringT < 0.97; }
   function sumoPush() {
     const G = A.g, M = mk(); if (!G || G.step !== 'go' || G.over) return;
     G.shoves++;
@@ -355,7 +355,7 @@ const Arcade = (() => {
       FX.add({ type: 'ring', x: G.RX + G.pos * G.RR, y: M.y - 12, r0: 3, r1: 20, life: 0.35, c: WHITE, layer: 4 });
       if (M.say) M.say(G.combo > 2 ? 'BELLY BUMP x' + G.combo + '!' : 'BELLY BUMP!', 0.8);
       M.vair = 130; M.air = 0.3;
-    } else { G.pos += 0.035; G.pushK = Math.max(G.pushK, 0.4); Game.sfx('step', M.x, 0.5); }
+    } else { G.pos += 0.055; G.pushK = Math.max(G.pushK, 0.4); Game.sfx('step', M.x, 0.5); }
   }
   function sumoAward(id) {
     if (typeof Rewards === 'undefined') return;
@@ -382,7 +382,7 @@ const Arcade = (() => {
       if (G.charge <= 0 && G.chargeT <= 0 && G.chargeT > -0.7) { if (!G.warned) { G.warned = true; if (p.emote) p.emote('anger', 0.8); say(p, '!!', 0.6); Game.sfx('error', p.x, 0.5); } }
       else if (G.charge <= 0 && G.chargeT <= -0.7) { G.charge = 0.6; G.warned = false; Game.sfx('whoosh', p.x, 0.7); }
       if (G.charge > 0) { G.charge -= dt; if (G.charge <= 0) G.chargeT = rnd(2.2, 4.2) - Math.min(1.2, G.st * 0.04); }
-      const push = 0.12 + Math.min(0.14, G.st * 0.008) + (G.charge > 0 ? 0.7 : 0);
+      const push = 0.08 + Math.min(0.08, G.st * 0.005) + (G.charge > 0 ? 0.4 : 0);
       G.pos -= push * dt;
       G.pushK = Math.max(0, G.pushK - dt * 3); G.bump = Math.max(0, (G.bump || 0) - dt);
       if (G.pos >= 1) {
