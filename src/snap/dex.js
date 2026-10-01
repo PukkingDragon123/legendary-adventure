@@ -1175,8 +1175,8 @@ const Dex = (() => {
   /* ---------- page: home (the app grid of the reference: two 2x2 groups, the page bar between the rows) ---------- */
   function pageHome(fb, G, t) {
     const s = G.scr, k = G.k, H = D.home, pages = Math.ceil(APPS.length / 8);
-    const isz = Math.max(16, Math.round(34 * k));
-    const colU = [-65, -27, 27, 65], rowU = [68.5, 122.5];
+    const isz = Math.max(16, Math.round(33 * k));
+    const colU = [-64, -27, 27, 64], rowU = [68.5, 122.5];
     const sl = Math.round(H.slide);
     let selA = null;
     for (let i = 0; i < 8; i++) {
