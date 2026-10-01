@@ -21,6 +21,7 @@
      lean    radians  pitch (+ = top tips toward the camera / forward)
      squash  −1..1    + squashed (poke), − stretched (zip)
      mouth   0..1     open amount;  smile: 'grin'|'open'|'o'|'frown'|'wavy'|'flat'
+     lid     0..1     upper eyelid closure (smooth blinks)
      eyes    'open'|'happy'|'blink'|'x'|'angry'|'dizzy'|'sad'|'wow'
      lookX / lookY −1..1  iris offset (screen right / up)
      screen  ''|'heart'|'!'|'?'|'note'|'sweat'|'zzz'|'static'  icon on the screen
@@ -78,7 +79,7 @@ const RotomDex = (() => {
 
   /* ---------- the screen plate: face, eyes, bridge, mouth, icons (u = screen right, v = up) ---------- */
   const SR = { u0: -12, u1: 12, v0: -14, v1: 6.8, r: 2 };
-  const EYE = [[-6.8, 9.6], [6.8, 9.6]], ER = 6.4;
+  const EYE = [[-7.4, 8.6], [7.4, 8.6]], ERX = 5.0, ERY = 6.2;
   const inRect = (u, v) => {
     if (u < SR.u0 || u > SR.u1 || v < SR.v0 || v > SR.v1) return false;
     const cx = clamp(u, SR.u0 + SR.r, SR.u1 - SR.r), cy = clamp(v, SR.v0 + SR.r, SR.v1 - SR.r);
@@ -102,41 +103,46 @@ const RotomDex = (() => {
       bb: [-14, -15.5, 14, 16.5],
       test(u, v) {
         const L = lw(0.7);
-        // eyes (over everything)
+        // eyes (over everything): tall white ovals tilted outward, set into the dark visor band
         for (let k = 0; k < 2; k++) {
-          const [ex, ey] = EYE[k], dx = u - ex, dy = v - ey, d = Math.hypot(dx, dy), side = k ? 1 : -1;
+          const [ex, ey] = EYE[k], side = k ? 1 : -1;
+          const rdx = u - ex, rdy = v - ey, ca = Math.cos(0.22 * side), sa = Math.sin(0.22 * side);
+          const dx = rdx * ca - rdy * sa, dy = rdx * sa + rdy * ca;          // eye-local (tilt: tops lean outward)
+          const d = Math.hypot(dx / ERX, dy / ERY);
+          if (d > 1 + L / ERX + 0.07) continue;
+          if (d > 1) return d > 1 + L / ERX ? C.BRIDGE : C.INK;              // dark rim (part of the visor)
+          if (d > 1 - L / ERX) return C.INK;
           if (eyes === 'happy') {
-            // ^ arcs: a thick white band with ink edges
-            const kx = dx / (ER * 0.85); if (Math.abs(kx) > 1.1) continue;
-            const c = ey - 2 + (1 - kx * kx) * 4.2, e = Math.abs(dy - (c - ey)), W = 1.5;
-            if (Math.abs(kx) <= 1 && e < W) return C.EYEW;
-            if (Math.abs(kx) <= 1.1 && e < W + L) return C.INK;
-            continue;
+            // ^ smiling arcs: lower lid pushed up, shown as a dark visor below a white arch
+            const c = -1.2 + (1 - (dx / ERX) ** 2) * 3.4;
+            if (dy < c - L) return C.SCRD; if (dy < c) return C.INK;
+            return C.EYEW;
           }
-          if (eyes === 'blink') {
-            const e = Math.hypot(dx / (ER * 0.9), (dy + 0.5) / 1.6);
-            if (e < 1) return Math.abs(dy + 0.5) < L * 0.6 ? C.INK : C.EYEW;
-            if (Math.hypot(dx / (ER * 0.9 + L), (dy + 0.5) / (1.6 + L)) < 1) return C.INK;
-            continue;
-          }
-          if (d > ER) continue;
-          if (d > ER - L) return C.INK;
-          if (eyes === 'x') { const ax = Math.abs(dx), ay = Math.abs(dy); return Math.abs(ax - ay) < lw(0.85) && ax < 3.4 ? C.INK : C.EYEW; }
-          if (eyes === 'dizzy') { const a = Math.atan2(dy, dx * side) + Math.PI, r = d / 0.62; const ph = ((r - a) / (2 * Math.PI)) % 1; return r < 7.5 && Math.abs(ph - 0.5) < 0.2 ? C.INK : C.EYEW; }
-          // lids: angry slants inward-down, sad droops outward-down
-          if (eyes === 'angry') { const lid = ey + 2.2 - (dx * -side) * 0.55; if (v > lid) return v > lid + L ? 0 : C.INK; }
-          if (eyes === 'sad') { const lid = ey + 2.4 - (dx * side) * 0.45; if (v > lid) return v > lid + L ? 0 : C.INK; }
-          const ir = eyes === 'wow' ? 2.4 : 3.9, ix = ex + lx * 1.3, iy = ey + ly * 1.2 - (eyes === 'sad' ? 0.8 : 0);
-          const id = Math.hypot(u - ix, v - iy) / ir;
+          if (eyes === 'x') { const ax = Math.abs(dx), ay = Math.abs(dy); return Math.abs(ax - ay) < lw(0.85) && ax < 3 ? C.INK : C.EYEW; }
+          if (eyes === 'dizzy') { const a = Math.atan2(dy, dx * side) + Math.PI, r = d * 7.2; const ph = ((r - a * 1.1) / (2 * Math.PI)) % 1; return r < 6.5 && Math.abs(ph - 0.5) < 0.2 ? C.INK : C.EYEW; }
+          // upper lid (blink / sleepy / angry / sad): the visor colour coming down over the eye
+          let lid = eyes === 'blink' ? 1 : clamp(+P.lid || 0, 0, 1);
+          if (lid > 0.9) { const c = -0.6 - (1 - (dx / ERX) ** 2) * 1.6; return Math.abs(dy - c) < lw(0.8) ? C.INK : C.SCRD; }
+          let lidY = ERY - lid * ERY * 1.85;
+          if (eyes === 'angry') lidY = Math.min(lidY, 1.6 + dx * side * 0.75);
+          if (eyes === 'sad') lidY = Math.min(lidY, 2.6 - dx * side * 0.5);
+          if (dy > lidY) return C.SCRD;
+          if (dy > lidY - L) return C.INK;
+          // iris + pupil + glint (gaze offset kept inside the white)
+          const wow = eyes === 'wow', irx = wow ? 2.3 : 3.1, iry = wow ? 2.7 : 3.7;
+          const ix = lx * (ERX - irx - 0.6), iy = ly * (ERY - iry - 0.6) - (eyes === 'sad' ? 1 : 0);
+          const id = Math.hypot((dx - ix) / irx, (dy - iy) / iry);
           if (id <= 1) {
-            if (Math.hypot(u - ix + ir * 0.34, v - iy - ir * 0.36) < Math.max(ir * 0.3, px(0.7))) return C.EYEW;
-            return id > 0.66 || v - iy < -ir * 0.45 ? C.IRISD : C.IRIS;
+            const gx = dx - ix + irx * 0.34, gy = dy - iy - iry * 0.4;
+            if (Math.hypot(gx, gy) < Math.max(irx * 0.34, px(0.8))) return C.EYEW;
+            if (id < (wow ? 0.38 : 0.48)) return C.INK;
+            return id > 0.78 ? C.IRISD : C.IRIS;
           }
           return C.EYEW;
         }
-        // the dark bridge between the eyes (a dome resting on the face)
+        // the dark visor band joining the eyes, across the top of the screen
         const inScr = inRect(u, v);
-        if (eyes !== 'happy' && eyes !== 'blink' && Math.hypot(u, v - 7) < 7.6 && v > 3.5) return C.BRIDGE;
+        if (Math.abs(u) < 9 && v > EYE[0][1] - 3.6 + (u / 9) ** 2 * 2 && v < EYE[0][1] + 4.6 - (u / 9) ** 2 * 1.5) return C.BRIDGE;
         if (!inScr) return 0;
         // screen edge: a thin darker bezel
         if (!inRect(u + (u > 0 ? 1 : -1) * L, v) || !inRect(u, v + (v > 0 ? 1 : -1) * L)) return C.SCRD;
@@ -189,7 +195,7 @@ const RotomDex = (() => {
     return Shape2D.polyDist ? (Shape2D.polyDist(u, v, PANEL) < 1.1 && v > 0 ? C_BODY_L : C.BODY) : C.BODY;
   } });
 
-  const DEFAULT = { float: 0, armN: 0, armF: 0, tilt: 0, lean: 0, squash: 0, mouth: 0, smile: 'grin', eyes: 'open', lookX: 0, lookY: 0, screen: '', glow: 0 };
+  const DEFAULT = { float: 0, armN: 0, armF: 0, tilt: 0, lean: 0, squash: 0, mouth: 0, smile: 'grin', eyes: 'open', lookX: 0, lookY: 0, lid: 0, screen: '', glow: 0 };
   // 1 body + antenna, 2 screen, 3/4 arm bolts, 5/6 panels, 7/8 buttons, 9/10 feet, 11 sparks
   const PRI = { 1: 1, 2: 3, 3: 2, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9: 0, 10: 0, 11: 4 };
 

@@ -56,21 +56,21 @@ const Dex = (() => {
 
   /* ---------- apps (home screen, 8 per page) ---------- */
   const APPS = [
-    { id: 'dex', name: 'Pokédex', col: '#ef4d56' },
+    { id: 'chat', name: 'Chat', col: '#5c6af0' },
+    { id: 'shop', name: 'Shop', col: '#e8ac4c' },
+    { id: 'help', name: 'Help', col: '#6ccf78' },
+    { id: 'mail', name: 'Mail', col: '#b4daf4' },
+    { id: 'prog', name: 'Progress', col: '#34343c' },
+    { id: 'time', name: 'Day/Night', col: '#2c3c7c' },
+    { id: 'tms', name: 'TMs', col: '#c4def6' },
+    { id: 'dex', name: 'Pokédex', col: '#4c8ce8' },
     { id: 'ency', name: 'Encyclopedia', col: '#35ad63' },
     { id: 'quests', name: 'Quests', col: '#f09a30' },
-    { id: 'prog', name: 'Progress', col: '#8a5ee6' },
     { id: 'map', name: 'Map', col: '#2f9fdc', launch: () => WorldMap.open() },
     { id: 'album', name: 'Photos', col: '#f36fa8' },
-    { id: 'mail', name: 'Mail', col: '#5673ee' },
     { id: 'settings', name: 'Settings', col: '#67728c' },
     { id: 'style', name: 'Style', col: '#e2589a' },
-    { id: 'shop', name: 'Shop', col: '#ee7434' },
     { id: 'disc', name: 'Secrets', col: '#4b47bd' },
-    { id: 'tms', name: 'TMs', col: '#22a898' },
-    { id: 'time', name: 'Day/Night', col: '#34449e' },
-    { id: 'chat', name: 'Chat', col: '#2fb8e4' },
-    { id: 'help', name: 'Help', col: '#8f9d3c' },
     { id: 'bag', name: 'Bag', col: '#b8742e', launch: () => Bag.open(), feat: 'bag' },
     { id: 'music', name: 'Guitar', col: '#e0506a', launch: () => Rhythm.open(0), feat: 'music' },
     { id: 'games', name: 'Playground', col: '#f0b030', launch: () => Arcade.open(), feat: 'games' },
@@ -940,8 +940,8 @@ const Dex = (() => {
   /* ---------- app icons: tiny vector painter → cached pixel glyphs ---------- */
   const ICO = new Map();
   const W_ = 0xfffff9f8;
-  function glyph(id, n, olc) {
-    const key = id + '|' + n + '|' + (olc || 0);
+  function glyph(id, n, olc, ref) {
+    const key = id + '|' + n + '|' + (olc || 0) + (ref ? '|r' : '');
     if (ICO.has(key)) return ICO.get(key);
     const b = new PX.Buf(n, n), d = b.d;
     const S = (fn) => { for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const c = fn((i + 0.5) / n, (j + 0.5) / n); if (c) d[j * n + i] = c; } };
@@ -1071,7 +1071,59 @@ const Dex = (() => {
         fill(and(ell(0.52, 0.5, 0.42), not(ell(0.52, 0.5, 0.34)), (u) => u > 0.7), W_);
       },
     };
-    (G[id] || G.dex)();
+
+    // reference-style pictograms (drawn in full-tile space, clipped to the tile's rounded face)
+    const NV = H('#1e2a66'), WH = 0xffffffff;
+    const R2 = {
+      chat() {
+        // a chunky white game-pad bubble with two eyes
+        fill(poly([[0.22, 0.3], [0.38, 0.25], [0.42, 0.3], [0.58, 0.3], [0.62, 0.25], [0.78, 0.3], [0.86, 0.6], [0.8, 0.72], [0.66, 0.7], [0.62, 0.64], [0.38, 0.64], [0.34, 0.7], [0.2, 0.72], [0.14, 0.6]]), WH);
+        fill(ell(0.39, 0.5, 0.075, 0.085), H('#5c6af0')); fill(ell(0.61, 0.5, 0.075, 0.085), H('#5c6af0'));
+      },
+      shop() {
+        fill(seg(0.12, 0.3, 0.22, 0.3, 0.035), NV); fill(seg(0.22, 0.3, 0.32, 0.66, 0.035), NV);
+        fill(poly([[0.24, 0.36], [0.86, 0.36], [0.78, 0.62], [0.31, 0.62]]), WH);
+        S((u, v) => (inPoly([[0.27, 0.39], [0.82, 0.39], [0.76, 0.59], [0.33, 0.59]], u, v) && ((Math.floor(u * 22) + Math.floor(v * 22)) & 1) ? H('#c8ccd8') : 0));
+        fill(seg(0.32, 0.7, 0.8, 0.7, 0.03), NV);
+        fill(ell(0.38, 0.8, 0.06), NV); fill(ell(0.74, 0.8, 0.06), NV); fill(ell(0.38, 0.8, 0.025), WH); fill(ell(0.74, 0.8, 0.025), WH);
+      },
+      help() {
+        const q = (u, v, g) => (and(ell(0.5, 0.38, 0.19 + g, 0.17 + g), not(ell(0.5, 0.38, 0.09 - g, 0.075 - g)), (u2, v2) => !(v2 > 0.38 && u2 < 0.5))(u, v) || box(0.44 - g, 0.5, 0.56 + g, 0.64 + g)(u, v) || ell(0.5, 0.78, 0.065 + g)(u, v));
+        fill((u, v) => q(u, v, 0.035), H('#3c7a3c')); fill((u, v) => q(u, v, 0), H('#ffe040'));
+      },
+      mail() {
+        fill(rbox(0.16, 0.3, 0.84, 0.74, 0.03), NV); fill(box(0.19, 0.33, 0.81, 0.71), WH);
+        fill(seg(0.2, 0.34, 0.5, 0.56, 0.025), NV); fill(seg(0.8, 0.34, 0.5, 0.56, 0.025), NV);
+      },
+      prog() {
+        S((u, v) => (v > 0.55 && ((Math.floor(u * 8) + Math.floor(v * 8)) & 1) ? H('#e8b020') : 0));
+        S((u, v) => { const dx = u - 0.5, dy = v - 0.48, a = Math.atan2(dy, dx) + Math.PI / 2, r = Math.hypot(dx, dy), k = Math.cos((a * 5) / 2) ** 2, R = 0.16 + 0.22 * Math.pow(Math.abs(Math.cos(a * 2.5)), 3); return r < R + 0.035 ? (r < R ? (r < R * 0.5 ? H('#1a1a20') : H('#ffd23a')) : H('#1a1a20')) : 0; });
+      },
+      time() {
+        fill(box(0, 0, 1, 1), H('#2c3c7c'));
+        fill(ell(0.5, 1.02, 0.5, 0.22), H('#2a9a48')); fill(ell(0.5, 1.0, 0.44, 0.18), H('#4ad05a'));
+        fill(ell(0.56, 0.28, 0.12), H('#ffc02a')); fill(ell(0.54, 0.26, 0.08), H('#ffe070'));
+        fill(and(ell(0.24, 0.6, 0.12), not(ell(0.31, 0.55, 0.11))), H('#bfe8ff'));
+        S((u, v) => { const dx = Math.abs(u - 0.78), dy = Math.abs(v - 0.58); return dx + dy * 3 < 0.09 || dx * 3 + dy < 0.09 ? WH : 0; });
+        for (const [u, v] of [[0.2, 0.2], [0.36, 0.4], [0.82, 0.22], [0.86, 0.4]]) fill(ell(u, v, 0.022), WH);
+      },
+      tms() {
+        S((u, v) => { const a = Math.atan2(v - 0.0, u - 0.5); return Math.sin(a * 9) > 0.3 ? H('#e4f2fc') : 0; });
+        const ball = (cx, cy, r) => { fill(ell(cx, cy, r + 0.03), NV); fill(and(ell(cx, cy, r), (u, v) => v < cy), H('#ee3b45')); fill(and(ell(cx, cy, r), (u, v) => v >= cy), WH); fill(and(ell(cx, cy, r), (u, v) => Math.abs(v - cy) < 0.025), NV); fill(ell(cx, cy, r * 0.32), NV); fill(ell(cx, cy, r * 0.17), WH); };
+        ball(0.32, 0.38, 0.22);
+        fill(and(ell(0.5, 0.52, 0.3, 0.26), not(ell(0.5, 0.52, 0.22, 0.18)), (u, v) => v < 0.42 && u > 0.45), H('#f0b020'));
+        fill(and(ell(0.5, 0.52, 0.3, 0.26), not(ell(0.5, 0.52, 0.22, 0.18)), (u, v) => v > 0.62 && u < 0.55), H('#f0b020'));
+        fill(poly([[0.18, 0.6], [0.34, 0.6], [0.26, 0.72]]), H('#f0b020'));
+        ball(0.68, 0.7, 0.22);
+      },
+      dex() {
+        fill(and(ell(0.5, 0.52, 0.34), not(ell(0.5, 0.52, 0.25))), WH);
+        fill(box(0.16, 0.48, 0.84, 0.56), WH);
+        fill(ell(0.5, 0.52, 0.14), WH); fill(ell(0.5, 0.52, 0.08), H('#4c8ce8'));
+      },
+    };
+    if (ref && R2[id]) R2[id](); else (G[id] || G.dex)();
+    if (ref && R2[id]) { ICO.set(key, b); return b; }
     // sticker outline
     const OL = olc || 0xff38141a, m = new Uint8Array(d.length);
     for (let i = 0; i < d.length; i++) m[i] = d[i] ? 1 : 0;
@@ -1080,26 +1132,29 @@ const Dex = (() => {
     return b;
   }
   // a chunky rounded app tile: dark hue outline, glossy lighter top, darker base, a soft blue shadow ring
+  const REF = { chat: 1, shop: 1, help: 1, mail: 1, prog: 1, time: 1, tms: 1, dex: 1 };
+  // a chunky rounded app tile in the reference's style: thick dark-blue outline, glossy top-left highlight, darker bottom edge
   function appTile(fb, a, x, y, sz, t, on, pr, lk) {
-    const r = Math.max(3, Math.round(sz * 0.2)), c = lk ? mix(a.c, 0xff9098a8, 0.75) : a.c, lt = mix(c, 0xffffffff, 0.24), dk = mix(c, 0xff000000, 0.18), ol = mix(c, 0xff30100a, 0.62);
+    const r = Math.max(3, Math.round(sz * 0.2)), c = lk ? mix(a.c, 0xff9098a8, 0.75) : a.c, lt = mix(c, 0xffffffff, 0.3), dk = mix(c, 0xff000000, 0.22), ol = hex('#24307a');
     const o = pr ? 1 : 0, y2 = y + o;
     UI.rrect(fb, x - 1, y - 1 + 2, sz + 2, sz + 2, r + 1, P.icoSh);
     UI.rrect(fb, x - 1, y2 - 1, sz + 2, sz + 2, r + 1, on ? 0xffffffff : P.icoRing);
     UI.rrect(fb, x, y2, sz, sz, r, ol);
-    const band = Math.max(2, Math.round(sz * 0.1)), base = Math.max(2, Math.round(sz * 0.08));
-    rrFill(fb, x + 1, y2 + 1, sz - 2, sz - 2, r - 1, (i, j, ins, w, h) => {
+    const ref = REF[a.id], fw = sz - 4, g = ref ? glyph(a.id, fw, 0, 1) : null;
+    const base = Math.max(2, Math.round(sz * 0.1)), hb = Math.max(2, Math.round(sz * 0.09));
+    rrFill(fb, x + 2, y2 + 2, sz - 4, sz - 4, r - 2, (i, j, ins, w, h) => {
       let col = on ? mix(c, 0xffffffff, 0.08) : c;
-      if (j < band) col = lt;
-      else if (j >= h - base) col = dk;
-      else if ((i - ins < band || w - 1 - ins - i < band) && j < h * 0.55) col = mix(col, lt, 0.55);
-      if (j === 0 && i > ins + 1 && i < w - ins - 2) col = mix(lt, 0xffffffff, 0.35);
+      if (g) { const gc = g.d[j * fw + i]; if (gc) col = lk ? mix(gc, 0xff9098a8, 0.7) : gc; }
+      if (j >= h - base) col = mix(col, 0xff000000, 0.22);
+      else if (j < hb && i < w * 0.6 || i < hb && j < h * 0.6) col = mix(col, 0xffffffff, 0.3);
+      if ((j === 0 && i > ins && i < w * 0.55) || (i === 0 && j > 1 && j < h * 0.5)) col = mix(col, 0xffffffff, 0.55);
       return col;
     });
-    // darker corner accents on the outline, like the reference tiles
-    for (const [cx2, cy2] of [[x + 1, y2 + 1], [x + sz - 2, y2 + 1], [x + 1, y2 + sz - 2], [x + sz - 2, y2 + sz - 2]]) UI.put(fb, cx2, cy2, mix(ol, 0xff000000, 0.3));
-    const gs = Math.round(sz * 0.72), g = glyph(a.id === 'sound' && !Sound.on ? 'sound' : a.id, gs, ol);
-    const bob = on ? Math.round(Math.sin(t * 5) * 1) : 0;
-    UI.img(fb, g, x + Math.round((sz - gs) / 2), y2 + Math.round((sz - gs) / 2) + bob, 1);
+    if (!ref) {
+      const gs = Math.round(sz * 0.72), gl = glyph(a.id === 'sound' && !Sound.on ? 'sound' : a.id, gs, mix(c, 0xff30100a, 0.62));
+      const bob = on ? Math.round(Math.sin(t * 5) * 1) : 0;
+      UI.img(fb, gl, x + Math.round((sz - gs) / 2), y2 + Math.round((sz - gs) / 2) + bob, 1);
+    }
   }
   function badge(fb, x, y, n, k = 1) {
     const s = n > 9 ? '9+' : n === true ? '!' : String(n), w = Math.max(9, Font.measure(s, 'small') + 5);
@@ -1120,8 +1175,8 @@ const Dex = (() => {
   /* ---------- page: home (the app grid of the reference: two 2x2 groups, the page bar between the rows) ---------- */
   function pageHome(fb, G, t) {
     const s = G.scr, k = G.k, H = D.home, pages = Math.ceil(APPS.length / 8);
-    const isz = Math.max(16, Math.round(31 * k));
-    const colU = [-64, -27, 27, 64], rowU = [68.5, 122.5];
+    const isz = Math.max(16, Math.round(34 * k));
+    const colU = [-65, -27, 27, 65], rowU = [68.5, 122.5];
     const sl = Math.round(H.slide);
     let selA = null;
     for (let i = 0; i < 8; i++) {
@@ -1152,9 +1207,9 @@ const Dex = (() => {
       btn(id, x - 3, y - 3, isz + 6, isz + 6, () => { H.sel = i; SFX.select(); launch(a); }, { silent: true, hov: () => { if (H.sel !== i) { H.sel = i; SFX.blip && Math.random() < 0 && SFX.blip(); } } });
     }
     // the page bar between the rows:  ◀ ═══ ▶  (the selected app's name sits in the pill)
-    const by = G.Y(96.5), bh = Math.max(7, Math.round(9.5 * k)), bw = Math.round(54 * k) + (G.C ? 10 : 0), bx = G.cx - (bw >> 1);
+    const by = G.Y(96.5), bh = Math.max(7, Math.round(9.5 * k)), bw = Math.round(64 * k) + (G.C ? 10 : 0), bx = G.cx - (bw >> 1);
     lens(fb, bx, by - (bh >> 1), bw, bh);
-    if (selA) Font.draw(fb, fit((selA.lock && selA.lock() ? '{lock}' : '') + (selA.id === 'sound' ? (Sound.on ? 'SOUND ON' : 'SOUND OFF') : selA.name.toUpperCase()), bw - 8), G.cx, by - 2, 0xff7e3a1d, { font: 'small', align: 'center' });
+    if (selA && D.showName) Font.draw(fb, fit((selA.lock && selA.lock() ? '{lock}' : '') + (selA.id === 'sound' ? (Sound.on ? 'SOUND ON' : 'SOUND OFF') : selA.name.toUpperCase()), bw - 8), G.cx, by - 2, 0xff7e3a1d, { font: 'small', align: 'center' });
     btn('pgbar', bx, by - bh, bw, bh * 2, () => { if (selA) { SFX.select(); launch(selA); } });
     const arrow = (dir) => {
       const en = dir < 0 ? H.pg > 0 : H.pg < pages - 1, id = 'pgarr' + dir, hv = D.hoverId === id && en;

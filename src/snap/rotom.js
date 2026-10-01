@@ -16,7 +16,7 @@
 const Rotom = (() => {
   const { clamp, lerp, hex, mix, pick, rnd } = U;
   const R = { x: 0, y: 0, vx: 0, vy: 0, on: false, st: 'follow', stT: 0, yaw: 0, spin: 0, lx: 0, ly: 0, mood: 'norm', moodT: 0, blinkT: 0, nextBlink: 2, talkT: 0,
-    chatT: 12, pokes: [], wet: 0, drips: [], sparks: [], sulk: 0, tgt: null, hop: 0, peeked: {}, cd: {}, seenN: -1, lv: null, rain: false, hide: 0, box: null, pointAt: null, pointT: 40, orbitT: 25, outT: 0 };
+    chatT: 12, pokes: [], wet: 0, drips: [], sparks: [], sulk: 0, tgt: null, hop: 0, peeked: {}, cd: {}, seenN: -1, lv: null, rain: false, hide: 0, box: null, pointAt: null, pointT: 40, orbitT: 25, outT: 0, tilt: 0, vt: 0, lean: 0, sq: 0, vsq: 0, fid: null, fidT: 6, blinkD: 0.16 };
   // colours of the official Rotom Dex art
   const C = { b: hex('#e4524a'), l: hex('#f78a7e'), ll: hex('#ffc2b4'), d: hex('#b93a36'), dd: hex('#8a2226'), ink: hex('#4a1216'), btn: hex('#cc463f'),
     scr: hex('#f8fafc'), scrD: hex('#d3dde8'), face: hex('#76c6ee'), faceD: hex('#4c9fd8'), bridge: hex('#26262e'), bridgeL: hex('#4a4b56'), mouth: hex('#2a1030'), mouthO: hex('#1e2a44'),
@@ -82,7 +82,7 @@ const Rotom = (() => {
     if (R.hide && Game.mode === 'explore') { R.hide = 0; R.x = mk.x - mk.dirX() * 20; R.y = mk.headPt()[1] - 16; R.hop = 1; burst(6); }
     R.stT -= dt; R.moodT -= dt; R.talkT -= dt; R.wet = Math.max(0, R.wet - dt * 0.25); R.spin *= Math.exp(-dt * 2);
     if (R.moodT <= 0) R.mood = R.sulk > 0.5 ? 'sad' : 'norm';
-    R.nextBlink -= dt; if (R.nextBlink <= 0) { R.blinkT = 0.13; R.nextBlink = rnd(1.8, 4.5); } R.blinkT -= dt;
+    R.nextBlink -= dt; if (R.nextBlink <= 0) { R.blinkD = rnd(0.13, 0.2); R.blinkT = R.blinkD; R.nextBlink = Math.random() < 0.22 ? 0.26 : rnd(2, 5.5); } R.blinkT -= dt;
     events(dt, mk);
     const d = mk.dirX(), [hx, hy] = mk.headPt();
     let tx = mk.x - d * 22, ty = hy - 16 + Math.sin(t * 2.4) * 2.5, look = null;
@@ -100,16 +100,30 @@ const Rotom = (() => {
       if (surf !== null && mk.inWater && hy > surf) { ty = Math.min(ty, surf - 14); if (!R.cd.sea || t - R.cd.sea > 90) { R.cd.sea = t; say('Rotom waits up here! Not waterproof!'); } }
       idle(dt, mk, t);
     }
-    // spring follow
-    const k = R.st === 'duck' ? 7 : 4.5;
-    R.vx += ((tx - R.x) * k * k - R.vx * 2 * k) * dt; R.vy += ((ty - R.y) * k * k - R.vy * 2 * k) * dt;
+    // lazy figure-8 drift so it never hovers dead still
+    if (R.st === 'follow') { tx += Math.sin(t * 0.9) * 5; ty += Math.sin(t * 1.8) * 2; }
+    if (R.fid) { const f = R.fid, u = 1 - f.t / f.d; if (f.k === 'peek') { tx += Math.sin(u * Math.PI) * 14 * f.s; ty += Math.sin(u * Math.PI) * 6; } if (f.k === 'loop') { const a = u * Math.PI * 2; tx += Math.sin(a) * 12 * f.s; ty -= (1 - Math.cos(a)) * 9; } }
+    // springy follow: slightly under-damped (a little overshoot and settle); a far jump winds up first (anticipation)
+    const k = R.st === 'duck' ? 7 : 4.2, z = R.st === 'duck' ? 0.8 : 0.58, far = Math.hypot(tx - R.x, ty - R.y);
+    if (far > 46 && !R.wind && R.st !== 'duck') { R.wind = 0.14; R.vsq += 9; }
+    if (R.wind > 0) { R.wind -= dt; if (R.wind <= 0) { R.wind = -0.6; R.vsq -= 16; } }
+    else { if (R.wind < 0) R.wind = Math.min(0, R.wind + dt); R.vx += ((tx - R.x) * k * k - R.vx * 2 * z * k) * dt; R.vy += ((ty - R.y) * k * k - R.vy * 2 * z * k) * dt; }
     R.x += R.vx * dt; R.y += R.vy * dt;
+    // banking / lean / squash on their own springs so they lag and wobble naturally
+    const ax = R.vx - (R.pvx || 0); R.pvx = R.vx;
+    const tt = clamp(R.vx / 220 + ax / Math.max(dt, 1e-3) / 4000, -0.5, 0.5);
+    R.vt += ((tt - R.tilt) * 90 - R.vt * 9) * dt; R.tilt += R.vt * dt;
+    R.lean += (clamp(-R.vy / 380, -0.25, 0.25) - R.lean) * Math.min(1, dt * 7);
+    const sqT = clamp(-Math.hypot(R.vx, R.vy) / 420, -0.45, 0);
+    R.vsq += ((sqT - R.sq) * 160 - R.vsq * 10) * dt; R.sq += R.vsq * dt;
+    if (R.fid) { R.fid.t -= dt; if (R.fid.t <= 0 || R.st !== 'follow') R.fid = null; }
     if (Math.abs(R.x - mk.x) > 400 || Math.abs(R.y - mk.y) > 300) { R.x = tx; R.y = ty; R.vx = R.vy = 0; }
     R.hop = Math.max(0, R.hop - dt * 3);
     // eyes: the target, else the nearest Pokémon, else Mudkip
     if (!look) { let best = null, bd = 150; for (const m of Mons.all) { if (m === mk || !m.alive || !m.visible || !DexData.S[m.dex]) continue; const dd = Math.hypot(m.x - R.x, m.y - R.y); if (dd < bd) { bd = dd; best = m; } } look = best ? best.headPt() : [hx, hy]; }
+    if (R.fid && R.fid.k === 'look') look = [R.x + R.fid.s * 60 * (R.fid.t > R.fid.d / 2 ? 1 : -1), R.y - 10];
     const lx = clamp((look[0] - R.x) / 40, -1, 1), ly = clamp((look[1] - R.y) / 40, -1, 1);
-    R.lx += (lx - R.lx) * Math.min(1, dt * 8); R.ly += (ly - R.ly) * Math.min(1, dt * 8);
+    R.lx += (lx - R.lx) * Math.min(1, dt * 11); R.ly += (ly - R.ly) * Math.min(1, dt * 11);
     R.yaw += (clamp(R.vx / 120, -0.6, 0.6) + lx * 0.25 - R.yaw) * Math.min(1, dt * 6);
     for (const p of R.drips) { p.t += dt; p.vy += 300 * dt; p.x += p.vx * dt; p.y += p.vy * dt; } R.drips = R.drips.filter((p) => p.t < 0.7);
     for (const p of R.sparks) p.t += dt; R.sparks = R.sparks.filter((p) => p.t < p.life);
@@ -127,6 +141,8 @@ const Rotom = (() => {
       if (!sp[m.dex]) { sp[m.dex] = Date.now(); Save.save(); }
       if (!Save.data.seen[m.dex] && !R.peeked[m.dex]) { R.peeked[m.dex] = 1; R.tgt = m; react('peek', 3.5, 'wow', pick(['Who\'s THAT Pokémon?! Snap it!', 'Ooh! ' + nm(m.dex) + '! No data yet! Bzzt!', 'New Pokémon! Photo! Photo!'])); return; }
     }
+    R.fidT -= dt;
+    if (R.fidT <= 0 && !R.fid) { R.fidT = rnd(5, 11); const k = pick(['spin', 'wave', 'peek', 'loop', 'wave', 'look']); R.fid = { k, t: 0, d: { spin: 0.9, wave: 1.6, peek: 1.8, loop: 1.4, look: 2 }[k], s: Math.random() < 0.5 ? -1 : 1 }; R.fid.t = R.fid.d; if (k === 'spin') R.spin = 13; if (k === 'loop') R.vsq += 6; }
     R.pointT -= dt; R.orbitT -= dt;
     if (R.pointT <= 0 && typeof Progress !== 'undefined' && Progress.tracked) {
       R.pointT = rnd(50, 80); const q = Progress.tracked();
@@ -154,7 +170,7 @@ const Rotom = (() => {
       const ahead = (R.x - mk.x) * mk.dirX() > -4;
       if (id === 'flash') setTimeout(() => { react('ouch', 2.2, 'x', 'OUCH! MY EYES!!'); R.spin = 30; voice('ouch'); burst(8); }, 380);
       else if (id === 'water' && (ahead || Math.random() < 0.3) && (!R.cd.soak || t - R.cd.soak > 12)) { R.cd.soak = t; setTimeout(() => { R.wet = 1; react('soak', 2.2, 'x', pick(['Bzzt-zzt! NOT waterproof!', 'Pfff! Water and circuits DON\'T mix!', 'Hey! I just polished my screen!'])); voice('sad'); }, 250); }
-      else if (id === 'growl') setTimeout(() => { R.vy -= 160; react('startle', 1.4, 'wow', pick(['EEK! Warn me first!', 'Bzzt! My speakers!', 'WAAH! So loud!'])); }, 200);
+      else if (id === 'growl') setTimeout(() => { R.vy -= 160; R.vsq -= 18; react('startle', 1.4, 'wow', pick(['EEK! Warn me first!', 'Bzzt! My speakers!', 'WAAH! So loud!'])); }, 200);
       else if (id === 'rain') say('Noooo, not RAIN DANCE! Rotom\'s circuits!');
       else if (id === 'sunny') { react('cheer', 1.6, 'happy', 'Sunshine! Rotom is solar-charging!'); R.spin = 14; }
       else if (id === 'scan') say(pick(['Scanning... bzzzzt!', 'Rotom radar, ON!']));
@@ -180,7 +196,7 @@ const Rotom = (() => {
   function poke() {
     const t = Game.rt;
     R.pokes = R.pokes.filter((x) => t - x < 5); R.pokes.push(t);
-    R.hop = 1; R.vy -= 60; burst(3); Game.sfx('blip');
+    R.hop = 1; R.vy -= 60; R.vsq += 14; burst(3); Game.sfx('blip');
     if (R.pokes.length >= 4) { R.pokes.length = 0; react('poke', 1.6, 'x', 'Bzzt! STOP poking! ...Fine. ' + hint()); R.spin = 18; return; }
     react('poke', 1.2, Math.random() < 0.5 ? 'happy' : 'wow');
     say(Math.random() < 0.5 ? pick(JOKES) : pick(['Hi hi! ', 'Bzzt? ', 'Zzt! ']) + hint(), 4.5);
@@ -227,11 +243,16 @@ const Rotom = (() => {
     else if (st === 'poke' && act) { p.armN = 0.7 + wave(12, 0.3); p.armF = 0.2 - wave(12, 0.3); }
     else if (R.sulk > 0.5) { p.eyes = 'sad'; p.smile = 'frown'; p.armN = -0.6; p.armF = 0.25; }
     else if ((Game.mudkip && Game.mudkip.idleT || 0) > 14) { p.eyes = 'blink'; p.smile = 'flat'; p.screen = 'zzz'; p.armN = p.armF = -0.4; }
-    if (R.blinkT > 0 && p.eyes === 'open') p.eyes = 'blink';
+    const F = R.fid;
+    if (F && F.k === 'wave' && p.eyes === 'open') { const w = 1.1 + wave(14, 0.4); if (F.s > 0) p.armN = w; else p.armF = w; p.eyes = 'happy'; p.mouth = 0.6; }
+    if (F && F.k === 'peek' && p.eyes === 'open') { p.screen = '?'; p.armN = p.armF = 0.25; }
+    if (F && F.k === 'loop' && p.eyes === 'open') { p.eyes = 'happy'; p.armN = p.armF = 0.9; }
+    if (R.blinkT > 0 && p.eyes === 'open') { const u = 1 - R.blinkT / R.blinkD, c = u < 0.4 ? u / 0.4 : 1 - (u - 0.4) / 0.6; if (c > 0.75) p.eyes = 'blink'; else p.lid = qz(c, 0.33); }
     // banking into the flight direction, a squash when poked, a stretch when zipping up
-    p.tilt = qz(clamp(R.vx / 260, -0.4, 0.4), 0.08);
-    p.lean = qz(clamp(-R.vy / 400, -0.2, 0.2), 0.1);
-    p.squash = qz(R.hop > 0 ? Math.sin(R.hop * Math.PI) * 0.9 : clamp(-Math.abs(R.vy) / 500, -0.4, 0), 0.15);
+    const sway = Math.sin(t * 1.7) * 0.07 + (F && F.k === 'peek' ? -F.s * 0.15 : 0);
+    p.tilt = qz(clamp(R.tilt + sway, -0.55, 0.55), 0.06);
+    p.lean = qz(clamp(R.lean, -0.25, 0.25), 0.08);
+    p.squash = qz(clamp(R.hop > 0 ? Math.sin(R.hop * Math.PI) * 0.9 : R.sq, -0.6, 0.9), 0.12);
     p.glow = R.sparks.length ? 1 : 0;
     return p;
   }
