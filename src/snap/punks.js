@@ -179,7 +179,7 @@ const Punks = (() => {
     const p = m.punk, R = rec(), e = R[p.id] || (R[p.id] = { w: 0 });
     e.w++; Save.save();
     const out = { kind: 'punk', who: p.name, line: p.ko, rematch: re };
-    if (!re) { out.xp = 30 + p.lv * 12; out.pts = 60 * p.lv; xp(out.xp, 'Road fight: ' + p.name, 'punk.' + p.id); if (p.upg) out.upg = upgrade(p.upg); }
+    if (!re) { out.xp = 40 + p.lv * 15; out.pts = 60 * p.lv; xp(out.xp, 'Road fight: ' + p.name, 'punk.' + p.id); if (p.upg) out.upg = upgrade(p.upg); }
     else { out.xp = 6 + p.lv * 3; out.pts = 15 * p.lv; xp(out.xp, 'Rematch: ' + p.name); }
     Save.addPoints(out.pts);
     return out;

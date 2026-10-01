@@ -59628,36 +59628,109 @@ const SFX = (() => {
 
 /* ==== src/snap/save.js ==== */
 /* ------------------------------------------------------------------
-   Save — the player's journal, kept in localStorage (wrapped so a
-   blocked or full storage never breaks the game): photos per species
+   Save — the player's journal, kept in localStorage: photos per species
    and star tier, behaviours seen, objectives, requests, rewards and
    equipped cosmetics, unlocked areas, discoveries and items.
+
+   Robust for itch.io (the game runs in a third-party iframe there):
+   · every storage access is guarded; a probe at load tells whether
+     storage works at all (Safari/iOS iframes, private mode, blocked
+     site data) — Save.status.ok / .blocked / .full
+   · autosave: debounced on every change (max wait 3 s), every 30 s,
+     and on visibilitychange / pagehide / beforeunload
+   · a rolling backup copy; a corrupt main save falls back to it
+   · versioned (v) with migrations so old journals keep loading
+   · export / import as a text code or a .json file (see savekit.js)
 ------------------------------------------------------------------- */
 const Save = (() => {
-  const KEY = 'mudkip-snap-v1';
+  const KEY = 'mudkip-snap-v1', BAK = 'mudkip-snap-bak', VER = 2;
   const fresh = () => ({
-    v: 1, points: 0, photos: {}, seen: {}, beh: {}, obj: {}, quests: {}, owned: { 'skin.classic': 1, 'neck.camera': 1, 'banner.rookie': 1, 'deco.none': 1, 'hat.straw': 1, 'glasses.round': 1, 'fun.stache': 1, 'hat.bow': 1 },
+    v: VER, points: 0, photos: {}, seen: {}, beh: {}, obj: {}, quests: {}, owned: { 'skin.classic': 1, 'neck.camera': 1, 'banner.rookie': 1, 'deco.none': 1, 'hat.straw': 1, 'glasses.round': 1, 'fun.stache': 1, 'hat.bow': 1 },
     equip: { skin: 'skin.classic', banner: 'banner.rookie', key: null, deco: 'deco.none', hat: null, shirt: null, glasses: null, neck: 'neck.camera', shoes: null, fun: null },
     items: { berry: 3 }, areas: { beach: 1 }, visits: {}, disc: {}, album: [], lastArea: 'beach', songs: {}, tut: {}, shots: 0, stats: {}, season: 'summer',
+    meta: { created: Date.now(), saves: 0, savedAt: 0, notice: 0 },
   });
-  let data = fresh();
-  let dirty = false, timer = null;
-  function load() {
-    const d = U.store.get(KEY, null);
-    if (d && d.v === 1) data = Object.assign(fresh(), d, { equip: Object.assign(fresh().equip, d.equip || {}), owned: Object.assign(fresh().owned, d.owned || {}) });
-    api.data = data;
+  // storage, every access guarded (a throwing getter counts as "blocked")
+  const LS = () => { try { return window.localStorage || null; } catch (e) { return null; } };
+  function rawGet(k) { try { const s = LS(); return s ? s.getItem(k) : null; } catch (e) { return null; } }
+  function rawSet(k, v) { try { const s = LS(); if (!s) return 'blocked'; s.setItem(k, v); return 'ok'; } catch (e) { return e && (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014) ? 'full' : 'blocked'; } }
+  function rawDel(k) { try { const s = LS(); if (s) s.removeItem(k); } catch (e) { /* ignore */ } }
+  const status = { ok: true, blocked: false, full: false, why: '', savedAt: 0, saving: false, iframe: false };
+  try { status.iframe = window.self !== window.top; } catch (e) { status.iframe = true; }
+  function probe() {
+    const k = 'mudkip-snap-probe', v = String(Date.now());
+    const r = rawSet(k, v);
+    if (r !== 'ok' || rawGet(k) !== v) {
+      status.ok = false; status.blocked = r !== 'full'; status.full = r === 'full';
+      status.why = !LS() ? 'Storage is switched off for this page.' : r === 'full' ? 'Browser storage is full.' : 'The browser blocks storage here (private mode or third-party iframe).';
+    } else { status.ok = true; status.blocked = false; status.full = false; status.why = ''; }
+    rawDel(k);
+    return status.ok;
   }
+
+  // ---- versions: each step upgrades a journal one version ----
+  const MIGRATE = {
+    1: (d) => { d.meta = Object.assign({ created: Date.now(), saves: 0, savedAt: 0, notice: 1 }, d.meta || {}); return d; }, // (v1 players already know the game: no first-launch notice)
+  };
+  function migrate(d) {
+    if (!d || typeof d !== 'object') return null;
+    let v = d.v | 0; if (v < 1) v = 1;
+    while (v < VER) { if (MIGRATE[v]) d = MIGRATE[v](d) || d; v++; d.v = v; }
+    if (d.v > VER) d.v = VER; // a newer build's journal: keep what we understand
+    const f = fresh();
+    return Object.assign(f, d, { equip: Object.assign(f.equip, d.equip || {}), owned: Object.assign(f.owned, d.owned || {}), meta: Object.assign(f.meta, d.meta || {}) });
+  }
+  function parse(s) { if (!s) return null; try { return JSON.parse(s); } catch (e) { return null; } }
+
+  let data = fresh();
+  let dirty = false, timer = null, firstDirty = 0, loadedFrom = 'new';
+  function load() {
+    probe();
+    let d = parse(rawGet(KEY)); loadedFrom = d ? 'main' : 'new';
+    if (!d) { const b = parse(rawGet(BAK)); if (b) { d = b; loadedFrom = 'backup'; } }
+    data = (d && migrate(d)) || fresh();
+    api.data = data;
+    hook();
+  }
+  // squeeze the journal when storage is full: drop photo images, oldest first
+  function slim(level) {
+    if (level >= 1) for (const a of data.album) delete a.img;
+    if (level >= 2) for (const sp in data.photos) for (const k in data.photos[sp]) if (data.photos[sp][k]) delete data.photos[sp][k].img;
+  }
+  function write(backup) {
+    timer && clearTimeout(timer); timer = null;
+    data.meta.saves = (data.meta.saves || 0) + 1; data.meta.savedAt = Date.now();
+    let s = JSON.stringify(data), r = rawSet(KEY, s);
+    if (r === 'full') { slim(1); s = JSON.stringify(data); r = rawSet(KEY, s); }
+    if (r === 'full') { rawDel(BAK); slim(2); s = JSON.stringify(data); r = rawSet(KEY, s); }
+    if (r === 'ok' && backup) rawSet(BAK, s);
+    const was = status.ok;
+    status.ok = r === 'ok'; status.full = r === 'full'; status.blocked = r === 'blocked';
+    if (!status.ok) status.why = r === 'full' ? 'Browser storage is full.' : 'The browser blocks storage here (private mode or third-party iframe).';
+    if (status.ok) { status.savedAt = Date.now(); dirty = false; }
+    try { U.emit('save', status, was); } catch (e) { /* ignore */ }
+    return status.ok;
+  }
+  // debounced: 0.8 s after the last change, but never more than 3 s after the first
   function save() {
+    if (!dirty) firstDirty = Date.now();
     dirty = true;
-    if (timer) return;
-    timer = setTimeout(() => {
-      timer = null; dirty = false;
-      if (!U.store.set(KEY, data)) {
-        // out of room: drop album images, oldest first, then retry
-        for (const a of data.album) delete a.img;
-        U.store.set(KEY, data);
-      }
-    }, 400);
+    try { U.emit('saving', status); } catch (e) { /* ignore */ }
+    if (timer) clearTimeout(timer);
+    const wait = Math.max(0, Math.min(800, 3000 - (Date.now() - firstDirty)));
+    timer = setTimeout(() => write(false), wait);
+  }
+  function flush(backup) { if (dirty || backup) return write(!!backup); return status.ok; }
+  let hooked = false;
+  function hook() {
+    if (hooked) return; hooked = true;
+    try {
+      setInterval(() => flush(true), 30000);
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+      window.addEventListener('pagehide', () => flush());
+      window.addEventListener('beforeunload', () => flush());
+      window.addEventListener('blur', () => flush());
+    } catch (e) { /* ignore */ }
   }
   const has = (id) => !!data.owned[id];
   function own(id) { if (data.owned[id]) return false; data.owned[id] = 1; save(); return true; }
@@ -59703,8 +59776,37 @@ const Save = (() => {
     return out;
   }
   const bestScore = (sp) => { const p = data.photos[sp]; if (!p) return 0; return Math.max(0, ...['s1', 's2', 's3', 's4'].map((k) => (p[k] ? p[k].score : 0))); };
-  function reset() { data = fresh(); api.data = data; U.store.set(KEY, data); }
-  const api = { data, load, save, has, own, equip, look, unlocked, unlock, visit, useItem, addItem, itemN, discover, found, addPoints, recordPhoto, bestScore, reset };
+  function reset() { data = fresh(); data.meta.notice = 1; api.data = data; write(true); }
+
+  /* ---------- export / import ---------- */
+  const MAGIC = 'MKSNAP';
+  // photos=false leaves the images out (a short code to copy); true keeps everything (.json file)
+  function exportObj(photos) {
+    const d = JSON.parse(JSON.stringify(data));
+    if (!photos) { for (const a of d.album || []) delete a.img; for (const sp in d.photos || {}) for (const k in d.photos[sp]) if (d.photos[sp][k]) delete d.photos[sp][k].img; }
+    return { game: 'mudkip-snap', v: VER, at: Date.now(), save: d };
+  }
+  function b64(s) { return btoa(unescape(encodeURIComponent(s))); }
+  function unb64(s) { return decodeURIComponent(escape(atob(s))); }
+  function exportCode() { return MAGIC + VER + ':' + b64(JSON.stringify(exportObj(false))); }
+  function exportFile() { return JSON.stringify(exportObj(true)); }
+  // text (a code or a .json) → a journal, or throws with a friendly message
+  function decode(txt) {
+    txt = String(txt || '').trim();
+    let o = null;
+    if (txt.startsWith(MAGIC)) { const i = txt.indexOf(':'); try { o = JSON.parse(unb64(txt.slice(i + 1).replace(/\s+/g, ''))); } catch (e) { throw new Error('That save code looks broken or incomplete.'); } }
+    else { try { o = JSON.parse(txt); } catch (e) { throw new Error('That is not a Mudkip Snap save code or file.'); } }
+    const d = o && o.game === 'mudkip-snap' ? o.save : o;
+    if (!d || typeof d !== 'object' || !d.seen || !d.areas) throw new Error('That is not a Mudkip Snap save.');
+    return migrate(d);
+  }
+  function importText(txt) {
+    const d = decode(txt);
+    data = d; api.data = data;
+    write(true);
+    return d;
+  }
+  const api = { data, load, save, flush, has, own, equip, look, unlocked, unlock, visit, useItem, addItem, itemN, discover, found, addPoints, recordPhoto, bestScore, reset, status, probe, exportCode, exportFile, decode, importText, VER, KEY, loaded: () => loadedFrom, isDirty: () => dirty };
   return api;
 })();
 
@@ -83111,7 +83213,19 @@ const Progress = (() => {
   const qs = new URLSearchParams(location.search);
   const P = { all: qs.get('unlock') === 'all', ready: false, pollT: 0, fl: [], cards: [], lvUp: null, pings: [], log: null, noFlagT: 0, scanHit: 0, deepT: 0, sp: [], stars: [], bar: null, geo: null, toastY: 62 };
   // XP needed to reach each level (index = level)
-  const XP = [0, 0, 100, 260, 480, 760, 1100, 1500, 1960, 2480, 3060, 3700, 4400, 5160, 5980, 6860, 7800, 8800, 9900, 11100, 12400];
+  // (v2 curve: gentle early levels, steps that grow smoothly so each area's
+  //  recommended level — beach 3, forest 5, canopy 7, falls 9, volcano 11,
+  //  shoal 13 — lands about halfway through that area's content; later areas
+  //  pay more per discovery and road fights fill the gap)
+  const XP = [0, 0, 120, 380, 820, 1500, 2400, 3450, 4600, 5850, 7200, 8650, 10200, 11850, 13600, 15450, 17400, 19450, 21600, 23850, 26200];
+  const XP1 = [0, 0, 100, 260, 480, 760, 1100, 1500, 1960, 2480, 3060, 3700, 4400, 5160, 5980, 6860, 7800, 8800, 9900, 11100, 12400]; // the old curve (migration)
+  // later areas are worth more per discovery (first area a species lives in)
+  const TIER = { beach: 1, forest: 1.25, canopy: 1.6, falls: 2, stage: 2, volcano: 2.4, shoal: 2.8 };
+  const tierOf = (a) => TIER[a] || 1;
+  const spTier = (sp) => { const d = DexData.S[sp]; const as = d ? [].concat(d.area || []) : []; return as.length ? Math.min(...as.map(tierOf)) : 1; };
+  // XP sources (for the breakdown page)
+  const SRC = { dex: 'New Pokédex entries', beh: 'New behaviours', photo: 'Photo quality', obj: 'Photo objectives', quest: 'Quests', req: 'Requests', fight: 'Road fights & bosses', disc: 'Secrets & discoveries', move: 'New moves', games: 'Minigames', area: 'New areas' };
+  const catOf = (why) => (/^(Road fight|Rematch|Boss|Battle|Rival|Tamed|Win|Beat)/i.test(why || '') ? 'fight' : /photo/i.test(why || '') ? 'photo' : /quest/i.test(why || '') ? 'quest' : 'games');
   const MAXLV = XP.length - 1;
   // features and when they open (lv, or a story flag that opens them early)
   const FEATS = [
@@ -83133,12 +83247,22 @@ const Progress = (() => {
   // one line that fits in w pixels (trimmed with "..")
   function fit(t, w, font = 'small') { t = star(t); if (Font.measure(t, font) <= w) return t; while (t.length > 1 && Font.measure(t + '..', font) > w) t = t.slice(0, -1); return t + '..'; }
   const areaName = (a) => (DexData.AREAS[a] ? DexData.AREAS[a].name : a);
+  const questXP = (q) => Math.round((70 + ((q && q.xp) || 0)) * (q ? tierOf(q.area) : 1));
 
   /* ---------- save data ---------- */
   function L() {
     const d = Save.data;
-    if (!d.lv) d.lv = { xp: 0, got: {}, feat: {}, track: null, init: 0 };
-    return d.lv;
+    if (!d.lv) d.lv = { xp: 0, got: {}, feat: {}, track: null, init: 0, cv: 2 };
+    const D = d.lv;
+    // v1 curve → v2: keep the player's level and progress through it
+    if (!D.cv) {
+      let l = 1; while (l < MAXLV && D.xp >= XP1[l + 1]) l++;
+      const k = l >= MAXLV ? 0 : (D.xp - XP1[l]) / (XP1[l + 1] - XP1[l]);
+      D.xp = Math.round(XP[l] + k * ((XP[l + 1] || XP[l]) - XP[l])); D.cv = 2;
+    }
+    if (!D.src) D.src = {};
+    if (!D.rep) D.rep = {};
+    return D;
   }
   function levelOf(xp) { let l = 1; while (l < MAXLV && xp >= XP[l + 1]) l++; return l; }
   const level = () => (P.all ? Math.max(MAXLV, levelOf(L().xp)) : levelOf(L().xp));
@@ -83150,18 +83274,40 @@ const Progress = (() => {
   const hudOk = (id) => (id === 'map' ? has('map') : id === 'bag' ? has('bag') : id === 'style' ? has('style') : id === 'games' ? has('games') : true);
 
   /* ---------- XP ---------- */
-  function gain(n, why, silent) {
+  // this session's XP by source
+  const SES = { xp: 0, src: {}, t0: Date.now(), lv0: 0, streak: 0, best: 0, lastGood: -1e9 };
+  // repeating the same thing pays less (the count fades by half every 10 minutes)
+  function repeatK(key) {
+    const D = L(), r = D.rep[key] || { n: 0, t: 0 }, now = Date.now();
+    const n = r.n * Math.pow(0.5, (now - r.t) / 600000);
+    D.rep[key] = { n: n + 1, t: now };
+    // trim the table
+    const ks = Object.keys(D.rep); if (ks.length > 80) { ks.sort((a, b) => D.rep[a].t - D.rep[b].t); for (const k of ks.slice(0, ks.length - 60)) delete D.rep[k]; }
+    return Math.max(0.25, Math.pow(0.75, n));
+  }
+  function gain(n, why, silent, cat) {
     const D = L(), l0 = levelOf(D.xp);
-    D.xp += n; Save.save();
+    n = Math.max(1, Math.round(n));
+    cat = cat || catOf(why);
+    if (cat === 'fight' && /^Rematch/.test(why || '')) n = Math.max(1, Math.round(n * repeatK('re.' + why)));
+    D.xp += n; D.src[cat] = (D.src[cat] || 0) + n; Save.save();
     if (silent) { P.bar = null; return; }
-    P.fl.push({ t: 0, n, why: why || '' });
+    SES.xp += n; SES.src[cat] = (SES.src[cat] || 0) + n;
+    // several small gains in a row merge into one popup
+    const last = P.fl[P.fl.length - 1];
+    if (last && last.t < 0.5 && last.why === (why || '')) { last.n += n; last.t = 0; }
+    else P.fl.push({ t: 0, n, why: why || '', cat });
     if (P.fl.length > 3) P.fl.shift();
     // the bar pauses a beat (the new XP shows as a flickering ghost), then fills
     if (P.bar && !P.bar.moving) P.bar.hold = 0.28;
     const l1 = levelOf(D.xp);
     if (l1 > l0) levelUp(l1);
   }
-  function award(key, n, why, silent) { const D = L(); if (D.got[key]) return false; D.got[key] = 1; gain(n, why, silent); return true; }
+  function award(key, n, why, silent, cat) {
+    const D = L(); if (D.got[key]) return false; D.got[key] = 1;
+    if (!cat && /^punk\.|^boss|^tame/.test(key)) cat = 'fight';
+    gain(n, why, silent, cat); return true;
+  }
   // the celebration starts once the XP bar has filled up (see barUpdate)
   function levelUp(l) {
     if (P.all) { checkFeats(); return; }
@@ -83190,19 +83336,20 @@ const Progress = (() => {
   // the whole journal, scanned for things worth XP (keys make each count once)
   function poll(silent) {
     const d = Save.data;
-    for (const sp in d.seen) if (DexData.S[sp]) award('sp.' + sp, 60, 'New Pokédex entry: ' + nm(sp), silent);
-    for (const sp in d.beh) for (const b in d.beh[sp]) award('bh.' + sp + '.' + b, 12, '', silent);
-    for (const id in d.obj) award('ob.' + id, 30, 'Photo objective', silent);
-    for (const id in d.quests) award('rq.' + id, 50, 'Request', silent);
+    for (const sp in d.seen) if (DexData.S[sp] && !DexData.S[sp].player) award('sp.' + sp, 40 * spTier(sp), 'New Pokédex entry: ' + nm(sp), silent, 'dex');
+    for (const sp in d.beh) for (const b in d.beh[sp]) { const S0 = DexData.S[sp], bb = S0 && S0.beh && S0.beh[b]; award('bh.' + sp + '.' + b, (6 + ((bb && bb.tier) || 1) * 2) * spTier(sp), 'New behaviour: ' + nm(sp) + (bb && bb.n ? ' ' + bb.n.toLowerCase() : ''), silent, 'beh'); }
+    for (const id in d.obj) award('ob.' + id, 15 * spTier(id.split('.')[0]), 'Photo objective', silent, 'obj');
+    for (const id in d.quests) award('rq.' + id, 40, 'Request done', silent, 'req');
     const tq = d.tq || {};
-    for (const id in tq) if (tq[id].s === 'done') { const q = Talk.QUESTS.find((x) => x.id === id); award('tq.' + id, 100 + ((q && q.xp) || 0), 'Quest: ' + (q ? q.title : id), silent); }
-    for (const id in d.disc) award('dc.' + id, 15, '', silent);
-    for (const id in d.tms || {}) award('tm.' + id, 40, 'New move', silent);
+    for (const id in tq) if (tq[id].s === 'done') { const q = Talk.QUESTS.find((x) => x.id === id); award('tq.' + id, questXP(q), 'Quest: ' + (q ? q.title : id), silent, 'quest'); }
+    for (const id in d.disc) award('dc.' + id, 15 * tierOf(id.split('.')[0]), 'Secret found', silent, 'disc');
+    for (const id in d.tms || {}) award('tm.' + id, 40, 'New move learned', silent, 'move');
     const st = d.stats || {};
-    for (let i = 1; i <= Math.min(20, st.sumo || 0); i++) award('sumo.' + i, 40, 'Sumo win', silent);
-    for (let i = 1; i <= Math.min(10, Math.floor((st.rope || 0) / 5)); i++) award('rope.' + i, 20, 'Jump rope', silent);
-    if (st.regi) award('regi', 150, 'Ancient puzzle', silent);
-    for (const a in d.areas) if (a !== 'beach') award('ar.' + a, 50, 'New area', silent);
+    // minigames: the first wins pay well, then less and less
+    for (let i = 1; i <= Math.min(20, st.sumo || 0); i++) award('sumo.' + i, Math.max(8, Math.round(40 * Math.pow(0.85, i - 1))), 'Sumo win' + (i > 1 ? ' x' + i : ''), silent, 'games');
+    for (let i = 1; i <= Math.min(10, Math.floor((st.rope || 0) / 5)); i++) award('rope.' + i, Math.max(6, Math.round(20 * Math.pow(0.85, i - 1))), 'Jump rope x' + i * 5, silent, 'games');
+    if (st.regi) award('regi', 150, 'Ancient puzzle solved', silent, 'disc');
+    for (const a in d.areas) if (a !== 'beach') award('ar.' + a, 50 * tierOf(a), 'New area: ' + areaName(a), silent, 'area');
     censusTick();
     checkFeats(silent);
   }
@@ -83212,6 +83359,7 @@ const Progress = (() => {
     const D = L();
     // existing journals: count everything already done, silently (grants a sensible level)
     if (!D.init) { poll(true); D.init = 1; checkFeats(true); Save.save(); }
+    SES.lv0 = level();
     stampAccepted(true);
     wrapGame();
   }
@@ -83244,7 +83392,22 @@ const Progress = (() => {
   { const t0 = HUD.tool; HUD.tool = function (id) { if (id === 'scan' && !has('scan')) { locked('scan'); return; } if (id === 'song' && !has('music')) { locked('music'); return; } const r = t0.apply(this, arguments); if (id === 'scan') onScan(); return r; }; }
   { const h0 = HUD.toast; HUD.toast = function (msg, o) { if (typeof msg === 'string' && msg.startsWith('Scan: nothing unusual') && Game.rt - P.scanHit < 2) return; return h0.call(this, msg, o); }; }
   // photo quality XP
-  { const r0 = Save.recordPhoto; Save.recordPhoto = function (r) { const out = r0.call(this, r); try { if (r && r.species && out.improved) gain(Math.max(2, (r.stars || 0) * 5 + (r.medal || 0) * 4), 'photo'); } catch (e) { console.error(e); } return out; }; }
+  { const r0 = Save.recordPhoto; Save.recordPhoto = function (r) { const out = r0.call(this, r); try { if (r && r.species) photoXP(r, out); } catch (e) { console.error(e); } return out; }; }
+  // a good photo (3★+) within 45 s of the last good one grows the streak: +15% per step, up to +60%
+  function photoXP(r, out) {
+    const stars = r.stars || 0, now = Game.rt || 0;
+    if (stars >= 3) { SES.streak = now - SES.lastGood < 45 ? SES.streak + 1 : 1; SES.lastGood = now; SES.best = Math.max(SES.best, SES.streak); }
+    else if (stars <= 1) SES.streak = 0;
+    if (!out.improved && !out.newBeh) return;
+    let n = stars * 4 + (r.medal || 0) * 3 + (out.newStar ? 6 : 0);
+    n *= spTier(r.species);
+    const sk = SES.streak >= 2 ? Math.min(0.6, (SES.streak - 1) * 0.15) : 0;
+    n *= 1 + sk;
+    // the same Pokémon again and again: less each time
+    n *= repeatK('ph.' + r.species);
+    const lab = 'Photo ' + '★'.repeat(Math.max(1, stars)) + ' ' + nm(r.species) + (sk ? ' · Streak x' + SES.streak : '') + (out.newStar ? ' · new best' : '');
+    gain(Math.max(2, n), lab, false, 'photo');
+  }
   function wrapGame() {
     if (Game.tryTime && !Game.tryTime.pg) { const t0 = Game.tryTime; Game.tryTime = function (...a) { if (!has('time')) { locked('time'); return; } return t0.apply(this, a); }; Game.tryTime.pg = 1; }
     // deep water: until Lv4 Mudkip paddles near the surface
@@ -83627,9 +83790,12 @@ const Progress = (() => {
     for (let i = P.fl.length - 1; i >= 0; i--) {
       const f = P.fl[i], kk = f.t / 2.2, pop = f.t < 0.12 ? Math.round((1 - f.t / 0.12) * 3) : 0;
       if (kk > 0.8 && Math.floor(f.t * 20) % 2) { fy -= 10; continue; }
-      const X = px + pw + 5, Y = fy - Math.round(kk * 6) - pop, head = '+' + f.n + ' XP';
-      Font.draw(fb, head, X, Y, hx('#aef7ff'), { font: 'small', outline: INK });
-      if (f.why) { const rw = Math.max(0, Math.min(170, fb.w - X - 70) - Font.measure(head, 'small') - 4); if (rw > 30) Font.draw(fb, fit(f.why, rw), X + Font.measure(head, 'small') + 4, Y, WHITE, { font: 'small', outline: INK }); }
+      const X = px + pw + 5, Y = fy - Math.round(kk * 6) - pop, head = '+' + f.n + ' XP', big = f.cat === 'dex' || f.cat === 'quest' || f.cat === 'area' || f.cat === 'fight';
+      const hw = Font.measure(head, 'small'), rw = f.why ? Math.max(0, Math.min(230, fb.w - X - 60) - hw - 10) : 0, wt = rw > 30 ? fit(f.why, rw) : '';
+      // a soft plate behind the line keeps it readable over bright scenery
+      UI.rectA(fb, X - 2, Y - 1, hw + (wt ? Font.measure(wt, 'small') + 10 : 0) + 4, 9, 0xff0a0e20, 0.4 * (1 - kk));
+      Font.draw(fb, head, X, Y, big ? hx('#ffe07a') : hx('#aef7ff'), { font: 'small', outline: INK });
+      if (wt) { Font.draw(fb, '·', X + hw + 3, Y, hx('#8fd4ff'), { font: 'small', outline: INK }); Font.draw(fb, wt, X + hw + 8, Y, WHITE, { font: 'small', outline: INK }); }
       fy -= 10;
     }
     // tracked quest
@@ -83803,7 +83969,7 @@ const Progress = (() => {
     Game.sfx('page');
   }
   function closeLog() { P.log = null; Game.sfx('back', null, 0.6); }
-  function logList() { const e = entries(); return P.log.tab === 'done' ? e.filter((x) => x.s === 'done') : e.filter((x) => x.s !== 'done'); }
+  function logList() { const e = entries(); if (P.log.tab === 'exp') return []; return P.log.tab === 'done' ? e.filter((x) => x.s === 'done') : e.filter((x) => x.s !== 'done'); }
   function trackSel() {
     const l = logList(), e = l[P.log.sel]; if (!e || e.q.birch || e.s === 'done') return;
     L().track = L().track === e.q.id ? null : e.q.id; Save.save(); Game.sfx('select');
@@ -83824,12 +83990,13 @@ const Progress = (() => {
     G.rects.push({ x: x + W - 24, y: y + 3, w: 20, h: 18, fn: closeLog });
     // tabs
     const all = entries(), nA = all.filter((e) => e.s !== 'done').length, nD = all.length - nA;
-    [['active', 'Active (' + nA + ')'], ['done', 'Done (' + nD + ')']].forEach(([id, lab], i) => {
+    [['active', 'Active (' + nA + ')'], ['done', 'Done (' + nD + ')'], ['exp', 'EXP & Levels']].forEach(([id, lab], i) => {
       const tx = x + 10 + i * 78, on = G.tab === id;
       UI.panel(fb, tx, y + 24, 74, 14, { r: 3, ol: S.ink, fill: on ? S.accent : S.btn });
       Font.draw(fb, lab, tx + 37, y + 27, WHITE, { font: 'small', align: 'center' });
       G.rects.push({ x: tx, y: y + 24, w: 74, h: 14, fn: () => { G.tab = id; G.sel = 0; G.scroll = 0; Game.sfx('page', null, 0.5); } });
     });
+    if (G.tab === 'exp') { drawExp(fb, x, y, W, H, S); return; }
     // list (left)
     const lx = x + 8, ly = y + 42, lw = Math.min(170, Math.round(W * 0.4)), lh = H - 50;
     UI.screen(fb, lx, ly, lw, lh, { fill: 0xfffbfaf4, rim: S.ink, glare: false });
@@ -83869,7 +84036,7 @@ const Progress = (() => {
     line('Objective', objective(q));
     if (typeof Bosses !== 'undefined' && Bosses.recLv) { const rl = Bosses.recLv(q.area), pk = typeof Punks !== 'undefined' ? Punks.tally(q.area) : null; line(areaName(q.area), 'Recommended Lv ' + rl + (level() < rl ? ' (you are Lv ' + level() + ')' : ' {check}') + (pk ? '  ·  Road fights ' + pk.won + '/' + pk.n : ''), level() < rl ? 0xffc03030 : INK); }
     if (e.s !== 'done') { const s = st(q); const hint = s ? (q.wait && q.wait[0] ? q.wait[0].replace(/\{have\}/g, s.n || 0).replace(/\{left\}/g, Math.max(0, (q.n || 1) - (s.n || 0))) : '') : q.intro[q.intro.length - 1]; if (hint) line('Hint', String(hint).replace(/\{[a-z]+\}/g, '')); }
-    line('Reward', rewardLabel(q.reward) + ' + ' + (100 + (q.xp || 0)) + ' XP' + (q.unlock ? ' + a flight to ' + areaName(q.unlock) : ''));
+    line('Reward', rewardLabel(q.reward) + ' + ' + questXP(q) + ' XP' + (q.unlock ? ' + a flight to ' + areaName(q.unlock) : ''));
     const dl = dexOf(q);
     if (dl.length) {
       Font.draw(fb, 'Helps the Pokédex', dx + 6, yy, 0xff3a78e8, { font: 'small' }); yy += 10;
@@ -83892,6 +84059,60 @@ const Progress = (() => {
       Font.draw(fb, 'L / Esc: close', dx + 6, by + 3, 0xff8a90a8, { font: 'small' });
     }
   }
+  // the EXP page: level, what the next levels unlock, and XP by source
+  function drawExp(fb, x, y, W, H, S) {
+    const D = L(), lv = level(), xp = D.xp, ly = y + 42, lh = H - 50, lw = Math.min(200, Math.round(W * 0.46)), lx = x + 8;
+    const DIM = hx('#6a7090'), BLUE = hx('#e8783a');
+    UI.screen(fb, lx, ly, lw, lh, { fill: 0xfffbfaf4, rim: S.ink, glare: false });
+    let yy = ly + 5;
+    Font.draw(fb, 'Mudkip Lv ' + lv, lx + 6, yy, INK, { font: 'body' }); yy += 14;
+    const a = XP[Math.min(lv, MAXLV)], b = XP[Math.min(lv + 1, MAXLV)], k = lv >= MAXLV ? 1 : clamp((xp - a) / (b - a), 0, 1), bw = lw - 12;
+    UI.rrect(fb, lx + 6, yy, bw, 7, 3, INK); UI.rect(fb, lx + 7, yy + 1, bw - 2, 5, hx('#d8deea'));
+    if (k > 0) UI.rect(fb, lx + 7, yy + 1, Math.max(1, Math.round((bw - 2) * k)), 5, hx('#30a8f0'));
+    yy += 10;
+    Font.draw(fb, lv >= MAXLV ? xp + ' XP · max level!' : (xp - a) + ' / ' + (b - a) + ' XP  ·  ' + (b - xp) + ' to Lv ' + (lv + 1), lx + 6, yy, DIM, { font: 'small' }); yy += 13;
+    // the next unlocks
+    Font.draw(fb, 'Coming up', lx + 6, yy, BLUE, { font: 'small' }); yy += 10;
+    const up = FEATS.filter((f) => !has(f.id)).slice(0, 2);
+    if (!up.length) { Font.draw(fb, '{check} Every feature unlocked', lx + 10, yy, INK, { font: 'small' }); yy += 9; }
+    for (const f of up) { Font.draw(fb, fit('Lv ' + f.lv + ': ' + f.name, lw - 16), lx + 10, yy, INK, { font: 'small' }); yy += 9; }
+    yy += 4;
+    if (typeof Bosses !== 'undefined' && Bosses.REC) {
+      Font.draw(fb, 'Recommended levels', lx + 6, yy, BLUE, { font: 'small' }); yy += 10;
+      const ar = ['beach', 'forest', 'canopy', 'falls', 'volcano', 'shoal'].filter((id) => Bosses.REC[id]);
+      ar.forEach((id) => {
+        const r = Bosses.REC[id], ok = lv >= r, un = Save.unlocked(id), here = Game.areaId === id;
+        if (yy > ly + lh - 10) return;
+        Font.draw(fb, fit((ok ? '{check} ' : un ? '' : '{lock} ') + areaName(id) + (here ? ' (here)' : ''), lw - 50), lx + 10, yy, ok ? hx('#2a8a4a') : un ? hx('#c03030') : hx('#6a7090'), { font: 'small' });
+        Font.draw(fb, 'Lv ' + r, lx + lw - 8, yy, ok ? hx('#2a8a4a') : un ? hx('#c03030') : hx('#6a7090'), { font: 'small', align: 'right' });
+        yy += 9;
+      });
+    }
+    // XP by source (right)
+    const dx = lx + lw + 6, dw = x + W - 8 - dx;
+    UI.screen(fb, dx, ly, dw, lh, { fill: 0xfffbfaf4, rim: S.ink, glare: false });
+    yy = ly + 5;
+    Font.draw(fb, 'XP by source', dx + 6, yy, INK, { font: 'body' });
+    Font.draw(fb, 'all · today', dx + dw - 6, yy + 3, DIM, { font: 'small', align: 'right' }); yy += 15;
+    const rows = Object.keys(SRC).map((id) => [id, D.src[id] || 0, SES.src[id] || 0]).filter((r) => r[1] > 0 || r[2] > 0).sort((p, q) => q[1] - p[1]);
+    const known = rows.reduce((t, r) => t + r[1], 0), max = Math.max(1, ...rows.map((r) => r[1]));
+    if (xp - known > 0) rows.push(['early', xp - known, 0]);
+    if (!rows.length) Font.draw(fb, 'No XP yet: snap a new Pokémon!', dx + 6, yy, DIM, { font: 'small' });
+    const nmW = Math.min(140, Math.round(dw * 0.52)), barX = dx + 6 + nmW, barW = Math.max(10, dw - nmW - 70);
+    for (const [id, all, ses] of rows) {
+      if (yy > ly + lh - 32) break;
+      Font.draw(fb, fit(id === 'early' ? 'Earlier progress' : SRC[id], nmW - 4), dx + 6, yy, INK, { font: 'small' });
+      UI.rect(fb, barX, yy + 2, barW, 4, hx('#e4e6ee')); UI.rect(fb, barX, yy + 2, Math.max(1, Math.round(barW * Math.min(1, all / max))), 4, id === 'fight' ? hx('#f05a3a') : id === 'dex' || id === 'quest' ? hx('#ffb21a') : hx('#30a8f0'));
+      Font.draw(fb, String(all), dx + dw - 30, yy, INK, { font: 'small', align: 'right' });
+      Font.draw(fb, ses ? '+' + ses : '-', dx + dw - 6, yy, ses ? hx('#2a8a4a') : DIM, { font: 'small', align: 'right' });
+      yy += 10;
+    }
+    const mins = Math.max(1, Math.round((Date.now() - SES.t0) / 60000));
+    const by = ly + lh - 22;
+    UI.rect(fb, dx + 6, by - 3, dw - 12, 1, hx('#d8deea'));
+    Font.draw(fb, fit('This session: +' + SES.xp + ' XP in ' + mins + ' min' + (lv > SES.lv0 ? ' · +' + (lv - SES.lv0) + ' Lv' : '') + (SES.best >= 2 ? ' · best streak x' + SES.best : ''), dw - 12), dx + 6, by, INK, { font: 'small' });
+    Font.draw(fb, fit('New finds pay most. Repeats pay less.', dw - 12), dx + 6, by + 9, DIM, { font: 'small' });
+  }
   { const d0 = Talk.down; Talk.down = function (ux, uy) {
     if (P.log) { const G = P.log; for (let i = G.rects.length - 1; i >= 0; i--) { const r = G.rects[i]; if (ux >= r.x && uy >= r.y && ux < r.x + r.w && uy < r.y + r.h) { r.fn(); return true; } } return true; }
     return d0.call(this, ux, uy);
@@ -83902,7 +84123,8 @@ const Progress = (() => {
       if (k === 'Escape' || k === 'l') closeLog();
       else if (k === 'ArrowDown' || k === 's') { G.sel = Math.min(n - 1, G.sel + 1); Game.sfx('blip', null, 0.4); }
       else if (k === 'ArrowUp' || k === 'w') { G.sel = Math.max(0, G.sel - 1); Game.sfx('blip', null, 0.4); }
-      else if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'a' || k === 'd' || k === 'Tab') { G.tab = G.tab === 'done' ? 'active' : 'done'; G.sel = 0; G.scroll = 0; }
+      else if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'a' || k === 'd' || k === 'Tab') { const T = ['active', 'done', 'exp'], d = k === 'ArrowLeft' || k === 'a' ? 2 : 1; G.tab = T[(T.indexOf(G.tab) + d) % 3]; G.sel = 0; G.scroll = 0; Game.sfx('page', null, 0.5); }
+      else if (k === 'x') { G.tab = 'exp'; }
       else if (k === 'Enter' || k === ' ' || k === 't') trackSel();
       return true;
     }
@@ -83958,7 +84180,7 @@ const Progress = (() => {
     X.D.scroll.prog = clamp(X.D.scroll.prog || 0, 0, Math.max(0, (X.D.progH || 0) - R.h + 8));
   }
 
-  return Object.assign(P, { badgeSpr, has, hudOk, level, gain, award, FEATS, XP, openLog, closeLog, logBadge, icon, toastTop, dexPage, objective, status, tracked, entries, onScan });
+  return Object.assign(P, { SES, SRC, TIER, questXP, drawExp, badgeSpr, has, hudOk, level, gain, award, FEATS, XP, openLog, closeLog, logBadge, icon, toastTop, dexPage, objective, status, tracked, entries, onScan });
 })();
 
 /* ==== src/snap/bosses.js ==== */
@@ -84412,7 +84634,7 @@ const Punks = (() => {
     const p = m.punk, R = rec(), e = R[p.id] || (R[p.id] = { w: 0 });
     e.w++; Save.save();
     const out = { kind: 'punk', who: p.name, line: p.ko, rematch: re };
-    if (!re) { out.xp = 30 + p.lv * 12; out.pts = 60 * p.lv; xp(out.xp, 'Road fight: ' + p.name, 'punk.' + p.id); if (p.upg) out.upg = upgrade(p.upg); }
+    if (!re) { out.xp = 40 + p.lv * 15; out.pts = 60 * p.lv; xp(out.xp, 'Road fight: ' + p.name, 'punk.' + p.id); if (p.upg) out.upg = upgrade(p.upg); }
     else { out.xp = 6 + p.lv * 3; out.pts = 15 * p.lv; xp(out.xp, 'Rematch: ' + p.name); }
     Save.addPoints(out.pts);
     return out;
@@ -84496,6 +84718,214 @@ const Punks = (() => {
   U.on && U.on('area', () => { try { spawn(); } catch (e) { console.error(e); } });
   return { LIST, BY, S, tally, beaten, battle, dare, foe, spawn, get mons() { return S.mons; } };
 })();
+
+/* ==== src/snap/savekit.js ==== */
+/* ------------------------------------------------------------------
+   SaveKit — the save UI around Save (save.js), as small DOM overlays
+   so it stays crisp and works with copy / paste / file pickers:
+   · a "Saving… / Saved ✓" chip with a spinning disk in the top-right
+     corner (tap it to open the save menu)
+   · a first-launch notice (autosave is on; tip: export a backup)
+   · "Your progress can't be saved automatically" when storage is
+     blocked or full (itch.io iframes on Safari/iOS, private mode):
+     open in its own tab / fullscreen, or Export Save
+   · the save menu: Export (copy a code / download .json) and Import
+     (paste a code / pick a file). Also opened by the "Save & backup"
+     button on the Rotom Dex settings page and the K key.
+------------------------------------------------------------------- */
+const SaveKit = (() => {
+  const K = { root: null, chip: null, modal: null, shown: {}, hideT: 0, dexBtn: null };
+  const CSS = `
+#sk-chip{position:fixed;top:max(6px,env(safe-area-inset-top));left:50%;margin-left:-40px;z-index:40;display:flex;align-items:center;gap:5px;padding:3px 8px 3px 5px;border-radius:10px;background:rgba(10,14,32,.72);color:#e8f4ff;font:600 11px/1.1 ui-monospace,Menlo,Consolas,monospace;opacity:0;transform:translateY(-4px);transition:opacity .35s,transform .35s;pointer-events:none;cursor:pointer;user-select:none;-webkit-user-select:none}
+#sk-chip.on{opacity:1;transform:none;pointer-events:auto}
+#sk-chip.bad{background:rgba(160,30,40,.86)}
+#sk-chip svg{width:13px;height:13px;flex:none}
+#sk-chip.spin svg{animation:sk-spin .8s linear infinite}
+@keyframes sk-spin{to{transform:rotate(360deg)}}
+#sk-dex{position:fixed;z-index:39;padding:4px 10px;border-radius:7px;border:2px solid #1b2240;background:#3a78e8;color:#fff;font:700 12px/1.2 ui-monospace,Menlo,Consolas,monospace;cursor:pointer;display:none;box-shadow:0 2px 0 #1b2240}
+#sk-modal{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(6,9,22,.62);padding:12px;box-sizing:border-box}
+#sk-modal .sk-box{width:min(460px,100%);max-height:100%;overflow:auto;box-sizing:border-box;background:#f4f6fb;color:#1b2240;border:3px solid #1b2240;border-radius:12px;box-shadow:0 4px 0 #0a0e1a;padding:12px 14px;font:14px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif}
+#sk-modal h2{margin:0 0 6px;font:800 17px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;align-items:center;gap:8px}
+#sk-modal h2 svg{width:20px;height:20px;flex:none}
+#sk-modal p{margin:4px 0}
+#sk-modal ul{margin:4px 0 4px 18px;padding:0}
+#sk-modal .sk-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+#sk-modal button{font:700 13px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;padding:7px 11px;border-radius:8px;border:2px solid #1b2240;background:#fff;color:#1b2240;cursor:pointer;box-shadow:0 2px 0 #1b2240}
+#sk-modal button.pri{background:#3a78e8;color:#fff}
+#sk-modal button.ok{background:#2a9a5a;color:#fff}
+#sk-modal button:active{transform:translateY(1px);box-shadow:0 1px 0 #1b2240}
+#sk-modal textarea{width:100%;box-sizing:border-box;height:62px;margin-top:6px;font:11px/1.3 ui-monospace,Menlo,Consolas,monospace;border:2px solid #1b2240;border-radius:6px;padding:5px;resize:vertical;word-break:break-all}
+#sk-modal .sk-msg{min-height:1.2em;margin-top:6px;font-weight:700}
+#sk-modal .sk-msg.err{color:#c03030}#sk-modal .sk-msg.good{color:#2a8a4a}
+#sk-modal .sk-dim{color:#5a6080;font-size:12px}
+#sk-modal .sk-sec{border-top:2px dashed #c8cee0;margin-top:10px;padding-top:8px}
+@media (max-height:430px){#sk-modal .sk-box{padding:9px 12px;font-size:13px}#sk-modal h2{font-size:15px}#sk-modal textarea{height:44px}}
+`;
+  const DISK = '<svg viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="2" fill="#3a78e8" stroke="#0a0e20"/><rect x="4" y="1.5" width="8" height="5" fill="#e8f4ff"/><rect x="9" y="2.3" width="2" height="3.4" fill="#1b2240"/><rect x="3.5" y="9" width="9" height="5.5" rx="1" fill="#ffffff"/></svg>';
+  const WARN = '<svg viewBox="0 0 16 16"><path d="M8 1 L15.5 14.5 H.5 Z" fill="#ffd23a" stroke="#1b2240"/><rect x="7.2" y="5" width="1.6" height="5" fill="#1b2240"/><rect x="7.2" y="11.3" width="1.6" height="1.6" fill="#1b2240"/></svg>';
+  const $ = (s, r = document) => r.querySelector(s);
+  const el = (tag, attrs, html) => { const e = document.createElement(tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); if (html != null) e.innerHTML = html; return e; };
+  const ago = (t) => { const s = Math.round((Date.now() - t) / 1000); return s < 5 ? 'just now' : s < 60 ? s + ' s ago' : Math.round(s / 60) + ' min ago'; };
+
+  function init() {
+    if (K.root) return;
+    try {
+      const st = el('style', null, CSS); document.head.appendChild(st);
+      K.chip = el('div', { id: 'sk-chip', role: 'status', 'aria-live': 'polite', title: 'Save menu' });
+      K.chip.addEventListener('click', (e) => { e.stopPropagation(); openMenu(); });
+      K.chip.addEventListener('pointerdown', (e) => e.stopPropagation());
+      document.body.appendChild(K.chip);
+      K.dexBtn = el('button', { id: 'sk-dex', type: 'button' }, '\u{1F4BE} Save & backup');
+      K.dexBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+      K.dexBtn.addEventListener('click', (e) => { e.stopPropagation(); openMenu(); });
+      document.body.appendChild(K.dexBtn);
+      K.root = true;
+    } catch (e) { console.error(e); return; }
+    U.on('saving', () => chip('saving'));
+    U.on('save', (s, was) => { chip(s.ok ? 'saved' : 'bad'); if (!s.ok && was !== false && Game.started) blocked(); });
+    window.addEventListener('keydown', (e) => {
+      if (K.modal) { e.stopPropagation(); if (e.key === 'Escape' && !K.modal.sticky) close(); return; }
+      if ((e.key === 'k' || e.key === 'K') && Game.started && Game.mode === 'explore' && !(typeof Talk !== 'undefined' && Talk.busy && Talk.busy())) { e.stopPropagation(); openMenu(); }
+    }, true);
+    window.addEventListener('keyup', (e) => { if (K.modal) e.stopPropagation(); }, true);
+    setInterval(tick, 400);
+  }
+  // the corner chip: spinning disk while saving, "Saved ✓" for a moment after
+  function chip(state) {
+    const c = K.chip; if (!c) return;
+    clearTimeout(K.hideT);
+    if (state === 'saving') { c.className = 'on spin'; c.innerHTML = DISK + '<span>Saving…</span>'; return; }
+    if (state === 'bad') { c.className = 'on bad'; c.innerHTML = WARN + '<span>Not saved · tap</span>'; return; }
+    c.className = 'on'; c.innerHTML = DISK + '<span>Saved ✓</span>';
+    K.hideT = setTimeout(() => { if (Save.status.ok) c.className = ''; }, 1800);
+  }
+  function tick() {
+    if (!Game.started) return;
+    // first launch / blocked storage, once the game is running (and nothing else is on screen)
+    const calm = Game.mode === 'explore' && !(typeof Talk !== 'undefined' && Talk.dlg) && !(typeof Cards !== 'undefined' && Cards.live);
+    if (!K.modal && calm && !K.shown.check && Game.rt > 1.5) {
+      K.shown.check = 1;
+      if (!Save.status.ok) blocked();
+      else if (!Save.data.meta.notice && (!navigator.webdriver || /[?&]savenotice/.test(location.search))) notice(); // (automated test runs skip the notice)
+    }
+    // the Rotom Dex settings page gets a "Save & backup" button
+    const onSet = Game.mode === 'dex' && typeof Dex !== 'undefined' && Dex.page === 'settings' && !K.modal;
+    if (K.dexBtn) {
+      K.dexBtn.style.display = onSet ? 'block' : 'none';
+      if (onSet) { const cv = $('#ui'), r = cv ? cv.getBoundingClientRect() : { left: 0, bottom: innerHeight, width: innerWidth }; K.dexBtn.style.left = Math.round(r.left + r.width / 2 - 60) + 'px'; K.dexBtn.style.top = 'auto'; K.dexBtn.style.bottom = Math.max(6, Math.round(innerHeight - r.bottom + r.height * 0.14)) + 'px'; }
+    }
+    if (!Save.status.ok && K.chip && !/bad/.test(K.chip.className)) chip('bad');
+  }
+
+  /* ---------- modals ---------- */
+  function modal(html, o = {}) {
+    close(true);
+    const m = el('div', { id: 'sk-modal', role: 'dialog', 'aria-modal': 'true' }, '<div class="sk-box">' + html + '</div>');
+    m.sticky = !!o.sticky;
+    for (const ev of ['pointerdown', 'pointerup', 'mousedown', 'touchstart', 'touchend', 'wheel', 'click']) m.addEventListener(ev, (e) => e.stopPropagation(), { passive: true });
+    m.addEventListener('click', (e) => { if (e.target === m && !m.sticky) close(); });
+    document.body.appendChild(m); K.modal = m;
+    try { if (Game.mudkip) { Game.mudkip.stop && Game.mudkip.stop(); Game.mudkip.keyDir = 0; } if (Game.keysDown) Game.keysDown.clear(); if (typeof Pad !== 'undefined' && Pad.setKeys) Pad.setKeys({ dx: 0, dy: 0, run: false, jump: false }); } catch (e) { /* ignore */ }
+    const b = $('button', m); if (b) try { b.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+    return m;
+  }
+  function close(quiet) {
+    if (!K.modal) return;
+    K.modal.remove(); K.modal = null;
+    if (!quiet) { const g = $('#game'); if (g) try { g.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  }
+  const on = (m, sel, fn) => { const b = $(sel, m); if (b) b.addEventListener('click', (e) => { e.stopPropagation(); fn(e); }); };
+  function notice() {
+    const m = modal(`<h2>${DISK}Your journal saves itself</h2>
+<p>Autosave is <b>on</b>: photos, Pokédex, quests and levels are saved on this device as you play (look for <b>Saved ✓</b> in the corner).</p>
+<p class="sk-dim">Tip: browsers can clear site data. Use <b>Export Save</b> now and then to keep a backup (tap the save chip, press K, or Rotom Dex → Settings).</p>
+<div class="sk-row"><button class="ok" id="sk-ok">Got it!</button><button id="sk-exp">Export Save</button></div>`);
+    const done = () => { Save.data.meta.notice = 1; Save.save(); };
+    on(m, '#sk-ok', () => { done(); close(); });
+    on(m, '#sk-exp', () => { done(); openMenu(); });
+  }
+  function blocked() {
+    if (K.shown.blocked && K.modal) return;
+    K.shown.blocked = 1;
+    const s = Save.status;
+    const m = modal(`<h2>${WARN}Your progress can't be saved automatically</h2>
+<p>${s.why || 'This browser does not let the game store data here.'}${s.iframe ? ' This often happens when the game runs inside a web page (like itch.io) on Safari / iPhone, or in a private window.' : ''}</p>
+<p><b>To keep your progress:</b></p>
+<ul><li>Open the game <b>in its own tab</b> or <b>fullscreen</b>, or allow site data / leave private mode, then reload.</li>
+<li>Or use <b>Export Save</b> before you leave, and <b>Import Save</b> next time.</li></ul>
+<div class="sk-row"><button class="pri" id="sk-tab">Open in own tab</button><button id="sk-fs">Fullscreen</button><button id="sk-exp">Export Save</button><button id="sk-retry">Try again</button><button id="sk-go">Play anyway</button></div>
+<div class="sk-msg" id="sk-m"></div>`, { sticky: true });
+    const msg = (t, c) => { const e = $('#sk-m', m); if (e) { e.textContent = t; e.className = 'sk-msg ' + (c || ''); } };
+    on(m, '#sk-tab', () => {
+      Save.flush();
+      let w = null; try { w = window.open(location.href, '_blank', 'noopener'); } catch (e) { /* blocked */ }
+      if (!w) msg('Your browser blocked the new tab. On itch.io use the fullscreen button under the game, or open the page in Safari/Chrome directly.', 'err');
+    });
+    on(m, '#sk-fs', () => { const d = document.documentElement, f = d.requestFullscreen || d.webkitRequestFullscreen; if (f) { try { const p = f.call(d); if (p && p.catch) p.catch(() => msg('Fullscreen was blocked here. Try the fullscreen button under the game on itch.io.', 'err')); close(); } catch (e) { msg('Fullscreen is not available here.', 'err'); } } else msg('Fullscreen is not available here: use Export Save.', 'err'); });
+    on(m, '#sk-exp', () => openMenu());
+    on(m, '#sk-retry', () => { if (Save.probe() && Save.flush(true)) { chip('saved'); msg('Saving works now!', 'good'); setTimeout(close, 900); } else msg('Still blocked. Use Export Save to keep a backup.', 'err'); });
+    on(m, '#sk-go', () => close());
+  }
+  function openMenu() {
+    if (!Save.status.ok) Save.probe();
+    Save.flush();
+    const s = Save.status, code = Save.exportCode();
+    const st = s.ok ? 'Autosave is on · last saved ' + (s.savedAt ? ago(s.savedAt) : 'not yet') : '⚠ Autosave is not working here: ' + (s.why || 'storage blocked') + ' Export your save to keep it.';
+    const m = modal(`<h2>${DISK}Save &amp; backup</h2>
+<p class="sk-dim" style="${s.ok ? '' : 'color:#c03030;font-weight:700'}">${st}</p>
+<div class="sk-sec"><b>Export Save</b> <span class="sk-dim">(a backup code, or a file with your photos)</span>
+<textarea id="sk-code" readonly aria-label="Save code">${code}</textarea>
+<div class="sk-row"><button class="pri" id="sk-copy">Copy code</button><button id="sk-dl">Download .json</button>${s.ok ? '<button id="sk-now">Save now</button>' : ''}</div></div>
+<div class="sk-sec"><b>Import Save</b> <span class="sk-dim">(replaces this journal)</span>
+<textarea id="sk-in" placeholder="Paste a save code here (MKSNAP...)" aria-label="Paste save code"></textarea>
+<div class="sk-row"><button class="ok" id="sk-load">Load code</button><button id="sk-file">Pick a file…</button><button id="sk-close">Close</button></div>
+<input type="file" id="sk-pick" accept=".json,.txt,application/json,text/plain" hidden></div>
+<div class="sk-msg" id="sk-m"></div>`);
+    const msg = (t, c) => { const e = $('#sk-m', m); if (e) { e.textContent = t; e.className = 'sk-msg ' + (c || ''); } };
+    on(m, '#sk-copy', async () => {
+      const ta = $('#sk-code', m); let ok = false;
+      try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(code); ok = true; } } catch (e) { /* fall back */ }
+      if (!ok) try { ta.focus(); ta.select(); ok = document.execCommand('copy'); } catch (e) { /* ignore */ }
+      if (ok) msg('Copied! Keep it somewhere safe (a note or a message to yourself).', 'good'); else { ta.focus(); ta.select(); msg('Select the code above and copy it.', ''); }
+    });
+    on(m, '#sk-dl', () => {
+      try {
+        const blob = new Blob([Save.exportFile()], { type: 'application/json' }), a = document.createElement('a'), d = new Date();
+        a.href = URL.createObjectURL(blob); a.download = 'mudkip-snap-save-' + d.toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        msg('Downloading your save file… (if nothing happens, use Copy code)', 'good');
+      } catch (e) { msg('Download is blocked here: use Copy code instead.', 'err'); }
+    });
+    on(m, '#sk-now', () => { if (Save.flush(true)) msg('Saved ✓', 'good'); else msg('Could not save: ' + Save.status.why, 'err'); });
+    const load = (txt) => {
+      let d; try { d = Save.decode(txt); } catch (e) { msg(e.message, 'err'); return; }
+      const n = Object.keys(d.seen || {}).length, lv = d.lv ? 'with ' + (d.lv.xp || 0) + ' XP' : '';
+      if (!confirmLoad(m, 'Load this save (' + n + ' Pokémon seen ' + lv + ')? It replaces the current journal.')) return;
+      try { Save.importText(txt); } catch (e) { msg(e.message, 'err'); return; }
+      msg(Save.status.ok ? 'Save loaded! Restarting…' : 'Save loaded for this session (storage is blocked: export again before leaving). Restarting…', 'good');
+      if (!Save.status.ok) { try { sessionStorage.setItem('mudkip-snap-import', txt); } catch (e) { /* ignore */ } K.pending = txt; }
+      setTimeout(() => { if (Save.status.ok) location.reload(); else { close(); applyLive(); } }, 900);
+    };
+    on(m, '#sk-load', () => load($('#sk-in', m).value));
+    on(m, '#sk-file', () => $('#sk-pick', m).click());
+    const pick = $('#sk-pick', m);
+    pick.addEventListener('change', () => { const f = pick.files && pick.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => load(String(r.result || '')); r.onerror = () => msg('Could not read that file.', 'err'); r.readAsText(f); });
+    on(m, '#sk-close', () => close());
+  }
+  // a second tap confirms (window.confirm is blocked in some sandboxed iframes)
+  function confirmLoad(m, text) {
+    if (m.armed && Date.now() - m.armed < 6000) return true;
+    m.armed = Date.now();
+    const e = $('#sk-m', m); if (e) { e.textContent = text + ' Tap again to confirm.'; e.className = 'sk-msg'; }
+    return false;
+  }
+  // storage blocked: the imported journal goes live without a reload
+  function applyLive() {
+    try { if (typeof Progress !== 'undefined') { Progress.bar = null; } if (Game.enterArea) Game.enterArea(Save.data.lastArea && Save.unlocked(Save.data.lastArea) ? Save.data.lastArea : 'beach'); HUD.toast('Save imported!', { life: 2 }); } catch (e) { console.error(e); }
+  }
+  return { init, openMenu, notice, blocked, close, chip, get open() { return !!K.modal; } };
+})();
+SaveKit.init();
 
 /* ==== src/snap/main.js ==== */
 /* ------------------------------------------------------------------

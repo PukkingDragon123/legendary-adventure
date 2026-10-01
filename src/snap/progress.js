@@ -34,7 +34,7 @@ const Progress = (() => {
   const spTier = (sp) => { const d = DexData.S[sp]; const as = d ? [].concat(d.area || []) : []; return as.length ? Math.min(...as.map(tierOf)) : 1; };
   // XP sources (for the breakdown page)
   const SRC = { dex: 'New Pokédex entries', beh: 'New behaviours', photo: 'Photo quality', obj: 'Photo objectives', quest: 'Quests', req: 'Requests', fight: 'Road fights & bosses', disc: 'Secrets & discoveries', move: 'New moves', games: 'Minigames', area: 'New areas' };
-  const catOf = (why) => (/^(Road fight|Rematch|Boss|Battle|Rival|Tamed|Win)/i.test(why || '') ? 'fight' : /photo/i.test(why || '') ? 'photo' : /quest/i.test(why || '') ? 'quest' : 'games');
+  const catOf = (why) => (/^(Road fight|Rematch|Boss|Battle|Rival|Tamed|Win|Beat)/i.test(why || '') ? 'fight' : /photo/i.test(why || '') ? 'photo' : /quest/i.test(why || '') ? 'quest' : 'games');
   const MAXLV = XP.length - 1;
   // features and when they open (lv, or a story flag that opens them early)
   const FEATS = [
@@ -168,6 +168,7 @@ const Progress = (() => {
     const D = L();
     // existing journals: count everything already done, silently (grants a sensible level)
     if (!D.init) { poll(true); D.init = 1; checkFeats(true); Save.save(); }
+    SES.lv0 = level();
     stampAccepted(true);
     wrapGame();
   }
@@ -777,7 +778,7 @@ const Progress = (() => {
     Game.sfx('page');
   }
   function closeLog() { P.log = null; Game.sfx('back', null, 0.6); }
-  function logList() { const e = entries(); return P.log.tab === 'done' ? e.filter((x) => x.s === 'done') : e.filter((x) => x.s !== 'done'); }
+  function logList() { const e = entries(); if (P.log.tab === 'exp') return []; return P.log.tab === 'done' ? e.filter((x) => x.s === 'done') : e.filter((x) => x.s !== 'done'); }
   function trackSel() {
     const l = logList(), e = l[P.log.sel]; if (!e || e.q.birch || e.s === 'done') return;
     L().track = L().track === e.q.id ? null : e.q.id; Save.save(); Game.sfx('select');
@@ -798,12 +799,13 @@ const Progress = (() => {
     G.rects.push({ x: x + W - 24, y: y + 3, w: 20, h: 18, fn: closeLog });
     // tabs
     const all = entries(), nA = all.filter((e) => e.s !== 'done').length, nD = all.length - nA;
-    [['active', 'Active (' + nA + ')'], ['done', 'Done (' + nD + ')']].forEach(([id, lab], i) => {
+    [['active', 'Active (' + nA + ')'], ['done', 'Done (' + nD + ')'], ['exp', 'EXP & Levels']].forEach(([id, lab], i) => {
       const tx = x + 10 + i * 78, on = G.tab === id;
       UI.panel(fb, tx, y + 24, 74, 14, { r: 3, ol: S.ink, fill: on ? S.accent : S.btn });
       Font.draw(fb, lab, tx + 37, y + 27, WHITE, { font: 'small', align: 'center' });
       G.rects.push({ x: tx, y: y + 24, w: 74, h: 14, fn: () => { G.tab = id; G.sel = 0; G.scroll = 0; Game.sfx('page', null, 0.5); } });
     });
+    if (G.tab === 'exp') { drawExp(fb, x, y, W, H, S); return; }
     // list (left)
     const lx = x + 8, ly = y + 42, lw = Math.min(170, Math.round(W * 0.4)), lh = H - 50;
     UI.screen(fb, lx, ly, lw, lh, { fill: 0xfffbfaf4, rim: S.ink, glare: false });
@@ -866,6 +868,60 @@ const Progress = (() => {
       Font.draw(fb, 'L / Esc: close', dx + 6, by + 3, 0xff8a90a8, { font: 'small' });
     }
   }
+  // the EXP page: level, what the next levels unlock, and XP by source
+  function drawExp(fb, x, y, W, H, S) {
+    const D = L(), lv = level(), xp = D.xp, ly = y + 42, lh = H - 50, lw = Math.min(200, Math.round(W * 0.46)), lx = x + 8;
+    const DIM = hx('#6a7090'), BLUE = hx('#e8783a');
+    UI.screen(fb, lx, ly, lw, lh, { fill: 0xfffbfaf4, rim: S.ink, glare: false });
+    let yy = ly + 5;
+    Font.draw(fb, 'Mudkip Lv ' + lv, lx + 6, yy, INK, { font: 'body' }); yy += 14;
+    const a = XP[Math.min(lv, MAXLV)], b = XP[Math.min(lv + 1, MAXLV)], k = lv >= MAXLV ? 1 : clamp((xp - a) / (b - a), 0, 1), bw = lw - 12;
+    UI.rrect(fb, lx + 6, yy, bw, 7, 3, INK); UI.rect(fb, lx + 7, yy + 1, bw - 2, 5, hx('#d8deea'));
+    if (k > 0) UI.rect(fb, lx + 7, yy + 1, Math.max(1, Math.round((bw - 2) * k)), 5, hx('#30a8f0'));
+    yy += 10;
+    Font.draw(fb, lv >= MAXLV ? xp + ' XP · max level!' : (xp - a) + ' / ' + (b - a) + ' XP  ·  ' + (b - xp) + ' to Lv ' + (lv + 1), lx + 6, yy, DIM, { font: 'small' }); yy += 13;
+    // the next unlocks
+    Font.draw(fb, 'Coming up', lx + 6, yy, BLUE, { font: 'small' }); yy += 10;
+    const up = FEATS.filter((f) => !has(f.id)).slice(0, 2);
+    if (!up.length) { Font.draw(fb, '{check} Every feature unlocked', lx + 10, yy, INK, { font: 'small' }); yy += 9; }
+    for (const f of up) { Font.draw(fb, fit('Lv ' + f.lv + ': ' + f.name, lw - 16), lx + 10, yy, INK, { font: 'small' }); yy += 9; }
+    yy += 4;
+    if (typeof Bosses !== 'undefined' && Bosses.REC) {
+      Font.draw(fb, 'Recommended levels', lx + 6, yy, BLUE, { font: 'small' }); yy += 10;
+      const ar = ['beach', 'forest', 'canopy', 'falls', 'volcano', 'shoal'].filter((id) => Bosses.REC[id]);
+      ar.forEach((id) => {
+        const r = Bosses.REC[id], ok = lv >= r, un = Save.unlocked(id), here = Game.areaId === id;
+        if (yy > ly + lh - 10) return;
+        Font.draw(fb, fit((ok ? '{check} ' : un ? '' : '{lock} ') + areaName(id) + (here ? ' (here)' : ''), lw - 50), lx + 10, yy, ok ? hx('#2a8a4a') : un ? hx('#c03030') : hx('#6a7090'), { font: 'small' });
+        Font.draw(fb, 'Lv ' + r, lx + lw - 8, yy, ok ? hx('#2a8a4a') : un ? hx('#c03030') : hx('#6a7090'), { font: 'small', align: 'right' });
+        yy += 9;
+      });
+    }
+    // XP by source (right)
+    const dx = lx + lw + 6, dw = x + W - 8 - dx;
+    UI.screen(fb, dx, ly, dw, lh, { fill: 0xfffbfaf4, rim: S.ink, glare: false });
+    yy = ly + 5;
+    Font.draw(fb, 'XP by source', dx + 6, yy, INK, { font: 'body' });
+    Font.draw(fb, 'all · today', dx + dw - 6, yy + 3, DIM, { font: 'small', align: 'right' }); yy += 15;
+    const rows = Object.keys(SRC).map((id) => [id, D.src[id] || 0, SES.src[id] || 0]).filter((r) => r[1] > 0 || r[2] > 0).sort((p, q) => q[1] - p[1]);
+    const known = rows.reduce((t, r) => t + r[1], 0), max = Math.max(1, ...rows.map((r) => r[1]));
+    if (xp - known > 0) rows.push(['early', xp - known, 0]);
+    if (!rows.length) Font.draw(fb, 'No XP yet: snap a new Pokémon!', dx + 6, yy, DIM, { font: 'small' });
+    const nmW = Math.min(140, Math.round(dw * 0.52)), barX = dx + 6 + nmW, barW = Math.max(10, dw - nmW - 70);
+    for (const [id, all, ses] of rows) {
+      if (yy > ly + lh - 32) break;
+      Font.draw(fb, fit(id === 'early' ? 'Earlier progress' : SRC[id], nmW - 4), dx + 6, yy, INK, { font: 'small' });
+      UI.rect(fb, barX, yy + 2, barW, 4, hx('#e4e6ee')); UI.rect(fb, barX, yy + 2, Math.max(1, Math.round(barW * Math.min(1, all / max))), 4, id === 'fight' ? hx('#f05a3a') : id === 'dex' || id === 'quest' ? hx('#ffb21a') : hx('#30a8f0'));
+      Font.draw(fb, String(all), dx + dw - 30, yy, INK, { font: 'small', align: 'right' });
+      Font.draw(fb, ses ? '+' + ses : '-', dx + dw - 6, yy, ses ? hx('#2a8a4a') : DIM, { font: 'small', align: 'right' });
+      yy += 10;
+    }
+    const mins = Math.max(1, Math.round((Date.now() - SES.t0) / 60000));
+    const by = ly + lh - 22;
+    UI.rect(fb, dx + 6, by - 3, dw - 12, 1, hx('#d8deea'));
+    Font.draw(fb, fit('This session: +' + SES.xp + ' XP in ' + mins + ' min' + (lv > SES.lv0 ? ' · +' + (lv - SES.lv0) + ' Lv' : '') + (SES.best >= 2 ? ' · best streak x' + SES.best : ''), dw - 12), dx + 6, by, INK, { font: 'small' });
+    Font.draw(fb, fit('New finds pay most. Repeats pay less.', dw - 12), dx + 6, by + 9, DIM, { font: 'small' });
+  }
   { const d0 = Talk.down; Talk.down = function (ux, uy) {
     if (P.log) { const G = P.log; for (let i = G.rects.length - 1; i >= 0; i--) { const r = G.rects[i]; if (ux >= r.x && uy >= r.y && ux < r.x + r.w && uy < r.y + r.h) { r.fn(); return true; } } return true; }
     return d0.call(this, ux, uy);
@@ -876,7 +932,8 @@ const Progress = (() => {
       if (k === 'Escape' || k === 'l') closeLog();
       else if (k === 'ArrowDown' || k === 's') { G.sel = Math.min(n - 1, G.sel + 1); Game.sfx('blip', null, 0.4); }
       else if (k === 'ArrowUp' || k === 'w') { G.sel = Math.max(0, G.sel - 1); Game.sfx('blip', null, 0.4); }
-      else if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'a' || k === 'd' || k === 'Tab') { G.tab = G.tab === 'done' ? 'active' : 'done'; G.sel = 0; G.scroll = 0; }
+      else if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'a' || k === 'd' || k === 'Tab') { const T = ['active', 'done', 'exp'], d = k === 'ArrowLeft' || k === 'a' ? 2 : 1; G.tab = T[(T.indexOf(G.tab) + d) % 3]; G.sel = 0; G.scroll = 0; Game.sfx('page', null, 0.5); }
+      else if (k === 'x') { G.tab = 'exp'; }
       else if (k === 'Enter' || k === ' ' || k === 't') trackSel();
       return true;
     }
@@ -932,5 +989,5 @@ const Progress = (() => {
     X.D.scroll.prog = clamp(X.D.scroll.prog || 0, 0, Math.max(0, (X.D.progH || 0) - R.h + 8));
   }
 
-  return Object.assign(P, { badgeSpr, has, hudOk, level, gain, award, FEATS, XP, openLog, closeLog, logBadge, icon, toastTop, dexPage, objective, status, tracked, entries, onScan });
+  return Object.assign(P, { SES, SRC, TIER, questXP, drawExp, badgeSpr, has, hudOk, level, gain, award, FEATS, XP, openLog, closeLog, logBadge, icon, toastTop, dexPage, objective, status, tracked, entries, onScan });
 })();
