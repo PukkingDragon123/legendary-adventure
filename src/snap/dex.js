@@ -1,49 +1,47 @@
 /* ------------------------------------------------------------------
-   Dex — the Rotom Dex, drawn after the reference art: a chunky red
-   pixel device (thick rounded frame with darker segments and rivets, a
-   big lightning-bolt antenna rising from the top centre, grey side
-   clips, a pointed tail with a round Home button) with Rotom living in
-   it: big eyes on a dark bridge sitting ON the top frame, and a cyan
-   face with a toothy grin hanging from the top of a periwinkle screen.
-   The device keeps the reference's proportions, is centred and scaled
-   to fit the canvas (crisp integer pixels); the page title / back
-   button sit to its left, Rotom's speech bubble and the close button to
-   its right (above / below it on portrait screens).
+   Dex — the Rotom Dex. A chunky glossy-red pixel device with Rotom
+   living in it: a lightning-bolt antenna that sparks, grey side clips,
+   a pointed tail with a round Home button, and Rotom's face at the top
+   of the screen (big eyes that blink and follow your selection, a
+   toothy grin that talks).
      · Main page: the Pokédex — species list with sprites, seen/caught,
-       a detail card and full entries (a photo per star tier,
-       behaviour clues, objectives).
-     · Home (the tail button / H): the app grid of the reference (two
-       2x2 groups, the ◀ ═══ ▶ page bar between the rows) — Pokédex,
-       Encyclopedia, Quests, Progress, Map, Photos, Mail, Settings,
-       Style, Shop, Secrets, TMs, Day/Night, Rotom Chat, Help, Bag.
-   Touch, mouse (hover, wheel, drag, swipe) and keyboard. Phones draw at
-   2x so the text stays readable.
+       a detail card (habitat, behaviours, photos, completion) and full
+       entries (a photo per star tier, behaviour clues, objectives).
+     · Home (the tail button / H): a grid of apps on pages — Pokédex,
+       Encyclopedia (habitats + behaviours), Quests, Progress, Map,
+       Photos, Mail from NPCs, Settings, Style, Shop, Secrets, TMs,
+       Day/Night, Rotom Chat, Help, Bag.
+   Touch, mouse (hover, wheel, drag, swipe) and keyboard. On big UI
+   canvases (phones at 2-3x) the device is drawn at 2x so it fills the
+   screen and stays readable.
 ------------------------------------------------------------------- */
 const Dex = (() => {
   const { clamp, lerp, hex, mix } = U;
-  const INK = 0xff40221b;
+  const INK = 0xff1b2240;
   const qs = new URLSearchParams(location.search);
   const D = {
-    isOpen: false, t: 0, closing: 0, page: 'dex', prev: null, trans: 1, dir: 1,
+    open: false, t: 0, closing: 0, page: 'dex', prev: null, trans: 1, dir: 1,
     sel: null, star: 0, scroll: {}, btns: [], press: null, keyAng: 0, keyV: 0,
     thumbs: new Map(), imgs: new Map(), confirm: null, album: 0, styleSlot: 'hat', mudYaw: 1.1,
     s: 1, G: null, mouse: null, mouseT: -9, hoverId: null, faceK: 0, lookAt: null, line: null, idleT: 8,
     face: { lx: 0, ly: 0, blinkT: 0, nextBlink: 2, mood: 'norm', moodT: 0, talk: 0, pop: 1, zaps: [], zapT: 1, wx: 0, wy: 0, wanderT: 0, spark: 0 },
-    home: { pg: 0, sel: 0, slide: 0 }, bounce: {}, shake: 0, zoom: null, filter: 'all', lsel: {}, tab: {}, after: null, ensure: null, chat: [], mailC: null,
+    home: { pg: 0, sel: 0, slide: 0 }, filter: 'all', lsel: {}, tab: {}, after: null, ensure: null, chat: [], mailC: null,
   };
-  // the Rotom screen of the reference: soft periwinkle glass with faint dots, navy ink, Rotom's cyan face
+  // the Rotom screen: soft periwinkle with dots, navy ink, Rotom's cyan face
   const P = {
-    scr: hex('#7ca0d2'), scrHi: hex('#9dbdea'), scrB: hex('#7284ce'), dot: hex('#6c7fcc'), mv: hex('#a0556b'), mvD: hex('#6a3c64'), mvS: hex('#784d74'),
-    scrL: hex('#b4cbef'), scrLL: hex('#cddcf6'), card: hex('#e9f0ff'), white: hex('#f8faff'), scrD: hex('#6282c4'), scrDD: hex('#3f5aa8'), rim: hex('#1f2a66'), off: hex('#161a3c'),
-    text: hex('#131a44'), dim: hex('#34427e'), faint: hex('#5a68a0'),
-    face: hex('#7afcfe'), faceL: hex('#c8feff'), faceD: hex('#78d6f0'), faceDD: hex('#5ca9d6'), faceO: hex('#2b44bc'), eye: hex('#1f1e24'), lid: hex('#3a3858'), mouth: hex('#27103a'), tongue: hex('#ff6f93'),
-    red: hex('#e8323a'), redD: hex('#a41f2e'), gold: hex('#ffc83a'), goldD: hex('#c07a10'), green: hex('#2fb463'), blue: hex('#3a7ae8'), grey: hex('#8a90a8'),
+    scr: hex('#a7b3ef'), scrL: hex('#bcc5f5'), scrLL: hex('#d3d9fb'), card: hex('#e8ecff'), white: hex('#f8f9ff'), dot: hex('#99a5e7'), scrD: hex('#8590d9'), scrDD: hex('#5c66ba'), rim: hex('#23265e'), off: hex('#1b1e44'),
+    text: hex('#1a1e4b'), dim: hex('#4c5595'), faint: hex('#7a82bf'),
+    face: hex('#b2effe'), faceL: hex('#e0fbff'), faceD: hex('#70cde6'), faceDD: hex('#3692b8'), eye: hex('#0e0c1c'), lid: hex('#3a3858'), mouth: hex('#2c0f30'), tongue: hex('#ff6f93'),
+    red: hex('#ec3f4b'), redD: hex('#a41f2e'), gold: hex('#ffc83a'), goldD: hex('#c07a10'), green: hex('#2fb463'), blue: hex('#3a7ae8'), grey: hex('#8a90a8'),
     clip: hex('#b9c0cd'), clipL: hex('#eef1f5'), clipD: hex('#737b90'),
-    icoSh: hex('#5a78c4'), icoRing: hex('#5b95d8'), bar: hex('#84b8f0'), barL: hex('#b4dcfa'), barD: hex('#6aa0e2'), barO: hex('#4f86d4'), barOff: hex('#8aa8dc'), barOffO: hex('#7596d0'),
   };
-  // the classic red frame, sampled from the reference art
-  const FR_CLASSIC = { b: hex('#bc3110'), l: hex('#da3709'), hi: hex('#fc2221'), spec: hex('#ff7a5c'), d1: hex('#b1351d'), sh: hex('#ad3621'), dd: hex('#a20e0e'), ink: hex('#4e0406'), ink2: hex('#740e10'), mv: hex('#a0556b'), mvD: hex('#6a3c64'), mvS: hex('#784d74') };
+  const FR_CLASSIC = { b: hex('#e03a3c'), l: hex('#ff7466'), ll: hex('#ffb6a6'), d: hex('#a41c2a'), dd: hex('#6c0f1e'), ink: hex('#2a0710') };
   const frCache = {};
+  function framePal(S) {
+    if (!S || S.id === 'skin.classic') return FR_CLASSIC;
+    if (frCache[S.id]) return frCache[S.id];
+    return (frCache[S.id] = { b: S.body, l: S.bodyL, ll: mix(S.bodyL, 0xffffffff, 0.45), d: S.bodyD, dd: mix(S.bodyD, S.ink, 0.45), ink: S.ink });
+  }
   // the skin handed to the older page drawers (they read screen / screenText / accent / ink / btn)
   function pageSkin(S) {
     if (D.SP && D.SP.src === S) return D.SP;
@@ -56,30 +54,23 @@ const Dex = (() => {
 
   /* ---------- apps (home screen, 8 per page) ---------- */
   const APPS = [
-    { id: 'chat', name: 'Chat', col: '#5c6af0' },
-    { id: 'shop', name: 'Shop', col: '#e8ac4c' },
-    { id: 'help', name: 'Help', col: '#6ccf78' },
-    { id: 'mail', name: 'Mail', col: '#b4daf4' },
-    { id: 'prog', name: 'Progress', col: '#34343c' },
-    { id: 'time', name: 'Day/Night', col: '#2c3c7c' },
-    { id: 'tms', name: 'TMs', col: '#c4def6' },
-    { id: 'dex', name: 'Pokédex', col: '#4c8ce8' },
+    { id: 'dex', name: 'Pokédex', col: '#ef4d56' },
     { id: 'ency', name: 'Encyclopedia', col: '#35ad63' },
     { id: 'quests', name: 'Quests', col: '#f09a30' },
-    { id: 'map', name: 'Map', col: '#2f9fdc', launch: () => WorldMap.open() },
+    { id: 'prog', name: 'Progress', col: '#8a5ee6' },
+    { id: 'map', name: 'Map', col: '#2f9fdc', launch: () => WorldMap.open(), lock: () => locked('map') },
     { id: 'album', name: 'Photos', col: '#f36fa8' },
+    { id: 'mail', name: 'Mail', col: '#5673ee' },
     { id: 'settings', name: 'Settings', col: '#67728c' },
     { id: 'style', name: 'Style', col: '#e2589a' },
+    { id: 'shop', name: 'Shop', col: '#ee7434' },
     { id: 'disc', name: 'Secrets', col: '#4b47bd' },
-    { id: 'bag', name: 'Bag', col: '#b8742e', launch: () => Bag.open(), feat: 'bag' },
-    { id: 'music', name: 'Guitar', col: '#e0506a', launch: () => Rhythm.open(0), feat: 'music' },
-    { id: 'games', name: 'Playground', col: '#f0b030', launch: () => Arcade.open(), feat: 'games' },
-    { id: 'sound', name: 'Sound', col: '#4a9a8a', toggle: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); say(v ? 'Sound on! Bzzt!' : 'Shh... Rotom is quiet now.', { mood: v ? 'happy' : 'norm' }); } },
+    { id: 'tms', name: 'TMs', col: '#22a898' },
+    { id: 'time', name: 'Day/Night', col: '#34449e' },
+    { id: 'chat', name: 'Chat', col: '#2fb8e4' },
+    { id: 'help', name: 'Help', col: '#8f9d3c' },
+    { id: 'bag', name: 'Bag', col: '#b8742e', launch: () => Bag.open(), lock: () => locked('bag') },
   ];
-  // feature unlocks (progress.js): a locked app is greyed out with the level that opens it
-  const FEAT = { map: 'map', style: 'style', time: 'time', tms: 'wheel', bag: 'bag', music: 'music', games: 'games' };
-  const featLv = (id) => { if (!hasP() || !FEAT[id]) return 0; if (Progress.has(FEAT[id])) return 0; const f = Progress.FEATS.find((q) => q.id === FEAT[id]); return f ? f.lv : 0; };
-  for (const a0 of APPS) a0.lock = () => featLv(a0.id) > 0;
   for (const a of APPS) a.c = hex(a.col);
   const APP = Object.fromEntries(APPS.map((a) => [a.id, a]));
   const TITLE = { entry: 'Pokédex', home: 'Rotom Dex' };
@@ -130,7 +121,6 @@ const Dex = (() => {
     if (D.page === 'entry' && !(D.sel && DexData.S[D.sel])) D.page = 'dex';
     if (!PAGES[D.page]) D.page = 'dex';
     D.faceK = D.page === 'home' ? 1 : 0;
-    D.homeT = -0.45; D.zoom = null; D.bounce = {};
     D.mailC = null;
     Quests.seen();
     SFX.dexOpen();
@@ -143,8 +133,6 @@ const Dex = (() => {
   function go(page, o = {}) {
     if (page === D.page && !o.force) return;
     D.prev = D.page; D.page = page; D.trans = 0; D.dir = o.dir ?? 1;
-    if (page === 'home') D.homeT = 0.1;
-    if (D.prev !== 'home') D.zoom = null;
     if (o.sel !== undefined) D.sel = o.sel;
     SFX.page(); zap(2);
     if (page !== 'entry' && page !== 'dex' && LINES[page] && Math.random() < 0.7) say(pick(LINES[page]));
@@ -155,10 +143,7 @@ const Dex = (() => {
     else go('home', { dir: -1 });
   }
   function launch(a) {
-    if (a.lock && a.lock()) { SFX.error(); D.shake = 0.35; say('Locked! ' + a.name + ' opens at Lv ' + featLv(a.id) + '. Bzzt!', { mood: 'sad' }); return; }
-    D.bounce[a.id] = 1;
-    if (a.toggle) { a.toggle(); return; }
-    const tp = D.page === 'home' && D.tilePos && D.tilePos[a.id]; D.zoom = tp && !a.launch ? { x: tp[0], y: tp[1], c: a.c } : null;
+    if (a.lock && a.lock()) { SFX.error(); say('That app is still locked! Level up to open it. Bzzt!', { mood: 'sad' }); return; }
     if (a.launch) { say('Opening the ' + a.name + '! Zzt!'); close(a.launch); return; }
     go(a.id, { dir: 1 });
   }
@@ -186,20 +171,14 @@ const Dex = (() => {
       D.closing += dt;
       if (D.closing > 0.5) { D.isOpen = false; Game.mode = 'explore'; D.closing = 0; const f = D.after; D.after = null; if (f) try { f(); } catch (e) { console.error(e); } }
     }
-    D.trans = Math.min(1, D.trans + dt * (D.zoom ? 3 : 4.5));
+    D.trans = Math.min(1, D.trans + dt * 4.5);
     D.keyV += (-Math.sin(D.keyAng) * 18 - D.keyV * 2.2) * dt; D.keyAng += D.keyV * dt;
     D.mudYaw += dt * 0.9;
     D.selT = (D.selT || 0) + dt;
     D.faceK += ((D.page === 'home' ? 1 : 0) - D.faceK) * Math.min(1, dt * 10);
-    D.homeT = (D.homeT || 0) + dt;
-    for (const k in D.bounce) { D.bounce[k] = Math.max(0, D.bounce[k] - dt * 2.2); if (!D.bounce[k]) delete D.bounce[k]; }
-    D.shake = Math.max(0, D.shake - dt);
-    if (D.trans >= 1) D.zoom = null;
     D.home.slide *= Math.exp(-dt * 16); if (Math.abs(D.home.slide) < 0.5) D.home.slide = 0;
     const F = D.face;
     F.pop = clamp((D.t - 0.36) / 0.22, 0, 1);
-    // boot: Rotom wakes up — eyes pop open surprised, a zap, then a grin
-    if (!D.closing && D.t - dt < 0.78 && D.t >= 0.78) { mood('wow', 0.45); zap(3); }
     F.nextBlink -= dt;
     if (F.nextBlink <= 0) { F.blinkT = 0.13; F.nextBlink = 1.8 + Math.random() * 3.4; F.dbl = Math.random() < 0.2; }
     if (F.blinkT > 0) { F.blinkT -= dt; if (F.blinkT <= 0 && F.dbl) { F.dbl = false; F.blinkT = 0.11; } }
@@ -281,7 +260,7 @@ const Dex = (() => {
   function flipHome(d) {
     const pages = Math.ceil(APPS.length / 8), H = D.home, n = clamp(H.pg + d, 0, pages - 1);
     if (n === H.pg) { H.slide = -d * 10; return; }
-    H.pg = n; H.slide = d * 60; D.homeT = 0.12; SFX.page(); zap(1);
+    H.pg = n; H.slide = d * 60; SFX.page(); zap(1);
   }
   function key(k) {
     if (k === 'p' || k === 'Tab') { close(); return; }
@@ -370,7 +349,7 @@ const Dex = (() => {
       }
       let best = 0, bc = -1;
       for (const [c, mm] of cnt) if (mm > bc || (mm === bc && lum(c) < lum(best))) { best = c; bc = mm; }
-      out.d[y * out.w + x] = n >= Math.ceil(SS * SS * 0.34) ? (sil ? 0xff301e1a : best) : 0;
+      out.d[y * out.w + x] = n >= Math.ceil(SS * SS * 0.34) ? (sil ? 0xff1a1e30 : best) : 0;
     }
     D.thumbs.set(key, out);
     D.budget -= performance.now() - t0;
@@ -395,10 +374,7 @@ const Dex = (() => {
     return undefined;
   }
   function stars(fb, n, x, y, max = 4) { for (let i = 0; i < max; i++) Font.icon(fb, i < n ? 'star' : 'star0', x + i * 8, y, 1); }
-  function medal(fb, m, x, y) { const mc = [0, 0xff3a7ac0, 0xffd0c0b8, 0xff3ac8ff, 0xfffff09a][m] || 0xff808080; UI.disc(fb, x, y, 4, INK); UI.disc(fb, x, y, 3, mc); UI.put(fb, x - 1, y - 1, 0xffffffff); }
-  // real Pokédex data the species file doesn't carry: category and weight (kg)
-  const INFO = Object.fromEntries('tentacool Jellyfish 45.5|staryu Star Shape 34.5|starmie Mysterious 80|chinchou Angler 12|marill Aqua Mouse 8.5|azumarill Aqua Rabbit 28.5|wobbuffet Patient 28.5|slugma Lava 35|corsola Coral 5|remoraid Jet 12|mantine Kite 220|marshtomp Mud Fish 28|swampert Mud Fish 81.9|zigzagoon Tiny Raccoon 17.5|linoone Rushing 32.5|lotad Water Weed 2.6|lombre Jolly 32.5|ludicolo Carefree 55|seedot Acorn 4|nuzleaf Wily 28|taillow Tiny Swallow 2.3|swellow Swallow 19.8|wingull Seagull 9.5|pelipper Water Bird 28|surskit Pond Skater 1.7|masquerain Eyeball 3.6|shroomish Mushroom 4.5|breloom Mushroom 39.2|slakoth Slacker 24|vigoroth Wild Monkey 46.5|slaking Lazy 130.5|nincada Trainee 5.5|azurill Polka Dot 2|plusle Cheering 4.2|minun Cheering 4.2|volbeat Firefly 17.7|illumise Firefly 17.7|carvanha Savage 20.8|sharpedo Brutal 88.8|wailmer Ball Whale 130|wailord Float Whale 398|numel Numb 24|torkoal Coal 80.4|spinda Spot Panda 5|trapinch Ant Pit 15|vibrava Vibration 15.3|flygon Mystic 82|swablu Cotton Bird 1.2|altaria Humming 20.6|lunatone Meteorite 168|solrock Meteorite 154|corphish Ruffian 11.5|crawdaunt Rogue 32.8|lileep Sea Lily 23.8|anorith Old Shrimp 12.5|feebas Fish 7.4|milotic Tender 162|castform Weather 0.8|kecleon Color Swap 22|tropius Fruit 100|wynaut Bright 14|snorunt Snow Hat 16.8|spheal Clap 39.5|sealeo Ball Roll 87.6|walrein Ice Break 150.6|clamperl Bivalve 52.5|relicanth Longevity 23.4|luvdisc Rendezvous 8.7|bagon Rock Head 42.1|regice Iceberg 175|latias Eon 40|latios Eon 60|kyogre Sea Basin 352|groudon Continent 950|rayquaza Sky High 206.5|jirachi Wish 1.1|deoxys DNA 60.8|budew Bud 1.2|chatot Music Note 1.9|dialga Temporal 683|palkia Spatial 336|meloetta Melody 6.5|minior Meteor 40|mudkip Mud Fish 7.6'.split('|').map((r) => { const a = r.split(' '); return [a[0], { cat: a.slice(1, -1).join(' ') + ' Pokémon', wt: +a[a.length - 1] }]; }));
-  const info = (sp) => INFO[sp] || { cat: 'Unknown Pokémon', wt: 0 };
+  function medal(fb, m, x, y) { const mc = [0, 0xffc07a3a, 0xffb8c0d0, 0xffffc83a, 0xff9af0ff][m] || 0xff808080; UI.disc(fb, x, y, 4, INK); UI.disc(fb, x, y, 3, mc); UI.put(fb, x - 1, y - 1, 0xffffffff); }
   function speciesDone(sp) {
     const d = DexData.S[sp], ph = Save.data.photos[sp] || {};
     const beh = Object.keys(d.beh).length, got = Object.keys(Save.data.beh[sp] || {}).length;
@@ -454,7 +430,7 @@ const Dex = (() => {
     UI.rrect(fb, x, y, w, h, Math.min(4, h >> 1), o.ol ?? P.rim);
     UI.rrect(fb, x + 1, y + 1, w - 2, h - 2, Math.min(3, (h >> 1) - 1), fill);
     if (o.hi !== false) UI.hline(fb, x + 3, x + w - 4, y + 1, mix(fill, 0xffffffff, 0.35));
-    Font.draw(fb, fit(text, w - 4), x + w / 2, y + Math.round((h - 5) / 2), col, { font: 'small', align: 'center' });
+    Font.draw(fb, text, x + w / 2, y + Math.round((h - 5) / 2), col, { font: 'small', align: 'center' });
   }
   // a chunky button (red by default) with a pressed look
   function button(fb, id, x, y, w, h, text, fn, o = {}) {
@@ -464,15 +440,15 @@ const Dex = (() => {
     UI.rrect(fb, x, y + (pr ? 1 : 0), w, h, 4, P.rim);
     UI.rrect(fb, x + 1, y + 1 + (pr ? 1 : 0), w - 2, h - 2, 3, hv ? mix(fill, 0xffffffff, 0.15) : fill);
     UI.hline(fb, x + 3, x + w - 4, y + 1 + (pr ? 1 : 0), mix(fill, 0xffffffff, 0.4));
-    Font.draw(fb, fit(text, w - 4), x + w / 2, y + Math.round((h - 5) / 2) + (pr ? 1 : 0), o.col ?? 0xffffffff, { font: 'small', align: 'center' });
+    Font.draw(fb, text, x + w / 2, y + Math.round((h - 5) / 2) + (pr ? 1 : 0), o.col ?? 0xffffffff, { font: 'small', align: 'center' });
     btn(id, x - 2, y - 2, w + 4, h + 4, fn, o);
   }
-  function tabs(fb, key, x, y, w, list, cur0, onPick) {
-    const cur = cur0 ?? (D.tab[key] || list[0][0]), tw = Math.floor((w + 2) / list.length), h = D.G.C ? 11 : 13;
+  function tabs(fb, key, x, y, w, list) {
+    const cur = D.tab[key] || list[0][0], tw = Math.floor(w / list.length), h = D.G.C ? 11 : 13;
     list.forEach(([id, label], i) => {
       const on = cur === id, bx = x + i * tw;
       pill(fb, bx, y, tw - 2, h, on ? P.red : P.scrLL, on ? 0xffffffff : P.dim, label);
-      btn('tab-' + key + id, bx, y - 3, tw - 2, h + 6, () => { if (onPick) onPick(id); else D.tab[key] = id; SFX.page(); }, { silent: true });
+      btn('tab-' + key + id, bx, y - 3, tw - 2, h + 6, () => { D.tab[key] = id; SFX.page(); }, { silent: true });
     });
     return h + 3;
   }
@@ -493,429 +469,297 @@ const Dex = (() => {
       for (let i = ins; i < w - ins; i++) { const X = x + i; if (X < 0 || X >= fb.w) continue; const c = fn(i, j, ins, w, h); if (c) fb.d[Y * fb.w + X] = c; }
     }
   }
+  // darken towards a soft shadow (keeps the world visible through transparent UI pixels)
+  function shadow(fb, x, y, w, h, r, a) {
+    rrFill(fb, x, y, w, h, r, () => 0);
+    for (let j = 0; j < h; j++) {
+      let ins = 0;
+      if (j < r) ins = r - Math.round(Math.sqrt(r * r - (r - j - 0.5) ** 2)); else if (j >= h - r) ins = r - Math.round(Math.sqrt(r * r - (j - (h - r) + 0.5) ** 2));
+      const Y = y + j; if (Y < 0 || Y >= fb.h) continue;
+      for (let i = ins; i < w - ins; i++) {
+        const X = x + i; if (X < 0 || X >= fb.w) continue;
+        const k = Y * fb.w + X, v = fb.d[k], al = v >>> 24;
+        fb.d[k] = al < 255 ? ((Math.min(255, al + a * 255) << 24) | (v & 0xffffff)) >>> 0 : mix(v, 0xff05060f, a);
+      }
+    }
+  }
+  // rasterise a shape given by inside(x, y) with bevel shading and a 1px outline
+  function blob(fb, x0, y0, w, h, inside, shade, ink) {
+    const W2 = w + 2, m = new Uint8Array(W2 * (h + 2));
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (inside(x + 0.5, y + 0.5)) m[(y + 1) * W2 + x + 1] = 1;
+    for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) {
+      const i = (y + 1) * W2 + x + 1, g = (dx, dy) => { const xx = x + dx, yy = y + dy; return xx >= -1 && yy >= -1 && xx <= w && yy <= h ? m[(yy + 1) * W2 + xx + 1] : 0; };
+      if (m[i]) UI.put(fb, x0 + x, y0 + y, shade(x, y, !g(0, -1), !g(0, 1), !g(-1, 0), !g(1, 0)));
+      else if (g(-1, 0) || g(1, 0) || g(0, -1) || g(0, 1)) UI.put(fb, x0 + x, y0 + y, ink);
+    }
+  }
   function segDist(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy; const t = l ? clamp(((px - ax) * dx + (py - ay) * dy) / l, 0, 1) : 0; return [Math.hypot(px - ax - dx * t, py - ay - dy * t), t]; }
   function inPoly(pts, x, y) { let ins = false; for (let a = 0, b = pts.length - 1; a < pts.length; b = a++) { const [xa, ya] = pts[a], [xb, yb] = pts[b]; if ((ya > y) !== (yb > y) && x < ((xb - xa) * (y - ya)) / (yb - ya) + xa) ins = !ins; } return ins; }
 
-  /* ---------- geometry: the device of the reference art, measured in its own units ----------
-     x is measured from the centre line, y from the roof line (the top of the frame behind the eyes):
-     the body is ±94 wide and 160 tall, the lightning antenna rises to y -53, the tail's tip hangs
-     at y 188. The screen is x ±83, y 25..145. The whole device is scaled (k) to fit the canvas. */
-  const UA = 53, UT = 188, UHW = 94;
+  /* ---------- geometry ---------- */
   function geom(W, H) {
-    const tot = UA + UT;
-    const k = clamp(Math.min((H - 4) / tot, (W - 12) / (UHW * 2 + 10)), 0.4, 2.6);
-    const hw = Math.round(UHW * k), DW = hw * 2, cx = Math.round(W / 2), ox = cx - hw;
-    const TH = Math.round(tot * k), top = Math.max(1, Math.round((H - TH) / 2)), yR = Math.round(UA * k);
-    const sw2 = Math.round(83 * k), sy = yR + Math.round(24 * k);
-    const G = { k, W, H, DW, hw, TH, cx, ox, top, yR, oy: top + yR, DH: Math.round(160 * k), R: Math.max(4, Math.round(10 * k)) };
-    G.scr = { x: cx - sw2, y: top + sy, w: sw2 * 2, h: Math.round(145 * k) - Math.round(24 * k) };
-    G.C = G.scr.w < 200; G.L = G.scr.w >= 225;
-    G.X = (u) => G.cx + Math.round(u * G.k);
-    G.Y = (v) => G.oy + Math.round(v * G.k);
-    G.bottom = () => G.top + G.TH;
-    G.pad = Math.max(3, Math.round(4 * k));
-    return G;
+    const C = H < 240 || W < 440;
+    const antH = C ? 12 : 17, tailH = C ? 8 : 11, sideM = C ? 5 : 8;
+    const DW = Math.min(W - sideM * 2, C ? 470 : 480), DH = Math.min(H - antH - tailH - 2, C ? 300 : 272);
+    const ox = Math.round((W - DW) / 2), oy = Math.round(antH + (H - antH - tailH - DH) / 2);
+    const bs = C ? 8 : 11, bt = C ? 15 : 20, bb = C ? 12 : 15;
+    return { C, W, H, DW, DH, ox, oy, bs, bt, bb, antH, tailH, R: C ? 12 : 16, hh: C ? 23 : 31, scr: { x: ox + bs, y: oy + bt, w: DW - bs * 2, h: DH - bt - bb } };
   }
-  // the page area: the screen below Rotom's face
-  function content(G) {
-    const s = G.scr, f = faceDims(G), p = G.pad, y = Math.max(s.y + p, f.cy + f.r + 2);
-    return { x: s.x + p, y, w: s.w - p * 2, h: s.y + s.h - p - y };
-  }
-  function split(Q, f = 0.46, gap = 4) { const lw = Math.round(Q.w * f); return [{ x: Q.x, y: Q.y, w: lw, h: Q.h }, { x: Q.x + lw + gap, y: Q.y, w: Q.w - lw - gap, h: Q.h }]; }
-  // Rotom's face: a cyan disc hanging from the top of the screen (big on the home screen)
+  function content(G) { const s = G.scr; return { x: s.x + 5, y: s.y + G.hh + 2, w: s.w - 10, h: s.h - G.hh - 7 }; }
+  function split(Q, f = 0.46, gap = 6) { const lw = Math.round(Q.w * f); return [{ x: Q.x, y: Q.y, w: lw, h: Q.h }, { x: Q.x + lw + gap, y: Q.y, w: Q.w - lw - gap, h: Q.h }]; }
   function faceDims(G) {
-    const e = U.ease.inOut(clamp(D.faceK, 0, 1));
-    const ru = lerp(19, 33, e), cu = lerp(12, 15, e);
-    return { cx: G.cx, cy: G.Y(cu), r: Math.round(ru * G.k), ru, cu, e };
+    const k = U.ease.inOut(clamp(D.faceK, 0, 1)), C = G.C;
+    return { cx: Math.round(G.scr.x + G.scr.w / 2), top: G.scr.y, rx: Math.round(lerp(C ? 31 : 41, C ? 45 : 60, k)), ry: Math.round(lerp(C ? 20 : 27, C ? 31 : 44, k)) };
   }
 
-  /* ---------- the device shell (cached: antenna, frame, tail, clips, rivets and the screen glass) ---------- */
-  function mask(w, h, fn) { const m = new Uint8Array(w * h); for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (fn(i, j)) m[j * w + i] = 1; return m; }
-  // city-block distance to the nearest pixel outside the mask (1 = the edge pixel); dir: 0 all, 1 up/left only, 2 down/right only
-  function dist(m, w, h, dir = 0) {
-    const d = new Uint16Array(w * h);
-    for (let i = 0; i < w * h; i++) d[i] = m[i] ? 999 : 0;
-    if (dir !== 2) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (!d[i]) continue; d[i] = Math.min(d[i], (y ? d[i - w] : 0) + 1, (x ? d[i - 1] : 0) + 1); }
-    if (dir !== 1) for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x; if (!d[i]) continue; d[i] = Math.min(d[i], (y < h - 1 ? d[i + w] : 0) + 1, (x < w - 1 ? d[i + 1] : 0) + 1); }
-    return d;
-  }
-  function bodyIn(X, Y) {
-    const d = Math.abs(X);
-    const e = d - 38, yT = e <= 0 ? 0 : e < 8 ? (0.205 * e * e) / 16 : 0.205 * (e - 4);
-    const yB = 160 - 7 * (d / 80) ** 2 + (d < 28 ? 1.3 * (1 - (d / 28) ** 2) : 0);
-    if (Y < yT || Y > yB) return false;
-    const tp = 3 * clamp((Y - 20) / 125, 0, 1), ax = UHW - d - tp;
-    if (ax < 0) return false;
-    if (ax < 12 && Y < 20) return (ax - 12) ** 2 + (Y - 20) ** 2 <= 144;
-    if (ax < 14 && Y > 139) return (ax - 14) ** 2 + (Y - 139) ** 2 <= 196;
-    return true;
-  }
-  const ANT = [[16, -53.5], [19.5, -50], [23.2, -16.5], [9, -16.5], [14.5, 6], [-10.5, 6], [-22.8, -39.2], [11, -30.2], [13.8, -50]];
-  function devBuf(G, FR) {
-    const key = G.W + 'x' + G.H + '|' + FR.b + '|' + FR.hi + '|' + FR.mv;
-    if (D.devC && D.devC.key === key) return D.devC.buf;
-    const { k, DW, hw, TH, yR } = G, B = new PX.Buf(DW, TH), bd = B.d;
-    const ux = (i) => (i + 0.5 - hw) / k, uy = (j) => (j + 0.5 - yR) / k;
-    const px = (u) => hw + Math.round(u * k), py = (v) => yR + Math.round(v * k);
-    const put = (x, y, c) => { if (x >= 0 && y >= 0 && x < DW && y < TH) bd[y * DW + x] = c; };
-    const hiW = Math.max(2, Math.round(2.4 * k)), shW = Math.max(1, Math.round(1.6 * k));
-    // a bevelled shape lit from the top left
-    const bevel = (m, pal) => {
-      const da = dist(m, DW, TH), du = dist(m, DW, TH, 1), dd = dist(m, DW, TH, 2);
-      for (let i = 0; i < m.length; i++) {
-        if (!m[i]) continue;
-        const c = da[i] === 1 ? pal.ink : du[i] <= 1 + hiW ? pal.hi : du[i] === 2 + hiW ? pal.l : dd[i] <= 1 + shW ? pal.dd : dd[i] === 2 + shW ? pal.sh : pal.b;
-        bd[i] = c;
-      }
-    };
-    // 2. the pointed tail: a bright ridge down the middle
-    {
-      const tw = (Y) => (Y < 162 ? 13 : 13 - (Y - 162) * (12.4 / 26));
-      const m = mask(DW, TH, (i, j) => { const Y = uy(j); return Y > 150 && Y < 188.5 && Math.abs(ux(i)) <= tw(Y); });
-      const da = dist(m, DW, TH);
-      for (let i = 0; i < m.length; i++) {
-        if (!m[i]) continue;
-        const X = ux(i % DW), Y = uy((i / DW) | 0), w = Math.max(0.6, tw(Y)), a = (X + 0.4) / w;
-        bd[i] = da[i] === 1 ? FR.ink : Y < 164.5 ? FR.dd : Math.abs(a) < 0.26 ? FR.hi : Math.abs(a) < 0.36 ? FR.l : a < -0.7 || a > 0.62 ? FR.dd : FR.b;
-      }
-    }
-    // 3. the frame: a thick rounded body with the screen well cut out
-    const s = G.scr, sx = s.x - G.ox, sy = s.y - G.top, R = G.R;
-    const insAt = (j) => { const r = R; if (j < r) return r - Math.round(Math.sqrt(r * r - (r - j - 0.5) ** 2)); if (j >= s.h - r) return r - Math.round(Math.sqrt(r * r - (j - (s.h - r) + 0.5) ** 2)); return 0; };
-    const inS = (i, j) => { const jj = j - sy; if (jj < 0 || jj >= s.h) return false; const ins = insAt(jj), ii = i - sx; return ii >= ins && ii < s.w - ins; };
-    const bm = mask(DW, TH, (i, j) => bodyIn(ux(i), uy(j)));
-    const sm = mask(DW, TH, inS);
-    const dO = dist(bm, DW, TH), fm = new Uint8Array(bm.length);
-    for (let i = 0; i < fm.length; i++) fm[i] = bm[i] && !sm[i] ? 1 : 0;
-    // distance to the screen: flood from the screen pixels over the frame
-    const dS = new Uint16Array(fm.length); for (let i = 0; i < fm.length; i++) dS[i] = sm[i] ? 0 : 999;
-    for (let y = 0; y < TH; y++) for (let x = 0; x < DW; x++) { const i = y * DW + x; if (!dS[i]) continue; dS[i] = Math.min(dS[i], (y ? dS[i - DW] : 999) + 1, (x ? dS[i - 1] : 999) + 1); }
-    for (let y = TH - 1; y >= 0; y--) for (let x = DW - 1; x >= 0; x--) { const i = y * DW + x; if (!dS[i]) continue; dS[i] = Math.min(dS[i], (y < TH - 1 ? dS[i + DW] : 999) + 1, (x < DW - 1 ? dS[i + 1] : 999) + 1); }
-    const hiB = Math.max(1, Math.round(1.8 * k));
-    for (let j = 0; j < TH; j++) for (let i = 0; i < DW; i++) {
-      const p = j * DW + i; if (!fm[p]) continue;
-      const X = ux(i), Y = uy(j), o = dO[p], sd = dS[p];
-      const reg = Y < 31 ? 0 : Y > 145 ? 2 : 1;
-      let c;
-      if (o === 1) c = reg === 0 ? FR.ink2 : FR.ink;
-      else if (reg === 0) c = o === 2 ? FR.l : o <= 2 + hiW ? FR.hi : o === 3 + hiW && ((X > -58 && X < -30) || (X > 44 && X < 60)) ? FR.spec : sd === 1 ? FR.d1 : FR.b;
-      else if (reg === 1) c = o === 2 ? FR.dd : o === 3 && k > 0.9 ? FR.sh : sd === 1 ? FR.l : FR.b;
-      else c = sd === 1 ? FR.l : sd <= 1 + hiB ? FR.hi : sd === 2 + hiB ? FR.l : o === 2 ? FR.dd : o === 3 ? FR.sh : FR.b;
-      bd[p] = c;
-    }
-    // 1. the lightning-bolt antenna (its stem runs down behind the eyes into the bridge)
-    bevel(mask(DW, TH, (i, j) => inPoly(ANT, ux(i), uy(j))), { ink: FR.ink2, hi: FR.hi, l: FR.l, b: FR.b, sh: FR.sh, dd: FR.dd });
-    // grooves between the frame segments (top: two each side; bottom: brackets around the Home button)
-    const groove = (x0, y0, x1, y1) => {
-      const n = Math.max(1, Math.round(Math.abs(y1 - y0) * k));
-      for (let t2 = 0; t2 <= n; t2++) {
-        const X = lerp(x0, x1, t2 / n), Y = lerp(y0, y1, t2 / n), x = px(X), y = py(Y), p = y * DW + x;
-        if (p < 0 || p >= fm.length || !fm[p] || dO[p] <= 1 || dS[p] <= 1) continue;
-        put(x, y, FR.dd); if (fm[p + 1] && dO[p + 1] > 1) put(x + 1, y, FR.l);
-      }
-    };
-    for (const sd of [-1, 1]) {
-      groove(sd * 77.5, 12, sd * 74.5, 26); groove(sd * 57.5, 5, sd * 56, 25);
-      groove(sd * 22, 146, sd * 23.5, 159); groove(sd * 17.5, 146, sd * 18.5, 160);
-    }
-    // rivets
-    const rivet = (X, Y, r) => {
-      const x = px(X), y = py(Y), rr = Math.max(1, Math.round(r * k));
-      if (rr === 1) { put(x, y, FR.ink2); put(x + 1, y, FR.dd); put(x, y + 1, FR.dd); put(x + 1, y + 1, FR.dd); return; }
-      UI.disc(B, x, y, rr, FR.ink2); UI.disc(B, x, y, rr - 1, FR.dd);
-      put(x - 1, y - 1, FR.sh); put(x + rr - 1, y + rr - 1, FR.l);
-    };
-    for (const sd of [-1, 1]) {
-      rivet(sd * 72, 15.5, 1.6); rivet(sd * 62.5, 18.5, 1.6);
-      rivet(sd * 69.5, 150.4, 1.1); rivet(sd * 63.6, 151.3, 1.4); rivet(sd * 57, 151.9, 1.6); rivet(sd * 49.5, 152.6, 1.9);
-    }
-    // grey side clips (two blocks on each side, set into the frame)
-    for (const sd of [-1, 1]) {
-      const y0 = py(76), y1 = py(105), ym = py(90.5);
-      const xin = sd < 0 ? px(-83) - 1 : px(83);                         // the screen edge
-      const xo = sd < 0 ? px(-UHW + 2.6) : px(UHW - 2.6) - 1;            // the clip's outer edge (inset from the frame)
-      const xa = Math.min(xin, xo), xb = Math.max(xin, xo);
-      // notch the silhouette: clear the frame outside the clip
-      for (let y = y0 - 1; y <= y1 + 1; y++) for (let x = sd < 0 ? 0 : xb + 1; sd < 0 ? x < xa : x < DW; x++) bd[y * DW + x] = 0;
-      for (let y = y0; y <= y1; y++) for (let x = xa; x <= xb; x++) {
-        const e = x === xa || x === xb || y === y0 || y === y1 || y === ym;
-        let c = e ? 0xff221c1d : y <= y0 + 1 || y === ym + 1 ? 0xff665d5a : (x + y) & 1 ? 0xff49413d : 0xff403835;
-        if (!e && (y === y1 - 1 || y === ym - 1)) c = 0xff332c2a;
-        if (!e && x === (sd < 0 ? xa + 1 : xb - 1) && y > y0 + 1) c = 0xff574e4a;
-        put(x, y, c);
-      }
-      // bright lip of the red frame just under each clip block
-      for (let x = xa + 1; x < xb; x++) { if (bm[(y1 + 2) * DW + x]) put(x, y1 + 2, FR.hi); }
-    }
-    // 4. the screen glass: periwinkle with a soft glow at the top, faint dots, a mauve inner rim
-    const rimT = Math.max(2, Math.round(2.4 * k)), edge = Math.max(1, Math.round(1.5 * k)), band = Math.max(2, Math.round(4.5 * k));
-    const per = Math.max(8, Math.round(14 * k)), dr = k < 1.1 ? 1 : 2;
-    for (let jj = 0; jj < s.h; jj++) {
-      const ins = insAt(jj);
-      for (let ii = ins; ii < s.w - ins; ii++) {
-        const lft = ii - ins, rgt = s.w - 1 - ins - ii, bot = s.h - 1 - jj;
-        let c;
-        if (jj < rimT - 1) c = FR.mv;
-        else if (jj === rimT - 1) c = FR.mvD;
-        else if (lft === 0 || rgt === 0 || bot === 0) c = FR.mvS;
-        else {
-          c = mix(P.scrHi, P.scr, clamp((jj - rimT) / (s.h * 0.42), 0, 1));
-          if (bot <= band) c = P.scrB;
-          else if (lft <= edge || rgt <= edge || jj <= rimT + edge - 1) c = mix(c, P.scr, 0.85);
-          // the faint dot pattern
-          const gx = (ii + per * 10) % per, row = Math.floor((jj + per * 10 - (per >> 1)) / per), gy = (jj + per * 10 - (per >> 1)) % per, ox2 = row & 1 ? per >> 1 : 0;
-          const ddx = Math.abs(((gx - ox2 + per) % per) - (per >> 1)), ddy = Math.abs(gy - (per >> 1));
-          if (bot > band && ddx + ddy <= dr) c = mix(c, P.dot, ddx + ddy < dr ? 0.4 : 0.2);
-        }
-        put(sx + ii, sy + jj, c);
-      }
-    }
-    D.devC = { key, buf: B };
-    return B;
-  }
-  function framePal(S) {
-    if (!S || S.id === 'skin.classic') return FR_CLASSIC;
-    if (frCache[S.id]) return frCache[S.id];
-    const b = S.body, l = S.bodyL, d = S.bodyD, W = 0xffffffff;
-    const ml = mix(b, l, 0.55);
-    return (frCache[S.id] = { b, l: ml, hi: mix(l, W, 0.12), spec: mix(l, W, 0.45), d1: mix(b, d, 0.25), sh: mix(b, d, 0.5), dd: d, ink: mix(d, S.ink, 0.6), ink2: mix(d, S.ink, 0.35), mv: mix(ml, P.scr, 0.45), mvD: mix(d, P.scr, 0.25), mvS: mix(d, P.scr, 0.4) });
-  }
+  /* ---------- the device shell ---------- */
   function drawShell(fb, G, FR, t) {
-    UI.img(fb, devBuf(G, FR), G.ox, G.top, 1);
-    // sparks from the antenna tip
-    const tx = G.X(16), ty = G.Y(-52.5), sp = D.face.spark;
-    if (sp > 0.05) for (let yy = -6; yy <= 6; yy++) for (let xx = -6; xx <= 6; xx++) { const d = Math.hypot(xx, yy); if (d < 6) UI.blend(fb, tx + xx, ty + yy, P.gold, sp * 0.35 * (1 - d / 6)); }
+    const { ox, oy, DW, DH, R, C } = G;
+    shadow(fb, ox + 3, oy + 6, DW, DH + G.tailH - 4, R, 0.32);
+    // grey side clips (tucked behind the frame edges)
+    const chh = Math.round(DH * 0.24), cy = Math.round(oy + DH * 0.4);
+    for (const [sx, side] of [[ox - 4, -1], [ox + DW - 4, 1]]) {
+      UI.rrect(fb, sx, cy, 8, chh, 3, FR.ink);
+      rrFill(fb, sx + 1, cy + 1, 6, chh - 2, 2, (i, j, ins, w, h) => (j === 0 || i === 0 ? P.clipL : j === h - 1 || i === w - 1 ? P.clipD : P.clip));
+      for (let k = 1; k <= 3; k++) { const gy = cy + Math.round((chh * k) / 4); UI.hline(fb, sx + 2, sx + 5, gy, P.clipD); UI.hline(fb, sx + 2, sx + 5, gy + 1, P.clipL); }
+      UI.put(fb, sx + (side < 0 ? 1 : 6), cy + 2, 0xffffffff);
+    }
+    antenna(fb, G, FR, t);
+    tailTip(fb, G, FR, t);
+    // the frame: ink outline, glossy body (bright top band, darker bottom), bevel edges
+    UI.rrect(fb, ox, oy, DW, DH, R, FR.ink);
+    rrFill(fb, ox + 1, oy + 1, DW - 2, DH - 2, R - 1, (i, j, ins, w, h) => {
+      if (j === 0) return FR.ll;
+      if (j <= 2) return FR.l;
+      if (j >= h - 1) return FR.dd;
+      if (j >= h - 3) return FR.d;
+      if (i === ins) return FR.l;
+      if (i === w - 1 - ins) return FR.d;
+      return FR.b;
+    });
+    // gloss streaks along the top-left corner
+    for (let i = 0; i < Math.round(DW * 0.18); i++) if (i % 9 < 6) UI.put(fb, ox + R + 2 + i, oy + 2, 0xffffffff);
+    for (let j = 0; j < 4; j++) UI.put(fb, ox + 3, oy + R + 2 + j, FR.ll);
+    // screen well: dark lip, inner rim
+    const s = G.scr;
+    UI.rrect(fb, s.x - 3, s.y - 3, s.w + 6, s.h + 6, 7, FR.dd);
+    UI.hline(fb, s.x + 3, s.x + s.w - 4, s.y + s.h + 3, FR.l);
+    UI.rrect(fb, s.x - 2, s.y - 2, s.w + 4, s.h + 4, 6, P.rim);
+    // rivets in the corners
+    for (const [rx, ry] of [[ox + 6, oy + 6], [ox + DW - 7, oy + 6], [ox + 6, oy + DH - 7], [ox + DW - 7, oy + DH - 7]]) {
+      UI.disc(fb, rx, ry, C ? 1 : 2, FR.dd); UI.put(fb, rx - (C ? 0 : 1), ry - (C ? 0 : 1), FR.ll); if (!C) UI.put(fb, rx + 1, ry + 1, FR.ink);
+    }
+    // darker segments along the top and bottom
+    const f = faceDims(G), segW = C ? 7 : 9, gapW = C ? 3 : 4;
+    const segs = (x0, x1, y) => { const n = Math.min(4, Math.floor((x1 - x0 + gapW) / (segW + gapW))); if (n < 1) return; let x = Math.round((x0 + x1) / 2 - (n * (segW + gapW) - gapW) / 2); for (let k = 0; k < n; k++, x += segW + gapW) { UI.rrect(fb, x, y, segW, 3, 1, FR.dd); UI.hline(fb, x + 1, x + segW - 2, y + 3, FR.l); } };
+    const ty = oy + Math.round((G.bt - 3) / 2) - 1, ax = ox + Math.round(DW * 0.36);
+    segs(ox + (C ? 40 : 48), ax - 9, ty);
+    segs(f.cx + Math.round(f.rx * 0.78) + 8, ox + DW - (C ? 40 : 48), ty);
+    const by = oy + DH - Math.round(G.bb / 2) - 1, tw = C ? 14 : 19;
+    segs(ox + R + 6, f.cx - tw - 8, by); segs(f.cx + tw + 8, ox + DW - R - 6, by);
+    // bezel keys: back (left) and close (right)
+    const kh = G.bt - (C ? 6 : 7), kw = C ? 21 : 26, ky = oy + 3;
+    bezelKey(fb, 'back', ox + (C ? 11 : 14), ky, kw, kh, 'back', () => back());
+    bezelKey(fb, 'x', ox + DW - (C ? 11 : 14) - kw, ky, kw, kh, 'x', () => close());
+  }
+  function bezelKey(fb, id, x, y, w, h, glyphId, fn) {
+    const pr = D.press && D.press.b && D.press.b.id === id, hv = D.hoverId === id, o = pr ? 1 : 0;
+    UI.rrect(fb, x, y + 1, w, h, 4, 0xff2a0710);
+    UI.rrect(fb, x, y + o, w, h, 4, 0xff2a0710);
+    rrFill(fb, x + 1, y + 1 + o, w - 2, h - 2, 3, (i, j, ins, ww, hh) => (j === 0 ? P.clipL : j >= hh - 1 ? P.clipD : hv ? P.clipL : P.clip));
+    const cx = x + (w >> 1), cy = y + (h >> 1) + o, c = 0xff2a2f48;
+    if (glyphId === 'x') { const r = h > 11 ? 3 : 2; for (let k = -r; k <= r; k++) { UI.put(fb, cx + k, cy + k, c); UI.put(fb, cx + k, cy - k, c); UI.put(fb, cx + k + 1, cy + k, c); UI.put(fb, cx + k + 1, cy - k, c); } }
+    else { const r = h > 11 ? 3 : 2; for (let k = 0; k <= r; k++) UI.vline(fb, cx - 2 + k, cy - k, cy + k, c); UI.rect(fb, cx - 2 + r, cy - 1, r + 2, 2, c); }
+    btn(id, x - 8, y - 10, w + 16, h + 16, fn);
+  }
+  function antenna(fb, G, FR, t) {
+    const { ox, oy, DW, C, antH } = G, ax = ox + Math.round(DW * 0.36), base = oy + 4;
+    const Hh = antH + 4, sx = Hh * 0.62;
+    const pts = [[0, Hh], [-0.28 * sx, Hh * 0.52], [0.24 * sx, Hh * 0.45], [-0.08 * sx, 0]].map(([x, y]) => [x, y]);
+    const r0 = C ? 2.3 : 3, r1 = C ? 1.1 : 1.4, bw = Math.ceil(sx) + 8, x0 = ax - (bw >> 1), y0 = base - Hh - 1;
+    const inside = (x, y) => {
+      const px = x - (ax - x0), py = y - 1;
+      for (let i = 0; i < 3; i++) { const [d, tt] = segDist(px, py, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]); const k = (i + tt) / 3, r = lerp(r0, r1, k); if (d <= r) return true; }
+      return false;
+    };
+    const sp = D.face.spark;
+    blob(fb, x0, y0, bw, Hh + 3, inside, (x, y, top, bot, lef, rig) => {
+      let c = top || lef ? FR.l : bot || rig ? FR.d : FR.b;
+      if (y < 4 && sp > 0) c = mix(c, P.gold, sp * 0.8);
+      return c;
+    }, FR.ink);
+    // sparks from the tip
+    const tx = ax + Math.round(pts[3][0]), ty = y0 + 1;
+    if (sp > 0.05) for (let yy = -5; yy <= 5; yy++) for (let xx = -5; xx <= 5; xx++) { const d = Math.hypot(xx, yy); if (d < 5) UI.blend(fb, tx + xx, ty + yy, P.gold, sp * 0.35 * (1 - d / 5)); }
     for (const z of D.face.zaps) {
       if (z.t < 0) continue;
       const rnd = U.rng(Math.floor(z.seed) + Math.floor(z.t * 30));
       let x = tx, y = ty; const a0 = -Math.PI / 2 + (rnd() - 0.5) * 2.4;
-      for (let k2 = 0; k2 < 4; k2++) { const a = a0 + (rnd() - 0.5) * 1.6, l = 2 + rnd() * 3 * G.k; const nx = x + Math.cos(a) * l, ny = y + Math.sin(a) * l; UI.line(fb, Math.round(x), Math.round(y), Math.round(nx), Math.round(ny), k2 % 2 ? P.gold : 0xffffffff); x = nx; y = ny; }
+      for (let k = 0; k < 4; k++) { const a = a0 + (rnd() - 0.5) * 1.6, l = 2 + rnd() * 2.5; const nx = x + Math.cos(a) * l, ny = y + Math.sin(a) * l; UI.line(fb, Math.round(x), Math.round(y), Math.round(nx), Math.round(ny), k % 2 ? P.gold : 0xffffffff); x = nx; y = ny; }
     }
   }
-  // the round Home button on the bottom frame (the tail button)
+  function tailTip(fb, G, FR, t) {
+    const { ox, oy, DW, DH, C, tailH } = G, cx = ox + (DW >> 1), yb = oy + DH, tw = C ? 14 : 19;
+    const pts = [[-tw, -8], [tw, -8], [tw - 1, 1], [3, tailH - 1], [0, tailH], [-3, tailH - 1], [-tw + 1, 1]];
+    blob(fb, cx - tw - 1, yb - 8, tw * 2 + 2, tailH + 9, (x, y) => inPoly(pts, x - tw - 1, y - 8), (x, y, top, bot, lef, rig) => (lef ? FR.l : rig || bot ? FR.d : y > 10 ? FR.b : FR.b), FR.ink);
+  }
   function homeButton(fb, G, FR, t) {
-    const k = G.k, cx = G.X(0.5), cy = G.Y(152.6), r = Math.max(4, Math.round(6.6 * k));
-    const id = 'homebtn', pr = D.press && D.press.b && D.press.b.id === id, hv = D.hoverId === id, o = pr ? 1 : 0;
-    UI.disc(fb, cx, cy, r, FR.ink2);
-    UI.disc(fb, cx, cy + o, r - 1, pr ? FR.dd : hv ? FR.l : FR.b);
-    for (let a = 0; a < 40; a++) { const an = (a / 40) * Math.PI * 2; if (Math.cos(an - 2.4) > 0.3) UI.put(fb, Math.round(cx + Math.cos(an) * (r - 1.6)), Math.round(cy + o + Math.sin(an) * (r - 1.6)), FR.hi); }
-    UI.ring(fb, cx, cy + o, Math.max(2, Math.round(r * 0.52)), FR.ink2, 1);
-    UI.hline(fb, cx - r + 2, cx - Math.round(r * 0.52) - 1, cy + o, FR.dd); UI.hline(fb, cx + Math.round(r * 0.52) + 1, cx + r - 2, cy + o, FR.dd);
-    UI.disc(fb, cx, cy + o, Math.max(1, Math.round(r * 0.28)), pr ? P.gold : FR.ink2);
-    if (D.page !== 'home' && !D.closing) { const kk = (Math.sin(t * 3) + 1) / 2; if (kk > 0.65) UI.ring(fb, cx, cy + o, r + 1, mix(FR.hi, 0xffffffff, 0.5), 1); }
-    btn(id, cx - r - 12, cy - r - 6, r * 2 + 24, r * 2 + 14, () => { if (D.page === 'home') go('dex', { dir: 1 }); else go('home', { dir: -1 }); });
+    const { ox, oy, DW, DH, C } = G, cx = ox + (DW >> 1), cy = oy + DH - Math.round(G.bb / 2) + 1;
+    const id = 'homebtn', pr = D.press && D.press.b && D.press.b.id === id, hv = D.hoverId === id, r = C ? 5 : 6, o = pr ? 1 : 0;
+    UI.disc(fb, cx, cy + 1, r + 1, FR.ink);
+    UI.orb(fb, cx, cy + o, r, hv ? P.clipL : P.clip, { ol: FR.ink });
+    // a tiny house
+    const hc = D.page === 'home' ? P.red : 0xff3a4058, hy = cy + o - 1;
+    UI.put(fb, cx, hy - 2, hc); UI.hline(fb, cx - 1, cx + 1, hy - 1, hc); UI.hline(fb, cx - 2, cx + 2, hy, hc); UI.rect(fb, cx - 1, hy + 1, 3, 2, hc);
+    if (D.page !== 'home' && !D.closing) { const k = (Math.sin(t * 3) + 1) / 2; if (k > 0.6) UI.ring(fb, cx, cy + o, r + 2, mix(FR.l, 0xffffffff, 0.5), 1); }
+    btn(id, cx - r - 10, cy - r - 8, r * 2 + 20, r * 2 + 14, () => { if (D.page === 'home') go('dex', { dir: 1 }); else go('home', { dir: -1 }); });
   }
 
-  /* ---------- the screen: power-on flash over the (cached) glass ---------- */
+  /* ---------- the screen ---------- */
   function drawScreen(fb, G, pw, t) {
     const s = G.scr;
-    if (pw >= 1) return;
-    const k = U.ease.outCubic(pw), bh = Math.max(1, Math.round(s.h * k)), y0 = s.y + Math.round((s.h - bh) / 2);
-    rrFill(fb, s.x + 1, s.y + 2, s.w - 2, s.h - 3, G.R, (i, j) => { const Y = s.y + 2 + j; if (Y < y0 || Y >= y0 + bh) return P.off; return pw < 0.5 ? mix(0xffffffff, P.scr, pw * 2) : 0; });
-    if (pw > 0) { UI.hline(fb, s.x + 4, s.x + s.w - 5, y0, 0xffffffff); UI.hline(fb, s.x + 4, s.x + s.w - 5, y0 + bh - 1, 0xffffffff); }
+    if (pw <= 0) { UI.rrect(fb, s.x, s.y, s.w, s.h, 5, P.off); return; }
+    const gx = s.w - 90;
+    rrFill(fb, s.x, s.y, s.w, s.h, 5, (i, j) => {
+      let c = P.scr;
+      if ((j & 3) === 1 && ((i + (((j >> 2) & 1) << 1)) & 3) === 0) c = P.dot;
+      const g = i + j * 0.9 - gx; if (g > 0 && g < 12) c = mix(c, 0xffffffff, 0.07);
+      if (j < 2) c = mix(c, P.scrDD, j === 0 ? 0.4 : 0.2);
+      else if (j >= s.h - 1) c = mix(c, 0xffffffff, 0.2);
+      return c;
+    });
+    if (pw < 1) {
+      // CRT power-on: a bright line opens up into the screen
+      const k = U.ease.outCubic(pw), bh = Math.max(1, Math.round(s.h * k)), y0 = s.y + Math.round((s.h - bh) / 2);
+      rrFill(fb, s.x, s.y, s.w, s.h, 5, (i, j) => { const Y = s.y + j; if (Y < y0 || Y >= y0 + bh) return P.off; return pw < 0.5 ? mix(0xffffffff, P.scr, pw * 2) : 0; });
+      UI.hline(fb, s.x + 4, s.x + s.w - 5, y0, 0xffffffff); UI.hline(fb, s.x + 4, s.x + s.w - 5, y0 + bh - 1, 0xffffffff);
+    }
   }
 
-  /* ---------- Rotom's face: a cyan disc with a dotted rim and a toothy grin ---------- */
+  /* ---------- Rotom's face: cyan semicircle, big eyes on a black bridge, toothy grin ---------- */
   function drawFace(fb, G, t) {
-    const F = D.face, f = faceDims(G), k = G.k, s = G.scr;
+    const F = D.face, f = faceDims(G), { cx, top, rx, ry } = f, C = G.C;
     const pop = F.pop < 1 ? U.ease.outBack(F.pop) : 1;
     if (pop <= 0.02) return;
-    const Rr = Math.max(3, f.r * pop), cx = f.cx, cy = f.cy;
-    const x0 = Math.floor(cx - Rr - 1), x1 = Math.ceil(cx + Rr + 1), y1 = Math.ceil(cy + Rr + 1);
-    const between = Math.round(9 * k);
-    for (let y = cy; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      // inside the screen, or between the eyes (the face covers the frame's lip there)
-      if (!(y >= s.y + 1 && x > s.x && x < s.x + s.w - 1) && !(Math.abs(x - cx + 0.5) < between)) continue;
-      const dx = x + 0.5 - cx, dy = y + 0.5 - cy, r = Math.hypot(dx, dy), e = Rr - r;
-      if (e < 0) continue;
-      let c;
-      if (e < 1) { if ((x + y) & 1) continue; c = P.faceO; }
-      else if (e < 2) c = P.faceDD;
-      else if (e < (2.4 + 3.6 * (dx / (r || 1)) ** 2) * k) c = P.faceD;
-      else c = P.face;
-      UI.put(fb, x, y, c);
-    }
-    drawMouth(fb, G, f, pop, t);
-  }
-  // the grin of the reference: a slanted crescent of big white teeth, rising to the right
-  const MOUTH_U = [[-7.2, 32.4], [-3.5, 32.5], [0.5, 31.8], [4, 29.6], [6.4, 27.3], [8.2, 26.6]];
-  const MOUTH_L = [[-7.4, 33.6], [-6, 35.4], [-3, 36.9], [1, 36.5], [4.5, 34.5], [7, 31.4], [8.4, 28.2]];
-  const lineAt = (pts, x) => { if (x <= pts[0][0]) return pts[0][1]; for (let i = 1; i < pts.length; i++) if (x <= pts[i][0]) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0); } return pts[pts.length - 1][1]; };
-  function drawMouth(fb, G, f, pop, t) {
-    const F = D.face, m = F.mood, cx = f.cx, cy = f.cy;
-    const happy = m === 'happy' || m === 'wink' || m === 'love';
-    const talk = F.talk ? Math.abs(Math.sin(D.rt * 17)) : 0;
-    const sc = (f.r / 33) * pop * (happy ? 1.22 : 1);
-    const out = 0xff483224, lit = 0xffded6bf;
-    if (m === 'wow') { const x = Math.round(cx + 1 * sc), y = Math.round(cy + 18 * sc), r = Math.max(2, Math.round(3.6 * sc)); UI.disc(fb, x, y, r + 1, out); UI.disc(fb, x, y, r, P.mouth); if (r > 2) UI.hline(fb, x - 1, x + 1, y + r - 1, P.tongue); return; }
-    if (m === 'sad' || m === 'dizzy') {
-      const w = Math.round(7.5 * sc), y0 = cy + 20 * sc;
-      for (let i = -w; i <= w; i++) { const kx = i / w, yy = m === 'sad' ? Math.round(kx * kx * 3 * sc) : Math.round(Math.sin(i * 0.9 + D.rt * 8)); UI.put(fb, cx + i, Math.round(y0 + yy), out); UI.put(fb, cx + i, Math.round(y0 + yy + 1), out); }
-      return;
-    }
-    const open = happy ? 0.75 + talk * 0.25 : talk, drop = open * 3.4;
-    const tx = (x) => cx + (x + 1.2) * sc, ty = (y) => cy + (y - 15) * sc;
-    const xu0 = MOUTH_L[0][0], xu1 = MOUTH_L[MOUTH_L.length - 1][0];
-    const yTop = (X) => (happy ? lineAt(MOUTH_U, X) * 0.4 + 31 * 0.6 - (X * 0.15) : lineAt(MOUTH_U, X));
-    const yBot = (X) => lineAt(MOUTH_L, X) + drop * (0.5 + 0.5 * clamp((8 - X) / 12, 0, 1)) + (happy ? 1.2 : 0);
-    const inside = (x, y) => { const X = (x - cx) / sc - 1.2, Y = (y - cy) / sc + 15; return X >= xu0 && X <= xu1 && Y >= yTop(X) && Y <= yBot(X) ? [X, Y] : null; };
-    const band = 2.5, xa = Math.floor(tx(xu0) - 2), xb = Math.ceil(tx(xu1) + 2), ya = Math.floor(ty(26) - 3), yb = Math.ceil(ty(38 + drop + 2));
-    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
-      const q = inside(x + 0.5, y + 0.5);
-      if (!q) {
-        if (inside(x + 1.5, y + 0.5) || inside(x - 0.5, y + 0.5) || inside(x + 0.5, y + 1.5) || inside(x + 0.5, y - 0.5)) UI.put(fb, x, y, out);
-        else if (inside(x + 0.5, y + 2.5) && sc > 0.8) UI.put(fb, x, y, P.faceDD);   // a soft shadow over the teeth
-        continue;
-      }
-      const [X, Y] = q, fT = (Y - yTop(X)) * sc, fB = (yBot(X) - Y) * sc, bw = band * sc;
-      let c = 0xffffffff;
-      if (open > 0.12 && fT > bw && fB > bw * 0.85) c = happy && fB < bw * 1.9 && Math.abs(X) < 4 ? P.tongue : P.mouth;
-      else if (fB <= bw * 0.85 + (open > 0.12 ? 0 : 99) && fT > bw && open > 0.12) c = 0xffffffff;
-      if (c === 0xffffffff) {
-        const lower = open > 0.12 ? fB <= bw * 0.85 : fT > (yBot(X) - yTop(X)) * sc * 0.45;
-        const seps = lower ? [-2.8, 2.2] : [-1.2, 3.5];
-        for (const sx of seps) if (Math.abs(X - sx) * sc < 0.5) c = out;
-        if (c !== out && ((lower && fB < 1) || (!lower && open > 0.12 && fT > bw - 1 && fT <= bw))) c = lit;
-      }
-      UI.put(fb, x, y, c);
-    }
-  }
-  // the eyes and the dark bridge sit ON the top frame, over the screen's top edge
-  function drawEyes(fb, G, t) {
-    const F = D.face, k = G.k, cx = G.cx, oy = G.oy, m = F.mood;
-    const X = (u) => cx + u * k, Y = (v) => oy + v * k;
-    const OUT = 0xff231d1e, W = 0xffffffff, LIT = 0xffded8c2, PUP = 0xff241e1f;
-    // the bridge: a thick grey ring with a dark core (the antenna rises out of it), open only at the bottom
-    {
-      const bcx = cx, bcy = Y(16.2), rx = 10 * k, ry = 13 * k, irx = 5.8 * k, iry = 7.6 * k;
-      for (let y = Math.floor(bcy - ry - 1); y <= Math.ceil(bcy + 1.2 * k); y++) for (let x = Math.floor(bcx - rx - 1); x <= Math.ceil(bcx + rx + 1); x++) {
-        const dx = x + 0.5 - bcx, dy0 = y + 0.5 - bcy, dy = Math.min(0, dy0), e = (dx / rx) ** 2 + (dy / ry) ** 2, ei = (dx / irx) ** 2 + (dy / iry) ** 2;
-        if (e > 1) continue;
-        if (dy0 > -2.4 * k && Math.abs(dx) < 2.6 * k + Math.max(0, dy0 + 2.4 * k) * 1.2) continue;   // the little opening onto the face
-        const edge = (dx / (rx - 1)) ** 2 + (dy / (ry - 1)) ** 2 > 1;
-        let c;
-        if (edge) c = OUT;
-        else if (ei < 1) c = ei > 0.6 ? 0xff372f2d : 0xff272120;
-        else { const up = -dy / ry; c = up > 0.74 ? 0xff7c6e5f : up > 0.5 ? 0xff5a534b : 0xff463d3a; if (ei < 1.3) c = 0xff3c3431; }
-        UI.put(fb, x, y, c);
+    const RX = Math.max(3, Math.round(rx * pop)), RY = Math.max(2, Math.round(ry * pop));
+    // cyan semicircle hanging from the top of the screen
+    for (let y = 0; y <= RY; y++) {
+      const hw = Math.floor(RX * Math.sqrt(Math.max(0, 1 - (y / (RY + 0.5)) ** 2)));
+      for (let x = -hw; x <= hw; x++) {
+        const d = Math.hypot(x / (RX + 0.5), y / (RY + 0.5));
+        let c = d > 0.955 || Math.abs(x) >= hw ? P.faceDD : d > 0.86 ? P.faceD : P.face;
+        if (y === RY) c = P.faceDD;
+        if (d < 0.78 && x < -RX * 0.3 && y > 2 && y < RY * 0.5 && ((x + y) & 3) === 0) c = P.faceL;
+        UI.put(fb, cx + x, top + y, c);
       }
     }
-    // gaze
-    const lx = F.lx, ly = F.ly;
-    D.eyeAt = [cx, Math.round(Y(12))];
-    const blink = F.blinkT > 0 || F.pop < 0.9 || (D.t < 0.78 && !D.closing);
+    UI.hline(fb, cx - RX + 2, cx + RX - 2, top, P.faceDD);
+    // mouth: a wide toothy grin (talks, gasps, frowns)
+    const m = F.mood, happy = m === 'happy' || m === 'wink' || m === 'love';
+    const mw = Math.round(RX * (happy ? 0.62 : 0.52)), my = top + Math.round(RY * 0.62);
+    let open = F.talk ? 0.3 + 0.7 * Math.abs(Math.sin(D.rt * 17)) : happy ? 0.9 : 0.55;
+    const mhMax = Math.max(3, Math.round(RY * 0.3));
+    if (m === 'wow') { const r = Math.max(2, Math.round(RY * 0.14)); UI.disc(fb, cx, my + 1, r + 1, P.eye); UI.disc(fb, cx, my + 1, r, P.mouth); }
+    else if (m === 'sad' || m === 'dizzy') {
+      for (let x = -mw + 2; x <= mw - 2; x++) { const k = x / mw, yy = m === 'sad' ? Math.round(k * k * 3) : Math.round(Math.sin(x * 0.9 + D.rt * 8)); UI.put(fb, cx + x, my + 2 - yy, P.eye); UI.put(fb, cx + x, my + 3 - yy, P.eye); }
+    } else {
+      const mh = Math.max(2, Math.round(mhMax * open));
+      const edge = (x) => Math.round((x / mw) ** 2 * (happy ? 3 : 2));
+      for (let x = -mw; x <= mw; x++) {
+        const k = x / mw, e = edge(x), yTop = my - e, yBot = my + Math.round(mh * Math.sqrt(Math.max(0, 1 - k * k)));
+        for (let y = yTop - 1; y <= yBot + 1; y++) {
+          const inner = y >= yTop && y <= yBot && Math.abs(x) < mw;
+          let c = inner ? P.mouth : P.eye;
+          if (inner) {
+            const toothRow = C ? 1 : 2;
+            if (y < yTop + toothRow + (Math.abs(x) < mw - 2 ? 0 : -1) && ((x + mw) % 4 !== 0)) c = 0xffffffff;
+            else if (mh > 4 && y > yBot - 2 && Math.abs(x) < mw * 0.45) c = P.tongue;
+          }
+          UI.put(fb, cx + x, y, c);
+        }
+      }
+    }
+    // eyes + the black bridge between them (they sit on the seam, over the bezel lip)
+    const ex = Math.round(RX * 0.42), erx = Math.max(2, Math.round(RX * 0.2)), ery = Math.max(2, Math.round(RY * 0.34 * (C ? 1 : 1))), ey = top + ery - 2;
+    D.eyeAt = [cx, ey];
+    UI.rect(fb, cx - ex, ey - Math.round(ery * 0.55), ex * 2, Math.round(ery * 1.1), P.eye);
+    const blink = F.blinkT > 0 || F.pop < 0.9;
     for (const sd of [-1, 1]) {
-      // tall ovals whose tops lean outwards; the pupil is a wide dark band across the middle
-      const ex = X(sd * 18.9), ey = Y(10.4), rx = 9.6 * k, ry = 16 * k, th = sd * 0.32, cs = Math.cos(th), sn = Math.sin(th);
+      const ecx = cx + sd * ex;
+      ellipse(fb, ecx, ey, erx + 2, ery + 2, P.eye);
       let em = m;
       if (m === 'wink' && sd === 1) em = 'shut';
       if (blink && em !== 'x') em = 'shut';
-      const sq = em === 'shut' ? 0.16 : 1;
-      const loc = (x, y) => { const dx = x - ex, dy = y - ey; return [dx * cs + dy * sn, -dx * sn + dy * cs]; };
-      const inE = (x, y) => { const [a, b] = loc(x, y); return (a / rx) ** 2 + (b / (ry * sq)) ** 2 <= 1; };
-      const x0 = Math.floor(ex - ry - 3), x1 = Math.ceil(ex + ry + 3), y0 = Math.floor(ey - ry - 3), y1 = Math.ceil(ey + ry + 3);
-      const small = em === 'wow', down = em === 'sad' ? 4 : 0;
-      // the pupil in the eye's own frame (a: across, b: along the oval)
-      const pa = -sd * 0.6 + lx * 2 * (small ? 1.8 : 1) + (em === 'dizzy' ? Math.cos(D.rt * 9) * 2.5 : 0);
-      const pb = -0.6 + ly * 3.4 + down + (em === 'dizzy' ? Math.sin(D.rt * 9) * 3 : 0);
-      const pra = (small ? 3.4 : 5.7) * k, prb = (small ? 3.8 : 5.9) * k;
-      const happyE = em === 'happy' || em === 'love' || (em === 'wink' && sd !== 1);
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-        const px2 = x + 0.5, py2 = y + 0.5;
-        if (!inE(px2, py2)) { if (inE(px2 + 1, py2) || inE(px2 - 1, py2) || inE(px2, py2 + 1) || inE(px2, py2 - 1)) UI.put(fb, x, y, OUT); continue; }
-        const [a, b] = loc(px2, py2);
-        if (em === 'shut') { UI.put(fb, x, y, b > 0 ? LIT : W); continue; }
-        if (happyE) {
-          // "^" eyes: the lower part of the oval is hidden behind a second oval
-          const e2 = (bb) => (a / (rx * 1.05)) ** 2 + ((bb - ry * 0.66) / (ry * 0.8)) ** 2 <= 1;
-          if (e2(b)) { if (!e2(b - 1.5)) UI.put(fb, x, y, OUT); continue; }
-          UI.put(fb, x, y, (a / rx) ** 2 + (b / ry) ** 2 > 0.72 && b > -ry * 0.3 ? LIT : W); continue;
-        }
-        let c = b > ry * 0.78 || ((a / rx) ** 2 + (b / ry) ** 2 > 0.84 && b > ry * 0.25) ? LIT : W;
-        if (em === 'x') { const r = rx * 0.7; if (Math.abs(Math.abs(a) - Math.abs(b)) < 1.1 && Math.abs(a) < r) c = PUP; UI.put(fb, x, y, c); continue; }
-        const qa = a - pa * k, qb = b - pb * k, pe = (qa / pra) ** 2 + (qb / prb) ** 2;
-        if (pe <= 1) c = PUP;
-        else if (!small && em !== 'sad' && -sd * qa > 0 && qb > -3 * k && qb < -1 * k) c = PUP;   // the band towards the bridge
-        else if (!small && em !== 'sad' && ((qa - sd * 4.8 * k) / (2.2 * k)) ** 2 + ((qb - 4.2 * k) / (1.5 * k)) ** 2 <= 1) c = PUP;   // the little tail, low on the outer side
-        if (c === PUP && !small && pe <= 1 && ((qa - sd * 2.1 * k) / (2 * k)) ** 2 + ((qb - 3.1 * k) / (1.4 * k)) ** 2 <= 1) c = W;   // the glint low in the pupil
-        if (em === 'sad' && b < -ry * 0.42) c = OUT;
-        UI.put(fb, x, y, c);
+      if (em === 'shut') { for (let x = -erx; x <= erx; x++) { const yy = Math.round((x / erx) ** 2 * 2); UI.put(fb, ecx + x, ey + 1 - yy, P.lid); UI.put(fb, ecx + x, ey + 2 - yy, P.lid); } continue; }
+      if (em === 'happy' || em === 'love' || em === 'wink') {
+        // "^" happy eyes
+        ellipse(fb, ecx, ey, erx, ery, 0xffffffff);
+        ellipse(fb, ecx, ey + Math.max(2, Math.round(ery * 0.55)), erx + 1, ery, P.eye);
+        continue;
       }
+      ellipse(fb, ecx, ey, erx, ery, 0xffffffff);
+      UI.hline(fb, ecx - erx + 2, ecx + erx - 2, ey + ery, hex('#c8d2f0'));
+      if (em === 'x') { const r = Math.min(erx, ery) - 1; for (let k = -r; k <= r; k++) { UI.put(fb, ecx + k, ey + k, P.eye); UI.put(fb, ecx + k, ey - k, P.eye); UI.put(fb, ecx + k + 1, ey + k, P.eye); UI.put(fb, ecx + k + 1, ey - k, P.eye); } continue; }
+      const small = em === 'wow';
+      const prx = Math.max(1, Math.round(erx * (small ? 0.32 : 0.5))), pry = Math.max(1, Math.round(ery * (small ? 0.4 : 0.62)));
+      const px = ecx + Math.round(F.lx * (erx - prx - 0.5)), py = ey + Math.round(F.ly * (ery - pry - 0.5));
+      ellipse(fb, px, py, prx, pry, P.eye);
+      UI.put(fb, px - Math.max(0, prx - 1), py - Math.max(0, pry - 1), 0xffffffff);
+      if (prx > 2) { UI.put(fb, px - prx + 2, py - pry + 1, 0xffffffff); UI.put(fb, px - prx + 1, py - pry + 2, 0xffffffff); }
+      if (em === 'sad') UI.rect(fb, ecx - erx - 1, ey - ery - 1, erx * 2 + 3, Math.round(ery * 0.8), P.eye);
     }
   }
-  /* ---------- around the device: title + back on the left, Rotom's speech + close on the right ---------- */
-  const OL = 0xff321410;
-  function sideLayout(G) {
-    const lw = G.ox - 10, rw = G.W - (G.ox + G.DW) - 10;
-    return { lr: lw >= 64 && rw >= 64, lx: 6, lw, rx: G.ox + G.DW + 6, rw };
-  }
-  function drawSide(fb, G, t) {
-    const L = sideLayout(G), pg = D.page;
-    // close (always): a round red X in the top-right corner
-    {
-      const r = G.C ? 7 : 8, cx = G.W - r - 5, cy = r + 5, id = 'x', pr = D.press && D.press.b && D.press.b.id === id, hv = D.hoverId === id;
-      UI.disc(fb, cx, cy + 1, r + 1, OL); UI.disc(fb, cx, cy + (pr ? 1 : 0), r, 0xffffffff); UI.disc(fb, cx, cy + (pr ? 1 : 0), r - 1, hv ? P.red : P.redD);
-      const q = r - 4, yy = cy + (pr ? 1 : 0);
-      for (let i = -q; i <= q; i++) { UI.put(fb, cx + i, yy + i, 0xffffffff); UI.put(fb, cx + i, yy - i, 0xffffffff); UI.put(fb, cx + i + 1, yy + i, 0xffffffff); UI.put(fb, cx + i + 1, yy - i, 0xffffffff); }
-      btn(id, cx - r - 8, cy - r - 6, r * 2 + 14, r * 2 + 14, () => close());
+  function ellipse(fb, cx, cy, rx, ry, c) { for (let y = -ry; y <= ry; y++) { const hw = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y / (ry + 0.3)) ** 2))); UI.hline(fb, cx - hw, cx + hw, cy + y, c); } }
+
+  /* ---------- header: page title on the left, Rotom's speech on the right ---------- */
+  function drawHeader(fb, G, t) {
+    const s = G.scr, f = faceDims(G), C = G.C, pg = D.page;
+    if (pg === 'home') return drawHomeHeader(fb, G, f, t);
+    const x = s.x + 6, y = s.y + (C ? 4 : 5), gs = C ? 12 : 16;
+    UI.img(fb, glyph(pageIcon(pg), gs), x, y + (C ? 0 : 0), 1);
+    const maxW = f.cx - f.rx - 6 - (x + gs + 4);
+    Font.draw(fb, fit(pageTitle(pg), maxW, 'title'), x + gs + 4, y + (C ? 1 : 3), P.text, { font: 'title' });
+    const sub = SUB[pg] ? SUB[pg]() : '';
+    if (sub) Font.draw(fb, fit(sub, f.cx - f.rx - 6 - x), x, y + (C ? 13 : 18), P.dim, { font: 'small' });
+    if (!drawBubble(fb, G, f, t)) {
+      const r = RIGHT[pg] ? RIGHT[pg]() : '';
+      if (r) Font.draw(fb, r, s.x + s.w - 6, y + (C ? 3 : 5), P.dim, { font: 'small', align: 'right' });
     }
-    const title = pageTitle(pg), sub = SUB[pg] ? SUB[pg]() : '', right = RIGHT[pg] ? RIGHT[pg]() : '';
-    if (L.lr) {
-      let y = Math.max(G.top + 2, G.oy - Math.round(22 * G.k));
-      const x = L.lx + 4, w = L.lw - 6;
-      if (pg !== 'home') { sideBtn(fb, 'back', x, y, pg === 'entry' ? '{left} POKéDEX' : '{left} HOME', () => back()); y += 20; }
-      UI.img(fb, glyph(pageIcon(pg), 14), x, y + 1, 1);
-      Font.draw(fb, fit(title, w - 18, 'title'), x + 18, y + 2, 0xffffffff, { font: 'title', outline: OL });
-      y += 20;
-      const lines = [];
-      if (pg === 'home') { const hr = Game.hour(); lines.push((hr === 'night' || hr === 'dusk' ? '{moon} ' : '{sun} ') + hr.toUpperCase()); if (Game.areaId) lines.push(areaName(Game.areaId).toUpperCase()); if (hasP()) lines.push('LV ' + Progress.level() + ' ' + rank().toUpperCase()); lines.push('{coin} ' + Save.data.points); }
-      else { if (sub) for (const s2 of Font.wrap(sub, 'small', w)) lines.push(s2); if (right) lines.push(right); }
-      for (const ln of lines.slice(0, 6)) { Font.draw(fb, fit(ln, w), x, y, 0xffffece8, { font: 'small', outline: OL }); y += 10; }
-    } else {
-      // no room at the sides (portrait): a compact title bar at the top left
-      const x = 5, y = 4;
-      if (pg !== 'home') sideBtn(fb, 'back', x, y, '{left}', () => back());
-      Font.draw(fb, fit(title + (sub ? '  ' + sub : ''), G.W - 60), x + (pg !== 'home' ? 22 : 0), y + 4, 0xffffffff, { font: 'small', outline: OL });
-    }
-    drawBubble(fb, G, L, t);
   }
-  function sideBtn(fb, id, x, y, label, fn) {
-    const pr = D.press && D.press.b && D.press.b.id === id, hv = D.hoverId === id, w = Font.measure(label, 'small') + 12, h = 13, o = pr ? 1 : 0;
-    UI.rrect(fb, x, y + 1, w, h, 5, OL);
-    UI.rrect(fb, x, y + o, w, h, 5, OL);
-    UI.rrect(fb, x + 1, y + 1 + o, w - 2, h - 2, 4, hv ? 0xffffffff : 0xffffece8);
-    UI.hline(fb, x + 3, x + w - 4, y + h - 2 + o, 0xffe8c4b8);
-    Font.draw(fb, label, x + w / 2, y + 4 + o, P.text, { font: 'small', align: 'center' });
-    btn(id, x - 4, y - 4, w + 8, h + 8, fn);
-  }
-  function drawBubble(fb, G, L, t) {
-    const Ln = D.line; if (!Ln || Ln.t < 0) return false;
-    if (Ln.life - Ln.t < 0.3 && Math.floor(Ln.t * 20) % 2) return true;
-    let x0, y0, w, tail;
-    if (L.lr) { x0 = L.rx + 4; w = Math.min(L.rw - 6, 170); y0 = Math.max(G.C ? 22 : 26, G.oy - Math.round(14 * G.k)); tail = 'left'; }
-    else { w = Math.min(G.W - 16, 220); x0 = Math.round((G.W - w) / 2); y0 = G.bottom() + 4; tail = 'up'; if (y0 + 30 > G.H) { y0 = G.scr.y + G.scr.h - 34; tail = 'none'; } }
-    const lines = Font.wrap(Ln.text.replace(/★/g, '{star}'), 'small', w - 12).slice(0, L.lr ? 7 : 4);
-    const bw = Math.min(w, Math.max(...lines.map((l) => Font.measure(l, 'small'))) + 12), bh = lines.length * 9 + 7;
-    const by = y0 + (Ln.t < 0.1 ? Math.round((1 - Ln.t / 0.1) * 3) : 0);
-    if (tail === 'up') x0 = Math.round((G.W - bw) / 2);
-    UI.rrect(fb, x0 + 1, by + 2, bw, bh, 5, 0x80321410);
-    UI.rrect(fb, x0, by, bw, bh, 5, OL);
-    UI.rrect(fb, x0 + 1, by + 1, bw - 2, bh - 2, 4, P.white);
-    UI.hline(fb, x0 + 4, x0 + bw - 5, by + bh - 2, 0xfff4d8d0);
-    if (tail === 'left') {
-      // a tail pointing back at Rotom
-      const ty = by + Math.min(bh - 6, 7);
-      for (let kk = 1; kk <= 4; kk++) { UI.vline(fb, x0 - kk + 1, ty - (4 - kk), ty + (4 - kk) - 1, kk === 4 ? OL : P.white); UI.put(fb, x0 - kk + 1, ty - (5 - kk), OL); UI.put(fb, x0 - kk + 1, ty + (4 - kk), OL); }
-    } else if (tail === 'up') {
-      const tx = x0 + (bw >> 1);
-      for (let kk = 1; kk <= 4; kk++) { UI.hline(fb, tx - (4 - kk), tx + (4 - kk), by - kk + 1, kk === 4 ? OL : P.white); UI.put(fb, tx - (5 - kk), by - kk + 1, OL); UI.put(fb, tx + (5 - kk), by - kk + 1, OL); }
+  function drawHomeHeader(fb, G, f, t) {
+    const s = G.scr, C = G.C, x = s.x + 7, y = s.y + (C ? 5 : 7);
+    const hr = Game.hour();
+    Font.icon(fb, hr === 'night' || hr === 'dusk' ? 'moon' : 'sun', x, y, 1);
+    Font.draw(fb, hr.toUpperCase(), x + 11, y + 1, P.text, { font: 'small' });
+    Font.draw(fb, fit(Game.areaId ? areaName(Game.areaId) : '', f.cx - f.rx - 8 - x), x, y + 11, P.dim, { font: 'small' });
+    const lv = hasP() ? Progress.level() : null;
+    if (!drawBubble(fb, G, f, t)) {
+      const rx = s.x + s.w - 7;
+      Font.draw(fb, (lv ? 'LV ' + lv + '  ' : '') + rank().toUpperCase(), rx, y + 1, P.text, { font: 'small', align: 'right' });
+      Font.draw(fb, '{coin} ' + Save.data.points, rx, y + 11, P.dim, { font: 'small', align: 'right' });
     }
-    let left = Math.floor(Ln.t * 42);
-    lines.forEach((ln, i) => { if (left <= 0) return; const part = ln.slice(0, left); left -= ln.length; Font.draw(fb, part, x0 + 6, by + 4 + i * 9, P.text, { font: 'small' }); });
+  }
+  function drawBubble(fb, G, f, t) {
+    const L = D.line; if (!L || L.t < 0) return false;
+    const s = G.scr, C = G.C, x0 = f.cx + f.rx + 6, x1 = s.x + s.w - 5, w = x1 - x0;
+    if (w < 40) return false;
+    const lines = Font.wrap(L.text.replace(/★/g, '{star}'), 'small', w - 12).slice(0, 2);
+    const bw = Math.min(w, Math.max(...lines.map((l) => Font.measure(l, 'small'))) + 12), bh = lines.length * 8 + 6;
+    const hh = D.page === 'home' ? Math.min(f.ry, C ? 26 : 34) : G.hh;
+    const by = s.y + Math.max(2, Math.round((hh - bh) / 2)) - 1 + (L.t < 0.1 ? Math.round((1 - L.t / 0.1) * 3) : 0);
+    if (L.life - L.t < 0.3 && Math.floor(L.t * 20) % 2) return true;
+    UI.rrect(fb, x0 + 1, by + 1, bw, bh, 4, P.scrD);
+    UI.rrect(fb, x0, by, bw, bh, 4, P.rim);
+    UI.rrect(fb, x0 + 1, by + 1, bw - 2, bh - 2, 3, P.white);
+    // tail pointing at Rotom
+    const ty = by + (bh >> 1);
+    for (let k = 1; k <= 3; k++) { UI.vline(fb, x0 - k + 1, ty - (3 - k), ty + (3 - k), k === 3 ? P.rim : P.white); UI.put(fb, x0 - k + 1, ty - (4 - k), P.rim); UI.put(fb, x0 - k + 1, ty + (4 - k), P.rim); }
+    let left = Math.floor(L.t * 42);
+    lines.forEach((ln, i) => { if (left <= 0) return; const part = ln.slice(0, left); left -= ln.length; Font.draw(fb, part, x0 + 6, by + 4 + i * 8, P.text, { font: 'small' }); });
     return true;
   }
   const SUB = {
-    dex: () => { const c = counts(); return 'SEEN ' + c.seen + ' · CAUGHT ' + c.caught + '/' + c.all; },
+    dex: () => { const c = counts(); return 'SEEN ' + c.seen + '  CAUGHT ' + c.caught + ' / ' + c.all; },
     entry: () => { const d = DexData.S[D.sel]; return d ? 'NO.' + pad3(d.no) + ' ' + d.name.toUpperCase() : ''; },
     ency: () => (D.tab.ency === 'beh' ? 'BEHAVIOURS & RARE MOMENTS' : 'HABITATS OF HOENN'),
     quests: () => { const q = questList(); return q.filter((e) => e.s === 'ready').length + ' READY · ' + q.filter((e) => e.s === 'active').length + ' ACTIVE'; },
@@ -939,9 +783,9 @@ const Dex = (() => {
 
   /* ---------- app icons: tiny vector painter → cached pixel glyphs ---------- */
   const ICO = new Map();
-  const W_ = 0xfffff9f8;
-  function glyph(id, n, olc, ref) {
-    const key = id + '|' + n + '|' + (olc || 0) + (ref ? '|r' : '');
+  const W_ = 0xfff8f9ff;
+  function glyph(id, n) {
+    const key = id + '|' + n;
     if (ICO.has(key)) return ICO.get(key);
     const b = new PX.Buf(n, n), d = b.d;
     const S = (fn) => { for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const c = fn((i + 0.5) / n, (j + 0.5) / n); if (c) d[j * n + i] = c; } };
@@ -1054,192 +898,78 @@ const Dex = (() => {
         fill(rbox(0.3, 0.6, 0.7, 0.84, 0.06), H('#ffb866'));
         fill(box(0.45, 0.44, 0.55, 0.56), H('#ffd23a'));
       },
-      music() {
-        fill(ell(0.3, 0.74, 0.15, 0.12), W_); fill(ell(0.74, 0.64, 0.15, 0.12), W_);
-        fill(box(0.4, 0.2, 0.47, 0.74), W_); fill(box(0.84, 0.12, 0.9, 0.64), W_);
-        fill(poly([[0.4, 0.2], [0.9, 0.08], [0.9, 0.26], [0.4, 0.38]]), W_);
-        fill(ell(0.26, 0.71, 0.05, 0.03), H('#ffe0a0'));
-      },
-      games() {
-        fill(rbox(0.06, 0.3, 0.94, 0.8, 0.18), W_);
-        fill(box(0.2, 0.5, 0.38, 0.58), H('#3a3a5a')); fill(box(0.25, 0.44, 0.33, 0.64), H('#3a3a5a'));
-        fill(ell(0.68, 0.48, 0.06), H('#ff4a5a')); fill(ell(0.8, 0.6, 0.06), H('#4a8aff'));
-      },
-      sound() {
-        fill(box(0.12, 0.38, 0.3, 0.62), W_); fill(poly([[0.3, 0.38], [0.52, 0.18], [0.52, 0.82], [0.3, 0.62]]), W_);
-        fill(and(ell(0.52, 0.5, 0.26), not(ell(0.52, 0.5, 0.18)), (u) => u > 0.62), W_);
-        fill(and(ell(0.52, 0.5, 0.42), not(ell(0.52, 0.5, 0.34)), (u) => u > 0.7), W_);
-      },
     };
-
-    // reference-style pictograms (drawn in full-tile space, clipped to the tile's rounded face)
-    const NV = H('#1e2a66'), WH = 0xffffffff;
-    const R2 = {
-      chat() {
-        // a chunky white game-pad bubble with two eyes
-        fill(poly([[0.22, 0.3], [0.38, 0.25], [0.42, 0.3], [0.58, 0.3], [0.62, 0.25], [0.78, 0.3], [0.86, 0.6], [0.8, 0.72], [0.66, 0.7], [0.62, 0.64], [0.38, 0.64], [0.34, 0.7], [0.2, 0.72], [0.14, 0.6]]), WH);
-        fill(ell(0.39, 0.5, 0.075, 0.085), H('#5c6af0')); fill(ell(0.61, 0.5, 0.075, 0.085), H('#5c6af0'));
-      },
-      shop() {
-        fill(seg(0.12, 0.3, 0.22, 0.3, 0.035), NV); fill(seg(0.22, 0.3, 0.32, 0.66, 0.035), NV);
-        fill(poly([[0.24, 0.36], [0.86, 0.36], [0.78, 0.62], [0.31, 0.62]]), WH);
-        S((u, v) => (inPoly([[0.27, 0.39], [0.82, 0.39], [0.76, 0.59], [0.33, 0.59]], u, v) && ((Math.floor(u * 22) + Math.floor(v * 22)) & 1) ? H('#c8ccd8') : 0));
-        fill(seg(0.32, 0.7, 0.8, 0.7, 0.03), NV);
-        fill(ell(0.38, 0.8, 0.06), NV); fill(ell(0.74, 0.8, 0.06), NV); fill(ell(0.38, 0.8, 0.025), WH); fill(ell(0.74, 0.8, 0.025), WH);
-      },
-      help() {
-        const q = (u, v, g) => (and(ell(0.5, 0.38, 0.19 + g, 0.17 + g), not(ell(0.5, 0.38, 0.09 - g, 0.075 - g)), (u2, v2) => !(v2 > 0.38 && u2 < 0.5))(u, v) || box(0.44 - g, 0.5, 0.56 + g, 0.64 + g)(u, v) || ell(0.5, 0.78, 0.065 + g)(u, v));
-        fill((u, v) => q(u, v, 0.035), H('#3c7a3c')); fill((u, v) => q(u, v, 0), H('#ffe040'));
-      },
-      mail() {
-        fill(rbox(0.16, 0.3, 0.84, 0.74, 0.03), NV); fill(box(0.19, 0.33, 0.81, 0.71), WH);
-        fill(seg(0.2, 0.34, 0.5, 0.56, 0.025), NV); fill(seg(0.8, 0.34, 0.5, 0.56, 0.025), NV);
-      },
-      prog() {
-        S((u, v) => (v > 0.55 && ((Math.floor(u * 8) + Math.floor(v * 8)) & 1) ? H('#e8b020') : 0));
-        S((u, v) => { const dx = u - 0.5, dy = v - 0.48, a = Math.atan2(dy, dx) + Math.PI / 2, r = Math.hypot(dx, dy), k = Math.cos((a * 5) / 2) ** 2, R = 0.16 + 0.22 * Math.pow(Math.abs(Math.cos(a * 2.5)), 3); return r < R + 0.035 ? (r < R ? (r < R * 0.5 ? H('#1a1a20') : H('#ffd23a')) : H('#1a1a20')) : 0; });
-      },
-      time() {
-        fill(box(0, 0, 1, 1), H('#2c3c7c'));
-        fill(ell(0.5, 1.02, 0.5, 0.22), H('#2a9a48')); fill(ell(0.5, 1.0, 0.44, 0.18), H('#4ad05a'));
-        fill(ell(0.56, 0.28, 0.12), H('#ffc02a')); fill(ell(0.54, 0.26, 0.08), H('#ffe070'));
-        fill(and(ell(0.24, 0.6, 0.12), not(ell(0.31, 0.55, 0.11))), H('#bfe8ff'));
-        S((u, v) => { const dx = Math.abs(u - 0.78), dy = Math.abs(v - 0.58); return dx + dy * 3 < 0.09 || dx * 3 + dy < 0.09 ? WH : 0; });
-        for (const [u, v] of [[0.2, 0.2], [0.36, 0.4], [0.82, 0.22], [0.86, 0.4]]) fill(ell(u, v, 0.022), WH);
-      },
-      tms() {
-        S((u, v) => { const a = Math.atan2(v - 0.0, u - 0.5); return Math.sin(a * 9) > 0.3 ? H('#e4f2fc') : 0; });
-        const ball = (cx, cy, r) => { fill(ell(cx, cy, r + 0.03), NV); fill(and(ell(cx, cy, r), (u, v) => v < cy), H('#ee3b45')); fill(and(ell(cx, cy, r), (u, v) => v >= cy), WH); fill(and(ell(cx, cy, r), (u, v) => Math.abs(v - cy) < 0.025), NV); fill(ell(cx, cy, r * 0.32), NV); fill(ell(cx, cy, r * 0.17), WH); };
-        ball(0.32, 0.38, 0.22);
-        fill(and(ell(0.5, 0.52, 0.3, 0.26), not(ell(0.5, 0.52, 0.22, 0.18)), (u, v) => v < 0.42 && u > 0.45), H('#f0b020'));
-        fill(and(ell(0.5, 0.52, 0.3, 0.26), not(ell(0.5, 0.52, 0.22, 0.18)), (u, v) => v > 0.62 && u < 0.55), H('#f0b020'));
-        fill(poly([[0.18, 0.6], [0.34, 0.6], [0.26, 0.72]]), H('#f0b020'));
-        ball(0.68, 0.7, 0.22);
-      },
-      dex() {
-        fill(and(ell(0.5, 0.52, 0.34), not(ell(0.5, 0.52, 0.25))), WH);
-        fill(box(0.16, 0.48, 0.84, 0.56), WH);
-        fill(ell(0.5, 0.52, 0.14), WH); fill(ell(0.5, 0.52, 0.08), H('#4c8ce8'));
-      },
-    };
-    if (ref && R2[id]) R2[id](); else (G[id] || G.dex)();
-    if (ref && R2[id]) { ICO.set(key, b); return b; }
+    (G[id] || G.dex)();
     // sticker outline
-    const OL = olc || 0xff38141a, m = new Uint8Array(d.length);
+    const OL = 0xff1a1438, m = new Uint8Array(d.length);
     for (let i = 0; i < d.length; i++) m[i] = d[i] ? 1 : 0;
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const i = y * n + x; if (m[i]) continue; if ((x > 0 && m[i - 1]) || (x < n - 1 && m[i + 1]) || (y > 0 && m[i - n]) || (y < n - 1 && m[i + n])) d[i] = OL; }
     ICO.set(key, b);
     return b;
   }
-  // a chunky rounded app tile: dark hue outline, glossy lighter top, darker base, a soft blue shadow ring
-  const REF = { chat: 1, shop: 1, help: 1, mail: 1, prog: 1, time: 1, tms: 1, dex: 1 };
-  // a chunky rounded app tile in the reference's style: thick dark-blue outline, glossy top-left highlight, darker bottom edge
-  function appTile(fb, a, x, y, sz, t, on, pr, lk) {
-    const r = Math.max(3, Math.round(sz * 0.2)), c = lk ? mix(a.c, 0xff9098a8, 0.75) : a.c, lt = mix(c, 0xffffffff, 0.3), dk = mix(c, 0xff000000, 0.22), ol = hex('#24307a');
-    const o = pr ? 1 : 0, y2 = y + o;
-    UI.rrect(fb, x - 1, y - 1 + 2, sz + 2, sz + 2, r + 1, P.icoSh);
-    UI.rrect(fb, x - 1, y2 - 1, sz + 2, sz + 2, r + 1, on ? 0xffffffff : P.icoRing);
-    UI.rrect(fb, x, y2, sz, sz, r, ol);
-    const ref = REF[a.id], fw = sz - 4, g = ref ? glyph(a.id, fw, 0, 1) : null;
-    const base = Math.max(2, Math.round(sz * 0.1)), hb = Math.max(2, Math.round(sz * 0.09));
-    rrFill(fb, x + 2, y2 + 2, sz - 4, sz - 4, r - 2, (i, j, ins, w, h) => {
-      let col = on ? mix(c, 0xffffffff, 0.08) : c;
-      if (g) { const gc = g.d[j * fw + i]; if (gc) col = lk ? mix(gc, 0xff9098a8, 0.7) : gc; }
-      if (j >= h - base) col = mix(col, 0xff000000, 0.22);
-      else if (j < hb && i < w * 0.6 || i < hb && j < h * 0.6) col = mix(col, 0xffffffff, 0.3);
-      if ((j === 0 && i > ins && i < w * 0.55) || (i === 0 && j > 1 && j < h * 0.5)) col = mix(col, 0xffffffff, 0.55);
+  function appTile(fb, a, x, y, sz, t, on, pr) {
+    const r = Math.max(4, Math.round(sz * 0.26)), c = a.c, top = mix(c, 0xffffffff, 0.2), bot = mix(c, 0xff000000, 0.2);
+    UI.rrect(fb, x + 1, y + 3, sz, sz, r, 0x80000000 | (P.scrDD & 0xffffff));
+    if (on) UI.rrect(fb, x - 2, y - 2, sz + 4, sz + 4, r + 2, 0xffffffff);
+    UI.rrect(fb, x, y, sz, sz, r, P.rim);
+    rrFill(fb, x + 1, y + 1, sz - 2, sz - 2, r - 1, (i, j, ins, w, h) => {
+      const k = j / h; let col = mix(top, bot, k);
+      if (j < h * 0.46 && i > ins + 1 && i < w - ins - 2 && j > 0) col = mix(col, 0xffffffff, 0.14);
+      if (j === 0) col = mix(top, 0xffffffff, 0.45);
+      if (j >= h - 1) col = mix(bot, 0xff000000, 0.2);
       return col;
     });
-    if (!ref) {
-      const gs = Math.round(sz * 0.72), gl = glyph(a.id === 'sound' && !Sound.on ? 'sound' : a.id, gs, mix(c, 0xff30100a, 0.62));
-      const bob = on ? Math.round(Math.sin(t * 5) * 1) : 0;
-      UI.img(fb, gl, x + Math.round((sz - gs) / 2), y2 + Math.round((sz - gs) / 2) + bob, 1);
-    }
+    const gs = Math.round(sz * 0.7), g = glyph(a.id, gs);
+    const bob = on ? Math.round(Math.sin(t * 5) * 1) : 0;
+    UI.img(fb, g, x + Math.round((sz - gs) / 2), y + Math.round((sz - gs) / 2) + bob + (pr ? 1 : 0), 1);
   }
-  function badge(fb, x, y, n, k = 1) {
+  function badge(fb, x, y, n) {
     const s = n > 9 ? '9+' : n === true ? '!' : String(n), w = Math.max(9, Font.measure(s, 'small') + 5);
-    if (k < 0.999) { const r = Math.max(1, Math.round(5 * k)); UI.disc(fb, x, y, r + 1, 0xffffffff); UI.disc(fb, x, y, r, 0xff3a30e8); return; }
-    UI.disc(fb, x, y, 5, 0xffffffff); UI.rrect(fb, x - (w >> 1), y - 4, w, 9, 4, 0xffffffff);
-    UI.rrect(fb, x - (w >> 1) + 1, y - 3, w - 2, 7, 3, 0xff3a30e8);
-    Font.draw(fb, s, x + 1, y - 2, 0xffffffff, { font: 'small', align: 'center' });
+    UI.rrect(fb, x - (w >> 1), y - 4, w, 10, 4, 0xff2a0710); UI.rrect(fb, x - (w >> 1) + 1, y - 3, w - 2, 8, 3, P.red); UI.hline(fb, x - (w >> 1) + 3, x + (w >> 1) - 3, y - 3, 0xffff9a9a);
+    Font.draw(fb, s, x + 1, y - 1, 0xffffffff, { font: 'small', align: 'center' });
   }
   function appBadge(id) {
     if (id === 'mail') return mailUnread();
     if (id === 'quests') { const n = questList().filter((e) => e.s === 'ready').length; return n || 0; }
     if (id === 'dex') return Quests.unseen() ? true : 0;
-    if (id === 'bag') return typeof Bag !== 'undefined' && Bag.fresh && Bag.fresh() ? true : 0;
-    if (id === 'style') return typeof Style !== 'undefined' && Style.fresh && Style.fresh() ? true : 0;
     return 0;
   }
 
-  /* ---------- page: home (the app grid of the reference: two 2x2 groups, the page bar between the rows) ---------- */
+  /* ---------- page: home (the app grid) ---------- */
   function pageHome(fb, G, t) {
-    const s = G.scr, k = G.k, H = D.home, pages = Math.ceil(APPS.length / 8);
-    const isz = Math.max(16, Math.round(33 * k));
-    const colU = [-64, -27, 27, 64], rowU = [68.5, 122.5];
+    const f = faceDims(G), s = G.scr, C = G.C, H = D.home, pages = Math.ceil(APPS.length / 8);
+    const top = s.y + f.ry + (C ? 4 : 6), bot = s.y + s.h - (C ? 4 : 6);
+    const ind = C ? 11 : 14, lab = C ? 9 : 11;
+    const avail = bot - top - ind;
+    const isz = Math.max(18, Math.min(C ? 34 : 44, Math.floor(avail / 2) - lab - 2));
+    const rowH = isz + lab + 1, cw = Math.floor((s.w - 16) / 4);
+    const y0 = top + Math.max(0, Math.floor((avail - rowH * 2) / 2)), y1 = y0 + rowH + ind;
     const sl = Math.round(H.slide);
-    let selA = null;
     for (let i = 0; i < 8; i++) {
       const a = APPS[H.pg * 8 + i]; if (!a) continue;
-      const col = i % 4, row = i >> 2, cx = G.X(colU[col]) + sl, cy = G.Y(rowU[row]);
-      const x = cx - (isz >> 1), y = cy - (isz >> 1);
-      if (x + isz < s.x + 2 || x > s.x + s.w - 2) continue;
+      const col = i % 4, row = i >> 2, cx = s.x + 8 + col * cw + (cw >> 1) + sl, iy = row ? y1 : y0;
+      if (cx < s.x - cw || cx > s.x + s.w + cw) continue;
       const id = 'app-' + a.id, on = H.sel === i, pr = D.press && D.press.b && D.press.b.id === id;
       const lk = a.lock && a.lock();
-      // entry cascade, hover lift, press squash and a springy bounce after a tap
-      const intro = clamp((D.homeT - 0.05 * i) / 0.28, 0, 1), ik = intro < 1 ? U.ease.outBack(intro) : 1;
-      const bo = D.bounce[a.id] || 0, bz = Math.round(Math.sin(bo * Math.PI * 3) * bo * 3);
+      appTile(fb, a, cx - (isz >> 1), iy - (on ? 2 : 0), isz, t, on, pr);
+      if (lk) { UI.rectA(fb, cx - (isz >> 1) + 1, iy - (on ? 2 : 0) + 1, isz - 2, isz - 2, 0xff1a1e4b, 0.45); Font.icon(fb, 'lock', cx - 2, iy + (isz >> 1) - 4 - (on ? 2 : 0), 1); }
+      const bn = appBadge(a.id); if (bn) badge(fb, cx + (isz >> 1) - 2, iy - (on ? 2 : 0) + 1, bn);
+      const nm = a.name.toUpperCase(), lw = Font.measure(nm, 'small');
+      if (on) { UI.rrect(fb, cx - (lw >> 1) - 4, iy + isz + 1, lw + 8, 9, 4, P.rim); UI.rrect(fb, cx - (lw >> 1) - 3, iy + isz + 2, lw + 6, 7, 3, P.white); }
+      Font.draw(fb, nm, cx, iy + isz + 3, on ? P.text : P.text, { font: 'small', align: 'center' });
+      if (on) D.lookAt = [cx, iy + (isz >> 1)];
+      btn(id, cx - (cw >> 1) + 2, iy - 3, cw - 4, isz + lab + 4, () => { H.sel = i; SFX.select(); launch(a); }, { silent: true, hov: () => { if (H.sel !== i) { H.sel = i; } } });
+    }
+    // page indicator between the rows:  ◀ ═══ ▶
+    const iy = y0 + rowH + (ind >> 1) - 1, bw = C ? 16 : 22, gap = 4, tw = pages * bw + (pages - 1) * gap, bx0 = s.x + (s.w >> 1) - (tw >> 1);
+    for (let p = 0; p < pages; p++) { const bx = bx0 + p * (bw + gap); UI.rrect(fb, bx, iy - 1, bw, 4, 2, p === H.pg ? P.rim : P.scrD); if (p === H.pg) UI.hline(fb, bx + 1, bx + bw - 2, iy, P.white); btn('pg' + p, bx - 2, iy - 5, bw + 4, 12, () => { if (p !== H.pg) flipHome(p - H.pg); }); }
+    const arrow = (dir, ax) => {
+      const en = dir < 0 ? H.pg > 0 : H.pg < pages - 1, c = en ? P.rim : P.scrD, id = 'pgarr' + dir;
       const hv = D.hoverId === id;
-      const sz = Math.max(4, Math.round(isz * ik + (pr ? -2 : 0) + (hv && !pr ? 1 : 0) + (bo ? Math.abs(bz) * 0.6 : 0)));
-      const lift = (on ? 1 : 0) + (hv && !pr ? 1 : 0) + bz + Math.round(Math.sin(t * 2.4 + i * 0.8) * 0.6 * (on ? 1 : 0));
-      const x2 = cx - (sz >> 1), y2 = cy - (sz >> 1) - lift + (D.shake && on ? 0 : 0);
-      const shx = lk && on && D.shake > 0 ? Math.round(Math.sin(D.shake * 60) * 2) : 0;
-      if (ik > 0.05) appTile(fb, a, x2 + shx, y2, sz, t, on, pr, lk);
-      if (lk && ik >= 1) {
-        UI.rectA(fb, x2 + 1 + shx, y2 + 1, sz - 2, sz - 2, 0xff303850, 0.5);
-        Font.icon(fb, 'lock', cx - 3 + shx, cy - 6 - lift, 1);
-        const lt = 'LV' + featLv(a.id); UI.rrect(fb, cx - 9 + shx, cy + 2 - lift, 18, 8, 3, P.rim); Font.draw(fb, lt, cx + shx, cy + 3 - lift, 0xffffffff, { font: 'small', align: 'center' });
-      }
-      const bn = lk ? 0 : appBadge(a.id);
-      if (bn && ik >= 1) { const bp = clamp((D.homeT - 0.3 - 0.05 * i) / 0.25, 0, 1); if (bp > 0) badge(fb, x2 + sz - 3 + shx, y2 + 2, bn, U.ease.outBack(bp)); }
-      (D.tilePos || (D.tilePos = {}))[a.id] = [cx, cy];
-      if (on) { D.lookAt = [cx, cy]; selA = a; }
-      btn(id, x - 3, y - 3, isz + 6, isz + 6, () => { H.sel = i; SFX.select(); launch(a); }, { silent: true, hov: () => { if (H.sel !== i) { H.sel = i; SFX.blip && Math.random() < 0 && SFX.blip(); } } });
-    }
-    // the page bar between the rows:  ◀ ═══ ▶  (the selected app's name sits in the pill)
-    const by = G.Y(96.5), bh = Math.max(7, Math.round(9.5 * k)), bw = Math.round(64 * k) + (G.C ? 10 : 0), bx = G.cx - (bw >> 1);
-    lens(fb, bx, by - (bh >> 1), bw, bh);
-    if (selA && D.showName) Font.draw(fb, fit((selA.lock && selA.lock() ? '{lock}' : '') + (selA.id === 'sound' ? (Sound.on ? 'SOUND ON' : 'SOUND OFF') : selA.name.toUpperCase()), bw - 8), G.cx, by - 2, 0xff7e3a1d, { font: 'small', align: 'center' });
-    btn('pgbar', bx, by - bh, bw, bh * 2, () => { if (selA) { SFX.select(); launch(selA); } });
-    const arrow = (dir) => {
-      const en = dir < 0 ? H.pg > 0 : H.pg < pages - 1, id = 'pgarr' + dir, hv = D.hoverId === id && en;
-      const ah = Math.max(3, Math.round(4.6 * k)), gp = Math.max(3, Math.round(6 * k)), tip = dir < 0 ? bx - gp - ah : bx + bw + gp + ah;
-      // a soft triangle in the page bar's glassy blue, its flat side facing the pill
-      for (let j = -ah; j <= ah; j++) {
-        const a0 = dir < 0 ? tip + Math.abs(j) : tip - ah, a1 = dir < 0 ? tip + ah : tip - Math.abs(j);
-        for (let x = a0; x <= a1; x++) {
-          const edge = x === a0 || x === a1 || Math.abs(j) === ah;
-          UI.put(fb, x, by + j, !en ? (edge ? P.barOffO : P.barOff) : edge ? P.barO : j < 0 ? (hv ? 0xffffffff : P.barL) : P.bar);
-        }
-      }
-      btn(id, tip - 10, by - 9, 20, 18, () => flipHome(dir));
+      for (let k = 0; k < 4; k++) UI.vline(fb, ax + (dir < 0 ? -k : k), iy + 1 - (3 - k), iy + 1 + (3 - k) - 1, hv && en ? P.red : c);
+      btn(id, ax - 10, iy - 8, 20, 18, () => flipHome(dir));
     };
-    arrow(-1); arrow(1);
-    // two tiny page dots under the pill
-    if (pages > 1) for (let p = 0; p < pages; p++) { const dx = G.cx + (p - (pages - 1) / 2) * 6; UI.rect(fb, Math.round(dx) - 1, by + (bh >> 1) + 2, 3, 2, p === H.pg ? P.barO : P.barOff); }
-  }
-  // the glassy lens-shaped pill of the page bar
-  function lens(fb, x, y, w, h) {
-    const cy = y + h / 2;
-    for (let i = 0; i < w; i++) {
-      const u = (i + 0.5) / w * 2 - 1, hh = (h / 2) * Math.sqrt(Math.max(0, 1 - Math.abs(u) ** 3.2));
-      const ya = Math.round(cy - hh), yb = Math.round(cy + hh) - 1;
-      for (let yy = ya; yy <= yb; yy++) {
-        let c = yy === ya || yy === yb || i === 0 || i === w - 1 ? P.barO : yy - ya <= Math.max(1, (h >> 2)) ? P.barL : yy >= yb - 1 ? P.barD : P.bar;
-        if (yy === ya + 1 && Math.abs(u) < 0.8) c = mix(P.barL, 0xffffffff, 0.35);
-        UI.put(fb, x + i, yy, c);
-      }
-    }
+    arrow(-1, bx0 - 12); arrow(1, bx0 + tw + 11);
   }
 
   /* ---------- page: Pokédex (main) ---------- */
@@ -1249,48 +979,51 @@ const Dex = (() => {
   }
   const AREA_COL = { beach: ['#8fd8ff', '#f2dc9a'], forest: ['#a4e8b0', '#4f9e58'], canopy: ['#bdefff', '#79b95e'], falls: ['#7f8ad8', '#5a5a9a'], stage: ['#ffc0e0', '#b56aa0'], volcano: ['#ffb894', '#8e4636'], shoal: ['#d2f2ff', '#9ccfe8'] };
   function areaCols(a) { const c = AREA_COL[a] || ['#b8d8ff', '#8aa0c8']; return [hex(c[0]), hex(c[1])]; }
-  const FILTERS = [['all', 'ALL'], ['here', 'HERE'], ['miss', 'MISSING']];
   function pageDex(fb, G, t) {
-    const Q = content(G), tiny = Q.w < 150, [L, R] = split(Q, tiny ? 0.49 : 0.47, 3);
+    const Q = content(G), C = G.C, [L, R] = split(Q, C ? 0.44 : 0.46);
     const list = dexList();
     if (!D.sel || !DexData.S[D.sel]) D.sel = list[0] || DexData.ORDER[0];
-    // one filter chip that cycles ALL / HERE / MISSING, the count on the right
-    const chH = 11, fi = FILTERS.findIndex((f) => f[0] === D.filter), lab = FILTERS[Math.max(0, fi)][1] + ' {down}';
-    const cw = Font.measure(lab, 'small') + 10, id = 'flt';
-    pill(fb, L.x, L.y, cw, chH, D.hoverId === id ? P.white : P.scrLL, P.text, lab);
-    btn(id, L.x - 2, L.y - 3, cw + 4, chH + 6, () => { D.filter = FILTERS[(Math.max(0, fi) + 1) % 3][0]; D.scroll.dex = 0; SFX.page(); }, { silent: true });
-    Font.draw(fb, String(list.length), L.x + L.w - 1, L.y + 3, P.text, { font: 'small', align: 'right' });
-    const LQ = { x: L.x, y: L.y + chH + 3, w: L.w, h: L.h - chH - 3 }, rh = tiny ? 19 : G.L ? 22 : 20;
+    // filter chips
+    const chH = C ? 11 : 12; let x = L.x;
+    for (const [id, lab] of [['all', 'ALL'], ['here', 'HERE'], ['miss', 'MISSING']]) {
+      const w = Font.measure(lab, 'small') + (C ? 9 : 12), on = D.filter === id;
+      pill(fb, x, L.y, w, chH, on ? P.red : P.scrLL, on ? 0xffffffff : P.dim, lab);
+      btn('flt-' + id, x, L.y - 3, w, chH + 5, () => { D.filter = id; D.scroll.dex = 0; SFX.page(); }, { silent: true });
+      x += w + 3;
+    }
+    Font.draw(fb, String(list.length), L.x + L.w - 2, L.y + (C ? 3 : 4), P.dim, { font: 'small', align: 'right' });
+    const LQ = { x: L.x, y: L.y + chH + 3, w: L.w, h: L.h - chH - 3 }, rh = C ? 18 : 23;
     const si = list.indexOf(D.sel);
-    if (!list.length) Font.draw(fb, D.filter === 'miss' ? 'ALL CAUGHT!' : 'NOBODY HERE', LQ.x + LQ.w / 2, LQ.y + 16, P.text, { font: 'small', align: 'center' });
-    const s2 = listView(fb, 'dex', LQ, list.length, rh, si, (b, i, x2, y, w, h, on) => dexRow(b, list[i], x2, y, w, h, on, G), (i) => { const sp = list[i]; if (D.sel === sp) openEntry(sp); else selectSp(sp); });
-    if (si >= 0) D.lookAt = [LQ.x + LQ.w * 0.5, LQ.y + si * rh - s2 + rh / 2];
+    if (!list.length) Font.draw(fb, D.filter === 'miss' ? 'ALL CAUGHT! BZZT!' : 'NOBODY HERE...', LQ.x + LQ.w / 2, LQ.y + 20, P.dim, { font: 'small', align: 'center' });
+    const s = listView(fb, 'dex', LQ, list.length, rh, si, (b, i, x2, y, w, h, on) => dexRow(b, list[i], x2, y, w, h, on, C), (i) => { const sp = list[i]; if (D.sel === sp) openEntry(sp); else selectSp(sp); });
+    if (si >= 0) D.lookAt = [LQ.x + LQ.w * 0.5, LQ.y + si * rh - s + rh / 2];
     dexDetail(fb, G, R, D.sel, t);
   }
-  function dexRow(b, sp, x, y, w, h, on, G) {
+  function dexRow(b, sp, x, y, w, h, on, C) {
     const st = stat(sp), d = DexData.S[sp];
-    UI.rrect(b, x, y, w, h - 1, 3, on ? P.red : P.scrDD);
-    UI.rrect(b, x + 1, y + 1, w - 2, h - 3, 2, on ? P.white : st === 2 ? P.card : st === 1 ? P.scrLL : P.scrL);
-    if (on) UI.rect(b, x + 1, y + 2, 2, h - 5, P.red);
-    const ts = Math.min(h - 4, 18), th = thumb(sp, ts, st < 2), tx = x + 3, ty = y + 1 + ((h - 3 - ts) >> 1);
-    if (th) UI.img(b, th, tx + Math.round((ts + 1 - th.w) / 2), ty + Math.round((ts - th.h) / 2), 1, st === 1 ? { tint: P.scrDD, tintK: 0.35 } : st === 0 ? { tint: P.faint, tintK: 0.3 } : {});
+    const fill = on ? P.white : st === 2 ? P.card : P.scrLL;
+    UI.rrect(b, x, y, w, h - 2, 3, on ? P.red : P.scrD);
+    UI.rrect(b, x + 1, y + 1, w - 2, h - 4, 2, fill);
+    if (on) { UI.rrect(b, x + 1, y + 1, 3, h - 4, 1, P.red); }
+    const ts = h - 5, th = thumb(sp, ts, st < 2);
+    const tx = x + 5, ty = y + 1;
+    UI.rrect(b, tx, ty, ts + 1, ts + 1, 2, st === 2 ? mix(areaCols((d.area || [])[0])[0], 0xffffffff, 0.35) : P.scrL);
+    if (th) UI.img(b, th, tx + Math.round((ts + 1 - th.w) / 2), ty + Math.round((ts + 1 - th.h) / 2), 1, st === 1 ? { tint: P.scrDD, tintK: 0.35 } : st === 0 ? { tint: P.faint, tintK: 0.25 } : {});
     else if (th === undefined) Font.draw(b, '..', tx + ts / 2, ty + ts / 2 - 2, P.dim, { font: 'small', align: 'center' });
-    const nx = tx + ts + 3, room = x + w - nx - 2;
-    const two = h >= 15, ny = two ? y + Math.round((h - 1) / 2) - 7 : y + Math.round((h - 6) / 2);
-    // status icon: Poké Ball = caught (photographed), eye = seen
-    const ix = x + w - 10, iy = y + Math.round((h - 1) / 2) - 4;
-    if (st === 2) Font.icon(b, 'pb', ix, two ? ny + 8 : iy, 1); else if (st === 1) eyeIcon(b, ix, (two ? ny + 8 : iy) + 2);
-    Font.draw(b, fit(st ? d.name : '???', room), nx, ny, st ? P.text : P.faint, { font: 'small' });
-    if (two) {
-      const nt = (room >= 56 ? 'No.' : '') + pad3(d.no);
-      Font.draw(b, nt, nx, ny + 9, P.faint, { font: 'small' });
-      if (st) { let cx = nx + Font.measure(nt, 'small') + 3; for (const ty2 of d.type) { if (cx + 5 > ix - 2 || room < 60) break; UI.rrect(b, cx, ny + 9, 5, 5, 2, typeCol(ty2)); cx += 7; } }
+    const nx = tx + ts + 5, nm = st ? d.name : '???';
+    if (C) {
+      Font.draw(b, fit(nm, w - (nx - x) - 34, 'body'), nx, y + 4, st ? P.text : P.faint, { font: 'body' });
+      Font.draw(b, pad3(d.no), x + w - 13, y + 6, P.faint, { font: 'small', align: 'right' });
+    } else {
+      Font.draw(b, 'NO.' + pad3(d.no), nx, y + 3, P.faint, { font: 'small' });
+      Font.draw(b, fit(nm, w - (nx - x) - 16, 'body'), nx, y + 11, st ? P.text : P.faint, { font: 'body' });
     }
+    const ix = x + w - 10, iy = y + Math.round((h - 2) / 2) - 3;
+    if (st === 2) Font.icon(b, 'pb', ix, iy, 1);
+    else if (st === 1) eyeIcon(b, ix, iy + 1);
   }
-  function eyeIcon(fb, x, y) { const c = P.dim; UI.hline(fb, x + 1, x + 5, y, c); UI.put(fb, x, y + 1, c); UI.put(fb, x + 6, y + 1, c); UI.hline(fb, x + 1, x + 5, y + 3, c); UI.put(fb, x, y + 2, c); UI.put(fb, x + 6, y + 2, c); UI.rect(fb, x + 2, y + 1, 3, 2, 0xff4b1e1a); }
-  const TYPE_COL = { Normal: '#9fa19f', Fire: '#e62829', Water: '#2980ef', Grass: '#3fa129', Electric: '#fac000', Ice: '#3dcef3', Fighting: '#ff8000', Poison: '#9141cb', Ground: '#915121', Flying: '#81b9ef', Psychic: '#ef4179', Bug: '#91a119', Rock: '#afa981', Ghost: '#704170', Dragon: '#5060e1', Dark: '#624d4e', Steel: '#60a1b8', Fairy: '#ef70ef' };
-  const typeCol = (ty) => hex(TYPE_COL[ty] || (DexData.TYPES[ty]) || '#888888');
-  function typePill(fb, ty, x, y) { const w = Font.measure(ty.toUpperCase(), 'small') + 8; UI.rrect(fb, x, y, w, 9, 3, mix(typeCol(ty), 0xff000000, 0.35)); UI.rrect(fb, x, y, w, 8, 3, typeCol(ty)); UI.hline(fb, x + 2, x + w - 3, y + 1, mix(typeCol(ty), 0xffffffff, 0.3)); Font.draw(fb, ty.toUpperCase(), x + w / 2, y + 2, 0xffffffff, { font: 'small', align: 'center' }); return w; }
+  function eyeIcon(fb, x, y) { const c = P.dim; UI.hline(fb, x + 1, x + 5, y, c); UI.put(fb, x, y + 1, c); UI.put(fb, x + 6, y + 1, c); UI.hline(fb, x + 1, x + 5, y + 3, c); UI.put(fb, x, y + 2, c); UI.put(fb, x + 6, y + 2, c); UI.rect(fb, x + 2, y + 1, 3, 2, 0xff1a1e4b); }
+  function typePill(fb, ty, x, y) { const w = Font.measure(ty.toUpperCase(), 'small') + 8; UI.rrect(fb, x, y, w, 9, 3, mix(hex(DexData.TYPES[ty] || '#888888'), 0xff000000, 0.35)); UI.rrect(fb, x, y, w, 8, 3, hex(DexData.TYPES[ty] || '#888888')); Font.draw(fb, ty.toUpperCase(), x + w / 2, y + 2, 0xffffffff, { font: 'small', align: 'center' }); return w; }
   function stage(fb, x, y, w, h, area, st, t) {
     const [sky, gnd] = areaCols(area), dark = st === 0;
     rrFill(fb, x, y, w, h, 4, (i, j) => {
@@ -1305,164 +1038,138 @@ const Dex = (() => {
   }
   function dexDetail(fb, G, R, sp, t) {
     const d = DexData.S[sp]; if (!d) return;
-    const st = stat(sp), tiny = R.w < 76;
+    const st = stat(sp), C = G.C;
     card(fb, R);
-    const sx = R.x + 3, sy = R.y + 3, sw = R.w - 6, sh = Math.round(R.h * (tiny ? 0.44 : 0.42));
+    const sx = R.x + 4, sy = R.y + 4, sw = R.w - 8, sh = C ? 48 : 70;
     stage(fb, sx, sy, sw, sh, (d.area || [])[0], st, t);
-    const tsz = Math.min(sh - 8, sw - 12), th = thumb(sp, tsz, st < 2);
+    const tsz = C ? 38 : 56, th = thumb(sp, tsz, st < 2);
     const pop = clamp((D.selT || 0) / 0.18, 0, 1), bob = st === 2 ? Math.round(Math.sin(t * 2.2)) : 0;
     if (th) {
-      const X = sx + Math.round((sw - th.w) / 2), Y = sy + sh - 3 - th.h + bob + Math.round((1 - U.ease.outBack(pop)) * 6);
-      for (let i = -Math.round(th.w * 0.35); i <= Math.round(th.w * 0.35); i++) UI.blend(fb, sx + (sw >> 1) + i, sy + sh - 3, P.rim, 0.25);
+      const X = sx + Math.round((sw - th.w) / 2), Y = sy + sh - 5 - th.h + bob + Math.round((1 - U.ease.outBack(pop)) * 6);
+      // soft ground shadow
+      for (let i = -Math.round(th.w * 0.35); i <= Math.round(th.w * 0.35); i++) UI.blend(fb, sx + (sw >> 1) + i, sy + sh - 5, P.rim, 0.25);
       UI.img(fb, th, X, Y, 1, st === 1 ? { tint: P.scrDD, tintK: 0.45 } : {});
       if (st === 0) Font.draw(fb, '?', sx + (sw >> 1), Y + (th.h >> 1) - 5, P.gold, { font: 'title', align: 'center', outline: P.rim });
-    } else Font.draw(fb, th === undefined ? '...' : '???', sx + sw / 2, sy + sh / 2 - 2, P.white, { font: 'small', align: 'center' });
-    // number (top left) and status (top right) on the stage
-    const no = (tiny ? '' : 'NO.') + pad3(d.no), nw = Font.measure(no, 'small') + 6;
-    pill(fb, sx + 2, sy + 2, nw, 9, P.white, P.text, no, { hi: false });
-    if (st === 2) { UI.disc(fb, sx + sw - 7, sy + 6, 5, P.rim); Font.icon(fb, 'pb', sx + sw - 10, sy + 3, 1); }
-    else if (st === 1) { UI.rrect(fb, sx + sw - 13, sy + 2, 11, 9, 3, P.white); eyeIcon(fb, sx + sw - 11, sy + 5); }
-    let y = sy + sh + 3;
-    const x = R.x + 4, w = R.w - 8;
-    const nmFont = w >= 110 ? 'title' : w >= 84 ? 'body' : 'small';
-    Font.draw(fb, fit(st ? d.name : '???', w, nmFont), x, y + (nmFont === 'small' ? 1 : 0), P.text, { font: nmFont });
-    y += nmFont === 'title' ? 14 : nmFont === 'body' ? 12 : 9;
-    // types: pills when they fit, otherwise little colour chips
-    if (st) {
-      const tws = d.type.map((ty) => Font.measure(ty.toUpperCase(), 'small') + 8), tot = tws.reduce((a2, b2) => a2 + b2 + 2, 0);
-      const roomT = R.y + R.h - 4 - (tiny ? 12 : 13) - 3 - y;
-      if (tot <= w + 2 || roomT >= 21) { let tx = x; d.type.forEach((ty, i) => { if (tx > x && tx + tws[i] > x + w) { tx = x; y += 10; } typePill(fb, ty, tx, y); tx += tws[i] + 2; }); }
-      else { let tx = x; for (const ty of d.type) { const c = typeCol(ty), cw = Math.floor((w - 2) / d.type.length) - 2; UI.rrect(fb, tx, y, cw, 8, 3, mix(c, 0xff000000, 0.35)); UI.rrect(fb, tx, y, cw, 7, 3, c); Font.draw(fb, fit(ty.toUpperCase().slice(0, 3), cw - 2), tx + cw / 2, y + 1, 0xffffffff, { font: 'small', align: 'center' }); tx += cw + 2; } }
-      y += 11;
+    } else Font.draw(fb, th === undefined ? 'LOADING...' : '???', sx + sw / 2, sy + sh / 2 - 2, P.white, { font: 'small', align: 'center' });
+    pill(fb, sx + 3, sy + 3, Font.measure('NO.' + pad3(d.no), 'small') + 8, 9, P.white, P.text, 'NO.' + pad3(d.no), { hi: false });
+    const sl = st === 2 ? 'CAUGHT' : st === 1 ? 'SEEN' : 'UNKNOWN', sc = st === 2 ? P.green : st === 1 ? P.blue : P.grey, sw2 = Font.measure(sl, 'small') + (st === 2 ? 17 : 8);
+    pill(fb, sx + sw - sw2 - 3, sy + 3, sw2, 9, sc, 0xffffffff, st === 2 ? '' : sl, { hi: false });
+    if (st === 2) { Font.icon(fb, 'pb', sx + sw - sw2 + 1, sy + 4, 1); Font.draw(fb, sl, sx + sw - 5, sy + 5, 0xffffffff, { font: 'small', align: 'right' }); }
+    let y = sy + sh + (C ? 4 : 5);
+    const x = R.x + 6, w = R.w - 12;
+    Font.draw(fb, st ? d.name : '???', x, y + 1, P.text, { font: 'title' });
+    if (st) { let tx = R.x + R.w - 6; for (const ty of d.type.slice().reverse()) { const tw = Font.measure(ty.toUpperCase(), 'small') + 8; tx -= tw; typePill(fb, ty, tx, y + 1); tx -= 2; } }
+    y += C ? 13 : 15;
+    const hab = (d.area || []).map(areaName).join(', ') || '???';
+    Font.draw(fb, fit('HABITAT ' + (st ? hab : (d.area || []).length ? hab : '???'), w), x, y, P.dim, { font: 'small' });
+    y += C ? 8 : 9;
+    if (!C) { Font.draw(fb, 'HEIGHT ' + (st ? d.h + ' M' : '?.? M') + (d.legendary ? '   {spark} LEGENDARY' : ''), x, y, P.dim, { font: 'small' }); y += 10; }
+    const dn = speciesDone(sp), btnH = C ? 12 : 14, statH = C ? 9 : 20;
+    const blurbMax = Math.max(1, Math.floor((R.y + R.h - 5 - btnH - statH - y - 3) / 8));
+    const blurb = st === 2 ? d.blurb : st === 1 ? 'Spotted by Rotom! Photograph it to fill in its page.' : 'No data. ' + (Object.values(d.beh)[0] ? 'Clue: ' + Object.values(d.beh)[0].hint : 'Keep exploring!');
+    y += textLines(fb, blurb, x, y, w, st === 2 ? P.text : P.dim, blurbMax) + 2;
+    // behaviours + photo tiers
+    const by = R.y + R.h - 5 - btnH - statH;
+    if (C) {
+      Font.draw(fb, 'BEH ' + dn.got + '/' + dn.beh, x, by + 1, P.text, { font: 'small' });
+      stars(fb, dn.st, x + w - 31, by, 4);
+    } else {
+      Font.draw(fb, 'BEHAVIOURS ' + dn.got + '/' + dn.beh, x, by + 1, P.text, { font: 'small' });
+      const bk = Object.keys(d.beh), seenB = Save.data.beh[sp] || {};
+      let px = x + w - bk.length * 6;
+      for (const k of bk) { const got = k in seenB, tr = d.beh[k].tier; UI.rrect(fb, px, by, 5, 6, 1, got ? [0, P.green, P.blue, P.gold, 0xffff7ad0][tr] || P.gold : P.scrD); px += 6; }
+      Font.draw(fb, 'PHOTOS', x, by + 11, P.text, { font: 'small' });
+      stars(fb, dn.st, x + w - 31, by + 10, 4);
     }
-    const btnH = tiny ? 12 : 13, bottom = R.y + R.h - 4;
-    const dn = speciesDone(sp);
-    // what fits between the types and the button
-    const room = bottom - btnH - 3 - y;
-    if (room >= 9) {
-      const lines = [];
-      const hab = (d.area || []).map(areaName).join(', ') || '???';
-      if (st === 2) { lines.push([info(sp).cat, P.dim]); lines.push(['{star} ' + dn.st + '/4  BEH ' + dn.got + '/' + dn.beh, P.text]); lines.push([d.h + ' m · ' + info(sp).wt + ' kg', P.dim]); lines.push([hab, P.dim]); }
-      else if (st === 1) lines.push(['SEEN NEAR ' + hab.toUpperCase(), P.dim]);
-      else lines.push(['HABITAT ' + ((d.area || []).length ? hab : '???'), P.dim]);
-      let yy = y;
-      for (const [ln, col] of lines) { if (yy + 8 > bottom - btnH - 3) break; Font.draw(fb, fit(ln, w), x, yy, col, { font: 'small' }); yy += 9; }
-      const left = Math.floor((bottom - btnH - 3 - yy) / 8);
-      if (left >= 1) {
-        const blurb = st === 2 ? d.blurb : st === 1 ? 'Spotted by Rotom! Photograph it to fill in its page.' : 'No data. ' + (Object.values(d.beh)[0] ? 'Clue: ' + Object.values(d.beh)[0].hint : 'Keep exploring!');
-        textLines(fb, blurb, x, yy + 1, w, st === 2 ? P.text : P.dim, left, 8);
-      }
-    }
-    // completion bar inside the button row on wider cards
-    const lab = st ? 'ENTRY {right}' : 'WHERE?';
-    if (w >= 100) {
-      const pct = Math.round(dn.pct * 100), bw = w - 64;
-      UI.rrect(fb, x, bottom - btnH + 3, bw, 7, 3, P.scrD); if (pct) UI.rrect(fb, x, bottom - btnH + 3, Math.max(4, Math.round((bw * pct) / 100)), 7, 3, pct >= 100 ? P.gold : P.green);
-      button(fb, 'open-entry', x + w - 60, bottom - btnH, 60, btnH, lab, () => openEntry(sp), { fill: st ? P.red : P.blue });
-    } else button(fb, 'open-entry', x, bottom - btnH, w, btnH, lab, () => openEntry(sp), { fill: st ? P.red : P.blue });
+    // completion bar + button
+    const pct = Math.round(dn.pct * 100);
+    const bw = Math.round(w * 0.42);
+    UI.rrect(fb, x, R.y + R.h - 5 - btnH + 3, bw, 7, 3, P.scrD); if (pct) UI.rrect(fb, x, R.y + R.h - 5 - btnH + 3, Math.max(4, Math.round((bw * pct) / 100)), 7, 3, pct >= 100 ? P.gold : P.green);
+    Font.draw(fb, pct + '%', x + bw + 4, R.y + R.h - 5 - btnH + 4, P.dim, { font: 'small' });
+    const lab = st ? 'ENTRY {right}' : 'WHERE?', bww = Math.max(C ? 52 : 64, Font.measure(lab, 'small') + 14);
+    button(fb, 'open-entry', R.x + R.w - 6 - bww, R.y + R.h - 5 - btnH, bww, btnH, lab, () => openEntry(sp), { fill: st ? P.red : P.blue });
   }
 
   /* ---------- page: a species entry ---------- */
-  const nameFont = (w) => (w >= 104 ? 'title' : w >= 72 ? 'body' : 'small');
-  const fontH = (f) => (f === 'title' ? 14 : f === 'body' ? 12 : 9);
-  function typeRow(b, types, x, y, w) {
-    let tx = x;
-    for (const ty of types) { const tw = Font.measure(ty.toUpperCase(), 'small') + 8; if (tx > x && tx + tw > x + w) { tx = x; y += 10; } typePill(b, ty, tx, y); tx += tw + 2; }
-    return y + 11;
-  }
   function pageEntry(fb, G, t) {
     const sp = D.sel, d = DexData.S[sp];
     if (!d) { go('dex'); return; }
-    const Q = content(G), tiny = Q.w < 150, [L, R] = split(Q, tiny ? 0.46 : 0.47, 3);
+    const S = D.SP, C = G.C, Q = content(G), [L, R] = split(Q, C ? 0.45 : 0.47);
     const ph = Save.data.photos[sp] || {};
     // photo for the chosen star tier
     const tier = D.star + 1, rec = ph['s' + tier];
-    const navH = tiny ? 11 : 13, tierH = tiny ? 11 : 13, infoH = rec ? 9 : 0;
-    const pw = L.w, phh = L.h - navH - tierH - infoH - 6;
+    const navH = C ? 12 : 14, tierH = C ? 12 : 14, infoH = rec ? 10 : 0;
+    const pw = L.w, phh = L.h - navH - tierH - infoH - 7;
     const px = L.x, py = L.y;
     UI.rrect(fb, px - 1, py - 1, pw + 2, phh + 2, 3, P.rim);
     if (rec && rec.img) {
       const b = photo(rec.img);
       if (b) UI.imgFit(fb, b, px, py, pw, phh);
-      else for (let y = 0; y < phh; y++) for (let x = 0; x < pw; x++) UI.put(fb, px + x, py + y, U.hash(x, y, Math.floor(t * 10)) > 0.5 ? 0xff58403a : 0xff3a2a26);
+      else for (let y = 0; y < phh; y++) for (let x = 0; x < pw; x++) UI.put(fb, px + x, py + y, U.hash(x, y, Math.floor(t * 10)) > 0.5 ? 0xff3a4058 : 0xff262a3a);
     } else {
       stage(fb, px, py, pw, phh, (d.area || [])[0], 0, t);
-      const th = thumb(sp, Math.max(12, Math.min(40, phh - 16)), true);
+      const th = thumb(sp, Math.min(40, phh - 16), true);
       if (th) UI.img(fb, th, px + Math.round((pw - th.w) / 2), py + Math.round((phh - th.h) / 2) - 4);
-      Font.draw(fb, fit(pw < 70 ? 'NO PHOTO' : 'No ' + '{star}'.repeat(tier) + ' photo yet', pw - 4), px + pw / 2, py + phh - 10, 0xffffffff, { font: 'small', align: 'center', outline: P.rim });
+      Font.draw(fb, 'No ' + '{star}'.repeat(tier) + ' photo yet', px + pw / 2, py + phh - 11, 0xffffffff, { font: 'small', align: 'center', outline: P.rim });
     }
     // tier selector
-    const ty = py + phh + 2, tw = Math.floor((pw + 2) / 4);
+    const ty = py + phh + 3, tw = Math.floor(pw / 4);
     for (let k = 0; k < 4; k++) {
-      const on = D.star === k, has = !!ph['s' + (k + 1)], bx = px + k * tw, bw = tw - 2;
-      UI.rrect(fb, bx, ty, bw, tierH, 3, P.rim);
-      UI.rrect(fb, bx + 1, ty + 1, bw - 2, tierH - 2, 2, on ? P.red : has ? P.white : P.scrL);
-      const n = k + 1, sw = n * 7 - 1, sy = ty + Math.round((tierH - 7) / 2);
-      if (sw <= bw - 3) for (let s = 0; s < n; s++) Font.icon(fb, has ? 'star' : 'star0', bx + Math.round((bw - sw) / 2) + s * 7, sy, 1);
-      else { Font.icon(fb, has ? 'star' : 'star0', bx + Math.round((bw - 13) / 2), sy, 1); Font.draw(fb, String(n), bx + Math.round((bw - 13) / 2) + 8, sy + 1, on ? 0xffffffff : P.text, { font: 'small' }); }
-      btn('tier' + k, bx, ty - 2, bw, tierH + 4, () => { D.star = k; SFX.page(); }, { silent: true });
+      const on = D.star === k, has = !!ph['s' + (k + 1)], bx = px + k * tw;
+      UI.rrect(fb, bx, ty, tw - 2, tierH, 3, P.rim);
+      UI.rrect(fb, bx + 1, ty + 1, tw - 4, tierH - 2, 2, on ? P.red : has ? P.white : P.scrL);
+      const sw = (k + 1) * 7 - 1;
+      for (let s = 0; s <= k; s++) Font.icon(fb, has ? 'star' : 'star0', bx + Math.round((tw - 2 - sw) / 2) + s * 7, ty + Math.round((tierH - 7) / 2), 1);
+      btn('tier' + k, bx, ty - 2, tw - 2, tierH + 4, () => { D.star = k; SFX.page(); }, { silent: true });
     }
-    let iy = ty + tierH + 2;
+    let iy = ty + tierH + 3;
     if (rec) {
       const bd = d.beh[rec.beh];
       medal(fb, rec.medal, px + 4, iy + 3);
-      const sc = rec.score + ' PTS', lab = pw >= 100 ? (DexData.MEDALS[rec.medal] || '') + '  ' + sc : sc;
-      Font.draw(fb, fit(lab, pw - 12), px + 11, iy + 1, P.text, { font: 'small' });
-      if (bd && pw >= 140) Font.draw(fb, fit(bd.n, pw - 100), px + pw, iy + 1, P.dim, { font: 'small', align: 'right' });
+      Font.draw(fb, (DexData.MEDALS[rec.medal] || '') + '  ' + rec.score + ' PTS', px + 11, iy + 1, P.text, { font: 'small' });
+      if (bd) Font.draw(fb, fit(bd.n, pw - 90), px + pw, iy + 1, P.dim, { font: 'small', align: 'right' });
       iy += infoH;
     }
     // prev / next species
     const nav = (dir) => { const Ls = DexData.ORDER.filter((k) => stat(k) > 0); const i = Ls.indexOf(sp); if (Ls.length) { D.sel = Ls[(i + dir + Ls.length) % Ls.length]; D.star = bestTier(D.sel); D.scroll.entry = 0; D.trans = 0.4; D.dir = dir; D.selT = 0; SFX.page(); } };
-    const Ls = DexData.ORDER.filter((k) => stat(k) > 0), cnt = (Ls.indexOf(sp) + 1) + '/' + Ls.length, cntW = Font.measure(cnt, 'small') + 4;
-    const ny = L.y + L.h - navH, nbw = clamp(Math.floor((pw - cntW) / 2), 12, 26);
-    button(fb, 'prev', px, ny, nbw, navH, '{left}', () => nav(-1), { silent: true, fill: hex('#3a4290') });
-    button(fb, 'next', px + pw - nbw, ny, nbw, navH, '{right}', () => nav(1), { silent: true, fill: hex('#3a4290') });
-    if (pw - nbw * 2 >= cntW) Font.draw(fb, cnt, px + pw / 2, ny + Math.round((navH - 5) / 2), P.text, { font: 'small', align: 'center' });
+    const ny = L.y + L.h - navH;
+    button(fb, 'prev', px, ny, 30, navH, '{left}', () => nav(-1), { silent: true, fill: hex('#3a4290') });
+    button(fb, 'next', px + pw - 30, ny, 30, navH, '{right}', () => nav(1), { silent: true, fill: hex('#3a4290') });
+    const Ls = DexData.ORDER.filter((k) => stat(k) > 0);
+    Font.draw(fb, (Ls.indexOf(sp) + 1) + ' / ' + Ls.length, px + pw / 2, ny + Math.round((navH - 5) / 2), P.dim, { font: 'small', align: 'center' });
     // info column
     card(fb, R);
     const I = { x: R.x + 2, y: R.y + 2, w: R.w - 4, h: R.h - 4 };
     const hc = P.redD;
     scrollPanel(fb, 'entry', I, (b, y0) => {
-      let y = y0 + 4;
-      const x = I.x + 4, w = I.w - 10;
-      Font.draw(b, 'NO.' + pad3(d.no), x, y, P.faint, { font: 'small' }); y += 9;
-      const nf = nameFont(w);
-      Font.draw(b, fit(stat(sp) ? d.name : '???', w, nf), x, y, P.text, { font: nf }); y += fontH(nf);
-      y = typeRow(b, d.type, x, y, w) + 1;
-      const IN = info(sp), st0 = stat(sp), dn = speciesDone(sp);
-      y += textLines(b, st0 ? IN.cat : '??? Pokémon', x, y, w, P.dim, 2, 8) + 2;
-      // height / weight chips, like the real Pokédex
-      for (const [lab, val] of [['HEIGHT', st0 ? d.h.toFixed(1) + ' m' : '?.? m'], ['WEIGHT', st0 ? IN.wt.toFixed(1) + ' kg' : '?.? kg']]) {
-        UI.rrect(b, x - 1, y, w + 2, 11, 3, P.scrD); UI.rrect(b, x, y + 1, w, 9, 2, P.white);
-        const vw = Font.measure(val, 'small');
-        Font.draw(b, fit(w - vw >= 48 ? lab : lab.slice(0, 2), w - vw - 6), x + 3, y + 3, P.redD, { font: 'small' }); Font.draw(b, val, x + w - 3, y + 3, P.text, { font: 'small', align: 'right' });
-        y += 12;
-      }
-      y += 2;
-      Font.draw(b, fit('HABITAT', w), x, y, hc, { font: 'small' }); y += 9;
-      y += textLines(b, (d.area || []).map((a) => areaName(a) + (DexData.AREAS[a] && DexData.AREAS[a].sub ? ' (' + DexData.AREAS[a].sub + ')' : '')).join(', ') || '???', x, y, w, P.dim, 3, 8) + 3;
-      y += textLines(b, st0 === 2 ? d.blurb : 'Photograph it to read its full entry!', x, y, w, P.text, 99, 9) + 4;
-      // research completion
-      const pct = Math.round(dn.pct * 100);
-      Font.draw(b, fit('RESEARCH', w - 22), x, y, hc, { font: 'small' }); Font.draw(b, pct + '%', x + w, y, P.text, { font: 'small', align: 'right' }); y += 9;
-      UI.rrect(b, x, y, w, 6, 3, P.scrD); if (pct) UI.rrect(b, x, y, Math.max(5, Math.round(w * pct / 100)), 6, 3, pct >= 100 ? P.gold : P.green); y += 10;
-      Font.draw(b, fit('BEHAVIOURS', w), x, y, hc, { font: 'small' }); y += 10;
+      let y = y0 + 5;
+      const x = I.x + 5, w = I.w - 12;
+      Font.draw(b, 'NO.' + pad3(d.no), x, y + 1, P.faint, { font: 'small' });
+      Font.draw(b, stat(sp) ? d.name : '???', x + 28, y - 2, P.text, { font: 'title' });
+      let tx = I.x + I.w - 8;
+      for (const ty2 of d.type.slice().reverse()) { const w2 = Font.measure(ty2.toUpperCase(), 'small') + 8; tx -= w2; typePill(b, ty2, tx, y - 1); tx -= 2; }
+      y += 14;
+      Font.draw(b, fit('HT ' + d.h + ' M   ' + (d.area || []).map(areaName).join(', '), w), x, y, P.dim, { font: 'small' });
+      y += 10;
+      y += textLines(b, d.blurb, x, y, w, P.text, 99, 9) + 6;
+      Font.draw(b, 'BEHAVIOURS', x, y, hc, { font: 'small' }); y += 10;
       const seenB = Save.data.beh[sp] || {};
       for (const k in d.beh) {
-        const bh = d.beh[k], got = k in seenB, cl = got ? [] : Font.wrap('Clue: ' + bh.hint, 'small', w - 8), sw = bh.tier * 7;
-        UI.rrect(b, x - 2, y - 3, w + 4, 12 + cl.length * 8, 2, got ? P.white : P.scrLL);
+        const bh = d.beh[k], got = k in seenB, cl = got ? [] : Font.wrap('Clue: ' + bh.hint, 'small', w - 12);
+        UI.rrect(b, x - 2, y - 3, w + 4, got ? 12 : 13 + cl.length * 8, 2, got ? P.white : P.scrLL);
         Font.draw(b, got ? '{check}' : '{lock}', x, y - 1, 0, { font: 'small' });
-        Font.draw(b, fit(got ? bh.n : '???', w - 10 - sw - 2), x + 9, y, P.text, { font: 'small' });
+        Font.draw(b, got ? bh.n : '???', x + 10, y, P.text, { font: 'small' });
         for (let s = 0; s < bh.tier; s++) Font.icon(b, got ? 'star' : 'star0', x + w - 6 - (bh.tier - 1 - s) * 7, y - 1, 1);
-        cl.forEach((ln, j) => Font.draw(b, ln, x + 4, y + 9 + j * 8, P.dim, { font: 'small' }));
+        cl.forEach((ln, j) => Font.draw(b, ln, x + 10, y + 10 + j * 8, P.dim, { font: 'small' }));
         y += 14 + cl.length * 8;
       }
       y += 3;
-      Font.draw(b, fit('PHOTO OBJECTIVES', w), x, y, hc, { font: 'small' }); y += 10;
+      Font.draw(b, 'PHOTO OBJECTIVES', x, y, hc, { font: 'small' }); y += 10;
       for (const o of d.obj) {
         const done = !!Save.data.obj[o.id];
-        y += textLines(b, (done ? '{check} ' : '{star0} ') + o.t, x, y, w, done ? P.dim : P.text, 4, 8);
-        y += textLines(b, 'Reward: ' + (o.reward.startsWith('pts:') ? o.reward.slice(4) + ' pts' : Rewards.name(o.reward)), x + 6, y, w - 6, P.faint, 2, 8) + 4;
+        y += textLines(b, (done ? '{check} ' : '{star0} ') + o.t, x, y, w, done ? P.dim : P.text, 3, 8);
+        Font.draw(b, fit('   Reward: ' + (o.reward.startsWith('pts:') ? o.reward.slice(4) + ' pts' : Rewards.name(o.reward)), w), x, y, P.faint, { font: 'small' });
+        y += 12;
       }
       return y + 4 - y0;
     });
@@ -1472,24 +1179,24 @@ const Dex = (() => {
   /* ---------- page: encyclopedia (habitats + behaviours) ---------- */
   function habitats() { return Object.keys(DexData.AREAS).filter((id) => DexData.ORDER.some((k) => (DexData.S[k].area || []).includes(id))); }
   function pageEncy(fb, G, t) {
-    const Q = content(G), C = G.C, tiny = Q.w < 150;
-    const th = tabs(fb, 'ency', Q.x, Q.y, Q.w, [['hab', 'HABITATS'], ['beh', 'BEHAVIOURS']]);
+    const Q = content(G), C = G.C;
+    const th = tabs(fb, 'ency', Q.x, Q.y, Math.min(Q.w, C ? 170 : 200), [['hab', 'HABITATS'], ['beh', 'BEHAVIOURS']]);
     const Q2 = { x: Q.x, y: Q.y + th, w: Q.w, h: Q.h - th };
     if ((D.tab.ency || 'hab') === 'beh') return encyBeh(fb, G, Q2, t);
-    const [L, R] = split(Q2, tiny ? 0.4 : 0.38, 3);
+    const [L, R] = split(Q2, C ? 0.4 : 0.38);
     const ids = habitats();
     D.lsel.ency = clamp(D.lsel.ency || 0, 0, Math.max(0, ids.length - 1));
     if (ids[D.lsel.ency] !== D.encyA && D.encyA && ids.includes(D.encyA) && D.ensure !== 'ency') D.lsel.ency = ids.indexOf(D.encyA);
-    const sel = D.lsel.ency, rh = tiny ? 17 : C ? 20 : 24;
+    const sel = D.lsel.ency, rh = C ? 20 : 24;
     listView(fb, 'ency', L, ids.length, rh, sel, (b, i, x, y, w, h, on) => {
       const id = ids[i], sp = DexData.ORDER.filter((k) => (DexData.S[k].area || []).includes(id)), got = sp.filter((k) => stat(k) === 2).length, un = Save.unlocked(id);
-      UI.rrect(b, x, y, w, h - 1, 3, on ? P.red : P.scrDD); UI.rrect(b, x + 1, y + 1, w - 2, h - 3, 2, on ? P.white : P.card);
-      const [sky, gnd] = areaCols(id); UI.rrect(b, x + 3, y + 3, 6, h - 7, 2, sky); UI.rect(b, x + 3, y + h - 7, 6, 3, gnd);
-      const cnt = got + '/' + sp.length, cw = w >= 76 ? Font.measure(cnt, 'small') + 4 : 0;
-      Font.draw(b, fit((un ? '' : '{lock}') + areaName(id), w - 16 - cw), x + 12, y + 3, un ? P.text : P.faint, { font: 'small' });
-      if (cw) Font.draw(b, cnt, x + w - 4, y + 3, P.dim, { font: 'small', align: 'right' });
-      const k = got / Math.max(1, sp.length), bw = w - 16;
-      UI.rect(b, x + 12, y + h - 6, bw, 2, P.scrD); UI.rect(b, x + 12, y + h - 6, Math.round(bw * k), 2, k >= 1 ? P.gold : P.green);
+      UI.rrect(b, x, y, w, h - 2, 3, on ? P.red : P.scrD); UI.rrect(b, x + 1, y + 1, w - 2, h - 4, 2, on ? P.white : P.scrLL);
+      const [sky, gnd] = areaCols(id); UI.rrect(b, x + 3, y + 3, 8, h - 8, 2, sky); UI.rect(b, x + 3, y + h - 8, 8, 3, gnd);
+      Font.draw(b, fit((un ? '' : '{lock} ') + areaName(id), w - 44, C ? 'small' : 'body'), x + 14, y + (C ? 4 : 3), un ? P.text : P.faint, { font: C ? 'small' : 'body' });
+      const k = got / Math.max(1, sp.length), bw = w - 18 - (C ? 30 : 34);
+      if (C) { UI.rect(b, x + 14, y + 12, bw, 3, P.scrD); UI.rect(b, x + 14, y + 12, Math.round(bw * k), 3, k >= 1 ? P.gold : P.green); }
+      else { UI.rect(b, x + 14, y + 16, bw, 3, P.scrD); UI.rect(b, x + 14, y + 16, Math.round(bw * k), 3, k >= 1 ? P.gold : P.green); }
+      Font.draw(b, got + '/' + sp.length, x + w - 4, y + (C ? 9 : 12), P.dim, { font: 'small', align: 'right' });
     }, (i) => { D.lsel.ency = i; D.encyA = ids[i]; D.scroll.encyR = 0; });
     const id = ids[sel]; D.encyA = id; if (!id) return;
     card(fb, R);
@@ -1497,23 +1204,25 @@ const Dex = (() => {
     const I = { x: R.x + 2, y: R.y + 2, w: R.w - 4, h: R.h - 4 };
     const sps = DexData.ORDER.filter((k) => (DexData.S[k].area || []).includes(id));
     scrollPanel(fb, 'encyR', I, (b, y0) => {
-      let y = y0 + 3; const x = I.x + 4, w = I.w - 10;
-      const nf = w >= 120 ? 'title' : w >= 80 ? 'body' : 'small', hb = fontH(nf) + 4;
-      UI.rrect(b, x - 2, y, w + 4, hb, 3, sky);
-      Font.draw(b, fit(A.name || id, w - 2, nf), x + 1, y + 2 + (nf === 'small' ? 1 : 0), P.text, { font: nf });
-      y += hb + 3;
-      if (A.sub) { Font.draw(b, fit(A.sub.toUpperCase(), w), x, y, P.dim, { font: 'small' }); y += 9; }
-      if (A.blurb) y += textLines(b, A.blurb, x, y, w, P.text, tiny ? 5 : 4, 8) + 3;
+      let y = y0 + 4; const x = I.x + 5, w = I.w - 12;
+      UI.rrect(b, x - 2, y, w + 4, C ? 14 : 18, 3, sky);
+      Font.draw(b, (A.name || id), x + 2, y + (C ? 2 : 4), P.text, { font: C ? 'body' : 'title' });
+      Font.draw(b, fit((A.sub || '').toUpperCase(), w * 0.5), x + w, y + (C ? 5 : 7), P.dim, { font: 'small', align: 'right' });
+      y += C ? 18 : 22;
+      if (A.blurb) y += textLines(b, A.blurb, x, y, w, P.text, 4, 8) + 4;
       let bt = 0, bg = 0, r4 = 0, r4g = 0;
       for (const k of sps) { const dd = DexData.S[k], sb = Save.data.beh[k] || {}; for (const bk in dd.beh) { bt++; if (bk in sb) bg++; if (dd.beh[bk].tier >= 4) { r4++; if (bk in sb) r4g++; } } }
-      y += textLines(b, 'POKéMON ' + sps.filter((k) => stat(k) === 2).length + '/' + sps.length + ' · BEHAVIOURS ' + bg + '/' + bt + ' · {star}x4 ' + r4g + '/' + r4, x, y, w, P.dim, 3, 8) + 3;
-      const cs = tiny ? 20 : C ? 24 : 30, cols = Math.max(1, Math.floor((w + 4) / cs));
+      Font.draw(b, 'POKéMON ' + sps.filter((k) => stat(k) === 2).length + '/' + sps.length + '   BEHAVIOURS ' + bg + '/' + bt + '   {star}{star}{star}{star} ' + r4g + '/' + r4, x, y, P.dim, { font: 'small' });
+      y += 11;
+      const cs = C ? 26 : 30, cols = Math.max(1, Math.floor((w + 4) / cs));
       sps.forEach((k, i) => {
         const cx = x + (i % cols) * cs, cy = y + Math.floor(i / cols) * (cs + 2), st = stat(k);
         UI.rrect(b, cx, cy, cs - 3, cs - 3, 3, st === 2 ? P.white : P.scrL);
         const tt = thumb(k, cs - 7, st < 2);
         if (tt) UI.img(b, tt, cx + Math.round((cs - 3 - tt.w) / 2), cy + Math.round((cs - 3 - tt.h) / 2), 1, st === 1 ? { tint: P.scrDD, tintK: 0.4 } : {});
-        if (st === 2 && cs >= 24) Font.icon(b, 'pb', cx + cs - 10, cy + cs - 10, 1);
+        if (st === 2) Font.icon(b, 'pb', cx + cs - 10, cy + cs - 10, 1);
+        const by = cy - (D.scroll.encyR || 0) + (I.y - y0) - 0;
+        void by;
       });
       const rows = Math.ceil(sps.length / cols);
       // buttons for the species tiles (registered in screen space)
@@ -1523,40 +1232,33 @@ const Dex = (() => {
     });
   }
   function encyBeh(fb, G, Q, t) {
-    const C = G.C, tiny = Q.w < 150;
+    const C = G.C;
     const tiers = [0, 0, 0, 0, 0], got = [0, 0, 0, 0, 0], rare = [];
     for (const k of DexData.ORDER) { const d = DexData.S[k], sb = Save.data.beh[k] || {}; for (const bk in d.beh) { const tr = d.beh[bk].tier; tiers[tr]++; if (bk in sb) got[tr]++; if (tr >= 3) rare.push({ k, bk, tr, got: bk in sb }); } }
-    let R = Q;
-    if (!tiny) {
-      const [L, R2] = split(Q, C ? 0.36 : 0.34, 3); R = R2;
-      card(fb, L);
-      let y = L.y + 5;
-      Font.draw(fb, fit('STAR TIERS', L.w - 10), L.x + 5, y, P.redD, { font: 'small' }); y += 10;
-      const rowH = C ? 15 : 18;
-      for (let tr = 1; tr <= 4; tr++) {
-        const k = got[tr] / Math.max(1, tiers[tr]), x = L.x + 5, w = L.w - 10;
-        for (let s = 0; s < tr; s++) Font.icon(fb, 'star', x + s * 7, y, 1);
-        Font.draw(fb, got[tr] + '/' + tiers[tr], x + w, y + 1, P.text, { font: 'small', align: 'right' });
-        UI.rect(fb, x, y + 9, w, 3, P.scrD); UI.rect(fb, x, y + 9, Math.round(w * k), 3, [0, P.green, P.blue, P.gold, 0xffd07aff][tr]);
-        y += rowH;
-      }
-      textLines(fb, 'Rare moments score the most stars!', L.x + 5, y + 1, L.w - 10, P.dim, Math.max(0, Math.floor((L.y + L.h - y - 4) / 8)));
-    } else {
-      // phones: one summary line above the list
-      const rg = got[3] + got[4], rt = tiers[3] + tiers[4];
-      Font.draw(fb, fit('{star}{star}{star}+ RARE ' + rg + '/' + rt, Q.w), Q.x + 1, Q.y + 1, P.text, { font: 'small' });
-      R = { x: Q.x, y: Q.y + 10, w: Q.w, h: Q.h - 10 };
+    const [L, R] = split(Q, C ? 0.36 : 0.34);
+    card(fb, L);
+    let y = L.y + 6;
+    Font.draw(fb, 'STAR TIERS', L.x + 6, y, P.redD, { font: 'small' }); y += 10;
+    const rowH = C ? 14 : 18;
+    for (let tr = 1; tr <= 4; tr++) {
+      const k = got[tr] / Math.max(1, tiers[tr]), x = L.x + 6, w = L.w - 12;
+      for (let s = 0; s < tr; s++) Font.icon(fb, 'star', x + s * 7, y, 1);
+      Font.draw(fb, got[tr] + '/' + tiers[tr], x + w, y + 1, P.text, { font: 'small', align: 'right' });
+      UI.rect(fb, x, y + 9, w, 3, P.scrD); UI.rect(fb, x, y + 9, Math.round(w * k), 3, [0, P.green, P.blue, P.gold, 0xffff7ad0][tr]);
+      y += rowH;
     }
+    textLines(fb, 'Rare moments score the most stars. Rotom lists them on the right!', L.x + 6, y + 2, L.w - 12, P.dim, Math.max(1, Math.floor((L.y + L.h - y - 6) / 8)));
     rare.sort((a, b) => (a.got - b.got) || (b.tr - a.tr));
-    const rh = tiny ? 20 : C ? 22 : 26;
+    const rh = C ? 22 : 26;
+    D.lsel.encyB = clamp(D.lsel.encyB || 0, 0, Math.max(0, rare.length - 1));
     listView(fb, 'encyR', R, rare.length, rh, -1, (b, i, x, y2, w, h) => {
       const r = rare[i], d = DexData.S[r.k], bh = d.beh[r.bk], seen = stat(r.k) > 0;
-      UI.rrect(b, x, y2, w, h - 1, 3, P.scrDD); UI.rrect(b, x + 1, y2 + 1, w - 2, h - 3, 2, r.got ? P.white : P.card);
+      UI.rrect(b, x, y2, w, h - 2, 3, P.scrD); UI.rrect(b, x + 1, y2 + 1, w - 2, h - 4, 2, r.got ? P.white : P.scrLL);
       const tt = thumb(r.k, h - 6, !seen); if (tt) UI.img(b, tt, x + 3 + Math.round((h - 6 - tt.w) / 2), y2 + 2 + Math.round((h - 6 - tt.h) / 2), 1);
-      const tx = x + h, sw = r.tr * 7;
-      Font.draw(b, fit((seen ? d.name : '???') + ' · ' + (r.got ? bh.n : '???'), w - h - sw - 6), tx, y2 + 3, P.text, { font: 'small' });
-      for (let s = 0; s < r.tr; s++) Font.icon(b, r.got ? 'star' : 'star0', x + w - 4 - (r.tr - s) * 7, y2 + 2, 1);
-      Font.draw(b, fit(r.got ? '{check} Photographed!' : 'Clue: ' + bh.hint, w - h - 4), tx, y2 + (tiny ? 11 : C ? 12 : 14), P.dim, { font: 'small' });
+      const tx = x + h;
+      Font.draw(b, fit((seen ? d.name : '???') + ' · ' + (r.got ? bh.n : '???'), w - h - 32), tx, y2 + 3, P.text, { font: 'small' });
+      for (let s = 0; s < r.tr; s++) Font.icon(b, r.got ? 'star' : 'star0', x + w - 5 - (r.tr - s) * 7, y2 + 2, 1);
+      Font.draw(b, fit(r.got ? '{check} Photographed!' : 'Clue: ' + bh.hint, w - h - 6), tx, y2 + (C ? 12 : 14), P.dim, { font: 'small' });
     }, (i) => { const r = rare[i]; if (stat(r.k)) { openEntry(r.k); } else hintFor(r.k); });
   }
 
@@ -1581,58 +1283,49 @@ const Dex = (() => {
     return Rewards.C[r] ? Rewards.C[r].name : r;
   }
   function pageQuests(fb, G, t) {
-    const Q = content(G), C = G.C, tiny = Q.w < 150;
-    const th = tabs(fb, 'quests', Q.x, Q.y, Q.w, [['log', 'QUEST LOG'], ['stamps', 'STAMPS']]);
+    const Q = content(G), C = G.C;
+    const th = tabs(fb, 'quests', Q.x, Q.y, Math.min(Q.w, C ? 170 : 200), [['log', 'QUEST LOG'], ['stamps', 'STAMPS']]);
     const Q2 = { x: Q.x, y: Q.y + th, w: Q.w, h: Q.h - th };
     if ((D.tab.quests || 'log') === 'stamps') return pageStamps(fb, G, Q2, t);
-    const list = questList(), [L, R] = split(Q2, tiny ? 0.45 : 0.46, 3);
+    const list = questList(), [L, R] = split(Q2, C ? 0.47 : 0.46);
     D.lsel.qlog = clamp(D.lsel.qlog || 0, 0, Math.max(0, list.length - 1));
-    const sel = D.lsel.qlog, rh = tiny ? 15 : C ? 18 : 22, tr = trackId();
-    if (!list.length) { textLines(fb, 'No quests yet! Talk to Pokémon around Hoenn.', Q2.x + 4, Q2.y + 10, Q2.w - 8, P.text, 3, 9); return; }
+    const sel = D.lsel.qlog, rh = C ? 18 : 22, tr = trackId();
+    if (!list.length) { Font.draw(fb, 'NO QUESTS YET!', L.x + L.w / 2, L.y + 20, P.dim, { font: 'small', align: 'center' }); return; }
     const s = listView(fb, 'qlog', L, list.length, rh, sel, (b, i, x, y, w, h, on) => {
       const e = list[i], q = e.q, ic = QST[e.s] || QST.active;
-      UI.rrect(b, x, y, w, h - 1, 3, on ? P.red : P.scrDD); UI.rrect(b, x + 1, y + 1, w - 2, h - 3, 2, on ? P.white : e.s === 'done' ? P.scrL : P.card);
-      const r = tiny ? 4 : 5;
-      UI.disc(b, x + 3 + r, y + (h >> 1) - 1, r, ic[2]); Font.draw(b, ic[0], x + 3 + r, y + (h >> 1) - 3, 0xffffffff, { font: 'small', align: 'center' });
-      const big = h >= 22;
-      Font.draw(b, fit(q.title, w - r * 2 - 8 - (q.id === tr ? 8 : 0), big ? 'body' : 'small'), x + r * 2 + 5, y + (big ? 3 : Math.round((h - 6) / 2)), e.s === 'done' ? P.faint : P.text, { font: big ? 'body' : 'small' });
-      if (big) Font.draw(b, fit(q.birch ? 'PROF. BIRCH' : spName(q.giver).toUpperCase() + ' · ' + areaName(q.area).toUpperCase(), w - r * 2 - 8), x + r * 2 + 5, y + 13, P.faint, { font: 'small' });
-      if (q.id === tr) Font.icon(b, 'spark', x + w - 8, y + 4, 1);
+      UI.rrect(b, x, y, w, h - 2, 3, on ? P.red : P.scrD); UI.rrect(b, x + 1, y + 1, w - 2, h - 4, 2, on ? P.white : e.s === 'done' ? P.scrL : P.scrLL);
+      UI.disc(b, x + 8, y + (h >> 1) - 1, C ? 4 : 5, ic[2]); Font.draw(b, ic[0], x + 8, y + (h >> 1) - 3, 0xffffffff, { font: 'small', align: 'center' });
+      Font.draw(b, fit(q.title, w - 22 - (q.id === tr ? 10 : 0), C ? 'small' : 'body'), x + 16, y + (C ? 5 : 3), e.s === 'done' ? P.faint : P.text, { font: C ? 'small' : 'body' });
+      if (!C) Font.draw(b, fit(q.birch ? 'PROF. BIRCH' : spName(q.giver).toUpperCase() + ' · ' + areaName(q.area).toUpperCase(), w - 22), x + 16, y + 13, P.faint, { font: 'small' });
+      if (q.id === tr) Font.icon(b, 'spark', x + w - 9, y + 4, 1);
     }, (i) => { if (D.lsel.qlog === i) trackQuest(list[i].q); D.lsel.qlog = i; });
     D.lookAt = [L.x + L.w / 2, L.y + sel * rh - s + rh / 2];
     const e = list[sel]; if (!e) return;
     const q = e.q, ic = QST[e.s] || QST.active;
     card(fb, R);
-    const I = { x: R.x + 2, y: R.y + 2, w: R.w - 4, h: R.h - 4 };
-    const trackable = !q.birch && e.s !== 'done', bh = tiny ? 11 : 13;
-    const P2 = trackable ? { x: I.x, y: I.y, w: I.w, h: I.h - bh - 3 } : I;
-    scrollPanel(fb, 'qdet', P2, (b, y0) => {
-      let y = y0 + 3; const x = I.x + 4, w = I.w - 10;
-      const pwid = Font.measure(ic[1], 'small') + 8;
-      pill(b, x, y, pwid, 9, ic[2], 0xffffffff, ic[1], { hi: false });
-      if (q.area && w - pwid > 30) Font.draw(b, fit(areaName(q.area).toUpperCase(), w - pwid - 4), x + w, y + 2, P.dim, { font: 'small', align: 'right' });
-      y += 12;
-      const tf = w >= 110 ? 'title' : w >= 80 ? 'body' : 'small';
-      y += textLines(b, q.title, x, y, w, P.text, 3, fontH(tf) - (tf === 'small' ? 0 : 1), tf) + 3;
-      // who asked
-      const ps = tiny ? 14 : C ? 18 : 24, gsp = q.birch ? null : q.giver, tt = gsp && DexData.S[gsp] ? thumb(gsp, ps, false) : null;
-      if (tt) UI.img(b, tt, x, y, 1); else portrait(b, x, y, ps, q.birch ? 'birch' : gsp);
-      Font.draw(b, fit(q.birch ? 'Prof. Birch' : spName(q.giver), w - ps - 4), x + ps + 4, y + 1, P.text, { font: 'small' });
-      Font.draw(b, fit(q.birch ? 'RESEARCH REQUEST' : 'ASKED FOR HELP', w - ps - 4), x + ps + 4, y + 10, P.faint, { font: 'small' });
-      y += Math.max(ps, 18) + 3;
-      const obj = q.birch ? (e.s === 'done' ? 'Completed!' : q.birch.hint) : hasP() && Progress.objective ? Progress.objective(q) : '';
-      Font.draw(b, 'OBJECTIVE', x, y, P.redD, { font: 'small' }); y += 9;
-      y += textLines(b, obj, x, y, w, P.text, 6, 8) + 3;
-      const rw = q.birch ? rewardLabel(q.birch.reward) : rewardLabel(q.reward);
-      if (rw) y += textLines(b, 'REWARD: ' + rw, x, y, w, P.dim, 3, 8) + 2;
-      return y - y0 + 2;
-    });
-    if (trackable) {
-      const on = q.id === tr, w = I.w - 6;
-      button(fb, 'track', I.x + 3, R.y + R.h - 4 - bh, w, bh, on ? (w >= 120 ? '{spark} TRACKING - TAP TO STOP' : '{spark} TRACKING') : w >= 100 ? 'TRACK THIS QUEST' : 'TRACK', () => trackQuest(q), { fill: on ? P.green : P.red });
+    let y = R.y + 5; const x = R.x + 6, w = R.w - 12;
+    pill(fb, x, y, Font.measure(ic[1], 'small') + 10, 9, ic[2], 0xffffffff, ic[1], { hi: false });
+    if (q.area) Font.draw(fb, fit(areaName(q.area).toUpperCase(), w - 60), x + w, y + 2, P.dim, { font: 'small', align: 'right' });
+    y += 12;
+    y += textLines(fb, q.title, x, y + 1, w, P.text, 2, 12, 'title') + 2;
+    // who asked
+    const gsp = q.birch ? null : q.giver, tt = gsp && DexData.S[gsp] ? thumb(gsp, C ? 20 : 26, false) : null;
+    const gy = y;
+    if (tt) UI.img(fb, tt, x, gy, 1); else portrait(fb, x, gy, C ? 20 : 26, q.birch ? 'birch' : gsp);
+    const gw = (C ? 20 : 26) + 5;
+    Font.draw(fb, (q.birch ? 'Prof. Birch' : spName(q.giver)), x + gw, gy + 2, P.text, { font: 'body' });
+    Font.draw(fb, q.birch ? 'RESEARCH REQUEST' : 'ASKED FOR HELP', x + gw, gy + (C ? 13 : 15), P.faint, { font: 'small' });
+    y = gy + (C ? 23 : 30);
+    const obj = q.birch ? (e.s === 'done' ? 'Completed!' : q.birch.hint) : hasP() && Progress.objective ? Progress.objective(q) : '';
+    Font.draw(fb, 'OBJECTIVE', x, y, P.redD, { font: 'small' }); y += 9;
+    y += textLines(fb, obj, x, y, w, P.text, C ? 2 : 3, 8) + 3;
+    const rw = q.birch ? rewardLabel(q.birch.reward) : rewardLabel(q.reward);
+    if (rw && y < R.y + R.h - 30) { Font.draw(fb, fit('REWARD: ' + rw, w), x, y, P.dim, { font: 'small' }); y += 10; }
+    if (!q.birch && e.s !== 'done') {
+      const on = q.id === tr, bh = C ? 12 : 14;
+      button(fb, 'track', x, R.y + R.h - 5 - bh, w, bh, on ? '{spark} TRACKING — TAP TO STOP' : 'TRACK THIS QUEST', () => trackQuest(q), { fill: on ? P.green : P.red });
     }
   }
-
   function portrait(fb, x, y, s, who) {
     // a little avatar for people (Prof. Birch)
     UI.rrect(fb, x, y, s, s, 4, P.rim); UI.rrect(fb, x + 1, y + 1, s - 2, s - 2, 3, hex('#ffe0b8'));
@@ -1642,83 +1335,45 @@ const Dex = (() => {
     UI.hline(fb, x + Math.round(s * 0.38), x + Math.round(s * 0.62), y + Math.round(s * 0.68), hex('#b05a3a'));
   }
   function pageStamps(fb, G, Q, t) {
-    const C = G.C, tiny = Q.w < 150, n = Quests.stamps(), [L, R] = split(Q, 0.46, 3);
+    const C = G.C, n = Quests.stamps(), [L, R] = split(Q, 0.44);
     card(fb, L);
-    const nS = String(n), nW = Font.measure(nS, 'small') + 4;
-    Font.draw(fb, fit(L.w >= 100 ? 'RESEARCH STAMPS' : 'STAMPS', L.w - 10 - nW), L.x + 5, L.y + 5, P.redD, { font: 'small' });
-    Font.draw(fb, nS, L.x + L.w - 5, L.y + 5, P.text, { font: 'small', align: 'right' });
-    const bh = tiny ? 11 : 13, ids = Object.keys(DexData.AREAS), LQ = { x: L.x + 3, y: L.y + 16, w: L.w - 6, h: L.h - 19 - bh - 3 };
-    listView(fb, 'stampA', LQ, ids.length, tiny ? 19 : C ? 20 : 24, -1, (b, i, x, y, w, h) => {
+    Font.draw(fb, 'RESEARCH STAMPS', L.x + 6, L.y + 5, P.redD, { font: 'small' });
+    Font.draw(fb, String(n), L.x + L.w - 8, L.y + 3, P.text, { font: 'title', align: 'right' });
+    const ids = Object.keys(DexData.AREAS), LQ = { x: L.x + 3, y: L.y + 16, w: L.w - 6, h: L.h - 19 - (C ? 14 : 18) };
+    listView(fb, 'stampA', LQ, ids.length, C ? 20 : 24, -1, (b, i, x, y, w, h) => {
       const id = ids[i], a = DexData.AREAS[id], un = Save.unlocked(id);
-      UI.rrect(b, x, y, w, h - 1, 3, P.scrDD); UI.rrect(b, x + 1, y + 1, w - 2, h - 3, 2, un ? P.white : P.scrLL);
-      Font.draw(b, fit((un ? '{check} ' : '{lock} ') + a.name, w - 6), x + 3, y + 3, P.text, { font: 'small' });
-      Font.draw(b, fit(un ? a.sub : id === 'stage' ? 'Needs Meloetta\'s band' : a.need >= 99 ? 'Follow the quests' : 'Needs ' + a.need + ' stamps', w - 6), x + 3, y + 11, P.faint, { font: 'small' });
+      UI.rrect(b, x, y, w, h - 2, 3, P.scrD); UI.rrect(b, x + 1, y + 1, w - 2, h - 4, 2, un ? P.white : P.scrLL);
+      Font.draw(b, fit((un ? '{check} ' : '{lock} ') + a.name, w - 8, C ? 'small' : 'body'), x + 4, y + (C ? 3 : 2), P.text, { font: C ? 'small' : 'body' });
+      Font.draw(b, fit(un ? a.sub : id === 'stage' ? 'Needs Meloetta\'s band' : a.need >= 99 ? 'Follow the quests to get there' : 'Needs ' + a.need + ' stamps', w - 8), x + 4, y + (C ? 11 : 13), P.faint, { font: 'small' });
     });
-    button(fb, 'map', L.x + 3, L.y + L.h - bh - 3, L.w - 6, bh, L.w >= 110 ? '{spark} OPEN THE WORLD MAP' : '{spark} MAP', () => { if (locked('map')) { SFX.error(); say('The map is still locked! Bzzt.', { mood: 'sad' }); return; } close(() => WorldMap.open()); });
+    const bh = C ? 12 : 14;
+    button(fb, 'map', L.x + 4, L.y + L.h - bh - 4, L.w - 8, bh, '{spark} OPEN THE WORLD MAP', () => { if (locked('map')) { SFX.error(); say('The map is still locked! Bzzt.', { mood: 'sad' }); return; } close(() => WorldMap.open()); });
     card(fb, R);
     const I = { x: R.x + 2, y: R.y + 2, w: R.w - 4, h: R.h - 4 };
     scrollPanel(fb, 'stampR', I, (b, y0) => {
-      let y = y0 + 4; const x = I.x + 4, w = I.w - 8;
-      Font.draw(b, fit('BIRCH\'S REQUESTS', w), x, y, P.redD, { font: 'small' }); y += 11;
+      let y = y0 + 5; const x = I.x + 5, w = I.w - 10;
+      Font.draw(b, 'Prof. Birch\'s requests', x, y + 1, P.text, { font: 'body' }); y += 15;
       for (const q of Quests.BIRCH) {
-        const done = !!Save.data.quests[q.id], tl = Font.wrap((done ? '{check} ' : '{star0} ') + q.t, 'small', w), hl = done ? [] : Font.wrap(q.hint, 'small', w - 6);
-        UI.rrect(b, x - 2, y - 2, w + 3, 5 + (tl.length + hl.length) * 8, 2, done ? P.white : P.scrLL);
-        tl.forEach((ln, j) => Font.draw(b, ln, x, y + j * 8, P.text, { font: 'small' }));
-        hl.forEach((ln, j) => Font.draw(b, ln, x + 5, y + (tl.length + j) * 8, P.dim, { font: 'small' }));
-        y += 8 + (tl.length + hl.length) * 8;
+        const done = !!Save.data.quests[q.id], hl = done ? [] : Font.wrap(q.hint, 'small', w - 12);
+        UI.rrect(b, x - 3, y - 3, w + 4, 12 + hl.length * 8, 2, done ? P.white : P.scrLL);
+        Font.draw(b, fit((done ? '{check} ' : '{star0} ') + q.t, w), x, y, P.text, { font: 'small' });
+        hl.forEach((ln, j) => Font.draw(b, ln, x + 8, y + 9 + j * 8, P.dim, { font: 'small' }));
+        y += 15 + hl.length * 8;
       }
       return y - y0;
     });
   }
 
-  /* ---------- page: progress ---------- */
-  function progData() {
-    const list = DexData.ORDER.filter((k) => !DexData.S[k].player), seen = list.filter((k) => Save.data.seen[k]).length;
-    let bt = 0, bg = 0; for (const k of list) { bt += Object.keys(DexData.S[k].beh).length; bg += Object.keys(Save.data.beh[k] || {}).length; }
-    return { list, seen, bt, bg, pct: Math.round(((seen / list.length) * 0.6 + (bg / Math.max(1, bt)) * 0.4) * 100) };
-  }
-  function progSummary(b, x, y, w, big) {
-    const d = progData(), y0 = y;
-    Font.draw(b, 'COMPLETION', x, y, P.redD, { font: 'small' }); y += 9;
-    Font.draw(b, d.pct + '%', x, y, P.text, { font: 'title', sc: big ? 2 : 1 }); y += big ? 30 : 16;
-    UI.rrect(b, x, y, w, 5, 2, P.scrD); UI.rrect(b, x, y, Math.max(3, Math.round((w * d.pct) / 100)), 5, 2, P.red); y += 9;
-    const lines = ['Registered ' + d.seen + ' / ' + d.list.length, 'Behaviours ' + d.bg + ' / ' + d.bt];
-    if (hasP()) {
-      const lv = Progress.level(), xp = (Save.data.lv && Save.data.lv.xp) || 0, nx = Progress.XP && Progress.XP[lv + 1];
-      lines.push('Mudkip Lv ' + lv + (nx ? ' · ' + xp + '/' + nx + ' XP' : ' · ' + xp + ' XP'));
-      const f = (Progress.FEATS || []).find((f2) => !Progress.has(f2.id)); if (f) lines.push('Next: ' + f.name + ' (Lv ' + f.lv + ')');
-      const q = Progress.tracked && Progress.tracked(); if (q) lines.push('Quest: ' + q.title + (Progress.objective ? ' - ' + Progress.objective(q) : ''));
-    }
-    for (const ln of lines) y += textLines(b, ln, x, y, w, P.text, 3, 8) + 1;
-    return y - y0;
-  }
-  function progAreas(b, x, y, w) {
-    const y0 = y, list = DexData.ORDER.filter((k) => !DexData.S[k].player);
-    for (const id of Object.keys(DexData.AREAS)) {
-      const sp = list.filter((k) => (DexData.S[k].area || []).includes(id)); if (!sp.length) continue;
-      const un = Save.unlocked(id), got = sp.filter((k) => Save.data.seen[k]), miss = sp.filter((k) => !Save.data.seen[k]);
-      const hint = !un ? 'Not visited yet: follow the quests to get there.' : !miss.length ? '{check} Every Pokémon here registered!' : miss.length + ' left. ' + ((Object.values(DexData.S[miss[0]].beh)[0] || {}).hint || 'Keep exploring.');
-      const hl = Font.wrap(hint, 'small', w - 8).slice(0, 2), hh = 21 + hl.length * 8;
-      UI.rrect(b, x, y, w, hh - 2, 3, un ? P.white : P.scrLL);
-      const cnt = got.length + '/' + sp.length;
-      Font.draw(b, fit((un ? '' : '{lock} ') + areaName(id), w - 12 - Font.measure(cnt, 'small')), x + 4, y + 3, P.text, { font: 'small' });
-      Font.draw(b, cnt, x + w - 4, y + 3, P.text, { font: 'small', align: 'right' });
-      const k = got.length / sp.length; UI.rect(b, x + 4, y + 12, w - 8, 3, P.scrD); UI.rect(b, x + 4, y + 12, Math.round((w - 8) * k), 3, k >= 1 ? P.gold : P.green);
-      hl.forEach((ln, j) => Font.draw(b, ln, x + 4, y + 18 + j * 8, P.dim, { font: 'small' }));
-      y += hh;
-    }
-    return y - y0;
-  }
+  /* ---------- page: progress (from progress.js) ---------- */
   function pageProg(fb, G, t) {
-    const Q = content(G);
-    if (Q.w >= 270) {
-      const [L, R] = split(Q, 0.42, 3);
+    const Q = content(G), [L, R] = split(Q, 0.42);
+    if (hasP() && Progress.dexPage) {
       card(fb, L); card(fb, R);
-      scrollPanel(fb, 'progL', { x: L.x + 2, y: L.y + 2, w: L.w - 4, h: L.h - 4 }, (b, y0) => progSummary(b, L.x + 6, y0 + 4, L.w - 12, L.w >= 90) + 8);
-      scrollPanel(fb, 'prog', { x: R.x + 2, y: R.y + 2, w: R.w - 4, h: R.h - 4 }, (b, y0) => progAreas(b, R.x + 4, y0 + 3, R.w - 12) + 6);
+      const Li = { x: L.x + 2, y: L.y + 2, w: L.w - 4, h: L.h - 4 }, Ri = { x: R.x + 2, y: R.y + 2, w: R.w - 4, h: R.h - 4 };
+      Progress.dexPage(fb, D.SP, Li, Ri, 0, t, { btn, clipTo, areas, D, thumb });
     } else {
-      card(fb, Q);
-      scrollPanel(fb, 'prog', { x: Q.x + 2, y: Q.y + 2, w: Q.w - 4, h: Q.h - 4 }, (b, y0) => { let y = y0 + 4; y += progSummary(b, Q.x + 6, y, Q.w - 16, false) + 4; y += progAreas(b, Q.x + 4, y, Q.w - 12); return y - y0 + 4; });
+      const c = counts();
+      Font.draw(fb, 'Seen ' + c.seen + ' · Caught ' + c.caught + ' / ' + c.all, Q.x + 6, Q.y + 8, P.text, { font: 'title' });
     }
   }
 
@@ -1740,117 +1395,107 @@ const Dex = (() => {
     }
     for (const b of Quests.BIRCH || []) if (d.quests[b.id]) out.push({ id: 'm.b.' + b.id, from: 'Prof. Birch', sp: 'birch', subj: 'Request complete!', body: '"' + b.t + '" - splendid work! I have sent your reward: ' + rewardLabel(b.reward) + '. Keep it up!', t: d.quests[b.id] });
     const R = (d.rmail = d.rmail || {});
-    void R; out.sort((a, b) => b.t - a.t);
+    out.sort((a, b) => (!!R[a.id] - !!R[b.id]) || (b.t - a.t));
     D.mailC = { t: D.rt || 0, list: out };
     return out;
   }
   function mailUnread() { const R = Save.data.rmail || {}; return mailList().filter((m) => !R[m.id]).length; }
   function pageMail(fb, G, t) {
-    const Q = content(G), C = G.C, tiny = Q.w < 150, [L, R] = split(Q, tiny ? 0.44 : 0.44, 3);
+    const Q = content(G), C = G.C, [L, R] = split(Q, C ? 0.45 : 0.44);
     const M = mailList(), RD = (Save.data.rmail = Save.data.rmail || {});
     if (D.mailSel) { const i = M.findIndex((m) => m.id === D.mailSel); if (i >= 0 && D.ensure !== 'mail') D.lsel.mail = i; }
     D.lsel.mail = clamp(D.lsel.mail || 0, 0, Math.max(0, M.length - 1));
-    const sel = D.lsel.mail, rh = tiny ? 20 : C ? 22 : 26;
+    const sel = D.lsel.mail, rh = C ? 22 : 26;
     const s = listView(fb, 'mail', L, M.length, rh, sel, (b, i, x, y, w, h, on) => {
       const m = M[i], unread = !RD[m.id];
-      UI.rrect(b, x, y, w, h - 1, 3, on ? P.red : P.scrDD); UI.rrect(b, x + 1, y + 1, w - 2, h - 3, 2, on ? P.white : unread ? P.card : P.scrLL);
-      const ps = h - 6, tt = DexData.S[m.sp] ? thumb(m.sp, ps, false) : null;
-      if (tt) UI.img(b, tt, x + 2 + Math.round((ps - tt.w) / 2), y + 2 + Math.round((ps - tt.h) / 2)); else portrait(b, x + 2, y + 2, ps, m.sp);
-      const tx = x + ps + 5, big = h >= 26 && w >= 150;
-      Font.draw(b, fit(m.from.toUpperCase(), w - ps - 12), tx, y + 3, unread ? P.redD : P.faint, { font: 'small' });
-      Font.draw(b, fit(m.subj, w - ps - 8, big ? 'body' : 'small'), tx, y + (big ? 12 : 11), unread ? P.text : P.dim, { font: big ? 'body' : 'small' });
-      if (unread) UI.disc(b, x + w - 5, y + 5, 2, P.red);
+      UI.rrect(b, x, y, w, h - 2, 3, on ? P.red : P.scrD); UI.rrect(b, x + 1, y + 1, w - 2, h - 4, 2, on ? P.white : unread ? P.card : P.scrLL);
+      const ps = h - 7, tt = DexData.S[m.sp] ? thumb(m.sp, ps, false) : null;
+      if (tt) UI.img(b, tt, x + 3 + Math.round((ps - tt.w) / 2), y + 2 + Math.round((ps - tt.h) / 2)); else portrait(b, x + 3, y + 2, ps, m.sp);
+      const tx = x + ps + 7;
+      Font.draw(b, fit(m.from.toUpperCase(), w - ps - 18), tx, y + 3, unread ? P.redD : P.faint, { font: 'small' });
+      Font.draw(b, fit(m.subj, w - ps - 14, C ? 'small' : 'body'), tx, y + (C ? 11 : 12), unread ? P.text : P.dim, { font: C ? 'small' : 'body' });
+      if (unread) { UI.disc(b, x + w - 6, y + 5, 2, P.red); }
     }, (i) => { D.lsel.mail = i; D.mailSel = M[i] && M[i].id; });
     const m = M[sel]; if (!m) return;
     D.mailSel = m.id;
     if (!RD[m.id]) { RD[m.id] = 1; Save.save(); D.mailC = null; }
     D.lookAt = [L.x + L.w / 2, L.y + sel * rh - s + rh / 2];
     card(fb, R, P.white);
-    const bh = tiny ? 11 : 13, I = { x: R.x + 2, y: R.y + 2, w: R.w - 4, h: R.h - 4 - (m.act ? bh + 3 : 0) };
-    scrollPanel(fb, 'mailR', I, (b, y0) => {
-      const x = I.x + 4, w = I.w - 8; let y = y0 + 3;
-      const ps = tiny ? 16 : C ? 22 : 28, tt = DexData.S[m.sp] ? thumb(m.sp, ps, false) : null;
-      UI.rrect(b, x - 1, y - 1, ps + 2, ps + 2, 4, P.scrL);
-      if (tt) UI.img(b, tt, x + Math.round((ps - tt.w) / 2), y + Math.round((ps - tt.h) / 2)); else portrait(b, x, y, ps, m.sp);
-      Font.draw(b, fit(m.from.toUpperCase(), w - ps - 5), x + ps + 5, y + 1, P.faint, { font: 'small' });
-      const sf = w - ps >= 90 ? 'body' : 'small';
-      Font.draw(b, fit(m.subj, w - ps - 5, sf), x + ps + 5, y + 10, P.text, { font: sf });
-      y += ps + 4;
-      UI.hline(b, x, x + w, y, P.scrL); y += 4;
-      y += textLines(b, m.body, x, y, w, P.text, 99, 9);
-      return y - y0 + 4;
-    });
-    if (m.act) button(fb, 'mail-act', R.x + 4, R.y + R.h - 4 - bh, R.w - 8, bh, m.act.label, m.act.fn);
+    const x = R.x + 6, w = R.w - 12; let y = R.y + 5;
+    const ps = C ? 22 : 28, tt = DexData.S[m.sp] ? thumb(m.sp, ps, false) : null;
+    UI.rrect(fb, x - 1, y - 1, ps + 2, ps + 2, 4, P.scrL);
+    if (tt) UI.img(fb, tt, x + Math.round((ps - tt.w) / 2), y + Math.round((ps - tt.h) / 2)); else portrait(fb, x, y, ps, m.sp);
+    Font.draw(fb, 'FROM: ' + m.from.toUpperCase(), x + ps + 6, y + 2, P.faint, { font: 'small' });
+    textLines(fb, m.subj, x + ps + 6, y + 11, w - ps - 6, P.text, 2, 11, 'body');
+    y += ps + 6;
+    UI.hline(fb, x, x + w, y, P.scrL); y += 5;
+    const bh = C ? 12 : 14, maxL = Math.max(1, Math.floor((R.y + R.h - 6 - (m.act ? bh + 4 : 0) - y) / 9));
+    textLines(fb, m.body, x, y, w, P.text, maxL, 9);
+    if (m.act) button(fb, 'mail-act', x, R.y + R.h - 5 - bh, w, bh, m.act.label, m.act.fn);
   }
 
   /* ---------- page: TMs / moves ---------- */
   function pickMove(i) { const m = Moves.LIST[i]; if (!m) return; D.lsel.tms = i; if (Moves.has(m.id)) { Moves.select(i); SFX.select(); say(m.name + ' selected! Press B or X to use it!', { mood: 'happy' }); } else { SFX.error(); say('Not learned yet! ' + (m.how || ''), { mood: 'sad', life: 6 }); } }
   function pageTMs(fb, G, t) {
-    const Q = content(G), C = G.C, tiny = Q.w < 150, [L, R] = split(Q, tiny ? 0.46 : 0.44, 3), LS = Moves.LIST;
+    const Q = content(G), C = G.C, [L, R] = split(Q, C ? 0.46 : 0.44), LS = Moves.LIST;
     D.lsel.tms = clamp(D.lsel.tms ?? Math.max(0, LS.findIndex((m) => m.id === Moves.cur)), 0, LS.length - 1);
-    const sel = D.lsel.tms, rh = tiny ? 15 : C ? 17 : 20;
+    const sel = D.lsel.tms, rh = C ? 17 : 20;
     const s = listView(fb, 'tms', L, LS.length, rh, sel, (b, i, x, y, w, h, on) => {
       const m = LS[i], own = Moves.has(m.id), cur = Moves.cur === m.id;
-      UI.rrect(b, x, y, w, h - 1, 3, on ? P.red : P.scrDD); UI.rrect(b, x + 1, y + 1, w - 2, h - 3, 2, on ? P.white : own ? P.card : P.scrLL);
-      const r = (h >> 1) - 3; UI.orb(b, x + 3 + r, y + (h >> 1) - 1, r, own ? m.col : P.grey, { ol: P.rim });
-      if (own && r >= 4) Moves.icon(b, m.id, x + 3 + r, y + (h >> 1) - 1, 1);
-      const code = w >= 80 ? m.tm || 'MOVE' : '', cw = code ? Font.measure(code, 'small') + 4 : 0;
-      Font.draw(b, fit(own ? m.name : '???', w - r * 2 - 9 - cw), x + r * 2 + 6, y + Math.round((h - 6) / 2), own ? P.text : P.faint, { font: 'small' });
-      if (code) Font.draw(b, code, x + w - 3, y + Math.round((h - 6) / 2), cur ? P.red : P.faint, { font: 'small', align: 'right' });
+      UI.rrect(b, x, y, w, h - 2, 3, on ? P.red : P.scrD); UI.rrect(b, x + 1, y + 1, w - 2, h - 4, 2, on ? P.white : own ? P.card : P.scrLL);
+      const r = (h >> 1) - 3; UI.orb(b, x + 4 + r, y + (h >> 1) - 1, r, own ? m.col : P.grey, { ol: P.rim });
+      if (own) Moves.icon(b, m.id, x + 4 + r, y + (h >> 1) - 1, 1);
+      Font.draw(b, fit(own ? m.name : '???', w - r * 2 - 40, C ? 'small' : 'body'), x + r * 2 + 8, y + (C ? 5 : 4), own ? P.text : P.faint, { font: C ? 'small' : 'body' });
+      Font.draw(b, m.tm || 'MOVE', x + w - 4, y + (C ? 5 : 6), cur ? P.red : P.faint, { font: 'small', align: 'right' });
     }, (i) => { if (D.lsel.tms === i) pickMove(i); D.lsel.tms = i; });
     D.lookAt = [L.x + L.w / 2, L.y + sel * rh - s + rh / 2];
     const m = LS[sel]; if (!m) return;
     const own = Moves.has(m.id);
     card(fb, R);
-    const x = R.x + 5, w = R.w - 10; let y = R.y + 5;
-    const r = tiny ? 9 : C ? 12 : 16, cx = x + r + 1, cy = y + r + 1;
+    const x = R.x + 6, w = R.w - 12; let y = R.y + 6;
+    const r = C ? 12 : 16, cx = x + r + 1, cy = y + r + 1;
     UI.disc(fb, cx, cy + 2, r + 1, P.scrD); UI.orb(fb, cx, cy, r, own ? m.col : P.grey, { ol: P.rim });
-    if (own) Moves.icon(fb, m.id, cx, cy, r >= 12 ? 2 : 1); else Font.draw(fb, '?', cx, cy - 4, 0xffffffff, { font: 'body', align: 'center' });
+    if (own) Moves.icon(fb, m.id, cx, cy, 2); else Font.draw(fb, '?', cx, cy - 5, 0xffffffff, { font: 'title', align: 'center' });
     if (own && Moves.coolK(m.id) > 0) Moves.coolPie(fb, cx, cy, r, Moves.coolK(m.id));
-    const tw = w - r * 2 - 5, nf = nameFont(tw);
-    Font.draw(fb, fit(own ? m.name : '???', tw, nf), x + r * 2 + 5, y + 1, P.text, { font: nf });
-    const sub = (m.tm ? m.tm : 'STARTER') + (m.cool ? ' · ' + m.cool + 'S' : '');
-    Font.draw(fb, fit(sub, tw), x + r * 2 + 5, y + fontH(nf) + 2, P.dim, { font: 'small' });
-    y += Math.max(r * 2 + 6, fontH(nf) + 13);
-    const bh = tiny ? 11 : 13;
-    textLines(fb, own ? (m.desc || MOVE_DESC[m.id] || '') : 'How to learn: ' + (m.how || 'keep exploring!'), x, y, w, P.text, Math.max(1, Math.floor((R.y + R.h - 6 - bh - y) / 9)), 9);
-    if (own) button(fb, 'usemove', x, R.y + R.h - 4 - bh, w, bh, Moves.cur === m.id ? '{check} EQUIPPED' : w >= 110 ? 'EQUIP (B / X TO USE)' : 'EQUIP', () => pickMove(sel), { fill: Moves.cur === m.id ? P.green : P.red });
+    Font.draw(fb, own ? m.name : '???', x + r * 2 + 8, y + 2, P.text, { font: 'title' });
+    Font.draw(fb, (m.tm ? m.tm + ' · ' : 'STARTER MOVE · ') + (m.cool ? m.cool + 'S RECHARGE' : 'NO RECHARGE'), x + r * 2 + 8, y + 17, P.dim, { font: 'small' });
+    y += r * 2 + 8;
+    y += textLines(fb, own ? (m.desc || MOVE_DESC[m.id] || '') : 'How to learn: ' + (m.how || 'keep exploring!'), x, y, w, P.text, 5, 9) + 4;
+    const bh = C ? 12 : 14;
+    if (own) button(fb, 'usemove', x, R.y + R.h - 5 - bh, w, bh, Moves.cur === m.id ? '{check} EQUIPPED' : 'EQUIP (B / X TO USE)', () => pickMove(sel), { fill: Moves.cur === m.id ? P.green : P.red });
   }
-
   const MOVE_DESC = { bubble: 'Floating bubbles Pokémon love to chase and pop.', growl: 'A big "Mud-KIP!": nearby Pokémon look your way. A photo trick!', dig: 'Dig on sand or soil for buried treasure.', smash: 'Breaks cracked rocks and boulders.', ice: 'Freezes the water into floes you can hop across.' };
 
   /* ---------- page: day / night ---------- */
   const SKY = { dawn: ['#ffb8a0', '#8ab0e8'], noon: ['#8ad0ff', '#4a90e8'], afternoon: ['#ffd89a', '#6aa8e8'], dusk: ['#ff8a5a', '#5a3a8a'], night: ['#1a2050', '#0a0e2a'] };
   function pageTime(fb, G, t) {
-    const Q = content(G), C = G.C, tiny = Q.w < 150, [L, R] = split(Q, tiny ? 0.42 : 0.5, 3), hr = Game.hour(), sk = SKY[hr] || SKY.noon;
+    const Q = content(G), C = G.C, [L, R] = split(Q, 0.5), hr = Game.hour(), sk = SKY[hr] || SKY.noon;
     const s0 = hex(sk[0]), s1 = hex(sk[1]);
     rrFill(fb, L.x, L.y, L.w, L.h, 5, (i, j, ins, w, h) => (j === 0 || i === ins || i === w - 1 - ins || j === h - 1 ? P.scrDD : mix(s1, s0, j / h)));
-    const hi = Pal.HOURS.indexOf(hr), k = (hi + 0.5) / Pal.HOURS.length, night = hr === 'night', sr = tiny ? 6 : 8;
-    const ax = L.x + 12 + Math.round((L.w - 24) * k), ay = L.y + L.h - 16 - Math.round(Math.sin(k * Math.PI) * (L.h - 40));
-    if (night) { for (let i = 0; i < 26; i++) UI.put(fb, L.x + 3 + Math.floor(U.hash(i, 1, 2) * (L.w - 6)), L.y + 3 + Math.floor(U.hash(i, 3, 4) * (L.h - 24)), (Math.sin(t * 3 + i) > 0.3) ? 0xffffffff : 0xffd8a8a0); UI.disc(fb, ax, ay, sr, hex('#fff2b8')); UI.disc(fb, ax + 4, ay - 3, sr - 1, mix(s1, s0, (ay - L.y) / L.h)); }
-    else { for (let a = 0; a < 12; a++) { const an = (a / 12) * Math.PI * 2 + t * 0.4; UI.line(fb, Math.round(ax + Math.cos(an) * (sr + 3)), Math.round(ay + Math.sin(an) * (sr + 3)), Math.round(ax + Math.cos(an) * (sr + 6)), Math.round(ay + Math.sin(an) * (sr + 6)), hex('#ffd23a')); } UI.disc(fb, ax, ay, sr, hex('#ffe060')); UI.disc(fb, ax - 2, ay - 2, 3, hex('#fff8c0')); }
+    const hi = Pal.HOURS.indexOf(hr), k = (hi + 0.5) / Pal.HOURS.length, night = hr === 'night';
+    const ax = L.x + 14 + Math.round((L.w - 28) * k), ay = L.y + L.h - 18 - Math.round(Math.sin(k * Math.PI) * (L.h - 44));
+    if (night) { for (let i = 0; i < 26; i++) UI.put(fb, L.x + 3 + Math.floor(U.hash(i, 1, 2) * (L.w - 6)), L.y + 3 + Math.floor(U.hash(i, 3, 4) * (L.h - 24)), (Math.sin(t * 3 + i) > 0.3) ? 0xffffffff : 0xffa0a8d8); UI.disc(fb, ax, ay, 8, hex('#fff2b8')); UI.disc(fb, ax + 4, ay - 3, 7, mix(s1, s0, (ay - L.y) / L.h)); }
+    else { for (let a = 0; a < 12; a++) { const an = (a / 12) * Math.PI * 2 + t * 0.4; UI.line(fb, Math.round(ax + Math.cos(an) * 11), Math.round(ay + Math.sin(an) * 11), Math.round(ax + Math.cos(an) * 14), Math.round(ay + Math.sin(an) * 14), hex('#ffd23a')); } UI.disc(fb, ax, ay, 8, hex('#ffe060')); UI.disc(fb, ax - 2, ay - 2, 3, hex('#fff8c0')); }
     for (let i = 0; i < L.w - 4; i++) { const hgt = 5 + Math.round(Math.sin(i * 0.11) * 3 + Math.sin(i * 0.31) * 2); UI.vline(fb, L.x + 2 + i, L.y + L.h - 2 - hgt, L.y + L.h - 3, night ? hex('#101838') : hex('#3a8a4a')); }
-    const hf = L.w >= 90 ? 'title' : 'body';
-    Font.draw(fb, fit(hr.toUpperCase(), L.w - 10, hf), L.x + 5, L.y + 5, night ? 0xffffffff : P.text, { font: hf, outline: night ? P.rim : undefined });
+    Font.draw(fb, hr.toUpperCase(), L.x + 8, L.y + 7, night ? 0xffffffff : P.text, { font: 'title', outline: night ? P.rim : undefined });
     card(fb, R);
-    let y = R.y + 5; const x = R.x + 5, w = R.w - 10, bh = tiny ? 11 : 13;
-    Font.draw(fb, fit('TIME OF DAY', w), x, y, P.redD, { font: 'small' }); y += 9;
-    const can = Game.canTime();
-    y += textLines(fb, can ? 'Dialga lends you its power: let the hours pass.' : 'Time flows by itself... only the Pokémon that rules time could change it.', x, y, w, P.text, tiny ? 3 : 3, 8) + 2;
-    button(fb, 'time-next', x, y, w, bh, can ? (w >= 100 ? 'LET TIME PASS {right}' : 'NEXT {right}') : '{lock} ' + (w >= 100 ? 'LET TIME PASS' : 'LOCKED'), () => Game.tryTime(), { fill: can ? P.blue : P.grey });
-    y += bh + 5;
-    if (typeof Seasons !== 'undefined' && y + 9 + bh <= R.y + R.h - 3) {
-      Font.draw(fb, fit((w >= 100 ? 'SEASON: ' : '') + Seasons.NAME[Seasons.cur].toUpperCase(), w), x, y, P.redD, { font: 'small' }); y += 9;
+    let y = R.y + 6; const x = R.x + 6, w = R.w - 12, bh = C ? 12 : 14;
+    Font.draw(fb, 'TIME OF DAY', x, y, P.redD, { font: 'small' }); y += 10;
+    y += textLines(fb, Game.canTime() ? 'Dialga lends you its power: let the hours pass whenever you like.' : 'Time flows by itself... Only the Pokémon that rules time could change it.', x, y, w, P.text, 3, 8) + 3;
+    button(fb, 'time-next', x, y, w, bh, Game.canTime() ? 'LET TIME PASS {right}' : '{lock} LET TIME PASS', () => Game.tryTime(), { fill: Game.canTime() ? P.blue : P.grey });
+    y += bh + 8;
+    if (typeof Seasons !== 'undefined') {
+      Font.draw(fb, 'SEASON: ' + Seasons.NAME[Seasons.cur].toUpperCase(), x, y, P.redD, { font: 'small' }); y += 10;
       const ok = !hasP() || Progress.has('season');
-      button(fb, 'season-next', x, y, w, bh, ok ? (w >= 100 ? 'NEXT SEASON {right}' : 'SEASON {right}') : '{lock} LV 8', () => Seasons.next(), { fill: ok ? P.green : P.grey });
-      y += bh + 5;
+      if (y + bh < R.y + R.h - 2) button(fb, 'season-next', x, y, w, bh, ok ? 'NEXT SEASON {right}' : '{lock} SEASONS (LV 8)', () => Seasons.next(), { fill: ok ? P.green : P.grey });
+      y += bh + 7;
     }
     const Wt = Weather.W, wl = Wt.rain > 0.3 ? 'RAIN' : Wt.snow > 0.3 ? 'SNOW' : Wt.fog > 0.3 ? 'FOG' : 'CLEAR';
-    if (y < R.y + R.h - 9) Font.draw(fb, fit('WEATHER: ' + wl, w), x, y, P.dim, { font: 'small' });
+    if (y < R.y + R.h - 9) Font.draw(fb, fit('WEATHER: ' + wl + (Game.areaId ? ' · ' + areaName(Game.areaId).toUpperCase() : ''), w), x, y, P.dim, { font: 'small' });
   }
 
   /* ---------- page: chat with Rotom ---------- */
-  const CHATQ = [['joke', 'TELL A JOKE', 'JOKE'], ['hint', 'GIVE ME A HINT', 'HINT'], ['near', 'WHO IS NEARBY?', 'NEARBY?'], ['me', 'HOW AM I DOING?', 'HOW AM I?']];
+  const CHATQ = [['joke', 'TELL A JOKE'], ['hint', 'GIVE ME A HINT'], ['near', 'WHO IS NEARBY?'], ['me', 'HOW AM I DOING?']];
   function chatAsk(kind) {
     const R = typeof Rotom !== 'undefined' ? Rotom : null;
     const q = (CHATQ.find((c) => c[0] === kind) || ['', ''])[1];
@@ -1870,8 +1515,8 @@ const Dex = (() => {
     if (R && R.voice) R.voice('chat', 0.5);
   }
   function pageChat(fb, G, t) {
-    const Q = content(G), C = G.C, bh = C ? 12 : 14, cols = Q.w < 300 ? 2 : 4, bw = Math.floor((Q.w - (cols - 1) * 3) / cols);
-    const rows = Math.ceil(CHATQ.length / cols), Lh = Q.h - rows * (bh + 3);
+    const Q = content(G), C = G.C, bh = C ? 12 : 14, cols = C || Q.w < 400 ? 2 : 4, bw = Math.floor((Q.w - (cols - 1) * 4) / cols);
+    const rows = Math.ceil(CHATQ.length / cols), Lh = Q.h - rows * (bh + 4);
     const L = { x: Q.x, y: Q.y, w: Q.w, h: Lh - 2 };
     card(fb, L, P.scrLL);
     if (!D.chat.length) D.chat.push({ me: false, text: 'Bzzt! Hi! Rotom is your research buddy. Ask me anything! (Or poke me out in the world. I like that. Mostly.)', t: 9 });
@@ -1891,9 +1536,9 @@ const Dex = (() => {
       }
       return Math.max(I.h, total);
     });
-    CHATQ.forEach(([id, lab, short], i) => {
-      const bx = Q.x + (i % cols) * (bw + 3), by = Q.y + Lh + Math.floor(i / cols) * (bh + 3);
-      button(fb, 'chat-' + id, bx, by, bw, bh, Font.measure(lab, 'small') + 6 > bw ? short : lab, () => chatAsk(id), { fill: [P.red, P.blue, P.green, hex('#8a5ee6')][i], silent: true });
+    CHATQ.forEach(([id, lab], i) => {
+      const bx = Q.x + (i % cols) * (bw + 4), by = Q.y + Lh + Math.floor(i / cols) * (bh + 4);
+      button(fb, 'chat-' + id, bx, by, bw, bh, (C ? '' : (i + 1) + '  ') + lab, () => chatAsk(id), { fill: [P.red, P.blue, P.green, hex('#8a5ee6')][i], silent: true });
     });
   }
 
@@ -1924,46 +1569,42 @@ const Dex = (() => {
 
   /* ---------- older pages (kept, drawn into the new screen) ---------- */
   function pageAlbum(fb, G, t) {
-    const Q = content(G), tiny = Q.w < 150, [L, R] = split(Q, 0.5, 3);
+    const S = D.SP, Q = content(G), [L, R] = split(Q, 0.5);
     const al = Save.data.album, sel = al[D.album] || null;
     card(fb, L);
-    const pw = L.w - 6, phh = Math.max(20, Math.min(Math.round(pw * 0.72), L.h - (sel ? (tiny ? 24 : 30) : 8)));
-    UI.rrect(fb, L.x + 2, L.y + 2, pw + 2, phh + 2, 2, P.rim);
-    if (sel && sel.img) { const b = photo(sel.img); if (b) UI.imgFit(fb, b, L.x + 3, L.y + 3, pw, phh); }
-    else textLines(fb, al.length ? 'Photo not saved' : 'No photos yet - go snap!', L.x + 7, L.y + 3 + Math.round(phh / 2) - 8, pw - 8, P.white, 3, 8);
+    const pw = L.w - 8, phh = Math.min(Math.round(pw * 0.72), L.h - 30);
+    UI.rrect(fb, L.x + 3, L.y + 3, pw + 2, phh + 2, 2, P.rim);
+    if (sel && sel.img) { const b = photo(sel.img); if (b) UI.imgFit(fb, b, L.x + 4, L.y + 4, pw, phh); }
+    else Font.draw(fb, al.length ? 'Photo not saved' : 'No photos yet - go snap!', L.x + L.w / 2, L.y + 4 + phh / 2 - 4, P.white, { font: 'small', align: 'center' });
     if (sel) {
-      const y = L.y + 6 + phh, d = DexData.S[sel.sp];
-      if (d) {
-        Font.draw(fb, fit(d.name + (d.beh[sel.beh] && pw >= 110 ? ' - ' + d.beh[sel.beh].n : ''), pw), L.x + 4, y + 1, P.text, { font: 'small' });
-        stars(fb, sel.stars, L.x + 4, y + 10); medal(fb, sel.medal, L.x + 36, y + 13);
-        if (pw >= 80) Font.draw(fb, sel.score + ' PTS', L.x + 43, y + 11, P.dim, { font: 'small' });
-      }
+      const y = L.y + 8 + phh;
+      if (sel.sp && DexData.S[sel.sp]) { Font.draw(fb, fit(DexData.S[sel.sp].name + (DexData.S[sel.sp].beh[sel.beh] ? ' - ' + DexData.S[sel.sp].beh[sel.beh].n : ''), L.w - 12), L.x + 6, y + 2, P.text, { font: 'small' }); stars(fb, sel.stars, L.x + 6, y + 11); medal(fb, sel.medal, L.x + 46, y + 14); Font.draw(fb, sel.score + ' PTS', L.x + 54, y + 12, P.dim, { font: 'small' }); }
     }
-    const cw = tiny ? 29 : G.C ? 42 : 54, chh = Math.round(cw * 0.82), cols = Math.max(2, Math.floor((R.w - 2) / cw));
+    const cw = G.C ? 46 : 56, chh = Math.round(cw * 0.82), cols = Math.max(2, Math.floor((R.w - 4) / cw));
     const gx = R.x + Math.floor((R.w - cols * cw) / 2), rows = Math.ceil(al.length / cols);
     D.scroll.album = clamp(D.scroll.album || 0, 0, Math.max(0, rows * chh - R.h + 4));
     areas.album = { x: R.x, y: R.y, w: R.w, h: R.h };
-    if (!al.length) textLines(fb, 'Your last photos appear here.', R.x + 4, R.y + R.h / 2 - 8, R.w - 8, P.text, 3, 8);
+    if (!al.length) Font.draw(fb, 'YOUR LAST PHOTOS APPEAR HERE.', R.x + R.w / 2, R.y + R.h / 2, P.dim, { font: 'small', align: 'center' });
     clipTo(fb, R, (b) => {
       al.forEach((a, i) => {
         const x = gx + (i % cols) * cw, y = R.y + 2 + Math.floor(i / cols) * chh - D.scroll.album;
         UI.rrect(b, x + 1, y + 1, cw - 4, chh - 4, 2, i === D.album ? P.red : P.rim);
         const im = a.img ? photo(a.img) : null;
-        if (im) UI.imgFit(b, im, x + 3, y + 3, cw - 8, chh - 8); else UI.rect(b, x + 3, y + 3, cw - 8, chh - 8, 0xff40302a);
-        if (a.stars && cw >= 40) stars(b, a.stars, x + 3, y + chh - 12, a.stars);
+        if (im) UI.imgFit(b, im, x + 3, y + 3, cw - 8, chh - 8); else UI.rect(b, x + 3, y + 3, cw - 8, chh - 8, 0xff2a3040);
+        if (a.stars) stars(b, a.stars, x + 3, y + chh - 12, a.stars);
         if (a.medal) medal(b, a.medal, x + cw - 9, y + chh - 9);
       });
     });
     al.forEach((a, i) => { const x = gx + (i % cols) * cw, y = R.y + 2 + Math.floor(i / cols) * chh - D.scroll.album; if (y + chh > R.y && y < R.y + R.h - 4) btn('al' + i, x, Math.max(R.y, y), cw, chh, () => { D.album = i; }); });
     if (sel) { const i = D.album; D.lookAt = [gx + (i % cols) * cw + cw / 2, R.y + Math.floor(i / cols) * chh - D.scroll.album + chh / 2]; }
+    void S;
   }
-
   /* ---- style: Mudkip's wardrobe + device customisation ---- */
   const mudCache = new Map();
-  function mudSprite(look, yaw, sc = 1) {
-    const key = JSON.stringify(look) + '|' + yaw.toFixed(2) + '|' + sc;
+  function mudSprite(look, yaw) {
+    const key = JSON.stringify(look) + '|' + yaw.toFixed(2);
     if (mudCache.has(key)) return mudCache.get(key);
-    const m = Mudkip.meta, W = Math.ceil(m.bw * sc), H = Math.ceil(m.bh * sc);
+    const m = Mudkip.meta, sc = 1.0, W = Math.ceil(m.bw * sc), H = Math.ceil(m.bh * sc);
     const r = Mudkip.render(Mudkip.build(Object.assign({ side: Math.cos(yaw), eyes: 'happy', mouth: 1 }, look)), { yaw, pitch: 0.16, scale: sc, W, H, ox: W >> 1, oy: Math.floor(H * m.oy), pal: Mudkip.PAL, light: { dir: [-0.5, 0.72, 0.5] } });
     const b = r.buf; b.ox = W >> 1; b.oy = Math.floor(H * m.oy);
     const bb = Creature.bounds(r); b.bb = bb;
@@ -1971,59 +1612,39 @@ const Dex = (() => {
     mudCache.set(key, b);
     return b;
   }
-  function drawMud(fb, L, yOff = 0, bottomPad = 12) {
-    const look = Save.look(), yaw = Math.round((0.6 + Math.sin(D.mudYaw * 0.7) * 0.9) * 10) / 10;
-    const availH = L.h - yOff - bottomPad - 4, availW = L.w - 6;
-    // pick a render scale so the model fits the card (x2 pixels when there is lots of room)
-    const b1 = mudSprite(look, yaw, 1), bb1 = b1.bb || { h: b1.h, w: b1.w };
-    let sc = 1, b = b1;
-    if (bb1.h * 2 <= availH && bb1.w * 2 <= availW) sc = 2;
-    else if (bb1.h > availH || bb1.w > availW) { const k2 = Math.max(0.3, Math.min(availH / bb1.h, availW / bb1.w)); b = mudSprite(look, yaw, Math.floor(k2 * 10) / 10); }
-    const bb = b.bb || { x0: 0, y0: 0, w: b.w, h: b.h }, baseY = L.y + L.h - bottomPad;
-    UI.rrect(fb, L.x + L.w / 2 - Math.min(30, L.w / 2 - 4), baseY - 2, Math.min(60, L.w - 8), 5, 2, P.scrD);
-    UI.img(fb, b, Math.round(L.x + L.w / 2 - b.ox * sc), Math.round(baseY - (bb.y0 + bb.h) * sc), sc === 2 ? 2 : 1);
-  }
-  // a row of options: pills when they fit, a  ◀ NAME ▶  chip otherwise
-  function chooser(fb, key, x, y, w, h, opts, cur, pick2) {
-    const i = Math.max(0, opts.findIndex((o) => o[0] === cur));
-    const per = Math.max(1, Math.min(opts.length, Math.floor(w / 44)));
-    if (per >= 3) {
-      const rows = Math.ceil(opts.length / per), sw = Math.floor(w / per);
-      opts.forEach(([id, label], j) => {
-        const bx = x + (j % per) * sw, by = y + Math.floor(j / per) * (h + 2), on = cur === id;
-        pill(fb, bx, by, sw - 2, h, on ? P.red : P.scrLL, on ? 0xffffffff : P.dim, label.toUpperCase());
-        btn(key + '-' + id, bx, by - 1, sw - 2, h + 2, () => pick2(id), { silent: true });
-      });
-      return rows * (h + 2);
-    }
-    const aw = 12;
-    button(fb, key + '-prev', x, y, aw, h, '{left}', () => pick2(opts[(i + opts.length - 1) % opts.length][0]), { fill: hex('#3a4290'), silent: true });
-    button(fb, key + '-next', x + w - aw, y, aw, h, '{right}', () => pick2(opts[(i + 1) % opts.length][0]), { fill: hex('#3a4290'), silent: true });
-    pill(fb, x + aw + 2, y, w - aw * 2 - 4, h, P.red, 0xffffffff, opts[i][1].toUpperCase() + ' ' + (i + 1) + '/' + opts.length);
-    return h + 3;
+  function drawMud(fb, L, yOff = 0) {
+    const look = Save.look(), yaw = Math.round((0.6 + Math.sin(D.mudYaw * 0.7) * 0.9) * 10) / 10, b = mudSprite(look, yaw);
+    const bb = b.bb || { x0: 0, y0: 0, w: b.w, h: b.h }, avail = L.h - 30 - yOff, sc = bb.h * 2 <= avail ? 2 : 1;
+    const baseY = L.y + L.h - 16;
+    UI.rrect(fb, L.x + L.w / 2 - 30, baseY - 2, 60, 5, 2, P.scrD);
+    UI.img(fb, b, Math.round(L.x + L.w / 2 - b.ox * sc), Math.round(baseY - (bb.y0 + bb.h) * sc), sc);
   }
   function pageStyle(fb, G, t) {
-    const Q = content(G), C = G.C, tiny = Q.w < 150, [L, R] = split(Q, tiny ? 0.36 : 0.4, 3);
+    const Q = content(G), C = G.C, [L, R] = split(Q, 0.4);
     card(fb, L);
-    Font.draw(fb, fit(L.w >= 90 ? 'Mudkip\'s look' : 'MUDKIP', L.w - 8, L.w >= 90 ? 'body' : 'small'), L.x + 4, L.y + 4, P.text, { font: L.w >= 90 ? 'body' : 'small' });
-    drawMud(fb, L, 14, 12);
-    Font.draw(fb, fit(UI.skin().name.toUpperCase(), L.w - 6), L.x + L.w / 2, L.y + L.h - 9, P.dim, { font: 'small', align: 'center' });
-    const th = C ? 11 : 12;
-    const used = chooser(fb, 'slot', R.x, R.y, R.w, th, Rewards.SLOTS, D.styleSlot, (slot) => { D.styleSlot = slot; D.scroll.style = 0; SFX.page(); });
-    const top = R.y + used + 1;
+    Font.draw(fb, 'Mudkip\'s look', L.x + 6, L.y + 5, P.text, { font: 'body' });
+    drawMud(fb, L, 12);
+    Font.draw(fb, UI.skin().name.toUpperCase() + ' SKIN', L.x + L.w / 2, L.y + L.h - 9, P.dim, { font: 'small', align: 'center' });
+    // slot tabs (3 rows)
+    const per = 4, sw = Math.floor(R.w / per), th = C ? 11 : 12;
+    Rewards.SLOTS.forEach(([slot, label], i) => {
+      const bx = R.x + (i % per) * sw, by = R.y + Math.floor(i / per) * (th + 2), on = D.styleSlot === slot;
+      pill(fb, bx, by, sw - 2, th, on ? P.red : P.scrLL, on ? 0xffffffff : P.dim, label.toUpperCase());
+      btn('slot-' + slot, bx, by, sw - 2, th + 1, () => { D.styleSlot = slot; D.scroll.style = 0; }, { silent: true });
+    });
+    const rowsT = Math.ceil(Rewards.SLOTS.length / per), top = R.y + rowsT * (th + 2) + 2;
     const items = Object.keys(Rewards.C).filter((id) => Rewards.C[id].slot === D.styleSlot);
     const eq = Save.data.equip[D.styleSlot], canNone = ['hat', 'shirt', 'glasses', 'key', 'shoes', 'fun'].includes(D.styleSlot);
     const rows = canNone ? [null, ...items] : items;
     const LQ = { x: R.x, y: top, w: R.w, h: R.y + R.h - top };
-    listView(fb, 'style', LQ, rows.length, tiny ? 14 : C ? 16 : 19, -1, (b, i, x, y, w, h) => {
+    listView(fb, 'style', LQ, rows.length, C ? 16 : 19, -1, (b, i, x, y, w, h) => {
       const id = rows[i], own = id === null || Save.has(id), on = eq === id || (id === null && !eq);
-      UI.rrect(b, x, y, w, h - 1, 3, on ? P.red : P.scrDD); UI.rrect(b, x + 1, y + 1, w - 2, h - 3, 2, on ? P.white : own ? P.card : P.scrLL);
-      const nm = id === null ? 'None' : own ? Rewards.C[id].name : '???', desc = w >= 130 && id && own && Rewards.C[id].desc;
-      Font.draw(b, fit((on ? '{check} ' : own ? '' : '{lock} ') + nm, desc ? w * 0.55 : w - 8), x + 4, y + Math.round((h - 6) / 2), own ? P.text : P.faint, { font: 'small' });
-      if (desc) Font.draw(b, fit(Rewards.C[id].desc, w * 0.42), x + w - 4, y + Math.round((h - 6) / 2), P.faint, { font: 'small', align: 'right' });
+      UI.rrect(b, x, y, w, h - 2, 3, on ? P.red : P.scrD); UI.rrect(b, x + 1, y + 1, w - 2, h - 4, 2, on ? P.white : own ? P.card : P.scrLL);
+      const nm = id === null ? 'None' : own ? Rewards.C[id].name : '???';
+      Font.draw(b, fit((on ? '{check} ' : own ? '' : '{lock} ') + nm, w * 0.55, C ? 'small' : 'body'), x + 5, y + (C ? 4 : 3), own ? P.text : P.faint, { font: C ? 'small' : 'body' });
+      if (id && own && Rewards.C[id].desc) Font.draw(b, fit(Rewards.C[id].desc, w * 0.42), x + w - 4, y + (C ? 4 : 6), P.faint, { font: 'small', align: 'right' });
     }, (i) => { const id = rows[i]; if (id === null || Save.has(id)) { Save.equip(D.styleSlot, id); SFX.select(); if (D.styleSlot === 'key') D.keyV = 4; if (Math.random() < 0.5) say(pick(['Ooh, stylish!', 'Looking good! Bzzt!', 'Very fashionable!']), { mood: 'happy' }); } else SFX.error(); });
   }
-
   /* ---- shop: spend research points on items, outfits and device styles ---- */
   const PRICE = { hat: 900, shirt: 800, glasses: 600, neck: 500, skin: 1500, banner: 700, key: 400, deco: 600 };
   const GOODS = [
@@ -2040,18 +1661,19 @@ const Dex = (() => {
     return exclusiveSet;
   }
   function pageShop(fb, G, t) {
-    const Q = content(G), C = G.C, pts = Save.data.points, narrow = Q.w < 170;
-    let R = Q;
-    if (!narrow) {
-      const [L, R2] = split(Q, 0.34, 3); R = R2;
-      card(fb, L);
-      Font.draw(fb, fit('{coin} ' + pts, L.w - 8, 'body'), L.x + 5, L.y + 5, P.text, { font: 'body' });
-      const ty = L.y + 19 + textLines(fb, 'Earn points with great photos and requests!', L.x + 5, L.y + 19, L.w - 10, P.dim, C ? 3 : 4, 8);
-      drawMud(fb, L, ty - L.y, 6);
-    }
+    const Q = content(G), C = G.C, [L, R] = split(Q, 0.36), pts = Save.data.points;
+    card(fb, L);
+    Font.draw(fb, '{coin} ' + pts, L.x + 6, L.y + 6, P.text, { font: 'title' });
+    const ty = L.y + 22 + textLines(fb, 'Earn points with great photos and requests. Some prizes are only won from Pokédex quests!', L.x + 6, L.y + 22, L.w - 12, P.dim, C ? 3 : 5, 8);
+    drawMud(fb, L, ty - L.y);
     const cats = [['items', 'ITEMS'], ['outfit', 'OUTFITS'], ['device', 'DEVICE']];
     D.shopCat = D.shopCat || 'items';
-    const th = tabs(fb, 'shopc', R.x, R.y, R.w, cats, D.shopCat, (id) => { D.shopCat = id; D.scroll.shop = 0; });
+    const cw = Math.floor(R.w / 3), th = C ? 11 : 12;
+    cats.forEach(([id, label], i) => {
+      const bx = R.x + i * cw, on = D.shopCat === id;
+      pill(fb, bx, R.y, cw - 2, th, on ? P.red : P.scrLL, on ? 0xffffffff : P.dim, label);
+      btn('shopcat-' + id, bx, R.y - 3, cw - 2, th + 5, () => { D.shopCat = id; D.scroll.shop = 0; }, { silent: true });
+    });
     let rows;
     if (D.shopCat === 'items') rows = GOODS.map((g) => ({ id: g.id, name: g.name, desc: g.desc, price: g.price, owned: false, buy: g.buy }));
     else {
@@ -2060,20 +1682,20 @@ const Dex = (() => {
         .map((id) => { const ex = exclusive().has(id); return { id, name: Rewards.C[id].name + (ex ? ' {star}' : ''), desc: (ex ? 'Quest prize - or buy it now! ' : '') + (Rewards.C[id].desc || ''), price: (PRICE[Rewards.C[id].slot] || 500) * (ex ? 3 : 1), owned: Save.has(id), buy() { Save.own(id); Save.equip(Rewards.C[id].slot, id); } }; })
         .sort((a, b) => (a.owned - b.owned) || (a.price - b.price));
     }
-    const LQ = { x: R.x, y: R.y + th, w: R.w, h: R.h - th }, rh = C ? 21 : 26;
+    const LQ = { x: R.x, y: R.y + th + 3, w: R.w, h: R.h - th - 3 }, rh = C ? 22 : 26;
     listView(fb, 'shop', LQ, rows.length, rh, -1, (g, i, x, y, w, h) => {
-      const r = rows[i], afford = pts >= r.price, bw = w >= 140 ? 48 : 38, bh = 11, bigF = h >= 26 && w >= 190;
-      UI.rrect(g, x, y, w, h - 1, 3, P.scrDD); UI.rrect(g, x + 1, y + 1, w - 2, h - 3, 2, r.owned ? P.white : P.card);
-      Font.draw(g, fit(r.name, w - bw - 10, bigF ? 'body' : 'small'), x + 4, y + (bigF ? 2 : 4), P.text, { font: bigF ? 'body' : 'small' });
-      Font.draw(g, fit(r.desc || '', w - bw - 10), x + 4, y + (bigF ? 15 : 13), P.faint, { font: 'small' });
-      pill(g, x + w - 3 - bw, y + Math.round((h - 1 - bh) / 2), bw, bh, r.owned ? P.grey : afford ? P.red : hex('#6a6a80'), 0xffffffff, r.owned ? 'OWNED' : '{coin}' + r.price, { hi: !r.owned });
+      const r = rows[i], afford = pts >= r.price;
+      UI.rrect(g, x, y, w, h - 2, 3, P.scrD); UI.rrect(g, x + 1, y + 1, w - 2, h - 4, 2, r.owned ? P.white : P.card);
+      Font.draw(g, fit(r.name, w - 62, C ? 'small' : 'body'), x + 5, y + (C ? 3 : 2), P.text, { font: C ? 'small' : 'body' });
+      Font.draw(g, fit(r.desc || '', w - 62), x + 5, y + (C ? 12 : 15), P.faint, { font: 'small' });
+      const bw = 48, bx = x + w - 4 - bw, bh = C ? 11 : 13;
+      pill(g, bx, y + Math.round((h - 2 - bh) / 2), bw, bh, r.owned ? P.grey : afford ? P.red : hex('#6a6a80'), 0xffffffff, r.owned ? 'OWNED' : '{coin}' + r.price, { hi: !r.owned });
     }, (i) => {
       const r = rows[i]; if (r.owned) return;
       if (Save.data.points < r.price) { SFX.error(); HUD.toast('Not enough points - take more great photos!', { life: 2 }); say('Not enough points! Bzzt...', { mood: 'sad' }); return; }
       Save.data.points -= r.price; Save.save(); r.buy(); SFX.reward(); HUD.toast('Bought ' + r.name + '!', { life: 2 }); say('Ka-ching! Bzzt!', { mood: 'happy' });
     });
   }
-
   /* ---- discoveries ---- */
   const SECRETS = [
     ['beach.chest', 'The sunken treasure chest', 'Something glints on the seabed past the reef.'],
@@ -2139,73 +1761,54 @@ const Dex = (() => {
     ['arcade.bar', 'Star Mixer', 'Serve 5 drinks in one shift at the Sunset Bar.'],
   ];
   function pageDisc(fb, G, t) {
-    const Q = content(G), C = G.C, tiny = Q.w < 150, [L, R] = split(Q, tiny ? 0.36 : 0.34, 3), got = SECRETS.filter((s) => Save.found(s[0])).length;
+    const Q = content(G), C = G.C, [L, R] = split(Q, 0.34), got = SECRETS.filter((s) => Save.found(s[0])).length;
     card(fb, L);
-    Font.draw(fb, fit(L.w >= 80 ? 'SECRETS FOUND' : 'FOUND', L.w - 10), L.x + 5, L.y + 5, P.redD, { font: 'small' });
-    const cf = L.w >= 80 ? 'title' : 'body';
-    Font.draw(fb, fit(got + '/' + SECRETS.length, L.w - 10, cf), L.x + 5, L.y + 15, P.text, { font: cf, sc: G.L ? 2 : 1 });
-    const k = got / SECRETS.length, bw = L.w - 10, by = L.y + (G.L ? 46 : 32);
-    UI.rrect(fb, L.x + 5, by, bw, 5, 2, P.scrD); if (got) UI.rrect(fb, L.x + 5, by, Math.max(3, Math.round(bw * k)), 5, 2, P.gold);
-    textLines(fb, 'Use Scan (4) near anything suspicious. Pokémon clues point the way too!', L.x + 5, by + 9, L.w - 10, P.dim, Math.max(0, Math.floor((L.y + L.h - by - 12) / 8)));
+    Font.draw(fb, 'SECRETS FOUND', L.x + 6, L.y + 6, P.redD, { font: 'small' });
+    Font.draw(fb, got + ' / ' + SECRETS.length, L.x + 6, L.y + 16, P.text, { font: 'title', sc: C ? 1 : 2 });
+    const k = got / SECRETS.length, bw = L.w - 12, by = L.y + (C ? 32 : 44);
+    UI.rrect(fb, L.x + 6, by, bw, 6, 3, P.scrD); if (got) UI.rrect(fb, L.x + 6, by, Math.max(4, Math.round(bw * k)), 6, 3, P.gold);
+    textLines(fb, 'Use Scan (4) near anything suspicious. Pokémon clues point the way too!', L.x + 6, by + 11, L.w - 12, P.dim, Math.max(1, Math.floor((L.y + L.h - by - 16) / 8)));
     listView(fb, 'disc', R, SECRETS.length, C ? 20 : 23, -1, (b, i, x, y, w, h) => {
       const [id, name, hint] = SECRETS[i], f = Save.found(id);
-      UI.rrect(b, x, y, w, h - 1, 3, P.scrDD); UI.rrect(b, x + 1, y + 1, w - 2, h - 3, 2, f ? P.white : P.card);
-      Font.draw(b, fit((f ? '{spark} ' : '{lock} ') + (f ? name : '???'), w - 6), x + 3, y + 3, f ? P.text : P.dim, { font: 'small' });
-      Font.draw(b, fit(f ? 'Discovered!' : hint, w - 10), x + 7, y + (C ? 11 : 12), P.faint, { font: 'small' });
+      UI.rrect(b, x, y, w, h - 2, 3, P.scrD); UI.rrect(b, x + 1, y + 1, w - 2, h - 4, 2, f ? P.white : P.scrLL);
+      Font.draw(b, fit((f ? '{spark} ' : '{lock} ') + (f ? name : '???'), w - 8), x + 4, y + 3, f ? P.text : P.dim, { font: 'small' });
+      Font.draw(b, fit(f ? 'Discovered!' : hint, w - 14), x + 12, y + (C ? 11 : 12), P.faint, { font: 'small' });
     });
   }
-
   /* ---- settings ---- */
   function rotomCfg() { return Save.data.rotom || (Save.data.rotom = { off: false, chat: 1 }); }
   function pageSettings(fb, G, t) {
-    const Q = content(G), C = G.C, cfg = rotomCfg();
-    const rows = [
-      ['h', 'ROTOM BUDDY'],
-      ['rbuddy', 'Rotom in the world', cfg.off ? 'OFF' : 'ON', () => { cfg.off = !cfg.off; Save.save(); say(cfg.off ? 'Rotom will stay in the Dex. Bzzt...' : 'Yay! Rotom will fly with you!', { mood: cfg.off ? 'sad' : 'happy' }); }],
-      ['rchat', 'Chatter', ['QUIET', 'SOME', 'LOTS'][cfg.chat ?? 1], () => { cfg.chat = ((cfg.chat ?? 1) + 1) % 3; Save.save(); say(['Rotom will be quiet. Mostly.', 'Normal chatter! Bzzt!', 'Rotom will talk a LOT! Bzzt-bzzt!'][cfg.chat]); }],
-      ['note', 'Poke Rotom in the world (or press O) for jokes and hints. It ducks out of your photos!'],
-      ['h', 'GAME'],
-      ['sound', 'Sound', Sound.on ? 'ON' : 'OFF', () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); }],
-      ['song', 'Song', Music.cur && Music.TRACKS && Music.TRACKS[Music.cur] ? Music.TRACKS[Music.cur].title : '-', () => Music.next()],
-      ['grid', 'Camera grid', Photo.grid ? 'ON' : 'OFF', () => { Photo.grid = !Photo.grid; }],
-      ['time', 'Time of day', Game.hour().toUpperCase(), () => Game.tryTime()],
-      ['reset', 'Reset journal', D.confirm ? 'SURE?' : '...', () => { if (D.confirm) { Save.reset(); D.confirm = null; HUD.toast('Journal reset.'); say('Memory wiped! Who are you? Bzzt!', { mood: 'dizzy', moodT: 2 }); } else { D.confirm = true; say('Tap again to erase EVERYTHING!', { mood: 'wow' }); setTimeout(() => { D.confirm = null; }, 2500); } }],
-    ];
-    const rowH = C ? 16 : 20, vw = Q.w >= 160 ? 56 : 44;
-    const I = { x: Q.x, y: Q.y, w: Q.w, h: Q.h };
-    scrollPanel(fb, 'settings', I, (b, y0) => {
-      let y = y0 + 1;
-      const w = I.w - 5;
-      for (const r of rows) {
-        if (r[0] === 'h') { Font.draw(b, r[1], I.x + 2, y + 2, P.redD, { font: 'small' }); y += 11; continue; }
-        if (r[0] === 'note') { y += textLines(b, r[1], I.x + 2, y + 1, w - 2, P.text, 4, 8) + 4; continue; }
-        const [id, label, val, fn] = r, on = D.hoverId === 'set-' + id;
-        UI.rrect(b, I.x, y, w, rowH - 2, 3, P.scrDD); UI.rrect(b, I.x + 1, y + 1, w - 2, rowH - 4, 2, on ? P.white : P.card);
-        Font.draw(b, fit(label, w - vw - 10, C ? 'small' : 'body'), I.x + 5, y + (C ? 4 : 5), P.text, { font: C ? 'small' : 'body' });
-        pill(b, I.x + w - vw - 3, y + Math.round((rowH - 2 - 10) / 2), vw, 10, val === 'ON' ? P.green : val === 'OFF' ? P.grey : P.blue, 0xffffffff, fit(val, vw - 4), { hi: false });
-        r.y = y;
-        y += rowH;
-      }
-      return y - y0 + 2;
-    });
-    const s = D.scroll.settings || 0;
-    for (const r of rows) if (r.y !== undefined && r[3]) { const y = r.y, top = Math.max(I.y, y), bot = Math.min(I.y + I.h, y + rowH - 2); if (bot - top > 4) btn('set-' + r[0], I.x, top, I.w - 5, bot - top, r[3]); }
-    void s;
+    const Q = content(G), C = G.C, [L, R] = split(Q, 0.5), rowH = C ? 16 : 20;
+    const row = (Qc, y, id, label, val, fn) => {
+      const on = D.hoverId === 'set-' + id;
+      UI.rrect(fb, Qc.x, y, Qc.w, rowH - 2, 3, P.scrD); UI.rrect(fb, Qc.x + 1, y + 1, Qc.w - 2, rowH - 4, 2, on ? P.white : P.card);
+      Font.draw(fb, label, Qc.x + 6, y + (C ? 3 : 5), P.text, { font: C ? 'small' : 'body' });
+      pill(fb, Qc.x + Qc.w - 52, y + Math.round((rowH - 2 - 10) / 2), 48, 10, val === 'ON' ? P.green : val === 'OFF' ? P.grey : P.blue, 0xffffffff, fit(val, 44), { hi: false });
+      btn('set-' + id, Qc.x, y, Qc.w, rowH - 2, fn);
+      return y + rowH;
+    };
+    Font.draw(fb, 'GAME', R.x + 2, R.y + 1, P.redD, { font: 'small' });
+    let y = R.y + 9;
+    y = row(R, y, 'sound', 'Sound', Sound.on ? 'ON' : 'OFF', () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); });
+    y = row(R, y, 'song', 'Song', Music.cur && Music.TRACKS && Music.TRACKS[Music.cur] ? Music.TRACKS[Music.cur].title : '-', () => Music.next());
+    y = row(R, y, 'grid', 'Camera grid', Photo.grid ? 'ON' : 'OFF', () => { Photo.grid = !Photo.grid; });
+    y = row(R, y, 'time', 'Time of day', Game.hour().toUpperCase(), () => Game.tryTime());
+    if (y + rowH <= R.y + R.h + 2) row(R, y, 'reset', 'Reset journal', D.confirm ? 'SURE?' : '...', () => { if (D.confirm) { Save.reset(); D.confirm = null; HUD.toast('Journal reset.'); say('Memory wiped! Who are you? Bzzt!', { mood: 'dizzy', moodT: 2 }); } else { D.confirm = true; say('Tap again to erase EVERYTHING!', { mood: 'wow' }); setTimeout(() => { D.confirm = null; }, 2500); } });
+    const cfg = rotomCfg();
+    Font.draw(fb, 'ROTOM BUDDY', L.x + 2, L.y + 1, P.redD, { font: 'small' });
+    y = L.y + 9;
+    y = row(L, y, 'rbuddy', 'Rotom in the world', cfg.off ? 'OFF' : 'ON', () => { cfg.off = !cfg.off; Save.save(); say(cfg.off ? 'Rotom will stay in the Dex. Bzzt...' : 'Yay! Rotom will fly with you!', { mood: cfg.off ? 'sad' : 'happy' }); });
+    y = row(L, y, 'rchat', 'Chatter', ['QUIET', 'SOME', 'LOTS'][cfg.chat ?? 1], () => { cfg.chat = ((cfg.chat ?? 1) + 1) % 3; Save.save(); say(['Rotom will be quiet. Mostly.', 'Normal chatter! Bzzt!', 'Rotom will talk a LOT! Bzzt-bzzt!'][cfg.chat]); });
+    textLines(fb, 'Poke Rotom in the world (or press O) for jokes and hints. It ducks out of your photos!', L.x + 2, y + 3, L.w - 4, P.dim, Math.max(1, Math.floor((L.y + L.h - y - 4) / 8)));
   }
 
   const PAGES = { home: pageHome, dex: pageDex, entry: pageEntry, ency: pageEncy, quests: pageQuests, prog: pageProg, album: pageAlbum, mail: pageMail, settings: pageSettings, style: pageStyle, shop: pageShop, disc: pageDisc, tms: pageTMs, time: pageTime, chat: pageChat, help: pageHelp };
 
   /* ---------- drawing ---------- */
-  // how many UI pixels per device pixel: phones (small CSS pixels) draw at 2x so the text stays readable
-  function pickScale(W0, H0) {
-    const US = (typeof Game !== 'undefined' && Game.US) || 2, dpr = window.devicePixelRatio || 1;
-    const want = Math.max(1, Math.ceil((1.5 * dpr) / US - 0.01));
-    const fit = Math.max(1, Math.min(Math.floor(H0 / 186), Math.floor(W0 / 150)));
-    return Math.max(1, Math.min(want, fit));
-  }
   function draw(fbOut, t) {
     const W0 = fbOut.w, H0 = fbOut.h;
-    const s = pickScale(W0, H0);
+    // big UI canvases (phones at 2-3x): draw at 2x so the device fills the screen and stays readable
+    const s = Math.max(1, Math.floor(Math.min(W0 / 420, H0 / 194)));
     let fb = fbOut;
     if (s > 1) { const w = Math.ceil(W0 / s), h = Math.ceil(H0 / s); if (!D.vb || D.vb.w !== w || D.vb.h !== h) D.vb = new PX.Buf(w, h); fb = D.vb; fb.d.fill(0); }
     if (s !== D.s) { D.s = s; D.btns.length = 0; }
@@ -2224,68 +1827,42 @@ const Dex = (() => {
     const S = UI.skin(), W = fb.w, H = fb.h, G = geom(W, H), FR = framePal(S);
     D.G = G; pageSkin(S);
     const dimK = clamp(D.t / 0.3, 0, 1) * (D.closing ? 1 - D.closing / 0.5 : 1);
-    if (!D.bare) UI.rectA(fb, 0, 0, W, H, 0xff200e0a, 0.62 * dimK);
-    // rise in / drop out, then a gentle hover
-    const rise = D.closing ? U.ease.inCubic(clamp((D.closing - 0.16) / 0.34, 0, 1)) : 1 - U.ease.outBack(clamp(D.t / 0.42, 0, 1));
-    const dy = D.bare ? 0 : Math.round(rise * (H - G.top + 8)) + Math.round(Math.sin(t * 2.2) * 1.2);
-    G.top += dy; G.oy += dy; G.scr.y += dy;
+    UI.rectA(fb, 0, 0, W, H, 0xff0a0e20, 0.55 * dimK);
+    // rise in / drop out
+    const rise = D.closing ? U.ease.inCubic(clamp((D.closing - 0.16) / 0.34, 0, 1)) : 1 - U.ease.outBack(clamp(D.t / 0.34, 0, 1));
+    const dy = Math.round(rise * (H - G.oy + G.antH + 8)) + Math.round(Math.sin(t * 2.2) * 1.2);
+    G.oy += dy; G.scr.y += dy;
     drawShell(fb, G, FR, t);
-    // keychain from the right side clip
-    if (Save.data.equip.key) Rewards.drawKey(fb, Save.data.equip.key, G.cx + G.hw - 2, G.Y(105) + 1, D.keyAng, t);
+    // keychain from the side clip
+    if (Save.data.equip.key) Rewards.drawKey(fb, Save.data.equip.key, G.ox + G.DW + 1, G.oy + Math.round(G.DH * 0.64), D.keyAng, t);
     const pw = D.closing ? clamp(1 - D.closing / 0.16, 0, 1) : clamp((D.t - 0.24) / 0.2, 0, 1);
     drawScreen(fb, G, pw, t);
     if (pw >= 1) {
       const fn = PAGES[D.page] || pageDex, Scr = G.scr;
       const k = U.ease.outCubic(D.trans), slide = Math.round((1 - k) * 36 * D.dir);
-      if (D.zoom && k < 1) {
-        // app open: the page grows out of the tapped icon
-        const L2 = D.tmp2 && D.tmp2.w === W && D.tmp2.h === H ? D.tmp2 : (D.tmp2 = new PX.Buf(W, H));
-        L2.d.fill(0); fn(L2, G, t);
-        const zk = 0.12 + 0.88 * k, zx = D.zoom.x, zy = D.zoom.y;
-        for (let y = Math.max(0, Scr.y + 2); y < Math.min(H, Scr.y + Scr.h - 1); y++) for (let x = Math.max(0, Scr.x + 1); x < Math.min(W, Scr.x + Scr.w - 1); x++) {
-          const sx = Math.round(zx + (x - zx) / zk), sy = Math.round(zy + (y - zy) / zk);
-          if (sx < Scr.x + 1 || sx >= Scr.x + Scr.w - 1 || sy < Scr.y + 2 || sy >= Scr.y + Scr.h - 1) continue;
-          const v = L2.d[sy * W + sx]; if (v) fb.d[y * W + x] = k < 0.5 ? mix(D.zoom.c, v, k * 2) : v;
-        }
-      } else if (slide) {
+      if (slide) {
         const L2 = D.tmp2 && D.tmp2.w === W && D.tmp2.h === H ? D.tmp2 : (D.tmp2 = new PX.Buf(W, H));
         L2.d.fill(0);
         fn(L2, G, t);
-        for (let y = Math.max(0, Scr.y + 2); y < Math.min(H, Scr.y + Scr.h - 1); y++) for (let x = Math.max(0, Scr.x + 1); x < Math.min(W, Scr.x + Scr.w - 1); x++) { const sx = x - slide; if (sx < 0 || sx >= W) continue; const v = L2.d[y * W + sx]; if (v) fb.d[y * W + x] = v; }
+        for (let y = Math.max(0, Scr.y); y < Math.min(H, Scr.y + Scr.h); y++) for (let x = Math.max(0, Scr.x + 1); x < Math.min(W, Scr.x + Scr.w - 1); x++) { const sx = x - slide; if (sx < 0 || sx >= W) continue; const v = L2.d[y * W + sx]; if (v) fb.d[y * W + x] = v; }
         // scanline sweep
         UI.rectA(fb, Scr.x + 2, Math.round(Scr.y + Scr.h * k), Scr.w - 4, 2, 0xffffffff, 0.4);
       } else fn(fb, G, t);
-      drawSlots(fb, G, t);
+      drawHeader(fb, G, t);
     }
     if (pw > 0.3 || D.closing) drawFace(fb, G, t);
-    drawEyes(fb, G, t);
     homeButton(fb, G, FR, t);
-    D.dev = { x: G.ox, y: G.top, w: G.DW, h: G.TH };
-    if (!D.bare && (!D.closing || D.closing < 0.2)) drawSide(fb, G, t);
+    D.dev = { x: G.ox - 4, y: G.oy - G.antH, w: G.DW + 8, h: G.DH + G.antH + G.tailH };
+    // big close bar under the device when there is room (portrait phones)
+    if (H - (G.oy + G.DH + G.tailH) > 34 && !D.closing) {
+      const cw = Math.min(G.DW, 150), cx = Math.round((W - cw) / 2), cy = G.oy + G.DH + G.tailH + 10;
+      UI.rrect(fb, cx, cy, cw, 22, 6, FR.ink); UI.rrect(fb, cx + 1, cy + 1, cw - 2, 20, 5, FR.b);
+      Font.draw(fb, 'CLOSE', cx + cw / 2, cy + 8, 0xffffffff, { font: 'small', align: 'center' });
+      btn('closebar', cx, cy, cw, 22, () => close());
+    }
   }
-  // little status texts in the screen's top corners, beside Rotom's face
-  function drawSlots(fb, G, t) {
-    if (sideLayout(G).lr) return;
-    const s = G.scr, f = faceDims(G), p = G.pad, y = s.y + p + 1, pg = D.page;
-    const lw = f.cx - f.r - (s.x + p) - 3;
-    const L = SLOT_L[pg] ? SLOT_L[pg]() : '', R = SLOT_R[pg] ? SLOT_R[pg]() : '';
-    if (L) Font.draw(fb, fit(L, lw), s.x + p + 1, y, P.text, { font: 'small' });
-    if (R) Font.draw(fb, fit(R, lw), s.x + s.w - p - 1, y, P.text, { font: 'small', align: 'right' });
-  }
-  const SLOT_L = {
-    home: () => { const hr = Game.hour(); return (hr === 'night' || hr === 'dusk' ? '{moon}' : '{sun}') + ' ' + hr.toUpperCase(); },
-    dex: () => { const c = counts(); return '{pb} ' + c.caught + '/' + c.all; },
-    entry: () => { const d = DexData.S[D.sel]; return d ? 'NO.' + pad3(d.no) : ''; },
-  };
-  const SLOT_R = {
-    home: () => '{coin} ' + Save.data.points,
-    dex: () => { const c = counts(); return Math.round((c.caught / Math.max(1, c.all)) * 100) + '%'; },
-    entry: () => { const L = DexData.ORDER.filter((s) => stat(s) > 0); return (L.indexOf(D.sel) + 1) + '/' + L.length; },
-  };
 
-  // the HUD's Rotom Dex button shows one badge for all apps
-  function anyBadge() { let n = 0; for (const a of APPS) { if (a.lock && a.lock()) continue; const v = appBadge(a.id); n += v === true ? 1 : v || 0; } if (hasP() && Progress.logBadge()) n = Math.max(n, 1); return n; }
-  // open the Dex straight to an app (keyboard shortcuts)
-  function openApp(id) { const a = APP[id]; if (!a) return open(); if (Game.mode !== 'dex') { open(); D.page = 'home'; D.faceK = 1; } const i = APPS.indexOf(a); D.home.pg = (i / 8) | 0; D.home.sel = i % 8; launch(a); }
+  function anyBadge() { return typeof Quests !== 'undefined' && Quests.unseen ? Quests.unseen() : 0; }
+  function openApp(id) { if (Game.mode !== 'dex') open(); if (PAGES[id]) go(id, { force: true }); }
   return Object.assign(D, { anyBadge, openApp, cancel, open, close, go, back, update, draw, down, move, up, wheel, key, hover, thumb, say, mood, zap, stat, counts, SECRETS, APPS, LINES });
 })();

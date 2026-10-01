@@ -193,29 +193,46 @@ const HUD = (() => {
   }
   const TOPI = { dex: (fb, x, y, S, t) => icoDex(fb, x, y, S), map: (fb, x, y) => icoMap(fb, x, y), bag: (fb, x, y) => icoBag(fb, x, y), style: (fb, x, y, S, t) => icoHat(fb, x, y, t), snd: (fb, x, y) => icoSound(fb, x, y, Sound.on), games: (fb, x, y, S, t) => { UI.disc(fb, x, y + 1, 7, INK); UI.disc(fb, x, y, 6, U.hex('#ff5a4a')); UI.rect(fb, x - 6, y, 13, 1, INK); UI.disc(fb, x, y, 2, 0xffffffff); UI.put(fb, x - 3, y - 3, 0xffffc0c0); } };
   function drawTop(fb, S, t) {
-    // right: ONE Rotom Dex button — map, bag, wardrobe, quests, clock, seasons, sound... are apps inside it
-    const bw = 30, y = 5, x = fb.w - 6 - bw, id = 'dex';
-    const p = pressed(id) ? 1 : 0, hov = H.hoverId === id;
-    const n = typeof Dex !== 'undefined' && Dex.anyBadge ? Dex.anyBadge() : 0;
-    const bob = Math.round(Math.sin(t * 2.2) * 1);
-    UI.rrect(fb, x, y + 2, bw, bw, 7, 0xff0a0e1a);
-    const fill = hov ? U.hex('#f0464a') : U.hex('#dc2f33');
-    UI.panel(fb, x, y + p, bw, bw, { r: 7, ol: INK, fill, hi: U.tweak(fill, 0, 1, 0.16) });
-    // a tiny Rotom Dex face: periwinkle screen, two big eyes, a grin
-    const cx = x + bw / 2, cy = y + p + bw / 2 + bob;
-    UI.rrect(fb, cx - 10, cy - 5, 20, 13, 3, INK); UI.rrect(fb, cx - 9, cy - 4, 18, 11, 2, U.hex('#8fb0e0'));
-    UI.disc(fb, cx, cy + 3, 4, U.hex('#7afcfe'));
-    UI.hline(fb, cx - 2, cx + 2, cy + 4, WHITE); UI.put(fb, cx - 2, cy + 3, INK); UI.put(fb, cx + 2, cy + 3, INK);
-    const bl = (t % 4) < 0.12;
-    for (const sd of [-1, 1]) { const ex = cx + sd * 5, ey = cy - 5; UI.disc(fb, ex, ey, 4, INK); UI.disc(fb, ex, ey, 3, WHITE); if (bl) UI.hline(fb, ex - 3, ex + 3, ey, INK); else UI.rect(fb, ex - 1 + sd, ey - 1, 2, 3, INK); }
-    // antenna bolt
-    UI.put(fb, cx, cy - 10, U.hex('#ffd23a')); UI.put(fb, cx + 1, cy - 11, U.hex('#ffd23a')); UI.put(fb, cx, cy - 12, U.hex('#ffd23a'));
-    btn(id, x - 3, y - 2, bw + 6, bw + 6, () => (Game.mode === 'dex' ? Dex.close() : Dex.open()));
-    if (n) { const k = Math.min(1, ((H.badgeT = (H.badgeN === n ? H.badgeT || 0 : 0) + 1 / 60) / 0.25)); H.badgeN = n; const r = Math.max(1, Math.round(5 * U.ease.outBack(k))); UI.disc(fb, x + bw - 2, y + 3, r + 1, WHITE); UI.disc(fb, x + bw - 2, y + 3, r, 0xff3a30e8); if (k >= 1) Font.draw(fb, n > 9 ? '+' : String(n), x + bw - 1, y + 1, WHITE, { font: 'small', align: 'center' }); }
-    if (hov) Font.draw(fb, 'Rotom Dex (P)', x + bw, y + bw + 6, 0xffffffff, { font: 'small', align: 'right', outline: INK });
-    // left: points
-    UI.panel(fb, 6, y + 4, 64, 16, { r: 4, ol: S.ink, fill: U.mix(S.btn, 0xff000000, 0.2), hi: null, sh: null });
-    Font.draw(fb, '{coin}' + Save.data.points, 10, y + 9, 0xffffffff, { font: 'small' });
+    // right: Pokédex, map, bag, wardrobe, sound — icon buttons, no words
+    const bw = 24, y = 6;
+    const items = [
+      { id: 'dex', fn: () => (Game.mode === 'dex' ? Dex.close() : Dex.open()), badge: Quests.unseen() },
+      { id: 'map', fn: () => (Game.mode === 'map' ? WorldMap.close() : WorldMap.open()) },
+      { id: 'bag', fn: () => Bag.open(), badge: typeof Bag !== 'undefined' && Bag.fresh && Bag.fresh() },
+      { id: 'style', fn: () => Style.open(), badge: typeof Style !== 'undefined' && Style.fresh && Style.fresh() },
+      { id: 'snd', fn: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); } },
+    ].filter((it) => typeof Progress === 'undefined' || Progress.hudOk(it.id));
+    if (typeof Progress !== 'undefined') items.unshift({ id: 'quests', fn: () => Progress.openLog(), badge: Progress.logBadge() });
+    items.forEach((it, i) => {
+      const x = fb.w - 6 - (items.length - i) * (bw + 3);
+      const p = pressed(it.id) ? 1 : 0, hov = H.hoverId === it.id;
+      UI.rrect(fb, x, y + 2, bw, bw, 6, 0xff0a0e1a);
+      const fill = it.id === 'dex' ? S.body : hov ? U.tweak(S.btn, 0, 1, 0.08) : S.btn;
+      UI.panel(fb, x, y + p, bw, bw, { r: 6, ol: S.ink, fill, hi: U.tweak(fill, 0, 1, 0.16) });
+      if (TOPI[it.id]) TOPI[it.id](fb, x + bw / 2, y + p + bw / 2, S, t); else if (it.id === 'quests') Progress.icon(fb, x + bw / 2, y + p + bw / 2, t);
+      btn(it.id, x - 1, y - 1, bw + 2, bw + 4, it.fn);
+      if (it.badge) { UI.disc(fb, x + bw - 2, y + 2, 3, 0xffff3a4a); UI.put(fb, x + bw - 2, y + 2, 0xffffffff); }
+      if (hov) Font.draw(fb, { dex: 'Pokédex (P)', map: 'Map (M)', bag: 'Bag (B)', style: 'Wardrobe (V)', snd: 'Sound', games: 'Playground (H)', quests: 'Quests (L)' }[it.id], x + bw / 2, y + bw + 5, 0xffffffff, { font: 'small', align: 'center', outline: INK });
+    });
+    // left: clock (tap = let time pass) + points
+    const hr = Game.hour();
+    const x = 6;
+    const p = pressed('clock') ? 1 : 0;
+    UI.rrect(fb, x, y + 2, 24, 24, 6, 0xff0a0e1a);
+    UI.panel(fb, x, y + p, 24, 24, { r: 6, ol: S.ink, fill: S.btn });
+    Font.icon(fb, hr === 'night' || hr === 'dusk' ? 'moon' : 'sun', x + 5, y + 5 + p, 2);
+    btn('clock', x - 1, y - 1, 26, 28, () => Game.tryTime());
+    UI.panel(fb, x + 28, y + 4, 64, 16, { r: 4, ol: S.ink, fill: U.mix(S.btn, 0xff000000, 0.2), hi: null, sh: null });
+    Font.draw(fb, '{coin}' + Save.data.points, x + 32, y + 9, 0xffffffff, { font: 'small' });
+    // season chip (tap = next season)
+    if (typeof Seasons !== 'undefined' && (typeof Progress === 'undefined' || Progress.has('season'))) {
+      const sx = x + 96, ps = pressed('season') ? 1 : 0, sn = Seasons.cur;
+      UI.rrect(fb, sx, y + 2, 24, 24, 6, 0xff0a0e1a);
+      UI.panel(fb, sx, y + ps, 24, 24, { r: 6, ol: S.ink, fill: U.mix(S.btn, U.hex({ spring: '#ff9ec4', summer: '#4ab860', autumn: '#e2741c', winter: '#9ad8ff' }[sn]), 0.25) });
+      Seasons.icon(fb, sx + 12, y + 12 + ps, sn, t);
+      btn('season', sx - 1, y - 1, 26, 28, () => Seasons.next());
+      if (H.hoverId === 'season') Font.draw(fb, Seasons.NAME[sn] + ' (N)', sx + 12, y + 29, 0xffffffff, { font: 'small', align: 'center', outline: INK });
+    }
   }
   // throw a berry at the nearest Pokémon in front (or just ahead)
   function throwBerry() {
@@ -281,7 +298,7 @@ const HUD = (() => {
     H.btns.length = 0;
     const S = UI.skin();
     if (Game.mode === 'title') { drawTitle(fb, t); return; }
-    if (Game.mode === 'dex') { Dex.draw(fb, t); return; }
+    if (Game.mode === 'dex') { Dex.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'map') { WorldMap.draw(fb, t); if (typeof Mailman !== 'undefined') Mailman.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'bag') { Bag.draw(fb, t); drawToasts(fb, S, t, true); return; }
     if (Game.mode === 'style') { Style.draw(fb, t); drawToasts(fb, S, t, true); return; }
