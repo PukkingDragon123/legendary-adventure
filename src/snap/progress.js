@@ -22,7 +22,19 @@ const Progress = (() => {
   const qs = new URLSearchParams(location.search);
   const P = { all: qs.get('unlock') === 'all', ready: false, pollT: 0, fl: [], cards: [], lvUp: null, pings: [], log: null, noFlagT: 0, scanHit: 0, deepT: 0, sp: [], stars: [], bar: null, geo: null, toastY: 62 };
   // XP needed to reach each level (index = level)
-  const XP = [0, 0, 100, 260, 480, 760, 1100, 1500, 1960, 2480, 3060, 3700, 4400, 5160, 5980, 6860, 7800, 8800, 9900, 11100, 12400];
+  // (v2 curve: gentle early levels, steps that grow smoothly so each area's
+  //  recommended level — beach 3, forest 5, canopy 7, falls 9, volcano 11,
+  //  shoal 13 — lands about halfway through that area's content; later areas
+  //  pay more per discovery and road fights fill the gap)
+  const XP = [0, 0, 120, 380, 820, 1500, 2400, 3450, 4600, 5850, 7200, 8650, 10200, 11850, 13600, 15450, 17400, 19450, 21600, 23850, 26200];
+  const XP1 = [0, 0, 100, 260, 480, 760, 1100, 1500, 1960, 2480, 3060, 3700, 4400, 5160, 5980, 6860, 7800, 8800, 9900, 11100, 12400]; // the old curve (migration)
+  // later areas are worth more per discovery (first area a species lives in)
+  const TIER = { beach: 1, forest: 1.25, canopy: 1.6, falls: 2, stage: 2, volcano: 2.4, shoal: 2.8 };
+  const tierOf = (a) => TIER[a] || 1;
+  const spTier = (sp) => { const d = DexData.S[sp]; const as = d ? [].concat(d.area || []) : []; return as.length ? Math.min(...as.map(tierOf)) : 1; };
+  // XP sources (for the breakdown page)
+  const SRC = { dex: 'New Pokédex entries', beh: 'New behaviours', photo: 'Photo quality', obj: 'Photo objectives', quest: 'Quests', req: 'Requests', fight: 'Road fights & bosses', disc: 'Secrets & discoveries', move: 'New moves', games: 'Minigames', area: 'New areas' };
+  const catOf = (why) => (/^(Road fight|Rematch|Boss|Battle|Rival|Tamed|Win)/i.test(why || '') ? 'fight' : /photo/i.test(why || '') ? 'photo' : /quest/i.test(why || '') ? 'quest' : 'games');
   const MAXLV = XP.length - 1;
   // features and when they open (lv, or a story flag that opens them early)
   const FEATS = [
@@ -44,12 +56,22 @@ const Progress = (() => {
   // one line that fits in w pixels (trimmed with "..")
   function fit(t, w, font = 'small') { t = star(t); if (Font.measure(t, font) <= w) return t; while (t.length > 1 && Font.measure(t + '..', font) > w) t = t.slice(0, -1); return t + '..'; }
   const areaName = (a) => (DexData.AREAS[a] ? DexData.AREAS[a].name : a);
+  const questXP = (q) => Math.round((70 + ((q && q.xp) || 0)) * (q ? tierOf(q.area) : 1));
 
   /* ---------- save data ---------- */
   function L() {
     const d = Save.data;
-    if (!d.lv) d.lv = { xp: 0, got: {}, feat: {}, track: null, init: 0 };
-    return d.lv;
+    if (!d.lv) d.lv = { xp: 0, got: {}, feat: {}, track: null, init: 0, cv: 2 };
+    const D = d.lv;
+    // v1 curve → v2: keep the player's level and progress through it
+    if (!D.cv) {
+      let l = 1; while (l < MAXLV && D.xp >= XP1[l + 1]) l++;
+      const k = l >= MAXLV ? 0 : (D.xp - XP1[l]) / (XP1[l + 1] - XP1[l]);
+      D.xp = Math.round(XP[l] + k * ((XP[l + 1] || XP[l]) - XP[l])); D.cv = 2;
+    }
+    if (!D.src) D.src = {};
+    if (!D.rep) D.rep = {};
+    return D;
   }
   function levelOf(xp) { let l = 1; while (l < MAXLV && xp >= XP[l + 1]) l++; return l; }
   const level = () => (P.all ? Math.max(MAXLV, levelOf(L().xp)) : levelOf(L().xp));
@@ -61,18 +83,40 @@ const Progress = (() => {
   const hudOk = (id) => (id === 'map' ? has('map') : id === 'bag' ? has('bag') : id === 'style' ? has('style') : id === 'games' ? has('games') : true);
 
   /* ---------- XP ---------- */
-  function gain(n, why, silent) {
+  // this session's XP by source
+  const SES = { xp: 0, src: {}, t0: Date.now(), lv0: 0, streak: 0, best: 0, lastGood: -1e9 };
+  // repeating the same thing pays less (the count fades by half every 10 minutes)
+  function repeatK(key) {
+    const D = L(), r = D.rep[key] || { n: 0, t: 0 }, now = Date.now();
+    const n = r.n * Math.pow(0.5, (now - r.t) / 600000);
+    D.rep[key] = { n: n + 1, t: now };
+    // trim the table
+    const ks = Object.keys(D.rep); if (ks.length > 80) { ks.sort((a, b) => D.rep[a].t - D.rep[b].t); for (const k of ks.slice(0, ks.length - 60)) delete D.rep[k]; }
+    return Math.max(0.25, Math.pow(0.75, n));
+  }
+  function gain(n, why, silent, cat) {
     const D = L(), l0 = levelOf(D.xp);
-    D.xp += n; Save.save();
+    n = Math.max(1, Math.round(n));
+    cat = cat || catOf(why);
+    if (cat === 'fight' && /^Rematch/.test(why || '')) n = Math.max(1, Math.round(n * repeatK('re.' + why)));
+    D.xp += n; D.src[cat] = (D.src[cat] || 0) + n; Save.save();
     if (silent) { P.bar = null; return; }
-    P.fl.push({ t: 0, n, why: why || '' });
+    SES.xp += n; SES.src[cat] = (SES.src[cat] || 0) + n;
+    // several small gains in a row merge into one popup
+    const last = P.fl[P.fl.length - 1];
+    if (last && last.t < 0.5 && last.why === (why || '')) { last.n += n; last.t = 0; }
+    else P.fl.push({ t: 0, n, why: why || '', cat });
     if (P.fl.length > 3) P.fl.shift();
     // the bar pauses a beat (the new XP shows as a flickering ghost), then fills
     if (P.bar && !P.bar.moving) P.bar.hold = 0.28;
     const l1 = levelOf(D.xp);
     if (l1 > l0) levelUp(l1);
   }
-  function award(key, n, why, silent) { const D = L(); if (D.got[key]) return false; D.got[key] = 1; gain(n, why, silent); return true; }
+  function award(key, n, why, silent, cat) {
+    const D = L(); if (D.got[key]) return false; D.got[key] = 1;
+    if (!cat && /^punk\.|^boss|^tame/.test(key)) cat = 'fight';
+    gain(n, why, silent, cat); return true;
+  }
   // the celebration starts once the XP bar has filled up (see barUpdate)
   function levelUp(l) {
     if (P.all) { checkFeats(); return; }
@@ -101,19 +145,20 @@ const Progress = (() => {
   // the whole journal, scanned for things worth XP (keys make each count once)
   function poll(silent) {
     const d = Save.data;
-    for (const sp in d.seen) if (DexData.S[sp]) award('sp.' + sp, 60, 'New Pokédex entry: ' + nm(sp), silent);
-    for (const sp in d.beh) for (const b in d.beh[sp]) award('bh.' + sp + '.' + b, 12, '', silent);
-    for (const id in d.obj) award('ob.' + id, 30, 'Photo objective', silent);
-    for (const id in d.quests) award('rq.' + id, 50, 'Request', silent);
+    for (const sp in d.seen) if (DexData.S[sp] && !DexData.S[sp].player) award('sp.' + sp, 40 * spTier(sp), 'New Pokédex entry: ' + nm(sp), silent, 'dex');
+    for (const sp in d.beh) for (const b in d.beh[sp]) { const S0 = DexData.S[sp], bb = S0 && S0.beh && S0.beh[b]; award('bh.' + sp + '.' + b, (6 + ((bb && bb.tier) || 1) * 2) * spTier(sp), 'New behaviour: ' + nm(sp) + (bb && bb.n ? ' ' + bb.n.toLowerCase() : ''), silent, 'beh'); }
+    for (const id in d.obj) award('ob.' + id, 15 * spTier(id.split('.')[0]), 'Photo objective', silent, 'obj');
+    for (const id in d.quests) award('rq.' + id, 40, 'Request done', silent, 'req');
     const tq = d.tq || {};
-    for (const id in tq) if (tq[id].s === 'done') { const q = Talk.QUESTS.find((x) => x.id === id); award('tq.' + id, 100 + ((q && q.xp) || 0), 'Quest: ' + (q ? q.title : id), silent); }
-    for (const id in d.disc) award('dc.' + id, 15, '', silent);
-    for (const id in d.tms || {}) award('tm.' + id, 40, 'New move', silent);
+    for (const id in tq) if (tq[id].s === 'done') { const q = Talk.QUESTS.find((x) => x.id === id); award('tq.' + id, questXP(q), 'Quest: ' + (q ? q.title : id), silent, 'quest'); }
+    for (const id in d.disc) award('dc.' + id, 15 * tierOf(id.split('.')[0]), 'Secret found', silent, 'disc');
+    for (const id in d.tms || {}) award('tm.' + id, 40, 'New move learned', silent, 'move');
     const st = d.stats || {};
-    for (let i = 1; i <= Math.min(20, st.sumo || 0); i++) award('sumo.' + i, 40, 'Sumo win', silent);
-    for (let i = 1; i <= Math.min(10, Math.floor((st.rope || 0) / 5)); i++) award('rope.' + i, 20, 'Jump rope', silent);
-    if (st.regi) award('regi', 150, 'Ancient puzzle', silent);
-    for (const a in d.areas) if (a !== 'beach') award('ar.' + a, 50, 'New area', silent);
+    // minigames: the first wins pay well, then less and less
+    for (let i = 1; i <= Math.min(20, st.sumo || 0); i++) award('sumo.' + i, Math.max(8, Math.round(40 * Math.pow(0.85, i - 1))), 'Sumo win' + (i > 1 ? ' x' + i : ''), silent, 'games');
+    for (let i = 1; i <= Math.min(10, Math.floor((st.rope || 0) / 5)); i++) award('rope.' + i, Math.max(6, Math.round(20 * Math.pow(0.85, i - 1))), 'Jump rope x' + i * 5, silent, 'games');
+    if (st.regi) award('regi', 150, 'Ancient puzzle solved', silent, 'disc');
+    for (const a in d.areas) if (a !== 'beach') award('ar.' + a, 50 * tierOf(a), 'New area: ' + areaName(a), silent, 'area');
     censusTick();
     checkFeats(silent);
   }
@@ -155,7 +200,22 @@ const Progress = (() => {
   { const t0 = HUD.tool; HUD.tool = function (id) { if (id === 'scan' && !has('scan')) { locked('scan'); return; } if (id === 'song' && !has('music')) { locked('music'); return; } const r = t0.apply(this, arguments); if (id === 'scan') onScan(); return r; }; }
   { const h0 = HUD.toast; HUD.toast = function (msg, o) { if (typeof msg === 'string' && msg.startsWith('Scan: nothing unusual') && Game.rt - P.scanHit < 2) return; return h0.call(this, msg, o); }; }
   // photo quality XP
-  { const r0 = Save.recordPhoto; Save.recordPhoto = function (r) { const out = r0.call(this, r); try { if (r && r.species && out.improved) gain(Math.max(2, (r.stars || 0) * 5 + (r.medal || 0) * 4), 'photo'); } catch (e) { console.error(e); } return out; }; }
+  { const r0 = Save.recordPhoto; Save.recordPhoto = function (r) { const out = r0.call(this, r); try { if (r && r.species) photoXP(r, out); } catch (e) { console.error(e); } return out; }; }
+  // a good photo (3★+) within 45 s of the last good one grows the streak: +15% per step, up to +60%
+  function photoXP(r, out) {
+    const stars = r.stars || 0, now = Game.rt || 0;
+    if (stars >= 3) { SES.streak = now - SES.lastGood < 45 ? SES.streak + 1 : 1; SES.lastGood = now; SES.best = Math.max(SES.best, SES.streak); }
+    else if (stars <= 1) SES.streak = 0;
+    if (!out.improved && !out.newBeh) return;
+    let n = stars * 4 + (r.medal || 0) * 3 + (out.newStar ? 6 : 0);
+    n *= spTier(r.species);
+    const sk = SES.streak >= 2 ? Math.min(0.6, (SES.streak - 1) * 0.15) : 0;
+    n *= 1 + sk;
+    // the same Pokémon again and again: less each time
+    n *= repeatK('ph.' + r.species);
+    const lab = 'Photo ' + '★'.repeat(Math.max(1, stars)) + ' ' + nm(r.species) + (sk ? ' · Streak x' + SES.streak : '') + (out.newStar ? ' · new best' : '');
+    gain(Math.max(2, n), lab, false, 'photo');
+  }
   function wrapGame() {
     if (Game.tryTime && !Game.tryTime.pg) { const t0 = Game.tryTime; Game.tryTime = function (...a) { if (!has('time')) { locked('time'); return; } return t0.apply(this, a); }; Game.tryTime.pg = 1; }
     // deep water: until Lv4 Mudkip paddles near the surface
@@ -538,9 +598,12 @@ const Progress = (() => {
     for (let i = P.fl.length - 1; i >= 0; i--) {
       const f = P.fl[i], kk = f.t / 2.2, pop = f.t < 0.12 ? Math.round((1 - f.t / 0.12) * 3) : 0;
       if (kk > 0.8 && Math.floor(f.t * 20) % 2) { fy -= 10; continue; }
-      const X = px + pw + 5, Y = fy - Math.round(kk * 6) - pop, head = '+' + f.n + ' XP';
-      Font.draw(fb, head, X, Y, hx('#aef7ff'), { font: 'small', outline: INK });
-      if (f.why) { const rw = Math.max(0, Math.min(170, fb.w - X - 70) - Font.measure(head, 'small') - 4); if (rw > 30) Font.draw(fb, fit(f.why, rw), X + Font.measure(head, 'small') + 4, Y, WHITE, { font: 'small', outline: INK }); }
+      const X = px + pw + 5, Y = fy - Math.round(kk * 6) - pop, head = '+' + f.n + ' XP', big = f.cat === 'dex' || f.cat === 'quest' || f.cat === 'area' || f.cat === 'fight';
+      const hw = Font.measure(head, 'small'), rw = f.why ? Math.max(0, Math.min(230, fb.w - X - 60) - hw - 10) : 0, wt = rw > 30 ? fit(f.why, rw) : '';
+      // a soft plate behind the line keeps it readable over bright scenery
+      UI.rectA(fb, X - 2, Y - 1, hw + (wt ? Font.measure(wt, 'small') + 10 : 0) + 4, 9, 0xff0a0e20, 0.4 * (1 - kk));
+      Font.draw(fb, head, X, Y, big ? hx('#ffe07a') : hx('#aef7ff'), { font: 'small', outline: INK });
+      if (wt) { Font.draw(fb, '·', X + hw + 3, Y, hx('#8fd4ff'), { font: 'small', outline: INK }); Font.draw(fb, wt, X + hw + 8, Y, WHITE, { font: 'small', outline: INK }); }
       fy -= 10;
     }
     // tracked quest
@@ -780,7 +843,7 @@ const Progress = (() => {
     line('Objective', objective(q));
     if (typeof Bosses !== 'undefined' && Bosses.recLv) { const rl = Bosses.recLv(q.area), pk = typeof Punks !== 'undefined' ? Punks.tally(q.area) : null; line(areaName(q.area), 'Recommended Lv ' + rl + (level() < rl ? ' (you are Lv ' + level() + ')' : ' {check}') + (pk ? '  ·  Road fights ' + pk.won + '/' + pk.n : ''), level() < rl ? 0xffc03030 : INK); }
     if (e.s !== 'done') { const s = st(q); const hint = s ? (q.wait && q.wait[0] ? q.wait[0].replace(/\{have\}/g, s.n || 0).replace(/\{left\}/g, Math.max(0, (q.n || 1) - (s.n || 0))) : '') : q.intro[q.intro.length - 1]; if (hint) line('Hint', String(hint).replace(/\{[a-z]+\}/g, '')); }
-    line('Reward', rewardLabel(q.reward) + ' + ' + (100 + (q.xp || 0)) + ' XP' + (q.unlock ? ' + a flight to ' + areaName(q.unlock) : ''));
+    line('Reward', rewardLabel(q.reward) + ' + ' + questXP(q) + ' XP' + (q.unlock ? ' + a flight to ' + areaName(q.unlock) : ''));
     const dl = dexOf(q);
     if (dl.length) {
       Font.draw(fb, 'Helps the Pokédex', dx + 6, yy, 0xff3a78e8, { font: 'small' }); yy += 10;
