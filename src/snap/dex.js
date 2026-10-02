@@ -1799,6 +1799,7 @@ const Dex = (() => {
     y = L.y + 9;
     y = row(L, y, 'rbuddy', 'Rotom in the world', cfg.off ? 'OFF' : 'ON', () => { cfg.off = !cfg.off; Save.save(); say(cfg.off ? 'Rotom will stay in the Dex. Bzzt...' : 'Yay! Rotom will fly with you!', { mood: cfg.off ? 'sad' : 'happy' }); });
     y = row(L, y, 'rchat', 'Chatter', ['QUIET', 'SOME', 'LOTS'][cfg.chat ?? 1], () => { cfg.chat = ((cfg.chat ?? 1) + 1) % 3; Save.save(); say(['Rotom will be quiet. Mostly.', 'Normal chatter! Bzzt!', 'Rotom will talk a LOT! Bzzt-bzzt!'][cfg.chat]); });
+    if (typeof SaveKit !== 'undefined') y = row(L, y, 'save', '{disk} Save & backup', Save.status.ok ? 'OPEN' : 'NOT SAVED', () => SaveKit.openMenu());
     textLines(fb, 'Poke Rotom in the world (or press O) for jokes and hints. It ducks out of your photos!', L.x + 2, y + 3, L.w - 4, P.dim, Math.max(1, Math.floor((L.y + L.h - y - 4) / 8)));
   }
 

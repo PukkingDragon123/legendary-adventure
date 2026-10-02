@@ -169,7 +169,7 @@ const Cards = (() => {
     intro: ['Hmph!', 'You again?!'], attack: ['Take THIS!', 'HIYAAA!'], hurt: ['OW OW OW!', 'That was LUCKY!'], smug: ['Heh. Cute.', 'Was that... a splash?'],
     low: ['Wait wait wait!', 'Time out! TIME OUT!'], win: ['And STAY out!', 'Too easy.'], ko: ['Uncle! UNCLE!', 'I... will be... back...'],
   };
-  const KIP = { big: ['MUD-KIP!!', 'Kip kip KIP!', 'Muuudkip!'], hurt: ['Mud?!', 'Kiiip...', 'OW! Mud!'], power: ['Mudkip is pumped!', 'Kip! ♪', 'Mud mud mud!'] };
+  const KIP = { big: ['MUD-KIP!!', 'Kip kip KIP!', 'Muuudkip!'], hurt: ['Mud?!', 'Kiiip...', 'OW! Mud!'], power: ['Mudkip is pumped!', 'Kip! {note}', 'Mud mud mud!'] };
   function foeDef(m) {
     const d = FOES[m.dex]; if (d) return d;
     const S = DexData.S[m.dex] || {}, tier = S.legendary ? 3 : S.rare === 2 ? 3 : S.rare === 1 ? 2 : 1;
@@ -239,7 +239,7 @@ const Cards = (() => {
     M.doTask(kipBrain(M), 9);
     C.arena = arena;
     if (C.arena) Arena.begin(G, plan);
-    else { sfx('chime', null, 0.7); if (typeof Music !== 'undefined' && Music.play) { try { Music.play('festival'); } catch (e) { /* */ } } }
+    else { sfx('chime', null, 0.7); if (typeof Music !== 'undefined' && Music.play) { try { Music.play(o.boss ? 'boss' : 'battle'); } catch (e) { /* */ } } }
     C.song = true;
     G.seq = introSeq(G);
     return true;
@@ -659,7 +659,8 @@ const Cards = (() => {
     C.live = false; C.g = null; C.deckView = false;
     if (C.flushToasts) C.flushToasts();
     if (typeof Arcade !== 'undefined') Arcade.live = false;
-    Game.camFocus = null;
+    Game.camFocus = null; Game.camBack = 1.4;
+    if (Game.cine && Game.cine.shot && Game.cine.shot.kind === 'pan') Game.cine.shot = null;
     if (typeof Arena !== 'undefined') Arena.stop();
     if (M) { M.rot = 0; M.jy = 0; M.tintK = 0; if (M.task && M.task.prio >= 9) M.task.done = true; }
     if (G && G.foe) { const F = G.foe; F.arcade = false; if (F.task && F.task.prio >= 9) F.task.done = true; F.rot = 0; F.tintK = 0; }
@@ -705,7 +706,7 @@ const Cards = (() => {
     pose(M, G.you, G.wk ? G.wk.mx : G.mx, G.side, G);
     pose(F, G.them, fxBase, -G.side, G);
     if (C.arena) Arena.update(dt, G);
-    if (G.over) { G.over += dt; if (!C.arena ? G.over > 1.2 : Arena.outDone(G)) close(); }
+    if (G.over) { G.over += dt; if (!C.arena ? G.over > 1.2 : Arena.outDone(G)) { close(); return; } }
     // camera: frames both, punches in on a speaker, or follows the arena director
     camera(G, M, F, dt);
   }

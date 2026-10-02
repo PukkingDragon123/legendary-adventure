@@ -23,7 +23,9 @@ const Punks = (() => {
   // the road: id, area, species, x, level, kind, name, lines
   const LIST = [
     // Coral Cove (Lv 3)
-    { id: 'b.gus', area: 'beach', dex: 'wingull', x: 930, lv: 2, kind: 'test', name: 'Gus the Gull', taunt: 'Oi, tiny! Test your strength? Loser buys the fish!', ko: 'Squawk! My sunglasses! ...OK, you are kinda strong.', win: 'Ha! Go splash in a puddle!', moves: [['Peck', 4], ['Wing Flap', 2, 2], ['Preen', 0, 5]] },
+    // the very first fight: a show-off Spheal that zooms up and down the beach; catch it to battle (tutorial)
+    { id: 'b.rolo', area: 'beach', dex: 'spheal', x: 790, lv: 1, kind: 'roam', R: 260, tut: true, name: 'Rolo', taunt: 'Yo yo YO! Nobody rolls faster than Rolo! Catch me if you can, slowpoke!', ko: 'Whoa... you caught me AND beat me? ...Respect, little dude.', win: 'Too slow! Rolo rolls on!', moves: [['Rollout', 3], ['Show Off', 0, 3], ['Belly Bump', 2, 2]] },
+    { id: 'b.gus', area: 'beach', dex: 'wingull', x: 4120, lv: 2, kind: 'test', name: 'Gus the Gull', taunt: 'Oi, tiny! Test your strength? Loser buys the fish!', ko: 'Squawk! My sunglasses! ...OK, you are kinda strong.', win: 'Ha! Go splash in a puddle!', moves: [['Peck', 4], ['Wing Flap', 2, 2], ['Preen', 0, 5]] },
     { id: 'b.snips', area: 'beach', dex: 'corphish', x: 4330, lv: 2, kind: 'block', name: 'Snips', upg: 'tackle', taunt: 'Oi! Toll road, tiny. Pay up in a card battle or swim home!', ko: 'Snip... snip... I was just keeping the road warm for you!', win: 'Toll: one (1) Mudkip dignity.', moves: [['Vice Grip', 4], ['Harden', 0, 5], ['Bubble', 2, 2]] },
     { id: 'b.zag', area: 'beach', dex: 'zigzagoon', x: 5480, lv: 3, kind: 'photo', R: 420, name: 'Zag', taunt: 'This beach is OUR photo spot. No battle, no pictures!', ko: 'Fine, FINE! Snap the big blue guy, see if I care!', win: 'No pics for you! Zig-zag-zoom!', moves: [['Headbutt', 5], ['Sand Attack', 0, 0, { weak: 1 }], ['Zig Zag', 2, 3]] },
     { id: 'b.pinch', area: 'beach', dex: 'corphish', x: 7300, lv: 3, kind: 'block', name: 'Big Pinch', taunt: 'You want the boss? Gotta get through me, shrimp! Test your strength!', ko: 'The boss is gonna be SO mad at me...', win: 'Crawdaunt says hi. From far away.', moves: [['Crabby Jab', 5], ['Harden', 0, 6], ['Double Pinch', 3, 2]] },
@@ -93,7 +95,7 @@ const Punks = (() => {
       let m = null; try { m = Eco.add(G, id, p.x, { range: 20, minX: p.x - 20, maxX: p.x + 20 }); } catch (e) { console.error(e); }
       if (!m) continue;
       m.punk = p; m.acc3 = { glasses: 'rock' }; m.x = p.x; m.y = World.groundAt(p.x); m.mode = 'land'; m.home = p.x;
-      m.brain = () => brain(m);
+      m.brain = () => (p.kind === 'roam' ? roamer(m) : brain(m));
       m.task = null;
       S.mons.push(m);
       S.fresh[p.id] = 0; // a new visit: beaten punks are back for rematches
@@ -122,6 +124,46 @@ const Punks = (() => {
     }
   }
 
+  // a roaming show-off: zooms up and down its stretch of beach, bouncing and taunting; runs from Mudkip
+  // until it gets cornered or tired, then a bump starts the dare
+  function* roamer(m) {
+    const p = m.punk, R = p.R || 300; let e = 0, tauntT = 1, dir = 1, hop = 0, tired = 0, pause = 0;
+    m.roam = { v: 0, caught: false };
+    for (;;) {
+      const dt = (yield) || 0.016; e += dt; tauntT -= dt; pause -= dt;
+      const M = mk(); if (!M) continue;
+      const sulk = S.fresh[p.id] === 1, d = M.x - m.x, ad = Math.abs(d);
+      if (sulk || busyUI()) {
+        m.roam.v = 0; m.moving = 0; m.y = World.groundAt(m.x); m.rot = 0; m.hopY = 0;
+        if (sulk) { m.o.headPitch = 0.25; m.o.eyes = 'closed'; } else m.turn(m.face(d > 0 ? 1 : -1, false), dt, 6);
+        continue;
+      }
+      // pick where to zoom: back and forth across its stretch, away from Mudkip when it gets close
+      const lo = p.x - R, hi = p.x + R;
+      if (m.x > hi) dir = -1; else if (m.x < lo) dir = 1;
+      let spd = 150;
+      if (ad < 150 && tired < 3.5) { dir = d > 0 ? -1 : 1; spd = 175; tired += dt * (M.moving ? 1 : 0.4); }
+      else tired = Math.max(0, tired - dt * 0.5);
+      const cornered = (dir < 0 && m.x < lo + 8) || (dir > 0 && m.x > hi - 8);
+      if (tired >= 3.5 || cornered && ad < 150) { spd = 0; if (tired >= 3.5 && tauntT <= 0) { tauntT = 3; say(m, pick(['*pant pant* OK OK, time out!', 'Huff... you are faster than you look!']), 1.6); m.emote && m.emote('sweat', 1); } }
+      if (pause > 0) spd = 0;
+      else if (spd && Math.random() < dt * 0.25 && ad > 220) { pause = rnd(0.8, 1.4); if (tauntT <= 0) { tauntT = rnd(4, 7); say(m, pick(['Yo! Over here, slowpoke!', 'Roll roll ROLL!', 'Can\'t catch Rolo!', 'Too cool for school!']), 1.6); m.emote && m.emote('note', 1); } }
+      m.roam.v += ((spd ? dir * spd : 0) - m.roam.v) * Math.min(1, dt * 4);
+      m.x = clamp(m.x + m.roam.v * dt, lo - 20, hi + 20);
+      const fast = Math.abs(m.roam.v) > 30;
+      m.moving = fast ? Math.abs(m.roam.v) : 0;
+      // bouncy roll: hops while zooming, a spin-tilt, a cocky taunt dance when stopped
+      hop += dt * (fast ? 11 : 6);
+      const h = fast ? Math.abs(Math.sin(hop)) * 7 : Math.abs(Math.sin(hop)) * 3;
+      m.y = World.groundAt(m.x); const was = m.hopY || 0; m.hopY = h; if (fast && was > 1.5 && h < 1.5) m.jq = -0.25; // squash on each landing
+      if (fast) { m.turn(m.face(m.roam.v > 0 ? 1 : -1, false), dt, 10); m.rot = Math.sin(hop * 0.5) * 0.35 * Math.sign(m.roam.v); m.o.headPitch = -0.15; }
+      else { m.turn(m.face(d > 0 ? 1 : -1, false), dt, 8); m.rot = Math.sin(e * 6) * 0.12; m.o.headPitch = -0.15 + Math.sin(e * 6) * 0.08; }
+      m.setAct('idle', 0.2);
+      if (fast && Math.random() < dt * 6) try { const gx = m.x - Math.sign(m.roam.v) * 8; FX.add({ type: 'dust', x: gx, y: World.groundAt(gx) - 2, vx: -Math.sign(m.roam.v) * rnd(10, 30), vy: -rnd(5, 20), r: rnd(2, 3), life: 0.5, c: 0xffe8dcc0, c2: 0xffc0b090, layer: 3 }); } catch (er) { /* */ }
+      if (ad < 240 && tauntT <= 0) { tauntT = rnd(5, 8); say(m, beaten(p.id) ? pick(['Rematch? Catch me first!', 'Rolo is back, baby!']) : pick(['Catch me if you can!', 'Nyah nyah! Too slow!', 'You wanna battle? Gotta catch me first!']), 1.8); m.emote && m.emote(beaten(p.id) ? 'note' : 'anger', 1); }
+    }
+  }
+
   /* ---------- per frame: blocking the road ---------- */
   function update(dt) {
     S.t += dt; S.cool = Math.max(0, S.cool - dt);
@@ -142,7 +184,16 @@ const Punks = (() => {
     }
     if (busyUI() || S.cool > 0 || M.mode === 'fall') return;
     for (const m of S.mons) {
-      const p = m.punk; if (!m.alive || p.kind !== 'block' || !hostile(p)) continue;
+      const p = m.punk;
+      // caught the roamer: a bump, then the dare
+      if (m.alive && p.kind === 'roam' && S.fresh[p.id] !== 1 && Math.abs(M.x - m.x) < 30 && Math.abs(M.y - m.y) < 60) {
+        S.cool = 6; m.roam && (m.roam.v = 0);
+        say(m, beaten(p.id) ? 'Ack! Caught again!' : 'WHOA! You actually caught me?!', 1.8);
+        sfx('bonk', M.x, 0.8); M.emote && M.emote('shock', 0.7);
+        setTimeout(() => dare(m), 500);
+        return;
+      }
+      if (!m.alive || p.kind !== 'block' || !hostile(p)) continue;
       if (Math.abs(M.x - m.x) < 28 && Math.abs(M.y - m.y) < 60 && M.mode === 'land') {
         const dir = M.x >= m.x ? 1 : -1;
         S.cool = 6;
@@ -159,8 +210,9 @@ const Punks = (() => {
     if (!m.alive || busyUI() || typeof Talk === 'undefined') return;
     const p = m.punk, re = beaten(p.id), lv = p.lv + (re ? 1 : 0), kl = kipLv();
     const lines = [{ text: re ? pick(['You again?! I have been doing push-ups. Rematch!', 'Rematch! This time I am wearing my LUCKY shades.']) : p.taunt }];
-    if (!re) lines.push({ text: '(' + p.name + ' · Lv ' + lv + ' road punk. ' + (p.kind === 'block' ? 'It blocks the path until you win.' : p.kind === 'photo' ? 'It ruins photos around here until you win.' : 'An optional strength test.') + ')' });
+    if (!re) lines.push({ text: '(' + p.name + ' · Lv ' + lv + ' road punk. ' + (p.kind === 'roam' ? 'A show-off who zooms around the beach. Your first road fight!' : p.kind === 'block' ? 'It blocks the path until you win.' : p.kind === 'photo' ? 'It ruins photos around here until you win.' : 'An optional strength test.') + ')' });
     else lines.push({ text: '(Rematch: smaller rewards this time.)' });
+    if (p.tut && !re) lines.push({ text: '(Card battle tip: tap a card to play it. Each card costs energy (the orbs). Attacks hit, Block cards shield you. Out of energy or cards? Press END TURN and the foe takes its turn. Bring its HP to 0 to win!)' });
     if (lv - kl >= 2) lines.push({ text: '(Careful: it is Lv ' + lv + ' and you are Lv ' + kl + '. It will hit hard!)' });
     lines.push({ text: 'Test your strength?', choices: ['Bring it!', 'Not now'] });
     Talk.open(lines, { who: m, name: p.name, title: 'Road Fight · Lv ' + lv, done: (i) => { if (i === 0) battle(m); else S.cool = 4; } });
@@ -193,7 +245,7 @@ const Punks = (() => {
       return;
     }
     S.fresh[p.id] = 1; S.cool = 3;
-    G.msg = p.kind === 'block' ? p.name + ' steps aside. The road is open!' : p.kind === 'photo' ? p.name + ' sulks off. Photos OK here now!' : p.name + ' respects your strength!';
+    G.msg = p.kind === 'roam' ? p.name + ' is out of breath. Nice first win!' : p.kind === 'block' ? p.name + ' steps aside. The road is open!' : p.kind === 'photo' ? p.name + ' sulks off. Photos OK here now!' : p.name + ' respects your strength!';
     setTimeout(() => { if (m.alive) { say(m, p.ko, 3); m.emote && m.emote('sweat', 1.4); } }, 900);
   }
   // tapping a punk
@@ -252,7 +304,7 @@ const Punks = (() => {
       const p = m.punk, sulk = S.fresh[p.id] === 1, lv = p.lv + (beaten(p.id) ? 1 : 0);
       const top = m.headPt(), [X0, Y0] = Talk.toUI(m.x, Math.min(top[1], m.y - 18) - 10);
       const X = Math.round(X0), ty = Math.round(Y0) - 10; if (X < -40 || X > fb.w + 40 || ty < 0 || ty > fb.h) continue;
-      const lab = 'Lv' + lv + ' ' + (p.kind === 'test' ? 'TEST' : 'PUNK'), w = Font.measure(lab, 'small') + 6;
+      const lab = 'Lv' + lv + ' ' + (p.kind === 'test' ? 'TEST' : p.kind === 'roam' && !beaten(p.id) ? 'CATCH ME' : 'PUNK'), w = Font.measure(lab, 'small') + 6;
       const col = sulk ? 0xff6a7088 : lv - kl >= 2 ? hex('#d02a2a') : lv > kl ? hex('#e8a020') : hex('#2a8a4a');
       UI.rrect(fb, X - w / 2 - 1, ty - 1, w + 2, 11, 3, INK);
       UI.rrect(fb, X - w / 2, ty, w, 9, 2, col);

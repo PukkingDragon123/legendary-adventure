@@ -56197,6 +56197,8 @@ const Font = (() => {
     rain: { c: { b: '#5ab8ff', w: '#ffffff' }, m: ['.www..', 'wwwwww', '......', 'b.b.b.', '.b.b.b'] },
     bag: { c: { k: '#1b2240', o: '#e08a3a', y: '#ffc070' }, m: ['.kkk.', 'k...k', 'kkkkk', 'kyyyk', 'koook', 'kkkkk'] },
     shirt: { c: { k: '#1b2240', p: '#ff7aa8', r: '#ff3a6a' }, m: ['kk.kk', 'kpkpk', '.prp.', '.ppp.', '.kkk.'] },
+    warn: { c: { y: '#ffd23a', k: '#1b2240', o: '#c07a10' }, m: ['...o...', '..oyo..', '..oko..', '.oykyo.', '.oyyyo.', 'oyykyyo', 'ooooooo'] },
+    disk: { c: { k: '#1b2240', b: '#3a78e8', s: '#d8e0ee', w: '#f4f7fb' }, m: ['kkkkkk.', 'kbsksbk', 'kbsssbk', 'kbbbbbk', 'kbwwwbk', 'kbwwwbk', 'kkkkkkk'] },
     new: { c: { r: '#ff3a4a', w: '#ffffff' }, m: ['rrrrrrrrrrr', 'rwrrwrwwwrr', 'rwwrwrwrrrr', 'rwrwwrwwrrr', 'rwrrwrwwwrr', 'rrrrrrrrrrr'] },
   };
   const ICONS = {};
@@ -56206,7 +56208,12 @@ const Font = (() => {
     ICONS[k] = { w: m[0].length, h: m.length, m, cols };
   }
 
+  // stray symbols the bitmap fonts lack are drawn as pixel icons (or plain ASCII) instead of '?'
+  const SUB = { '★': '{star}', '☆': '{star0}', '♥': '{heart}', '❤': '{heart}', '♪': '{note}', '♫': '{note}', '✓': '{check}', '✔': '{check}', '✗': '{cross}', '✕': '{cross}', '✖': '{cross}',
+    '→': '{right}', '▶': '{right}', '►': '{right}', '←': '{left}', '◀': '{left}', '◄': '{left}', '↑': '{up}', '▲': '{up}', '↓': '{down}', '▼': '{down}', '⚠': '{warn}', '\u{1F4BE}': '{disk}', '✨': '{spark}', '☀': '{sun}', '☾': '{moon}', '•': '·', '–': '-', '‘': "'", '═': '=' };
+  const SUBRE = new RegExp('[' + Object.keys(SUB).filter((k) => k.length === 1).join('') + ']|\u{1F4BE}|\uFE0F', 'gu');
   function parse(str) {
+    if (/[^\x00-\x7e]/.test(str)) str = str.replace(SUBRE, (c) => SUB[c] ?? '');
     // → tokens: {t:'c', ch}, {t:'i', icon}, {t:'col', c}
     const out = [];
     for (let i = 0; i < str.length; i++) {
@@ -58075,6 +58082,14 @@ const Sound = (() => {
       mel: [72, 76, 79, 76, 77, 0, 74, 0, 76, 79, 84, 79, 81, 0, 79, 0, 77, 76, 74, 72, 74, 0, 71, 0, 72, 0, 67, 0, 72, 0, 0, 0] },
     meadow: { bpm: 108, bar: 6, chords: [[55, 59, 62], [48, 52, 55], [50, 54, 57], [55, 59, 62]], lead: 'flute', bass: 'waltz', drums: 'k.h.h.', pad: 0.014,
       mel: [74, 0, 79, 0, 78, 76, 74, 0, 72, 0, 71, 0, 72, 0, 76, 0, 74, 72, 71, 0, 0, 0, 0, 0] },
+    // road fights: driving A-minor chiptune, galloping bass, busy hats
+    battle: { bpm: 152, bar: 8, chords: [[57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 56, 59]], lead: 'square', bass: 'gallop', drums: 'k.hsk.hsk.hsksks', arp: true,
+      mel: [69, 72, 76, 0, 74, 72, 74, 76, 77, 0, 76, 74, 72, 0, 71, 0, 67, 71, 74, 0, 72, 71, 72, 74, 76, 0, 75, 0, 76, 0, 0, 80,
+        81, 0, 79, 77, 76, 0, 74, 72, 74, 0, 72, 71, 69, 0, 72, 0, 71, 72, 74, 76, 77, 76, 74, 71, 68, 0, 71, 0, 76, 0, 0, 0] },
+    // bosses and the arena: dark, fast, double-kick
+    boss: { bpm: 168, bar: 8, chords: [[50, 53, 57], [46, 50, 53], [48, 52, 55], [49, 52, 57]], lead: 'square', bass: 'gallop', drums: 'kkhskkhskkhskshs', pad: 0.008,
+      mel: [74, 0, 74, 77, 81, 0, 80, 81, 82, 0, 81, 79, 77, 0, 76, 0, 74, 0, 74, 77, 82, 0, 81, 79, 76, 77, 79, 0, 73, 0, 0, 0,
+        86, 0, 84, 82, 81, 0, 79, 77, 79, 0, 77, 76, 74, 0, 77, 0, 76, 74, 73, 74, 76, 77, 79, 81, 82, 0, 81, 0, 85, 0, 0, 0] },
   };
   let songId = null;
   function setSong(id) { songId = id && THEMES[id] ? id : null; step = 0; }
@@ -58095,6 +58110,7 @@ const Sound = (() => {
     // bass
     if (S.bass === 'drone') { if (i === 0) pluck(N(ch[0] - 24), t, 0.06 * mv, musicBus, 2.4); }
     else if (S.bass === 'drive') { if (i % 2 === 0) inst('square', N(ch[0] - 24), t, 0.05 * mv, musicBus, sp * 1.4); }
+    else if (S.bass === 'gallop') { const n = N((i === 3 || i === 7 ? ch[2] : ch[0]) - 24); inst('square', n, t, (i % 2 ? 0.03 : 0.05) * mv, musicBus, sp * 0.9); }
     else if (S.bass === 'bounce') { if (i % 2 === 0) pluck(N((i % 4 === 0 ? ch[0] : ch[2]) - 24), t, 0.06 * mv, musicBus, sp * 1.6); }
     else if (S.bass === 'waltz') { if (i === 0) pluck(N(ch[0] - 12), t, 0.06 * mv, musicBus, 1.2); else if (i === 2 || i === 4) pluck(N(ch[1]), t, 0.025 * mv, musicBus, 0.5); }
     else if (i === 0) pluck(N(ch[0] - 12), t, 0.05 * mv, musicBus, 1.8);
@@ -60579,7 +60595,7 @@ const Mons = (() => {
       const breathe = Math.sin(t * 2.6 + this.seed) * 0.035, hop = mv * Math.abs(Math.sin(this.jb)), q = clamp(this.jq, -0.35, 0.35);
       const st = air ? 0.08 : breathe - hop * 0.06 + q;
       this.jsy = 1 + st; this.jsx = 1 - st * 0.7;
-      this.jy = -hop * 2.5 - (this.mode === 'swim' || this.mode === 'fly' || this.mode === 'float' ? Math.sin(t * 2 + this.seed) * 1.5 : 0);
+      this.jy = -hop * 2.5 - (this.hopY || 0) - (this.mode === 'swim' || this.mode === 'fly' || this.mode === 'float' ? Math.sin(t * 2 + this.seed) * 1.5 : 0);
       this.jOn = true;
     }
     /* ---- awareness of Mudkip & the camera ---- */
@@ -62025,9 +62041,21 @@ const Moves = (() => {
     if (M.wheel) { if (M.wheel.hover >= 0) select(M.wheel.hover); closeWheel(); return; }
     if (held < 0.3) use(M.cur);
   }
+  // the wheel shows one page of moves at a time (3 pages)
+  const PAGES = 3, per = () => Math.ceil(LIST.length / PAGES);
+  const pageOf = (i) => Math.floor(Math.max(0, i) / per());
+  const pageItems = (pg) => { const n = per(), a = []; for (let i = pg * n; i < Math.min(LIST.length, pg * n + n); i++) a.push(i); return a; };
+  function flip(d) {
+    const W = M.wheel; if (!W) return;
+    const pg = (W.page + d + PAGES) % PAGES, it = pageItems(pg); if (!it.length) return;
+    const j = W.hover - W.page * per();
+    W.page = pg; W.flipT = 0; W.flipD = d; W.hover = it[clamp(j, 0, it.length - 1)];
+    Game.sfx('blip');
+  }
   function openWheel() {
     if (M.wheel || Game.mode !== 'explore') return;
-    M.wheel = { t: 0, hover: LIST.findIndex((m) => m.id === M.cur), closing: 0 };
+    const h = Math.max(0, LIST.findIndex((m) => m.id === M.cur));
+    M.wheel = { t: 0, hover: h, page: pageOf(h), flipT: 1, flipD: 1, closing: 0 };
     Game.sfx('blip');
   }
   function closeWheel() { if (M.wheel) { M.wheel = null; Game.sfx('select'); } }
@@ -62043,25 +62071,40 @@ const Moves = (() => {
     const dx = ux - W.L.cx, dy = uy - W.L.cy;
     if (Math.hypot(dx, dy) < W.L.R * 0.35) return;
     let a = Math.atan2(dy, dx) + Math.PI / 2; if (a < 0) a += Math.PI * 2;
-    W.hover = Math.round(a / (Math.PI * 2) * LIST.length) % LIST.length;
+    const it = pageItems(W.page);
+    W.hover = it[Math.round(a / (Math.PI * 2) * it.length) % it.length];
   }
   function wheelKey(k) {
     const W = M.wheel; if (!W) return false;
-    if (k === 'ArrowLeft' || k === 'a') { W.hover = (W.hover + LIST.length - 1) % LIST.length; return true; }
-    if (k === 'ArrowRight' || k === 'd') { W.hover = (W.hover + 1) % LIST.length; return true; }
-    if (k === 'Enter' || k === 'x' || k === ' ' || k === 'e') { select(W.hover); closeWheel(); return true; }
-    if (k === 'Escape' || k === 'q') { closeWheel(); return true; }
+    const step = (d) => { const h = (W.hover + d + LIST.length) % LIST.length; if (pageOf(h) !== W.page) { W.flipT = 0; W.flipD = d; W.page = pageOf(h); } W.hover = h; };
+    if (k === 'ArrowLeft' || k === 'a' || k === 'ArrowUp' || k === 'w') { step(-1); return true; }
+    if (k === 'ArrowRight' || k === 'd' || k === 'ArrowDown' || k === 's') { step(1); return true; }
+    if (k === 'q' || k === 'PageUp' || k === '[') { flip(-1); return true; }
+    if (k === 'e' || k === 'PageDown' || k === ']' || k === 'Tab') { flip(1); return true; }
+    if (k === 'Enter' || k === 'x' || k === ' ') { select(W.hover); closeWheel(); return true; }
+    if (k === 'Escape' || k === 'b') { closeWheel(); return true; }
     return false;
   }
   function tapWheel(ux, uy) {
     const W = M.wheel; if (!W || !W.L) return false;
-    for (let i = 0; i < LIST.length; i++) { const [sx, sy] = slotXY(W.L, i); if (Math.hypot(ux - sx, uy - sy) < W.L.r + 4) { select(i); closeWheel(); return true; } }
+    const L = W.L;
+    // page arrows and dots
+    for (const d of [-1, 1]) { const ax = L.cx + d * L.ax; if (Math.abs(ux - ax) < 16 && Math.abs(uy - L.cy) < 22) { flip(d); return true; } }
+    if (Math.abs(uy - L.dy) < 8) for (let p = 0; p < PAGES; p++) if (Math.abs(ux - (L.cx + (p - 1) * 10)) < 6) { flip(p - W.page); return true; }
+    for (const i of pageItems(W.page)) { const [sx, sy] = slotXY(L, i); if (Math.hypot(ux - sx, uy - sy) < L.r + 4) { select(i); closeWheel(); return true; } }
+    if (Math.hypot(ux - L.cx, uy - L.cy) < L.R * 0.52) return true; // the info disc: keep it open
     closeWheel(); return true;
+  }
+  // a touch released on the wheel: a swipe flips the page, a tap picks
+  function wheelUp(p, ux, uy) {
+    const dx = ux - p.x0, dy = uy - p.y0;
+    if (Math.abs(dx) > 28 && Math.abs(dx) > Math.abs(dy) * 1.2) { flip(dx < 0 ? 1 : -1); return true; }
+    return tapWheel(p.x0, p.y0);
   }
   /* ---------- per frame ---------- */
   function update(dt) {
     if (M.pressing) { M.pressT += dt; if (M.pressT > 0.3 && !M.wheel) openWheel(); }
-    if (M.wheel) M.wheel.t += dt;
+    if (M.wheel) { M.wheel.t += dt; M.wheel.flipT = Math.min(1, (M.wheel.flipT || 0) + dt * 5 / 0.2); }
     if (M.learnFx) { M.learnFx.t += dt; if (M.learnFx.t > 3.2) M.learnFx = null; }
     // learn by watching: stay close while a Pokémon uses a move
     const mk = Game.mudkip; if (!mk || Game.mode !== 'explore') return;
@@ -62127,17 +62170,23 @@ const Moves = (() => {
       for (let j = 0; j < s; j++) for (let i = 0; i < s; i++) UI.put(fb, x0 + x * s + i, y0 + y * s + j, c);
     }
   }
-  function slotXY(L, i) { const a = -Math.PI / 2 + (i / LIST.length) * Math.PI * 2; return [L.cx + Math.cos(a) * L.R, L.cy + Math.sin(a) * L.R]; }
+  function slotXY(L, i) {
+    const pg = pageOf(i), it = pageItems(pg), j = it.indexOf(i), n = it.length || 1;
+    const a = -Math.PI / 2 + (j / n) * Math.PI * 2 + (L.spin || 0);
+    return [L.cx + Math.cos(a) * L.R, L.cy + Math.sin(a) * L.R];
+  }
   function drawWheel(fb, S, t) {
     const W = M.wheel; if (!W) return;
     const k = U.ease.outBack(Math.min(1, W.t / 0.22));
     // more moves (the boss TMs) → a wider ring with slightly smaller slots so they never overlap
-    const many = LIST.length > 14, cx = Math.round(fb.w / 2), cy = Math.round(fb.h / 2) + (many ? 2 : 0), R = Math.round(Math.min(fb.w, fb.h) * (many ? 0.37 : 0.3) * k), r = Math.max(many ? 8 : 9, Math.round(Math.min(fb.w, fb.h) * (many ? 0.045 : 0.055)));
-    W.L = { cx, cy, R, r };
+    const cx = Math.round(fb.w / 2), cy = Math.round(fb.h / 2) + 2, R = Math.round(Math.min(fb.w, fb.h) * 0.32 * k), r = Math.max(10, Math.round(Math.min(fb.w, fb.h) * 0.06));
+    const fk = U.ease.outBack ? Math.min(1, W.flipT ?? 1) : 1, spin = (1 - fk) * -W.flipD * 0.9;
+    W.L = { cx, cy, R, r, spin, ax: R + r + 16, dy: Math.min(fb.h - 6, cy + R + r + 14) };
     UI.rectA(fb, 0, 0, fb.w, fb.h, 0xff0a0e20, 0.45 * Math.min(1, W.t / 0.15));
     // ring
     for (let a = 0; a < 200; a++) { const an = (a / 200) * Math.PI * 2; UI.put(fb, Math.round(cx + Math.cos(an) * R), Math.round(cy + Math.sin(an) * R), 0x80ffffff); }
-    LIST.forEach((m, i) => {
+    pageItems(W.page).forEach((i) => {
+      const m = LIST[i];
       const [sx, sy] = slotXY(W.L, i), hov = W.hover === i, own = has(m.id), cur = M.cur === m.id;
       const rr = hov ? r + 3 : r;
       UI.disc(fb, Math.round(sx), Math.round(sy) + 2, rr, 0xff0a0e1a);
@@ -62154,7 +62203,15 @@ const Moves = (() => {
     Font.draw(fb, own ? m.name : '???', cx, cy - 12, 0xffffffff, { font: 'title', align: 'center' });
     const lines = Font.wrap(own ? m.desc || '' : 'Not learned yet', 'small', Math.round(R * 0.95));
     lines.slice(0, 3).forEach((l, j) => Font.draw(fb, l, cx, cy + 4 + j * 9, 0xffc8d4f0, { font: 'small', align: 'center' }));
-    Font.draw(fb, 'MOVE WHEEL', cx, Math.max(4, cy - R - r - 14), 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 });
+    Font.draw(fb, 'MOVE WHEEL  ' + (W.page + 1) + '/' + PAGES, cx, Math.max(4, cy - R - r - 14), 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 });
+    // page arrows (tap / Q E / mouse wheel / swipe) and dots
+    for (const d of [-1, 1]) {
+      const ax = cx + d * W.L.ax, bob = Math.round(Math.sin(t * 5) * 1.5) * d;
+      UI.disc(fb, ax + bob, cy + 1, 10, 0xff0a0e1a); UI.orb(fb, ax + bob, cy, 10, 0xff3a4a7a, { ol: 0xffffffff });
+      for (let y = -4; y <= 4; y++) { const w = 4 - Math.abs(y); for (let x = 0; x <= w; x++) UI.put(fb, ax + bob + d * (x - 2), cy + y, 0xffffffff); }
+      Font.draw(fb, d < 0 ? 'Q' : 'E', ax + bob, cy + 12, 0xffc8d4f0, { font: 'small', align: 'center', outline: 0xff1b2240 });
+    }
+    for (let p = 0; p < PAGES; p++) { const px = cx + (p - 1) * 10; if (p === W.page) UI.disc(fb, px, W.L.dy, 3, 0xffffe060); else UI.disc(fb, px, W.L.dy, 2, 0xff8a90b0); }
   }
   // a dark pie that shrinks as the move recharges (k = 1 → just used)
   function coolPie(fb, cx, cy, r, k) {
@@ -62189,7 +62246,7 @@ const Moves = (() => {
   }
   // (the old gallery game's sand piles: nothing to do here)
   function addSand() {}
-  return Object.assign(M, { add, coolLeft, coolK, coolPie, drawChip, ICON, cd, LIST, DEF, has, current, unlock, press, release, openWheel, closeWheel, toggleWheel, select, wheelPoint, wheelKey, tapWheel, update, use, icon, drawWheel, drawLearn, addSand });
+  return Object.assign(M, { add, coolLeft, coolK, coolPie, drawChip, ICON, cd, LIST, DEF, has, current, unlock, press, release, openWheel, closeWheel, toggleWheel, select, wheelPoint, wheelKey, tapWheel, wheelUp, flip, PAGES, pageItems, update, use, icon, drawWheel, drawLearn, addSand });
 })();
 
 /* ==== src/snap/tmfx.js ==== */
@@ -64227,6 +64284,8 @@ const Music = (() => {
     shoal: { synth: 'shoal', title: 'Crystal Shoal', from: 'Mudkip Snap · Shoal Cave', bpm: 72, tint: '#9ae0ff' },
     meadow: { synth: 'meadow', title: 'Seasons Waltz', from: 'Mudkip Snap', bpm: 108, tint: '#a8f070' },
     festival: { synth: 'festival', title: 'Playground Parade', from: 'Mudkip Snap · Minigames', bpm: 138, tint: '#ffd23a' },
+    battle: { synth: 'battle', title: 'Road Rumble', from: 'Mudkip Snap · Road Fights', bpm: 152, tint: '#ff7a3a' },
+    boss: { synth: 'boss', title: 'Showdown', from: 'Mudkip Snap · Boss Battles', bpm: 168, tint: '#e83a5a' },
     legend: { synth: 'legend', title: 'Awakening', from: 'Mudkip Snap · Legends', bpm: 126, tint: '#ff4a6a' },
   };
   const ORDER = ['crossing', 'lake', 'space', 'meadow', 'ashen', 'shoal', 'festival', 'legend'];
@@ -64286,7 +64345,7 @@ const Music = (() => {
   // an area asks for its song (cross-fades)
   function areaTrack(id) {
     M.want = id || null;
-    if (!id) { M.target = 0; return; }
+    if (!id) { M.target = 0; if (TRACKS[M.cur] && TRACKS[M.cur].synth && Sound.setSong) { Sound.setSong(null); M.cur = null; } return; }
     if (M.cur === id && M.playing) return;
     if (M.cur && M.playing && M.cur !== id) { M.fadeTo = id; M.target = 0; return; }
     M.target = 0.62;
@@ -66329,6 +66388,7 @@ const Dex = (() => {
     y = L.y + 9;
     y = row(L, y, 'rbuddy', 'Rotom in the world', cfg.off ? 'OFF' : 'ON', () => { cfg.off = !cfg.off; Save.save(); say(cfg.off ? 'Rotom will stay in the Dex. Bzzt...' : 'Yay! Rotom will fly with you!', { mood: cfg.off ? 'sad' : 'happy' }); });
     y = row(L, y, 'rchat', 'Chatter', ['QUIET', 'SOME', 'LOTS'][cfg.chat ?? 1], () => { cfg.chat = ((cfg.chat ?? 1) + 1) % 3; Save.save(); say(['Rotom will be quiet. Mostly.', 'Normal chatter! Bzzt!', 'Rotom will talk a LOT! Bzzt-bzzt!'][cfg.chat]); });
+    if (typeof SaveKit !== 'undefined') y = row(L, y, 'save', '{disk} Save & backup', Save.status.ok ? 'OPEN' : 'NOT SAVED', () => SaveKit.openMenu());
     textLines(fb, 'Poke Rotom in the world (or press O) for jokes and hints. It ducks out of your photos!', L.x + 2, y + 3, L.w - 4, P.dim, Math.max(1, Math.floor((L.y + L.h - y - 4) / 8)));
   }
 
@@ -79931,7 +79991,7 @@ const Cards = (() => {
     intro: ['Hmph!', 'You again?!'], attack: ['Take THIS!', 'HIYAAA!'], hurt: ['OW OW OW!', 'That was LUCKY!'], smug: ['Heh. Cute.', 'Was that... a splash?'],
     low: ['Wait wait wait!', 'Time out! TIME OUT!'], win: ['And STAY out!', 'Too easy.'], ko: ['Uncle! UNCLE!', 'I... will be... back...'],
   };
-  const KIP = { big: ['MUD-KIP!!', 'Kip kip KIP!', 'Muuudkip!'], hurt: ['Mud?!', 'Kiiip...', 'OW! Mud!'], power: ['Mudkip is pumped!', 'Kip! ♪', 'Mud mud mud!'] };
+  const KIP = { big: ['MUD-KIP!!', 'Kip kip KIP!', 'Muuudkip!'], hurt: ['Mud?!', 'Kiiip...', 'OW! Mud!'], power: ['Mudkip is pumped!', 'Kip! {note}', 'Mud mud mud!'] };
   function foeDef(m) {
     const d = FOES[m.dex]; if (d) return d;
     const S = DexData.S[m.dex] || {}, tier = S.legendary ? 3 : S.rare === 2 ? 3 : S.rare === 1 ? 2 : 1;
@@ -80001,7 +80061,7 @@ const Cards = (() => {
     M.doTask(kipBrain(M), 9);
     C.arena = arena;
     if (C.arena) Arena.begin(G, plan);
-    else { sfx('chime', null, 0.7); if (typeof Music !== 'undefined' && Music.play) { try { Music.play('festival'); } catch (e) { /* */ } } }
+    else { sfx('chime', null, 0.7); if (typeof Music !== 'undefined' && Music.play) { try { Music.play(o.boss ? 'boss' : 'battle'); } catch (e) { /* */ } } }
     C.song = true;
     G.seq = introSeq(G);
     return true;
@@ -80421,7 +80481,8 @@ const Cards = (() => {
     C.live = false; C.g = null; C.deckView = false;
     if (C.flushToasts) C.flushToasts();
     if (typeof Arcade !== 'undefined') Arcade.live = false;
-    Game.camFocus = null;
+    Game.camFocus = null; Game.camBack = 1.4;
+    if (Game.cine && Game.cine.shot && Game.cine.shot.kind === 'pan') Game.cine.shot = null;
     if (typeof Arena !== 'undefined') Arena.stop();
     if (M) { M.rot = 0; M.jy = 0; M.tintK = 0; if (M.task && M.task.prio >= 9) M.task.done = true; }
     if (G && G.foe) { const F = G.foe; F.arcade = false; if (F.task && F.task.prio >= 9) F.task.done = true; F.rot = 0; F.tintK = 0; }
@@ -80467,7 +80528,7 @@ const Cards = (() => {
     pose(M, G.you, G.wk ? G.wk.mx : G.mx, G.side, G);
     pose(F, G.them, fxBase, -G.side, G);
     if (C.arena) Arena.update(dt, G);
-    if (G.over) { G.over += dt; if (!C.arena ? G.over > 1.2 : Arena.outDone(G)) close(); }
+    if (G.over) { G.over += dt; if (!C.arena ? G.over > 1.2 : Arena.outDone(G)) { close(); return; } }
     // camera: frames both, punches in on a speaker, or follows the arena director
     camera(G, M, F, dt);
   }
@@ -81110,7 +81171,7 @@ const Arena = (() => {
     const th = M.mode === 'swim' || F.mode === 'swim' ? 'abyss' : THEMES[Game.areaId] ? Game.areaId : 'other';
     G.ar = { th: THEMES[th], id: th, t: 0, floor: M.mode === 'swim' ? Math.max(M.y, F.y) + 30 : M.y, dark: 1, spotF: 0, spotM: 0, bars: P ? 0 : 0.16, title: -1, shatter: 0, out: -1, bolt: 0, plan: P, black: 0, wt: 0, dim: 0, vs: -1, flash: 0 };
     A.on = true; A.G = G;
-    try { Music.play('legend'); } catch (e) { /* */ }
+    try { Music.play('boss'); } catch (e) { /* */ }
     if (P) {
       A.walking = true;
       crowd(G, P); sfx('whoosh', null, 0.6);
@@ -81204,7 +81265,7 @@ const Arena = (() => {
     cut(G);
   }
   function restorePeek() { const Ar = A.peekA; if (Ar) { if (A.peek0 === undefined) delete Ar.floorPeek; else Ar.floorPeek = A.peek0; } A.peekA = null; A.peek0 = undefined; }
-  function stop() { restorePeek(); A.walking = false; for (const m of A.hidden) if (m.alive) m.visible = true; A.hidden = []; A.on = false; A.cover = false; A.G = null; if (Game.cine) Game.cine.zk = 1; }
+  function stop() { restorePeek(); A.walking = false; for (const m of A.hidden) if (m.alive) m.visible = true; A.hidden = []; A.on = false; A.cover = false; A.G = null; }
   function skip(G) { G.ar.skip = true; }
   function* wait(T, G) { let e = 0; while (e < T && !G.ar.skip) e += yield; }
   function* intro(G) {
@@ -83405,7 +83466,7 @@ const Progress = (() => {
     n *= 1 + sk;
     // the same Pokémon again and again: less each time
     n *= repeatK('ph.' + r.species);
-    const lab = 'Photo ' + '★'.repeat(Math.max(1, stars)) + ' ' + nm(r.species) + (sk ? ' · Streak x' + SES.streak : '') + (out.newStar ? ' · new best' : '');
+    const lab = 'Photo ' + '{star}'.repeat(Math.max(1, stars)) + ' ' + nm(r.species) + (sk ? ' · Streak x' + SES.streak : '') + (out.newStar ? ' · new best' : '');
     gain(Math.max(2, n), lab, false, 'photo');
   }
   function wrapGame() {
@@ -84478,7 +84539,9 @@ const Punks = (() => {
   // the road: id, area, species, x, level, kind, name, lines
   const LIST = [
     // Coral Cove (Lv 3)
-    { id: 'b.gus', area: 'beach', dex: 'wingull', x: 930, lv: 2, kind: 'test', name: 'Gus the Gull', taunt: 'Oi, tiny! Test your strength? Loser buys the fish!', ko: 'Squawk! My sunglasses! ...OK, you are kinda strong.', win: 'Ha! Go splash in a puddle!', moves: [['Peck', 4], ['Wing Flap', 2, 2], ['Preen', 0, 5]] },
+    // the very first fight: a show-off Spheal that zooms up and down the beach; catch it to battle (tutorial)
+    { id: 'b.rolo', area: 'beach', dex: 'spheal', x: 790, lv: 1, kind: 'roam', R: 260, tut: true, name: 'Rolo', taunt: 'Yo yo YO! Nobody rolls faster than Rolo! Catch me if you can, slowpoke!', ko: 'Whoa... you caught me AND beat me? ...Respect, little dude.', win: 'Too slow! Rolo rolls on!', moves: [['Rollout', 3], ['Show Off', 0, 3], ['Belly Bump', 2, 2]] },
+    { id: 'b.gus', area: 'beach', dex: 'wingull', x: 4120, lv: 2, kind: 'test', name: 'Gus the Gull', taunt: 'Oi, tiny! Test your strength? Loser buys the fish!', ko: 'Squawk! My sunglasses! ...OK, you are kinda strong.', win: 'Ha! Go splash in a puddle!', moves: [['Peck', 4], ['Wing Flap', 2, 2], ['Preen', 0, 5]] },
     { id: 'b.snips', area: 'beach', dex: 'corphish', x: 4330, lv: 2, kind: 'block', name: 'Snips', upg: 'tackle', taunt: 'Oi! Toll road, tiny. Pay up in a card battle or swim home!', ko: 'Snip... snip... I was just keeping the road warm for you!', win: 'Toll: one (1) Mudkip dignity.', moves: [['Vice Grip', 4], ['Harden', 0, 5], ['Bubble', 2, 2]] },
     { id: 'b.zag', area: 'beach', dex: 'zigzagoon', x: 5480, lv: 3, kind: 'photo', R: 420, name: 'Zag', taunt: 'This beach is OUR photo spot. No battle, no pictures!', ko: 'Fine, FINE! Snap the big blue guy, see if I care!', win: 'No pics for you! Zig-zag-zoom!', moves: [['Headbutt', 5], ['Sand Attack', 0, 0, { weak: 1 }], ['Zig Zag', 2, 3]] },
     { id: 'b.pinch', area: 'beach', dex: 'corphish', x: 7300, lv: 3, kind: 'block', name: 'Big Pinch', taunt: 'You want the boss? Gotta get through me, shrimp! Test your strength!', ko: 'The boss is gonna be SO mad at me...', win: 'Crawdaunt says hi. From far away.', moves: [['Crabby Jab', 5], ['Harden', 0, 6], ['Double Pinch', 3, 2]] },
@@ -84548,7 +84611,7 @@ const Punks = (() => {
       let m = null; try { m = Eco.add(G, id, p.x, { range: 20, minX: p.x - 20, maxX: p.x + 20 }); } catch (e) { console.error(e); }
       if (!m) continue;
       m.punk = p; m.acc3 = { glasses: 'rock' }; m.x = p.x; m.y = World.groundAt(p.x); m.mode = 'land'; m.home = p.x;
-      m.brain = () => brain(m);
+      m.brain = () => (p.kind === 'roam' ? roamer(m) : brain(m));
       m.task = null;
       S.mons.push(m);
       S.fresh[p.id] = 0; // a new visit: beaten punks are back for rematches
@@ -84577,6 +84640,46 @@ const Punks = (() => {
     }
   }
 
+  // a roaming show-off: zooms up and down its stretch of beach, bouncing and taunting; runs from Mudkip
+  // until it gets cornered or tired, then a bump starts the dare
+  function* roamer(m) {
+    const p = m.punk, R = p.R || 300; let e = 0, tauntT = 1, dir = 1, hop = 0, tired = 0, pause = 0;
+    m.roam = { v: 0, caught: false };
+    for (;;) {
+      const dt = (yield) || 0.016; e += dt; tauntT -= dt; pause -= dt;
+      const M = mk(); if (!M) continue;
+      const sulk = S.fresh[p.id] === 1, d = M.x - m.x, ad = Math.abs(d);
+      if (sulk || busyUI()) {
+        m.roam.v = 0; m.moving = 0; m.y = World.groundAt(m.x); m.rot = 0; m.hopY = 0;
+        if (sulk) { m.o.headPitch = 0.25; m.o.eyes = 'closed'; } else m.turn(m.face(d > 0 ? 1 : -1, false), dt, 6);
+        continue;
+      }
+      // pick where to zoom: back and forth across its stretch, away from Mudkip when it gets close
+      const lo = p.x - R, hi = p.x + R;
+      if (m.x > hi) dir = -1; else if (m.x < lo) dir = 1;
+      let spd = 150;
+      if (ad < 150 && tired < 3.5) { dir = d > 0 ? -1 : 1; spd = 175; tired += dt * (M.moving ? 1 : 0.4); }
+      else tired = Math.max(0, tired - dt * 0.5);
+      const cornered = (dir < 0 && m.x < lo + 8) || (dir > 0 && m.x > hi - 8);
+      if (tired >= 3.5 || cornered && ad < 150) { spd = 0; if (tired >= 3.5 && tauntT <= 0) { tauntT = 3; say(m, pick(['*pant pant* OK OK, time out!', 'Huff... you are faster than you look!']), 1.6); m.emote && m.emote('sweat', 1); } }
+      if (pause > 0) spd = 0;
+      else if (spd && Math.random() < dt * 0.25 && ad > 220) { pause = rnd(0.8, 1.4); if (tauntT <= 0) { tauntT = rnd(4, 7); say(m, pick(['Yo! Over here, slowpoke!', 'Roll roll ROLL!', 'Can\'t catch Rolo!', 'Too cool for school!']), 1.6); m.emote && m.emote('note', 1); } }
+      m.roam.v += ((spd ? dir * spd : 0) - m.roam.v) * Math.min(1, dt * 4);
+      m.x = clamp(m.x + m.roam.v * dt, lo - 20, hi + 20);
+      const fast = Math.abs(m.roam.v) > 30;
+      m.moving = fast ? Math.abs(m.roam.v) : 0;
+      // bouncy roll: hops while zooming, a spin-tilt, a cocky taunt dance when stopped
+      hop += dt * (fast ? 11 : 6);
+      const h = fast ? Math.abs(Math.sin(hop)) * 7 : Math.abs(Math.sin(hop)) * 3;
+      m.y = World.groundAt(m.x); const was = m.hopY || 0; m.hopY = h; if (fast && was > 1.5 && h < 1.5) m.jq = -0.25; // squash on each landing
+      if (fast) { m.turn(m.face(m.roam.v > 0 ? 1 : -1, false), dt, 10); m.rot = Math.sin(hop * 0.5) * 0.35 * Math.sign(m.roam.v); m.o.headPitch = -0.15; }
+      else { m.turn(m.face(d > 0 ? 1 : -1, false), dt, 8); m.rot = Math.sin(e * 6) * 0.12; m.o.headPitch = -0.15 + Math.sin(e * 6) * 0.08; }
+      m.setAct('idle', 0.2);
+      if (fast && Math.random() < dt * 6) try { const gx = m.x - Math.sign(m.roam.v) * 8; FX.add({ type: 'dust', x: gx, y: World.groundAt(gx) - 2, vx: -Math.sign(m.roam.v) * rnd(10, 30), vy: -rnd(5, 20), r: rnd(2, 3), life: 0.5, c: 0xffe8dcc0, c2: 0xffc0b090, layer: 3 }); } catch (er) { /* */ }
+      if (ad < 240 && tauntT <= 0) { tauntT = rnd(5, 8); say(m, beaten(p.id) ? pick(['Rematch? Catch me first!', 'Rolo is back, baby!']) : pick(['Catch me if you can!', 'Nyah nyah! Too slow!', 'You wanna battle? Gotta catch me first!']), 1.8); m.emote && m.emote(beaten(p.id) ? 'note' : 'anger', 1); }
+    }
+  }
+
   /* ---------- per frame: blocking the road ---------- */
   function update(dt) {
     S.t += dt; S.cool = Math.max(0, S.cool - dt);
@@ -84597,7 +84700,16 @@ const Punks = (() => {
     }
     if (busyUI() || S.cool > 0 || M.mode === 'fall') return;
     for (const m of S.mons) {
-      const p = m.punk; if (!m.alive || p.kind !== 'block' || !hostile(p)) continue;
+      const p = m.punk;
+      // caught the roamer: a bump, then the dare
+      if (m.alive && p.kind === 'roam' && S.fresh[p.id] !== 1 && Math.abs(M.x - m.x) < 30 && Math.abs(M.y - m.y) < 60) {
+        S.cool = 6; m.roam && (m.roam.v = 0);
+        say(m, beaten(p.id) ? 'Ack! Caught again!' : 'WHOA! You actually caught me?!', 1.8);
+        sfx('bonk', M.x, 0.8); M.emote && M.emote('shock', 0.7);
+        setTimeout(() => dare(m), 500);
+        return;
+      }
+      if (!m.alive || p.kind !== 'block' || !hostile(p)) continue;
       if (Math.abs(M.x - m.x) < 28 && Math.abs(M.y - m.y) < 60 && M.mode === 'land') {
         const dir = M.x >= m.x ? 1 : -1;
         S.cool = 6;
@@ -84614,8 +84726,9 @@ const Punks = (() => {
     if (!m.alive || busyUI() || typeof Talk === 'undefined') return;
     const p = m.punk, re = beaten(p.id), lv = p.lv + (re ? 1 : 0), kl = kipLv();
     const lines = [{ text: re ? pick(['You again?! I have been doing push-ups. Rematch!', 'Rematch! This time I am wearing my LUCKY shades.']) : p.taunt }];
-    if (!re) lines.push({ text: '(' + p.name + ' · Lv ' + lv + ' road punk. ' + (p.kind === 'block' ? 'It blocks the path until you win.' : p.kind === 'photo' ? 'It ruins photos around here until you win.' : 'An optional strength test.') + ')' });
+    if (!re) lines.push({ text: '(' + p.name + ' · Lv ' + lv + ' road punk. ' + (p.kind === 'roam' ? 'A show-off who zooms around the beach. Your first road fight!' : p.kind === 'block' ? 'It blocks the path until you win.' : p.kind === 'photo' ? 'It ruins photos around here until you win.' : 'An optional strength test.') + ')' });
     else lines.push({ text: '(Rematch: smaller rewards this time.)' });
+    if (p.tut && !re) lines.push({ text: '(Card battle tip: tap a card to play it. Each card costs energy (the orbs). Attacks hit, Block cards shield you. Out of energy or cards? Press END TURN and the foe takes its turn. Bring its HP to 0 to win!)' });
     if (lv - kl >= 2) lines.push({ text: '(Careful: it is Lv ' + lv + ' and you are Lv ' + kl + '. It will hit hard!)' });
     lines.push({ text: 'Test your strength?', choices: ['Bring it!', 'Not now'] });
     Talk.open(lines, { who: m, name: p.name, title: 'Road Fight · Lv ' + lv, done: (i) => { if (i === 0) battle(m); else S.cool = 4; } });
@@ -84648,7 +84761,7 @@ const Punks = (() => {
       return;
     }
     S.fresh[p.id] = 1; S.cool = 3;
-    G.msg = p.kind === 'block' ? p.name + ' steps aside. The road is open!' : p.kind === 'photo' ? p.name + ' sulks off. Photos OK here now!' : p.name + ' respects your strength!';
+    G.msg = p.kind === 'roam' ? p.name + ' is out of breath. Nice first win!' : p.kind === 'block' ? p.name + ' steps aside. The road is open!' : p.kind === 'photo' ? p.name + ' sulks off. Photos OK here now!' : p.name + ' respects your strength!';
     setTimeout(() => { if (m.alive) { say(m, p.ko, 3); m.emote && m.emote('sweat', 1.4); } }, 900);
   }
   // tapping a punk
@@ -84707,7 +84820,7 @@ const Punks = (() => {
       const p = m.punk, sulk = S.fresh[p.id] === 1, lv = p.lv + (beaten(p.id) ? 1 : 0);
       const top = m.headPt(), [X0, Y0] = Talk.toUI(m.x, Math.min(top[1], m.y - 18) - 10);
       const X = Math.round(X0), ty = Math.round(Y0) - 10; if (X < -40 || X > fb.w + 40 || ty < 0 || ty > fb.h) continue;
-      const lab = 'Lv' + lv + ' ' + (p.kind === 'test' ? 'TEST' : 'PUNK'), w = Font.measure(lab, 'small') + 6;
+      const lab = 'Lv' + lv + ' ' + (p.kind === 'test' ? 'TEST' : p.kind === 'roam' && !beaten(p.id) ? 'CATCH ME' : 'PUNK'), w = Font.measure(lab, 'small') + 6;
       const col = sulk ? 0xff6a7088 : lv - kl >= 2 ? hex('#d02a2a') : lv > kl ? hex('#e8a020') : hex('#2a8a4a');
       UI.rrect(fb, X - w / 2 - 1, ty - 1, w + 2, 11, 3, INK);
       UI.rrect(fb, X - w / 2, ty, w, 9, 2, col);
@@ -84721,209 +84834,355 @@ const Punks = (() => {
 
 /* ==== src/snap/savekit.js ==== */
 /* ------------------------------------------------------------------
-   SaveKit — the save UI around Save (save.js), as small DOM overlays
-   so it stays crisp and works with copy / paste / file pickers:
-   · a "Saving… / Saved ✓" chip with a spinning disk in the top-right
-     corner (tap it to open the save menu)
+   SaveKit — the save UI around Save (save.js), drawn in-canvas with
+   the game's own pixel kit (UI.body / UI.panel / UI.screen + Font), in
+   the same style as the quest log:
+   · a tiny pixel floppy-disk chip at the top (shutter slides while
+     saving, a check pops in when saved, a warning badge when not);
+     tap it to open the save menu
    · a first-launch notice (autosave is on; tip: export a backup)
-   · "Your progress can't be saved automatically" when storage is
-     blocked or full (itch.io iframes on Safari/iOS, private mode):
-     open in its own tab / fullscreen, or Export Save
+   · "Can't save automatically" when storage is blocked or full
+     (itch.io iframes on Safari/iOS, private mode): open in its own
+     tab / fullscreen, or Export Save
    · the save menu: Export (copy a code / download .json) and Import
-     (paste a code / pick a file). Also opened by the "Save & backup"
-     button on the Rotom Dex settings page and the K key.
+     (paste a code / pick a file). Also opened from the Rotom Dex
+     settings page ("Save & backup") and the K key.
+   The only DOM left: two invisible <textarea>s laid exactly over the
+   drawn code boxes (so paste / long-press copy work) and a hidden
+   <input type=file>.
 ------------------------------------------------------------------- */
 const SaveKit = (() => {
-  const K = { root: null, chip: null, modal: null, shown: {}, hideT: 0, dexBtn: null };
-  const CSS = `
-#sk-chip{position:fixed;top:max(6px,env(safe-area-inset-top));left:50%;margin-left:-40px;z-index:40;display:flex;align-items:center;gap:5px;padding:3px 8px 3px 5px;border-radius:10px;background:rgba(10,14,32,.72);color:#e8f4ff;font:600 11px/1.1 ui-monospace,Menlo,Consolas,monospace;opacity:0;transform:translateY(-4px);transition:opacity .35s,transform .35s;pointer-events:none;cursor:pointer;user-select:none;-webkit-user-select:none}
-#sk-chip.on{opacity:1;transform:none;pointer-events:auto}
-#sk-chip.bad{background:rgba(160,30,40,.86)}
-#sk-chip svg{width:13px;height:13px;flex:none}
-#sk-chip.spin svg{animation:sk-spin .8s linear infinite}
-@keyframes sk-spin{to{transform:rotate(360deg)}}
-#sk-dex{position:fixed;z-index:39;padding:4px 10px;border-radius:7px;border:2px solid #1b2240;background:#3a78e8;color:#fff;font:700 12px/1.2 ui-monospace,Menlo,Consolas,monospace;cursor:pointer;display:none;box-shadow:0 2px 0 #1b2240}
-#sk-modal{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(6,9,22,.62);padding:12px;box-sizing:border-box}
-#sk-modal .sk-box{width:min(460px,100%);max-height:100%;overflow:auto;box-sizing:border-box;background:#f4f6fb;color:#1b2240;border:3px solid #1b2240;border-radius:12px;box-shadow:0 4px 0 #0a0e1a;padding:12px 14px;font:14px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif}
-#sk-modal h2{margin:0 0 6px;font:800 17px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;align-items:center;gap:8px}
-#sk-modal h2 svg{width:20px;height:20px;flex:none}
-#sk-modal p{margin:4px 0}
-#sk-modal ul{margin:4px 0 4px 18px;padding:0}
-#sk-modal .sk-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
-#sk-modal button{font:700 13px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;padding:7px 11px;border-radius:8px;border:2px solid #1b2240;background:#fff;color:#1b2240;cursor:pointer;box-shadow:0 2px 0 #1b2240}
-#sk-modal button.pri{background:#3a78e8;color:#fff}
-#sk-modal button.ok{background:#2a9a5a;color:#fff}
-#sk-modal button:active{transform:translateY(1px);box-shadow:0 1px 0 #1b2240}
-#sk-modal textarea{width:100%;box-sizing:border-box;height:62px;margin-top:6px;font:11px/1.3 ui-monospace,Menlo,Consolas,monospace;border:2px solid #1b2240;border-radius:6px;padding:5px;resize:vertical;word-break:break-all}
-#sk-modal .sk-msg{min-height:1.2em;margin-top:6px;font-weight:700}
-#sk-modal .sk-msg.err{color:#c03030}#sk-modal .sk-msg.good{color:#2a8a4a}
-#sk-modal .sk-dim{color:#5a6080;font-size:12px}
-#sk-modal .sk-sec{border-top:2px dashed #c8cee0;margin-top:10px;padding-top:8px}
-@media (max-height:430px){#sk-modal .sk-box{padding:9px 12px;font-size:13px}#sk-modal h2{font-size:15px}#sk-modal textarea{height:44px}}
-`;
-  const DISK = '<svg viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="2" fill="#3a78e8" stroke="#0a0e20"/><rect x="4" y="1.5" width="8" height="5" fill="#e8f4ff"/><rect x="9" y="2.3" width="2" height="3.4" fill="#1b2240"/><rect x="3.5" y="9" width="9" height="5.5" rx="1" fill="#ffffff"/></svg>';
-  const WARN = '<svg viewBox="0 0 16 16"><path d="M8 1 L15.5 14.5 H.5 Z" fill="#ffd23a" stroke="#1b2240"/><rect x="7.2" y="5" width="1.6" height="5" fill="#1b2240"/><rect x="7.2" y="11.3" width="1.6" height="1.6" fill="#1b2240"/></svg>';
-  const $ = (s, r = document) => r.querySelector(s);
-  const el = (tag, attrs, html) => { const e = document.createElement(tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); if (html != null) e.innerHTML = html; return e; };
+  const H_ = (c) => U.hex(c), INK = H_('#1b2240'), WHITE = 0xffffffff, CREAM = H_('#fbfaf4'), DIM = H_('#6a7090'), BLUE = H_('#3a78e8'), RED = H_('#d83040'), GREEN = H_('#2a9a5a'), GOLD = H_('#ffe070');
+  const K = { root: false, ch: { st: null, t: 0, vis: 0, hideAt: 0 }, m: null, shown: {}, fb: null, rects: [], hover: null, press: null, ta: {}, pick: null, rt: 0 };
   const ago = (t) => { const s = Math.round((Date.now() - t) / 1000); return s < 5 ? 'just now' : s < 60 ? s + ' s ago' : Math.round(s / 60) + ' min ago'; };
+  const sfx = (n, v) => { try { Game.sfx && Game.sfx(n, null, v ?? 0.5); } catch (e) { /* ignore */ } };
 
-  function init() {
-    if (K.root) return;
-    try {
-      const st = el('style', null, CSS); document.head.appendChild(st);
-      K.chip = el('div', { id: 'sk-chip', role: 'status', 'aria-live': 'polite', title: 'Save menu' });
-      K.chip.addEventListener('click', (e) => { e.stopPropagation(); openMenu(); });
-      K.chip.addEventListener('pointerdown', (e) => e.stopPropagation());
-      document.body.appendChild(K.chip);
-      K.dexBtn = el('button', { id: 'sk-dex', type: 'button' }, '\u{1F4BE} Save & backup');
-      K.dexBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
-      K.dexBtn.addEventListener('click', (e) => { e.stopPropagation(); openMenu(); });
-      document.body.appendChild(K.dexBtn);
-      K.root = true;
-    } catch (e) { console.error(e); return; }
-    U.on('saving', () => chip('saving'));
-    U.on('save', (s, was) => { chip(s.ok ? 'saved' : 'bad'); if (!s.ok && was !== false && Game.started) blocked(); });
-    window.addEventListener('keydown', (e) => {
-      if (K.modal) { e.stopPropagation(); if (e.key === 'Escape' && !K.modal.sticky) close(); return; }
-      if ((e.key === 'k' || e.key === 'K') && Game.started && Game.mode === 'explore' && !(typeof Talk !== 'undefined' && Talk.busy && Talk.busy())) { e.stopPropagation(); openMenu(); }
-    }, true);
-    window.addEventListener('keyup', (e) => { if (K.modal) e.stopPropagation(); }, true);
-    setInterval(tick, 400);
+  /* ---------- the floppy disk (drawn here so it can animate) ---------- */
+  const DISK = ['kkkkkkkkk.', 'kbsssdsbkk', 'kbsssdsbbk', 'kbsssssbbk', 'kbbbbbbbbk', 'kbwwwwwwbk', 'kbwllllwbk', 'kbwwwwwwbk', 'kbwllllwbk', 'kkkkkkkkkk'];
+  const DC = { k: INK, b: BLUE, s: H_('#d8e0ee'), d: INK, w: H_('#f4f7fb'), l: H_('#9ab4e8') };
+  function disk(fb, x, y, slide = 0) {
+    UI.pix(fb, DISK, x, y, DC);
+    if (slide) { // the shutter (and its slot) slide across while writing
+      UI.rect(fb, x + 2, y + 1, 5, 3, DC.s);
+      UI.vline(fb, x + 2 + ((slide | 0) % 5), y + 1, y + 2, INK);
+    }
   }
-  // the corner chip: spinning disk while saving, "Saved ✓" for a moment after
+
+  /* ---------- the chip ---------- */
   function chip(state) {
-    const c = K.chip; if (!c) return;
-    clearTimeout(K.hideT);
-    if (state === 'saving') { c.className = 'on spin'; c.innerHTML = DISK + '<span>Saving…</span>'; return; }
-    if (state === 'bad') { c.className = 'on bad'; c.innerHTML = WARN + '<span>Not saved · tap</span>'; return; }
-    c.className = 'on'; c.innerHTML = DISK + '<span>Saved ✓</span>';
-    K.hideT = setTimeout(() => { if (Save.status.ok) c.className = ''; }, 1800);
+    const c = K.ch;
+    if (state !== c.st) c.t = 0;
+    c.st = state;
+    c.hideAt = state === 'saved' ? K.rt + 1.6 : state === 'saving' ? K.rt + 6 : Infinity;
   }
-  function tick() {
-    if (!Game.started) return;
-    // first launch / blocked storage, once the game is running (and nothing else is on screen)
-    const calm = Game.mode === 'explore' && !(typeof Talk !== 'undefined' && Talk.dlg) && !(typeof Cards !== 'undefined' && Cards.live);
-    if (!K.modal && calm && !K.shown.check && Game.rt > 1.5) {
-      K.shown.check = 1;
-      if (!Save.status.ok) blocked();
-      else if (!Save.data.meta.notice && (!navigator.webdriver || /[?&]savenotice/.test(location.search))) notice(); // (automated test runs skip the notice)
-    }
-    // the Rotom Dex settings page gets a "Save & backup" button
-    const onSet = Game.mode === 'dex' && typeof Dex !== 'undefined' && Dex.page === 'settings' && !K.modal;
-    if (K.dexBtn) {
-      K.dexBtn.style.display = onSet ? 'block' : 'none';
-      if (onSet) { const cv = $('#ui'), r = cv ? cv.getBoundingClientRect() : { left: 0, bottom: innerHeight, width: innerWidth }; K.dexBtn.style.left = Math.round(r.left + r.width / 2 - 60) + 'px'; K.dexBtn.style.top = 'auto'; K.dexBtn.style.bottom = Math.max(6, Math.round(innerHeight - r.bottom + r.height * 0.14)) + 'px'; }
-    }
-    if (!Save.status.ok && K.chip && !/bad/.test(K.chip.className)) chip('bad');
+  function chipRect(fb) { return { x: Math.round(fb.w / 2) - 9, y: 3, w: 18, h: 16 }; }
+  function drawChip(fb, dt) {
+    const c = K.ch;
+    if (c.st && K.rt > c.hideAt && Save.status.ok) c.st = null;
+    if (!Save.status.ok && c.st !== 'bad') chip('bad');
+    c.vis += ((c.st ? 1 : 0) - c.vis) * Math.min(1, dt * 10);
+    if (c.vis < 0.05 || !Game.started) return null;
+    c.t += dt;
+    const r = chipRect(fb), y = r.y - Math.round((1 - c.vis) * 18), bad = c.st === 'bad';
+    const on = K.hover === 'chip';
+    UI.rrect(fb, r.x, y + 2, r.w, r.h, 4, 0x8a0a0e1a);
+    UI.panel(fb, r.x, y, r.w, r.h, { r: 4, ol: INK, fill: bad ? H_('#a82838') : on ? H_('#3a4660') : H_('#26303e'), hi: null, sh: null });
+    const bob = c.st === 'saving' ? (Math.sin(c.t * 9) > 0 ? -1 : 0) : c.st === 'saved' && c.t < 0.25 ? -1 : 0;
+    disk(fb, r.x + 4, y + 3 + bob, c.st === 'saving' ? c.t * 10 : 0);
+    if (c.st === 'saved' && c.t > 0.08) Font.icon(fb, 'check', r.x + 10, y + 9, 1);
+    if (bad) Font.icon(fb, 'warn', r.x + 10, y + 8, 1);
+    return r;
   }
 
-  /* ---------- modals ---------- */
-  function modal(html, o = {}) {
-    close(true);
-    const m = el('div', { id: 'sk-modal', role: 'dialog', 'aria-modal': 'true' }, '<div class="sk-box">' + html + '</div>');
-    m.sticky = !!o.sticky;
-    for (const ev of ['pointerdown', 'pointerup', 'mousedown', 'touchstart', 'touchend', 'wheel', 'click']) m.addEventListener(ev, (e) => e.stopPropagation(), { passive: true });
-    m.addEventListener('click', (e) => { if (e.target === m && !m.sticky) close(); });
-    document.body.appendChild(m); K.modal = m;
-    try { if (Game.mudkip) { Game.mudkip.stop && Game.mudkip.stop(); Game.mudkip.keyDir = 0; } if (Game.keysDown) Game.keysDown.clear(); if (typeof Pad !== 'undefined' && Pad.setKeys) Pad.setKeys({ dx: 0, dy: 0, run: false, jump: false }); } catch (e) { /* ignore */ }
-    const b = $('button', m); if (b) try { b.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
-    return m;
+  /* ---------- widgets ---------- */
+  function button(fb, id, lab, x, y, w, o = {}) {
+    const S = UI.skin(), h = o.h || 14, on = K.hover === id, dn = K.press === id;
+    const fill = o.col !== undefined ? o.col : S.btn;
+    UI.panel(fb, x, y + (dn ? 1 : 0), w, h, { r: 3, ol: on ? GOLD : S.ink, fill: on ? U.tweak(fill, 0, 1, 0.1) : fill });
+    Font.draw(fb, lab, x + w / 2, y + Math.round((h - 8) / 2) + (dn ? 1 : 0), WHITE, { font: 'small', align: 'center' });
+    K.rects.push({ id, x, y, w, h, fn: o.fn });
+    return x + w + 4;
   }
-  function close(quiet) {
-    if (!K.modal) return;
-    K.modal.remove(); K.modal = null;
-    if (!quiet) { const g = $('#game'); if (g) try { g.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  // a row of buttons, sized to their labels, wrapping onto more rows if they do not fit
+  function buttons(fb, list, x, y, w) {
+    const ws = list.map((b) => Font.measure(b[1], 'small') + 14);
+    let xx = x, yy = y;
+    list.forEach((b, i) => { if (xx + ws[i] > x + w && xx > x) { xx = x; yy += 17; } xx = button(fb, b[0], b[1], xx, yy, ws[i], b[2]); });
+    return yy + 17;
   }
-  const on = (m, sel, fn) => { const b = $(sel, m); if (b) b.addEventListener('click', (e) => { e.stopPropagation(); fn(e); }); };
-  function notice() {
-    const m = modal(`<h2>${DISK}Your journal saves itself</h2>
-<p>Autosave is <b>on</b>: photos, Pokédex, quests and levels are saved on this device as you play (look for <b>Saved ✓</b> in the corner).</p>
-<p class="sk-dim">Tip: browsers can clear site data. Use <b>Export Save</b> now and then to keep a backup (tap the save chip, press K, or Rotom Dex → Settings).</p>
-<div class="sk-row"><button class="ok" id="sk-ok">Got it!</button><button id="sk-exp">Export Save</button></div>`);
-    const done = () => { Save.data.meta.notice = 1; Save.save(); };
-    on(m, '#sk-ok', () => { done(); close(); });
-    on(m, '#sk-exp', () => { done(); openMenu(); });
+  // a cream code box; the invisible textarea `ta` sits exactly on top of it
+  function field(fb, x, y, w, h, txt, ph, ta) {
+    const S = UI.skin(), on = ta && document.activeElement === K.ta[ta];
+    UI.screen(fb, x, y, w, h, { fill: on ? WHITE : CREAM, rim: on ? BLUE : S.ink, glare: false });
+    let s = txt ? String(txt).replace(/\s+/g, '') : '';
+    const cl = { x0: x + 2, y0: y + 1, x1: x + w - 2, y1: y + h - 1 };
+    if (s) {
+      const n = s.length; let t = s;
+      while (t.length > 4 && Font.measure(t + '... (' + n + ')', 'small') > w - 8) t = t.slice(0, -4);
+      Font.draw(fb, t.length < n ? t + '... [#6a7090](' + n + ')[]' : t, x + 4, y + Math.round((h - 8) / 2), INK, { font: 'small', clip: cl });
+    } else Font.draw(fb, ph, x + 4, y + Math.round((h - 8) / 2), H_('#9aa0b8'), { font: 'small', clip: cl });
+    if (on && ((K.rt * 2) | 0) % 2) UI.vline(fb, Math.min(x + w - 4, x + 5 + (s ? Math.min(Font.measure(s, 'small'), w - 10) : 0)), y + 3, y + h - 4, BLUE);
+    if (ta) K.rects.push({ id: 'ta-' + ta, x, y, w, h, ta });
   }
-  function blocked() {
-    if (K.shown.blocked && K.modal) return;
-    K.shown.blocked = 1;
-    const s = Save.status;
-    const m = modal(`<h2>${WARN}Your progress can't be saved automatically</h2>
-<p>${s.why || 'This browser does not let the game store data here.'}${s.iframe ? ' This often happens when the game runs inside a web page (like itch.io) on Safari / iPhone, or in a private window.' : ''}</p>
-<p><b>To keep your progress:</b></p>
-<ul><li>Open the game <b>in its own tab</b> or <b>fullscreen</b>, or allow site data / leave private mode, then reload.</li>
-<li>Or use <b>Export Save</b> before you leave, and <b>Import Save</b> next time.</li></ul>
-<div class="sk-row"><button class="pri" id="sk-tab">Open in own tab</button><button id="sk-fs">Fullscreen</button><button id="sk-exp">Export Save</button><button id="sk-retry">Try again</button><button id="sk-go">Play anyway</button></div>
-<div class="sk-msg" id="sk-m"></div>`, { sticky: true });
-    const msg = (t, c) => { const e = $('#sk-m', m); if (e) { e.textContent = t; e.className = 'sk-msg ' + (c || ''); } };
-    on(m, '#sk-tab', () => {
-      Save.flush();
-      let w = null; try { w = window.open(location.href, '_blank', 'noopener'); } catch (e) { /* blocked */ }
-      if (!w) msg('Your browser blocked the new tab. On itch.io use the fullscreen button under the game, or open the page in Safari/Chrome directly.', 'err');
-    });
-    on(m, '#sk-fs', () => { const d = document.documentElement, f = d.requestFullscreen || d.webkitRequestFullscreen; if (f) { try { const p = f.call(d); if (p && p.catch) p.catch(() => msg('Fullscreen was blocked here. Try the fullscreen button under the game on itch.io.', 'err')); close(); } catch (e) { msg('Fullscreen is not available here.', 'err'); } } else msg('Fullscreen is not available here: use Export Save.', 'err'); });
-    on(m, '#sk-exp', () => openMenu());
-    on(m, '#sk-retry', () => { if (Save.probe() && Save.flush(true)) { chip('saved'); msg('Saving works now!', 'good'); setTimeout(close, 900); } else msg('Still blocked. Use Export Save to keep a backup.', 'err'); });
-    on(m, '#sk-go', () => close());
+  function frame(fb, W, H, title, ic) {
+    const S = UI.skin(), x = Math.round((fb.w - W) / 2), y = Math.round((fb.h - H) / 2);
+    UI.rectA(fb, 0, 0, fb.w, fb.h, H_('#0a0e20'), 0.5);
+    UI.rrect(fb, x, y + 3, W, H, 8, H_('#0a0e1a'));
+    UI.body(fb, x, y, W, H, S, { r: 8 });
+    if (ic === 'disk') disk(fb, x + 10, y + 7); else Font.icon(fb, 'warn', x + 8, y + 6, 2);
+    Font.draw(fb, title, x + 24, y + 7, WHITE, { font: 'title', outline: INK });
+    if (!K.m.sticky) {
+      UI.panel(fb, x + W - 22, y + 5, 16, 14, { r: 3, ol: K.hover === 'x' ? GOLD : S.ink, fill: S.btn }); Font.icon(fb, 'cross', x + W - 17, y + 9, 1);
+      K.rects.push({ id: 'x', x: x + W - 24, y: y + 3, w: 20, h: 18, fn: () => close() });
+    }
+    return { x, y, W, H, S };
   }
-  function openMenu() {
-    if (!Save.status.ok) Save.probe();
-    Save.flush();
-    const s = Save.status, code = Save.exportCode();
-    const st = s.ok ? 'Autosave is on · last saved ' + (s.savedAt ? ago(s.savedAt) : 'not yet') : '⚠ Autosave is not working here: ' + (s.why || 'storage blocked') + ' Export your save to keep it.';
-    const m = modal(`<h2>${DISK}Save &amp; backup</h2>
-<p class="sk-dim" style="${s.ok ? '' : 'color:#c03030;font-weight:700'}">${st}</p>
-<div class="sk-sec"><b>Export Save</b> <span class="sk-dim">(a backup code, or a file with your photos)</span>
-<textarea id="sk-code" readonly aria-label="Save code">${code}</textarea>
-<div class="sk-row"><button class="pri" id="sk-copy">Copy code</button><button id="sk-dl">Download .json</button>${s.ok ? '<button id="sk-now">Save now</button>' : ''}</div></div>
-<div class="sk-sec"><b>Import Save</b> <span class="sk-dim">(replaces this journal)</span>
-<textarea id="sk-in" placeholder="Paste a save code here (MKSNAP...)" aria-label="Paste save code"></textarea>
-<div class="sk-row"><button class="ok" id="sk-load">Load code</button><button id="sk-file">Pick a file…</button><button id="sk-close">Close</button></div>
-<input type="file" id="sk-pick" accept=".json,.txt,application/json,text/plain" hidden></div>
-<div class="sk-msg" id="sk-m"></div>`);
-    const msg = (t, c) => { const e = $('#sk-m', m); if (e) { e.textContent = t; e.className = 'sk-msg ' + (c || ''); } };
-    on(m, '#sk-copy', async () => {
-      const ta = $('#sk-code', m); let ok = false;
-      try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(code); ok = true; } } catch (e) { /* fall back */ }
-      if (!ok) try { ta.focus(); ta.select(); ok = document.execCommand('copy'); } catch (e) { /* ignore */ }
-      if (ok) msg('Copied! Keep it somewhere safe (a note or a message to yourself).', 'good'); else { ta.focus(); ta.select(); msg('Select the code above and copy it.', ''); }
-    });
-    on(m, '#sk-dl', () => {
-      try {
-        const blob = new Blob([Save.exportFile()], { type: 'application/json' }), a = document.createElement('a'), d = new Date();
-        a.href = URL.createObjectURL(blob); a.download = 'mudkip-snap-save-' + d.toISOString().slice(0, 10) + '.json';
-        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-        msg('Downloading your save file… (if nothing happens, use Copy code)', 'good');
-      } catch (e) { msg('Download is blocked here: use Copy code instead.', 'err'); }
-    });
-    on(m, '#sk-now', () => { if (Save.flush(true)) msg('Saved ✓', 'good'); else msg('Could not save: ' + Save.status.why, 'err'); });
-    const load = (txt) => {
-      let d; try { d = Save.decode(txt); } catch (e) { msg(e.message, 'err'); return; }
-      const n = Object.keys(d.seen || {}).length, lv = d.lv ? 'with ' + (d.lv.xp || 0) + ' XP' : '';
-      if (!confirmLoad(m, 'Load this save (' + n + ' Pokémon seen ' + lv + ')? It replaces the current journal.')) return;
-      try { Save.importText(txt); } catch (e) { msg(e.message, 'err'); return; }
-      msg(Save.status.ok ? 'Save loaded! Restarting…' : 'Save loaded for this session (storage is blocked: export again before leaving). Restarting…', 'good');
-      if (!Save.status.ok) { try { sessionStorage.setItem('mudkip-snap-import', txt); } catch (e) { /* ignore */ } K.pending = txt; }
-      setTimeout(() => { if (Save.status.ok) location.reload(); else { close(); applyLive(); } }, 900);
+  function msgLine(fb, x, y, w) {
+    const m = K.m; if (!m.msg) return y;
+    const ls = Font.wrap(m.msg, 'small', w).slice(0, 2);
+    ls.forEach((l, i) => Font.draw(fb, l, x, y + i * 9, m.msgC === 'err' ? RED : m.msgC === 'good' ? GREEN : INK, { font: 'small' }));
+    return y + ls.length * 9;
+  }
+  const textH = (s, w) => Font.wrap(s, 'small', w).length * 9;
+  function para(fb, s, x, y, w, c = INK) { Font.draw(fb, s, x, y, c, { font: 'small', maxW: w, lh: 9 }); return y + textH(s, w) + 3; }
+
+  /* ---------- screens ---------- */
+  function drawNotice(fb) {
+    const W = Math.min(fb.w - 12, 330), iw = W - 28;
+    const A = 'Autosave is [#2a9a5a]on[]: photos, Pokédex, quests and levels are saved on this device as you play. Watch for the disk at the top of the screen.';
+    const B = 'Tip: browsers can clear site data. Export a backup now and then (tap the disk, press K, or Rotom Dex > Settings).';
+    const H = 30 + 10 + textH(A, iw) + 3 + textH(B, iw) + 6 + 14 + 12 + (K.m.msg ? 18 : 0);
+    const F = frame(fb, W, Math.min(fb.h - 8, H), 'YOUR JOURNAL SAVES ITSELF', 'disk');
+    const sx = F.x + 8, sy = F.y + 26, sw = W - 16, sh = F.H - 34;
+    UI.screen(fb, sx, sy, sw, sh, { fill: CREAM, rim: F.S.ink, glare: false });
+    let y = para(fb, A, sx + 6, sy + 5, iw);
+    y = para(fb, B, sx + 6, y, iw, DIM);
+    y = buttons(fb, [['ok', 'Got it!', { col: GREEN, fn: () => { seen(); close(); } }], ['exp', 'Export Save', { col: F.S.accent, fn: () => { seen(); openMenu(); } }]], sx + 6, y + 3, iw);
+    msgLine(fb, sx + 6, y, iw);
+  }
+  function seen() { Save.data.meta.notice = 1; Save.save(); }
+  function drawBlocked(fb) {
+    const s = Save.status, W = Math.min(fb.w - 12, 400), iw = W - 28;
+    const A = (s.why || 'This browser does not let the game store data here.') + (s.iframe ? ' This often happens when the game runs inside a web page (like itch.io) on Safari / iPhone, or in a private window.' : '');
+    const B = '[#3a78e8]To keep your progress:[] open the game in its own tab or fullscreen (or allow site data / leave private mode), then reload. Or use Export Save before you leave, and Import Save next time.';
+    const bl = [['tab', 'Open in own tab', { col: BLUE, fn: ownTab }], ['fs', 'Fullscreen', { fn: fullscreen }], ['exp', 'Export Save', { col: UI.skin().accent, fn: () => openMenu() }], ['retry', 'Try again', { fn: retry }], ['go', 'Play anyway', { col: GREEN, fn: () => close() }]];
+    const bw = bl.reduce((a, b) => a + Font.measure(b[1], 'small') + 18, 0), rows = bw > iw ? 2 : 1;
+    const H = 30 + 10 + textH(A, iw) + 3 + textH(B, iw) + 6 + rows * 17 + 6 + (K.m.msg ? 18 : 0);
+    const F = frame(fb, W, Math.min(fb.h - 8, H), "CAN'T SAVE AUTOMATICALLY", 'warn');
+    const sx = F.x + 8, sy = F.y + 26, sw = W - 16, sh = F.H - 34;
+    UI.screen(fb, sx, sy, sw, sh, { fill: CREAM, rim: F.S.ink, glare: false });
+    let y = para(fb, A, sx + 6, sy + 5, iw);
+    y = para(fb, B, sx + 6, y, iw);
+    y = buttons(fb, bl, sx + 6, y + 3, iw);
+    msgLine(fb, sx + 6, y, iw);
+  }
+  function drawMenu(fb) {
+    const s = Save.status, m = K.m, W = Math.min(fb.w - 10, 440), two = W >= 380;
+    const st = s.ok ? '{check} Autosave is on  ·  last saved ' + (s.savedAt ? ago(s.savedAt) : 'not yet') : '{warn} Autosave is not working here: ' + (s.why || 'storage blocked') + ' Export your save to keep it.';
+    const cw = two ? Math.floor((W - 22) / 2) : W - 16;
+    const stH = textH(st, W - 28);
+    const colH = 10 + 9 + 18 + 17 + 2;
+    const H = 26 + stH + 8 + (two ? colH : colH * 2 + 6) + (m.msg ? 22 : 8) + 6;
+    const F = frame(fb, W, Math.min(fb.h - 6, H), 'SAVE & BACKUP', 'disk');
+    let y = F.y + 25;
+    Font.draw(fb, st, F.x + 12, y, s.ok ? WHITE : GOLD, { font: 'small', maxW: W - 28, lh: 9, outline: INK });
+    y += stH + 4;
+    const col = (cx, cy, head, sub, fl, bl) => {
+      UI.screen(fb, cx, cy, cw, colH + 4, { fill: CREAM, rim: F.S.ink, glare: false });
+      Font.draw(fb, head, cx + 6, cy + 4, BLUE, { font: 'small' });
+      Font.draw(fb, sub, cx + 14 + Font.measure(head, 'small'), cy + 4, DIM, { font: 'small' });
+      fl(cx + 5, cy + 14, cw - 10);
+      buttons(fb, bl, cx + 5, cy + 33, cw - 10);
     };
-    on(m, '#sk-load', () => load($('#sk-in', m).value));
-    on(m, '#sk-file', () => $('#sk-pick', m).click());
-    const pick = $('#sk-pick', m);
-    pick.addEventListener('change', () => { const f = pick.files && pick.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => load(String(r.result || '')); r.onerror = () => msg('Could not read that file.', 'err'); r.readAsText(f); });
-    on(m, '#sk-close', () => close());
+    const c1x = F.x + 8, c2x = two ? c1x + cw + 6 : c1x, c2y = two ? y : y + colH + 10;
+    col(c1x, y, 'EXPORT SAVE', 'a backup code or file', (x, yy, w) => field(fb, x, yy, w, 16, m.code, '', 'out'), [
+      ['copy', 'Copy', { col: BLUE, fn: copy }], ['dl', 'Download', { fn: download }], ...(s.ok ? [['now', 'Save now', { col: GREEN, fn: saveNow }]] : [])]);
+    col(c2x, c2y, 'IMPORT SAVE', 'replaces this journal', (x, yy, w) => field(fb, x, yy, w, 16, m.inTxt, typeof Pad !== 'undefined' && Pad.touch ? 'Tap here, then paste a code' : 'Click here and paste (Ctrl+V)', 'in'), [
+      ['paste', 'Paste', { fn: paste }], ['load', 'Load code', { col: GREEN, fn: () => load(m.inTxt) }], ['file', 'Pick file', { fn: () => K.pick && K.pick.click() }]]);
+    const my = c2y + colH + 8;
+    if (m.msg) { UI.rrect(fb, F.x + 8, my - 2, W - 16, 21, 3, CREAM); msgLine(fb, F.x + 13, my + 1, W - 26); }
   }
-  // a second tap confirms (window.confirm is blocked in some sandboxed iframes)
-  function confirmLoad(m, text) {
-    if (m.armed && Date.now() - m.armed < 6000) return true;
-    m.armed = Date.now();
-    const e = $('#sk-m', m); if (e) { e.textContent = text + ' Tap again to confirm.'; e.className = 'sk-msg'; }
-    return false;
+
+  /* ---------- actions ---------- */
+  function msg(t, c) { if (K.m) { K.m.msg = t; K.m.msgC = c || ''; } }
+  function ownTab() {
+    Save.flush();
+    let w = null; try { w = window.open(location.href, '_blank', 'noopener'); } catch (e) { /* blocked */ }
+    if (!w) msg('Your browser blocked the new tab. On itch.io use the fullscreen button under the game, or open the page in Safari / Chrome directly.', 'err');
+  }
+  function fullscreen() {
+    const d = document.documentElement, f = d.requestFullscreen || d.webkitRequestFullscreen;
+    if (!f) { msg('Fullscreen is not available here: use Export Save.', 'err'); return; }
+    try { const p = f.call(d); if (p && p.catch) p.catch(() => msg('Fullscreen was blocked here. Try the fullscreen button under the game on itch.io.', 'err')); close(); } catch (e) { msg('Fullscreen is not available here.', 'err'); }
+  }
+  function retry() { if (Save.probe() && Save.flush(true)) { chip('saved'); msg('Saving works now!', 'good'); setTimeout(close, 900); } else msg('Still blocked. Use Export Save to keep a backup.', 'err'); }
+  function saveNow() { if (Save.flush(true)) { chip('saved'); msg('Saved! {check}', 'good'); } else msg('Could not save: ' + Save.status.why, 'err'); }
+  async function copy() {
+    const code = K.m.code, ta = K.ta.out; let ok = false;
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(code); ok = true; } } catch (e) { /* fall back */ }
+    if (!ok && ta) try { ta.focus({ preventScroll: true }); ta.select(); ok = document.execCommand('copy'); } catch (e) { /* ignore */ }
+    if (ok) msg('Copied! Keep it somewhere safe (a note, or a message to yourself).', 'good');
+    else msg('Copying is blocked here: long-press the code box and copy, or use Download file.', '');
+  }
+  function download() {
+    try {
+      const blob = new Blob([Save.exportFile()], { type: 'application/json' }), a = document.createElement('a'), d = new Date();
+      a.href = URL.createObjectURL(blob); a.download = 'mudkip-snap-save-' + d.toISOString().slice(0, 10) + '.json';
+      a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      msg('Downloading your save file... (if nothing happens, use Copy code)', 'good');
+    } catch (e) { msg('Download is blocked here: use Copy code instead.', 'err'); }
+  }
+  async function paste() {
+    let t = null;
+    try { if (navigator.clipboard && navigator.clipboard.readText) t = await navigator.clipboard.readText(); } catch (e) { /* fall back */ }
+    if (t) { setIn(t); msg('Pasted. Now tap Load code.', ''); return; }
+    const ta = K.ta.in; if (ta) try { ta.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+    msg(typeof Pad !== 'undefined' && Pad.touch ? 'Long-press the box and choose Paste.' : 'Press Ctrl+V (Cmd+V) to paste into the box.', '');
+  }
+  function setIn(t) { if (!K.m) return; K.m.inTxt = String(t || ''); if (K.ta.in) K.ta.in.value = K.m.inTxt; K.m.armed = 0; }
+  function load(txt) {
+    const m = K.m; if (!m) return;
+    if (!txt || !String(txt).trim()) { msg('Paste a save code first (or pick a file).', 'err'); return; }
+    let d; try { d = Save.decode(txt); } catch (e) { msg(e.message, 'err'); return; }
+    if (!(m.armed && Date.now() - m.armed < 6000)) {
+      const n = Object.keys(d.seen || {}).length;
+      m.armed = Date.now(); msg('Load this save (' + n + ' Pokémon seen' + (d.lv ? ', ' + (d.lv.xp || 0) + ' XP' : '') + ')? It replaces the current journal. Tap again to confirm.', ''); return;
+    }
+    try { Save.importText(txt); } catch (e) { msg(e.message, 'err'); return; }
+    msg(Save.status.ok ? 'Save loaded! Restarting...' : 'Save loaded for this session (storage is blocked: export again before leaving). Restarting...', 'good');
+    if (!Save.status.ok) { try { sessionStorage.setItem('mudkip-snap-import', txt); } catch (e) { /* ignore */ } K.pending = txt; }
+    setTimeout(() => { if (Save.status.ok) location.reload(); else { close(); applyLive(); } }, 900);
   }
   // storage blocked: the imported journal goes live without a reload
   function applyLive() {
     try { if (typeof Progress !== 'undefined') { Progress.bar = null; } if (Game.enterArea) Game.enterArea(Save.data.lastArea && Save.unlocked(Save.data.lastArea) ? Save.data.lastArea : 'beach'); HUD.toast('Save imported!', { life: 2 }); } catch (e) { console.error(e); }
   }
-  return { init, openMenu, notice, blocked, close, chip, get open() { return !!K.modal; } };
+
+  /* ---------- open / close ---------- */
+  function open(kind, o = {}) {
+    K.m = { kind, sticky: !!o.sticky, msg: '', msgC: '', t: 0, code: o.code || '', inTxt: '', armed: 0 };
+    K.hover = null; K.press = null;
+    if (K.ta.in) K.ta.in.value = '';
+    try { if (Game.mudkip) { Game.mudkip.stop && Game.mudkip.stop(); Game.mudkip.keyDir = 0; } if (Game.keysDown) Game.keysDown.clear(); if (typeof Pad !== 'undefined' && Pad.setKeys) Pad.setKeys({ dx: 0, dy: 0, run: false, jump: false }); } catch (e) { /* ignore */ }
+    sfx('page');
+  }
+  function close(quiet) {
+    if (!K.m) return;
+    K.m = null; K.rects = [];
+    for (const k in K.ta) { K.ta[k].style.display = 'none'; try { K.ta[k].blur(); } catch (e) { /* ignore */ } }
+    if (!quiet) { sfx('back'); const g = document.getElementById('game'); if (g) try { g.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  }
+  function notice() { open('notice'); }
+  function blocked() { if (K.shown.blocked && K.m) return; K.shown.blocked = 1; open('blocked', { sticky: true }); }
+  function openMenu() {
+    if (!Save.status.ok) Save.probe();
+    Save.flush();
+    open('menu', { code: Save.exportCode() });
+    if (K.ta.out) K.ta.out.value = K.m.code;
+  }
+
+  /* ---------- draw (after the HUD, on top of everything) ---------- */
+  let last = 0;
+  function draw(fb, rt) {
+    const now = performance.now() / 1000, dt = Math.min(0.1, last ? now - last : 0.016); last = now;
+    K.rt += dt; K.fb = fb; K.rects = [];
+    const cr = drawChip(fb, dt);
+    if (cr && !K.m) K.rects.push(Object.assign({ id: 'chip', fn: () => openMenu() }, cr));
+    if (!K.m) { placeTa(); return; }
+    K.m.t += dt;
+    if (K.m.kind === 'notice') drawNotice(fb); else if (K.m.kind === 'blocked') drawBlocked(fb); else drawMenu(fb);
+    placeTa();
+  }
+  // lay the invisible textareas over their drawn boxes
+  function placeTa() {
+    const cv = document.getElementById('ui'); if (!cv || !K.fb) return;
+    const r = cv.getBoundingClientRect(), sx = r.width / K.fb.w, sy = r.height / K.fb.h;
+    for (const k in K.ta) {
+      const ta = K.ta[k], b = K.rects.find((q) => q.ta === k);
+      if (!b) { if (ta.style.display !== 'none') ta.style.display = 'none'; continue; }
+      ta.style.display = 'block';
+      ta.style.left = (r.left + b.x * sx) + 'px'; ta.style.top = (r.top + b.y * sy) + 'px';
+      ta.style.width = (b.w * sx) + 'px'; ta.style.height = (b.h * sy) + 'px';
+    }
+  }
+
+  /* ---------- input ---------- */
+  function at(e) {
+    const cv = document.getElementById('ui'); if (!cv || !K.fb) return null;
+    const r = cv.getBoundingClientRect();
+    return [(e.clientX - r.left) / r.width * K.fb.w, (e.clientY - r.top) / r.height * K.fb.h];
+  }
+  function hitAt(p) { if (!p) return null; for (let i = K.rects.length - 1; i >= 0; i--) { const b = K.rects[i]; if (p[0] >= b.x && p[1] >= b.y && p[0] < b.x + b.w && p[1] < b.y + b.h) return b; } return null; }
+  function press(id) { const b = K.rects.find((q) => q.id === id); if (b && b.fn) { sfx('select', 0.4); b.fn(); return true; } return false; }
+  const onCanvas = (e) => e.target && (e.target.id === 'ui' || e.target.id === 'cv' || e.target.id === 'game');
+  function init() {
+    if (K.root) return;
+    try {
+      const mkTa = (id, ro) => {
+        const t = document.createElement('textarea');
+        t.id = id; t.spellcheck = false; t.setAttribute('autocomplete', 'off'); t.setAttribute('aria-label', ro ? 'Save code' : 'Paste save code'); if (ro) t.readOnly = true;
+        t.style.cssText = 'position:fixed;z-index:6;display:none;opacity:0;margin:0;padding:0;border:0;resize:none;overflow:hidden;font-size:16px;color:transparent;background:transparent;caret-color:transparent;outline:none';
+        for (const ev of ['pointerdown', 'pointerup', 'mousedown', 'touchstart', 'touchend', 'click', 'keydown', 'keyup']) t.addEventListener(ev, (e) => e.stopPropagation());
+        document.body.appendChild(t); return t;
+      };
+      K.ta.out = mkTa('sk-out', true); K.ta.in = mkTa('sk-in', false);
+      K.ta.in.addEventListener('input', () => { if (K.m) { K.m.inTxt = K.ta.in.value; K.m.armed = 0; } });
+      K.ta.in.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); load(K.ta.in.value); } else if (e.key === 'Escape') { K.ta.in.blur(); } });
+      K.ta.out.addEventListener('focus', () => { try { K.ta.out.select(); } catch (e) { /* ignore */ } });
+      K.pick = document.createElement('input'); K.pick.type = 'file'; K.pick.accept = '.json,.txt,application/json,text/plain'; K.pick.hidden = true; K.pick.id = 'sk-pick';
+      K.pick.addEventListener('change', () => { const f = K.pick.files && K.pick.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { setIn(String(r.result || '')); load(K.m && K.m.inTxt); }; r.onerror = () => msg('Could not read that file.', 'err'); r.readAsText(f); K.pick.value = ''; });
+      document.body.appendChild(K.pick);
+      K.root = true;
+    } catch (e) { console.error(e); return; }
+    // draw on top of the HUD every frame
+    const d0 = HUD.draw; HUD.draw = function (fb, rt) { const r = d0.apply(this, arguments); try { draw(fb, rt); } catch (e) { console.error(e); } return r; };
+    U.on('saving', () => chip('saving'));
+    U.on('save', (s, was) => { chip(s.ok ? 'saved' : 'bad'); if (!s.ok && was !== false && Game.started) blocked(); });
+    window.addEventListener('keydown', (e) => {
+      if (K.m) {
+        e.stopPropagation();
+        if (e.key === 'Escape' && !K.m.sticky) { e.preventDefault(); close(); }
+        else if (e.key === 'Enter') { e.preventDefault(); press(K.m.kind === 'notice' ? 'ok' : K.m.kind === 'blocked' ? 'go' : 'copy'); }
+        return;
+      }
+      if ((e.key === 'k' || e.key === 'K') && Game.started && Game.mode === 'explore' && !(typeof Talk !== 'undefined' && Talk.busy && Talk.busy())) { e.stopPropagation(); openMenu(); }
+    }, true);
+    window.addEventListener('keyup', (e) => { if (K.m) e.stopPropagation(); }, true);
+    // pointer: the modal (and the chip) come before everything else
+    window.addEventListener('pointerdown', (e) => {
+      if (!onCanvas(e)) return;
+      const b = hitAt(at(e));
+      if (!K.m && !b) return;
+      e.stopPropagation(); e.preventDefault();
+      if (document.activeElement && K.ta.in === document.activeElement && !(b && b.ta === 'in')) K.ta.in.blur();
+      K.press = b ? b.id : null; K.downOn = b ? b.id : '__bg';
+    }, true);
+    window.addEventListener('pointerup', (e) => {
+      if (!K.downOn) return;
+      e.stopPropagation(); e.preventDefault();
+      const b = hitAt(at(e)), was = K.downOn; K.downOn = null; K.press = null;
+      if (!b && was === '__bg' && K.m && !K.m.sticky && K.m.kind !== 'blocked') { /* tapping outside keeps the menu: the X closes it */ }
+      if (b && b.id === was && b.fn) { sfx('select', 0.4); b.fn(); }
+    }, true);
+    window.addEventListener('pointermove', (e) => {
+      if (!K.m && !K.rects.length) return;
+      const b = onCanvas(e) ? hitAt(at(e)) : null; K.hover = b && !b.ta ? b.id : null;
+      if (K.m || K.downOn) e.stopPropagation();
+    }, true);
+    window.addEventListener('wheel', (e) => { if (K.m) e.stopPropagation(); }, true);
+    setInterval(tick, 400);
+  }
+  function tick() {
+    if (!Game.started) return;
+    // first launch / blocked storage, once the game is running (and nothing else is on screen)
+    const calm = Game.mode === 'explore' && !(typeof Talk !== 'undefined' && Talk.dlg) && !(typeof Cards !== 'undefined' && Cards.live);
+    if (!K.m && calm && !K.shown.check && Game.rt > 1.5) {
+      K.shown.check = 1;
+      if (!Save.status.ok) blocked();
+      else if (!Save.data.meta.notice && (!navigator.webdriver || /[?&]savenotice/.test(location.search))) notice(); // (automated test runs skip the notice)
+    }
+  }
+  return { init, openMenu, notice, blocked, close, chip, press, get open() { return !!K.m; }, get kind() { return K.m ? K.m.kind : null; }, get msg() { return K.m ? K.m.msg : ''; }, get chipState() { return K.ch.st; } };
 })();
 SaveKit.init();
 
@@ -85141,6 +85400,8 @@ const Game = (() => {
       return;
     }
     if (G.cine.update(dt)) { applyCineZoom(dt); return; }
+    // just out of a battle / cutscene: a smooth glide back to Mudkip
+    if (G.camBack > 0) { G.camBack -= dt; c.lookX *= Math.exp(-dt * 6); c.lookY *= Math.exp(-dt * 6); if (G.camF) { G.camF.x *= Math.exp(-dt * 6); G.camF.y *= Math.exp(-dt * 6); } }
     applyCineZoom(dt);
     const lead = mk.moving ? Math.cos(mk.yaw) * (36 + clamp((Math.abs(mk.vx || 0) - 90) / 40, 0, 1) * 34) : 0;
     // cinematic framing: lean toward a rare moment happening nearby, drift gently when idle
@@ -85499,7 +85760,7 @@ const Game = (() => {
     if (typeof Talk !== 'undefined' && Talk.down(ux, uy)) { P0.ui = true; P0.sink = true; return; }
     if (Photo.cardDown && Photo.cardDown(ux, uy)) { P0.ui = true; P0.sink = true; return; }
     if (G.mode === 'explore' && typeof Arcade !== 'undefined' && Arcade.live && Arcade.down(ux, uy)) { P0.ui = true; P0.sink = true; return; }
-    if (G.mode === 'explore' && typeof Moves !== 'undefined' && Moves.wheel) { Moves.tapWheel(ux, uy); P0.ui = true; P0.sink = true; return; }
+    if (G.mode === 'explore' && typeof Moves !== 'undefined' && Moves.wheel) { P0.wheel = { x0: ux, y0: uy }; P0.ui = true; P0.sink = true; return; }
     if (G.mode === 'explore' && typeof Pad !== 'undefined' && Pad.down(ux, uy, e.pointerId, touch)) { P0.pad = true; return; }
     if (freePtrs().length === 1 && HUD.down(ux, uy, e.pointerId)) { P0.ui = true; return; }
     if (G.mode === 'dex') { Dex.down(ux, uy); P0.ui = true; return; }
@@ -85541,6 +85802,7 @@ const Game = (() => {
     const [x, y] = devXY(e);
     ptrs.delete(e.pointerId);
     if (p.pad) { Pad.up(e.pointerId); return; }
+    if (p.wheel) { if (e.type === 'pointerup' && typeof Moves !== 'undefined' && Moves.wheel) Moves.wheelUp(p.wheel, x / US, y / US); return; }
     if (p.sink) return;
     if (p.ui) { if (G.mode === 'dex') { if (e.type === 'pointercancel') Dex.cancel && Dex.cancel(); else Dex.up(x / US, y / US); } else HUD.up(x / US, y / US, e.pointerId); return; }
     if (pinch) { if (freePtrs().length < 2) { pinch = null; drag = null; } return; }
@@ -85561,6 +85823,7 @@ const Game = (() => {
     if (G.mode === 'map') { WorldMap.wheel(e.deltaY); return; }
     const scr = SCREEN(); if (scr) { scr.wheel && scr.wheel(e.deltaY); return; }
     if (G.mode === 'camera') { Photo.setZoom(Photo.zoom * Math.exp(-e.deltaY * 0.0015)); return; }
+    if (typeof Moves !== 'undefined' && Moves.wheel) { wheelAcc += e.deltaY + e.deltaX; if (Math.abs(wheelAcc) > 60) { Moves.flip(wheelAcc > 0 ? 1 : -1); wheelAcc = 0; } return; }
     wheelAcc += e.deltaY;
     const [x, y] = devXY(e);
     if (wheelAcc > 90) { setZoom(G.zoom - 1, x, y); wheelAcc = 0; } else if (wheelAcc < -90) { setZoom(G.zoom + 1, x, y); wheelAcc = 0; }

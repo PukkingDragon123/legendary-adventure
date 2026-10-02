@@ -223,6 +223,14 @@ const Sound = (() => {
       mel: [72, 76, 79, 76, 77, 0, 74, 0, 76, 79, 84, 79, 81, 0, 79, 0, 77, 76, 74, 72, 74, 0, 71, 0, 72, 0, 67, 0, 72, 0, 0, 0] },
     meadow: { bpm: 108, bar: 6, chords: [[55, 59, 62], [48, 52, 55], [50, 54, 57], [55, 59, 62]], lead: 'flute', bass: 'waltz', drums: 'k.h.h.', pad: 0.014,
       mel: [74, 0, 79, 0, 78, 76, 74, 0, 72, 0, 71, 0, 72, 0, 76, 0, 74, 72, 71, 0, 0, 0, 0, 0] },
+    // road fights: driving A-minor chiptune, galloping bass, busy hats
+    battle: { bpm: 152, bar: 8, chords: [[57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 56, 59]], lead: 'square', bass: 'gallop', drums: 'k.hsk.hsk.hsksks', arp: true,
+      mel: [69, 72, 76, 0, 74, 72, 74, 76, 77, 0, 76, 74, 72, 0, 71, 0, 67, 71, 74, 0, 72, 71, 72, 74, 76, 0, 75, 0, 76, 0, 0, 80,
+        81, 0, 79, 77, 76, 0, 74, 72, 74, 0, 72, 71, 69, 0, 72, 0, 71, 72, 74, 76, 77, 76, 74, 71, 68, 0, 71, 0, 76, 0, 0, 0] },
+    // bosses and the arena: dark, fast, double-kick
+    boss: { bpm: 168, bar: 8, chords: [[50, 53, 57], [46, 50, 53], [48, 52, 55], [49, 52, 57]], lead: 'square', bass: 'gallop', drums: 'kkhskkhskkhskshs', pad: 0.008,
+      mel: [74, 0, 74, 77, 81, 0, 80, 81, 82, 0, 81, 79, 77, 0, 76, 0, 74, 0, 74, 77, 82, 0, 81, 79, 76, 77, 79, 0, 73, 0, 0, 0,
+        86, 0, 84, 82, 81, 0, 79, 77, 79, 0, 77, 76, 74, 0, 77, 0, 76, 74, 73, 74, 76, 77, 79, 81, 82, 0, 81, 0, 85, 0, 0, 0] },
   };
   let songId = null;
   function setSong(id) { songId = id && THEMES[id] ? id : null; step = 0; }
@@ -243,6 +251,7 @@ const Sound = (() => {
     // bass
     if (S.bass === 'drone') { if (i === 0) pluck(N(ch[0] - 24), t, 0.06 * mv, musicBus, 2.4); }
     else if (S.bass === 'drive') { if (i % 2 === 0) inst('square', N(ch[0] - 24), t, 0.05 * mv, musicBus, sp * 1.4); }
+    else if (S.bass === 'gallop') { const n = N((i === 3 || i === 7 ? ch[2] : ch[0]) - 24); inst('square', n, t, (i % 2 ? 0.03 : 0.05) * mv, musicBus, sp * 0.9); }
     else if (S.bass === 'bounce') { if (i % 2 === 0) pluck(N((i % 4 === 0 ? ch[0] : ch[2]) - 24), t, 0.06 * mv, musicBus, sp * 1.6); }
     else if (S.bass === 'waltz') { if (i === 0) pluck(N(ch[0] - 12), t, 0.06 * mv, musicBus, 1.2); else if (i === 2 || i === 4) pluck(N(ch[1]), t, 0.025 * mv, musicBus, 0.5); }
     else if (i === 0) pluck(N(ch[0] - 12), t, 0.05 * mv, musicBus, 1.8);

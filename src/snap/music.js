@@ -17,6 +17,8 @@ const Music = (() => {
     shoal: { synth: 'shoal', title: 'Crystal Shoal', from: 'Mudkip Snap · Shoal Cave', bpm: 72, tint: '#9ae0ff' },
     meadow: { synth: 'meadow', title: 'Seasons Waltz', from: 'Mudkip Snap', bpm: 108, tint: '#a8f070' },
     festival: { synth: 'festival', title: 'Playground Parade', from: 'Mudkip Snap · Minigames', bpm: 138, tint: '#ffd23a' },
+    battle: { synth: 'battle', title: 'Road Rumble', from: 'Mudkip Snap · Road Fights', bpm: 152, tint: '#ff7a3a' },
+    boss: { synth: 'boss', title: 'Showdown', from: 'Mudkip Snap · Boss Battles', bpm: 168, tint: '#e83a5a' },
     legend: { synth: 'legend', title: 'Awakening', from: 'Mudkip Snap · Legends', bpm: 126, tint: '#ff4a6a' },
   };
   const ORDER = ['crossing', 'lake', 'space', 'meadow', 'ashen', 'shoal', 'festival', 'legend'];
@@ -76,7 +78,7 @@ const Music = (() => {
   // an area asks for its song (cross-fades)
   function areaTrack(id) {
     M.want = id || null;
-    if (!id) { M.target = 0; return; }
+    if (!id) { M.target = 0; if (TRACKS[M.cur] && TRACKS[M.cur].synth && Sound.setSong) { Sound.setSong(null); M.cur = null; } return; }
     if (M.cur === id && M.playing) return;
     if (M.cur && M.playing && M.cur !== id) { M.fadeTo = id; M.target = 0; return; }
     M.target = 0.62;

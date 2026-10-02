@@ -57,7 +57,7 @@ const Arena = (() => {
     const th = M.mode === 'swim' || F.mode === 'swim' ? 'abyss' : THEMES[Game.areaId] ? Game.areaId : 'other';
     G.ar = { th: THEMES[th], id: th, t: 0, floor: M.mode === 'swim' ? Math.max(M.y, F.y) + 30 : M.y, dark: 1, spotF: 0, spotM: 0, bars: P ? 0 : 0.16, title: -1, shatter: 0, out: -1, bolt: 0, plan: P, black: 0, wt: 0, dim: 0, vs: -1, flash: 0 };
     A.on = true; A.G = G;
-    try { Music.play('legend'); } catch (e) { /* */ }
+    try { Music.play('boss'); } catch (e) { /* */ }
     if (P) {
       A.walking = true;
       crowd(G, P); sfx('whoosh', null, 0.6);
@@ -151,7 +151,7 @@ const Arena = (() => {
     cut(G);
   }
   function restorePeek() { const Ar = A.peekA; if (Ar) { if (A.peek0 === undefined) delete Ar.floorPeek; else Ar.floorPeek = A.peek0; } A.peekA = null; A.peek0 = undefined; }
-  function stop() { restorePeek(); A.walking = false; for (const m of A.hidden) if (m.alive) m.visible = true; A.hidden = []; A.on = false; A.cover = false; A.G = null; if (Game.cine) Game.cine.zk = 1; }
+  function stop() { restorePeek(); A.walking = false; for (const m of A.hidden) if (m.alive) m.visible = true; A.hidden = []; A.on = false; A.cover = false; A.G = null; }
   function skip(G) { G.ar.skip = true; }
   function* wait(T, G) { let e = 0; while (e < T && !G.ar.skip) e += yield; }
   function* intro(G) {

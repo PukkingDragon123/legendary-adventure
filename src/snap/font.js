@@ -42,6 +42,8 @@ const Font = (() => {
     rain: { c: { b: '#5ab8ff', w: '#ffffff' }, m: ['.www..', 'wwwwww', '......', 'b.b.b.', '.b.b.b'] },
     bag: { c: { k: '#1b2240', o: '#e08a3a', y: '#ffc070' }, m: ['.kkk.', 'k...k', 'kkkkk', 'kyyyk', 'koook', 'kkkkk'] },
     shirt: { c: { k: '#1b2240', p: '#ff7aa8', r: '#ff3a6a' }, m: ['kk.kk', 'kpkpk', '.prp.', '.ppp.', '.kkk.'] },
+    warn: { c: { y: '#ffd23a', k: '#1b2240', o: '#c07a10' }, m: ['...o...', '..oyo..', '..oko..', '.oykyo.', '.oyyyo.', 'oyykyyo', 'ooooooo'] },
+    disk: { c: { k: '#1b2240', b: '#3a78e8', s: '#d8e0ee', w: '#f4f7fb' }, m: ['kkkkkk.', 'kbsksbk', 'kbsssbk', 'kbbbbbk', 'kbwwwbk', 'kbwwwbk', 'kkkkkkk'] },
     new: { c: { r: '#ff3a4a', w: '#ffffff' }, m: ['rrrrrrrrrrr', 'rwrrwrwwwrr', 'rwwrwrwrrrr', 'rwrwwrwwrrr', 'rwrrwrwwwrr', 'rrrrrrrrrrr'] },
   };
   const ICONS = {};
@@ -51,7 +53,12 @@ const Font = (() => {
     ICONS[k] = { w: m[0].length, h: m.length, m, cols };
   }
 
+  // stray symbols the bitmap fonts lack are drawn as pixel icons (or plain ASCII) instead of '?'
+  const SUB = { '★': '{star}', '☆': '{star0}', '♥': '{heart}', '❤': '{heart}', '♪': '{note}', '♫': '{note}', '✓': '{check}', '✔': '{check}', '✗': '{cross}', '✕': '{cross}', '✖': '{cross}',
+    '→': '{right}', '▶': '{right}', '►': '{right}', '←': '{left}', '◀': '{left}', '◄': '{left}', '↑': '{up}', '▲': '{up}', '↓': '{down}', '▼': '{down}', '⚠': '{warn}', '\u{1F4BE}': '{disk}', '✨': '{spark}', '☀': '{sun}', '☾': '{moon}', '•': '·', '–': '-', '‘': "'", '═': '=' };
+  const SUBRE = new RegExp('[' + Object.keys(SUB).filter((k) => k.length === 1).join('') + ']|\u{1F4BE}|\uFE0F', 'gu');
   function parse(str) {
+    if (/[^\x00-\x7e]/.test(str)) str = str.replace(SUBRE, (c) => SUB[c] ?? '');
     // → tokens: {t:'c', ch}, {t:'i', icon}, {t:'col', c}
     const out = [];
     for (let i = 0; i < str.length; i++) {

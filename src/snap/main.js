@@ -211,6 +211,8 @@ const Game = (() => {
       return;
     }
     if (G.cine.update(dt)) { applyCineZoom(dt); return; }
+    // just out of a battle / cutscene: a smooth glide back to Mudkip
+    if (G.camBack > 0) { G.camBack -= dt; c.lookX *= Math.exp(-dt * 6); c.lookY *= Math.exp(-dt * 6); if (G.camF) { G.camF.x *= Math.exp(-dt * 6); G.camF.y *= Math.exp(-dt * 6); } }
     applyCineZoom(dt);
     const lead = mk.moving ? Math.cos(mk.yaw) * (36 + clamp((Math.abs(mk.vx || 0) - 90) / 40, 0, 1) * 34) : 0;
     // cinematic framing: lean toward a rare moment happening nearby, drift gently when idle
@@ -569,7 +571,7 @@ const Game = (() => {
     if (typeof Talk !== 'undefined' && Talk.down(ux, uy)) { P0.ui = true; P0.sink = true; return; }
     if (Photo.cardDown && Photo.cardDown(ux, uy)) { P0.ui = true; P0.sink = true; return; }
     if (G.mode === 'explore' && typeof Arcade !== 'undefined' && Arcade.live && Arcade.down(ux, uy)) { P0.ui = true; P0.sink = true; return; }
-    if (G.mode === 'explore' && typeof Moves !== 'undefined' && Moves.wheel) { Moves.tapWheel(ux, uy); P0.ui = true; P0.sink = true; return; }
+    if (G.mode === 'explore' && typeof Moves !== 'undefined' && Moves.wheel) { P0.wheel = { x0: ux, y0: uy }; P0.ui = true; P0.sink = true; return; }
     if (G.mode === 'explore' && typeof Pad !== 'undefined' && Pad.down(ux, uy, e.pointerId, touch)) { P0.pad = true; return; }
     if (freePtrs().length === 1 && HUD.down(ux, uy, e.pointerId)) { P0.ui = true; return; }
     if (G.mode === 'dex') { Dex.down(ux, uy); P0.ui = true; return; }
@@ -611,6 +613,7 @@ const Game = (() => {
     const [x, y] = devXY(e);
     ptrs.delete(e.pointerId);
     if (p.pad) { Pad.up(e.pointerId); return; }
+    if (p.wheel) { if (e.type === 'pointerup' && typeof Moves !== 'undefined' && Moves.wheel) Moves.wheelUp(p.wheel, x / US, y / US); return; }
     if (p.sink) return;
     if (p.ui) { if (G.mode === 'dex') { if (e.type === 'pointercancel') Dex.cancel && Dex.cancel(); else Dex.up(x / US, y / US); } else HUD.up(x / US, y / US, e.pointerId); return; }
     if (pinch) { if (freePtrs().length < 2) { pinch = null; drag = null; } return; }
@@ -631,6 +634,7 @@ const Game = (() => {
     if (G.mode === 'map') { WorldMap.wheel(e.deltaY); return; }
     const scr = SCREEN(); if (scr) { scr.wheel && scr.wheel(e.deltaY); return; }
     if (G.mode === 'camera') { Photo.setZoom(Photo.zoom * Math.exp(-e.deltaY * 0.0015)); return; }
+    if (typeof Moves !== 'undefined' && Moves.wheel) { wheelAcc += e.deltaY + e.deltaX; if (Math.abs(wheelAcc) > 60) { Moves.flip(wheelAcc > 0 ? 1 : -1); wheelAcc = 0; } return; }
     wheelAcc += e.deltaY;
     const [x, y] = devXY(e);
     if (wheelAcc > 90) { setZoom(G.zoom - 1, x, y); wheelAcc = 0; } else if (wheelAcc < -90) { setZoom(G.zoom + 1, x, y); wheelAcc = 0; }

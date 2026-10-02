@@ -70,7 +70,7 @@ const Mons = (() => {
       const breathe = Math.sin(t * 2.6 + this.seed) * 0.035, hop = mv * Math.abs(Math.sin(this.jb)), q = clamp(this.jq, -0.35, 0.35);
       const st = air ? 0.08 : breathe - hop * 0.06 + q;
       this.jsy = 1 + st; this.jsx = 1 - st * 0.7;
-      this.jy = -hop * 2.5 - (this.mode === 'swim' || this.mode === 'fly' || this.mode === 'float' ? Math.sin(t * 2 + this.seed) * 1.5 : 0);
+      this.jy = -hop * 2.5 - (this.hopY || 0) - (this.mode === 'swim' || this.mode === 'fly' || this.mode === 'float' ? Math.sin(t * 2 + this.seed) * 1.5 : 0);
       this.jOn = true;
     }
     /* ---- awareness of Mudkip & the camera ---- */

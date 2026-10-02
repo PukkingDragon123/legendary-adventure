@@ -61,9 +61,21 @@ const Moves = (() => {
     if (M.wheel) { if (M.wheel.hover >= 0) select(M.wheel.hover); closeWheel(); return; }
     if (held < 0.3) use(M.cur);
   }
+  // the wheel shows one page of moves at a time (3 pages)
+  const PAGES = 3, per = () => Math.ceil(LIST.length / PAGES);
+  const pageOf = (i) => Math.floor(Math.max(0, i) / per());
+  const pageItems = (pg) => { const n = per(), a = []; for (let i = pg * n; i < Math.min(LIST.length, pg * n + n); i++) a.push(i); return a; };
+  function flip(d) {
+    const W = M.wheel; if (!W) return;
+    const pg = (W.page + d + PAGES) % PAGES, it = pageItems(pg); if (!it.length) return;
+    const j = W.hover - W.page * per();
+    W.page = pg; W.flipT = 0; W.flipD = d; W.hover = it[clamp(j, 0, it.length - 1)];
+    Game.sfx('blip');
+  }
   function openWheel() {
     if (M.wheel || Game.mode !== 'explore') return;
-    M.wheel = { t: 0, hover: LIST.findIndex((m) => m.id === M.cur), closing: 0 };
+    const h = Math.max(0, LIST.findIndex((m) => m.id === M.cur));
+    M.wheel = { t: 0, hover: h, page: pageOf(h), flipT: 1, flipD: 1, closing: 0 };
     Game.sfx('blip');
   }
   function closeWheel() { if (M.wheel) { M.wheel = null; Game.sfx('select'); } }
@@ -79,25 +91,40 @@ const Moves = (() => {
     const dx = ux - W.L.cx, dy = uy - W.L.cy;
     if (Math.hypot(dx, dy) < W.L.R * 0.35) return;
     let a = Math.atan2(dy, dx) + Math.PI / 2; if (a < 0) a += Math.PI * 2;
-    W.hover = Math.round(a / (Math.PI * 2) * LIST.length) % LIST.length;
+    const it = pageItems(W.page);
+    W.hover = it[Math.round(a / (Math.PI * 2) * it.length) % it.length];
   }
   function wheelKey(k) {
     const W = M.wheel; if (!W) return false;
-    if (k === 'ArrowLeft' || k === 'a') { W.hover = (W.hover + LIST.length - 1) % LIST.length; return true; }
-    if (k === 'ArrowRight' || k === 'd') { W.hover = (W.hover + 1) % LIST.length; return true; }
-    if (k === 'Enter' || k === 'x' || k === ' ' || k === 'e') { select(W.hover); closeWheel(); return true; }
-    if (k === 'Escape' || k === 'q') { closeWheel(); return true; }
+    const step = (d) => { const h = (W.hover + d + LIST.length) % LIST.length; if (pageOf(h) !== W.page) { W.flipT = 0; W.flipD = d; W.page = pageOf(h); } W.hover = h; };
+    if (k === 'ArrowLeft' || k === 'a' || k === 'ArrowUp' || k === 'w') { step(-1); return true; }
+    if (k === 'ArrowRight' || k === 'd' || k === 'ArrowDown' || k === 's') { step(1); return true; }
+    if (k === 'q' || k === 'PageUp' || k === '[') { flip(-1); return true; }
+    if (k === 'e' || k === 'PageDown' || k === ']' || k === 'Tab') { flip(1); return true; }
+    if (k === 'Enter' || k === 'x' || k === ' ') { select(W.hover); closeWheel(); return true; }
+    if (k === 'Escape' || k === 'b') { closeWheel(); return true; }
     return false;
   }
   function tapWheel(ux, uy) {
     const W = M.wheel; if (!W || !W.L) return false;
-    for (let i = 0; i < LIST.length; i++) { const [sx, sy] = slotXY(W.L, i); if (Math.hypot(ux - sx, uy - sy) < W.L.r + 4) { select(i); closeWheel(); return true; } }
+    const L = W.L;
+    // page arrows and dots
+    for (const d of [-1, 1]) { const ax = L.cx + d * L.ax; if (Math.abs(ux - ax) < 16 && Math.abs(uy - L.cy) < 22) { flip(d); return true; } }
+    if (Math.abs(uy - L.dy) < 8) for (let p = 0; p < PAGES; p++) if (Math.abs(ux - (L.cx + (p - 1) * 10)) < 6) { flip(p - W.page); return true; }
+    for (const i of pageItems(W.page)) { const [sx, sy] = slotXY(L, i); if (Math.hypot(ux - sx, uy - sy) < L.r + 4) { select(i); closeWheel(); return true; } }
+    if (Math.hypot(ux - L.cx, uy - L.cy) < L.R * 0.52) return true; // the info disc: keep it open
     closeWheel(); return true;
+  }
+  // a touch released on the wheel: a swipe flips the page, a tap picks
+  function wheelUp(p, ux, uy) {
+    const dx = ux - p.x0, dy = uy - p.y0;
+    if (Math.abs(dx) > 28 && Math.abs(dx) > Math.abs(dy) * 1.2) { flip(dx < 0 ? 1 : -1); return true; }
+    return tapWheel(p.x0, p.y0);
   }
   /* ---------- per frame ---------- */
   function update(dt) {
     if (M.pressing) { M.pressT += dt; if (M.pressT > 0.3 && !M.wheel) openWheel(); }
-    if (M.wheel) M.wheel.t += dt;
+    if (M.wheel) { M.wheel.t += dt; M.wheel.flipT = Math.min(1, (M.wheel.flipT || 0) + dt * 5 / 0.2); }
     if (M.learnFx) { M.learnFx.t += dt; if (M.learnFx.t > 3.2) M.learnFx = null; }
     // learn by watching: stay close while a Pokémon uses a move
     const mk = Game.mudkip; if (!mk || Game.mode !== 'explore') return;
@@ -163,17 +190,23 @@ const Moves = (() => {
       for (let j = 0; j < s; j++) for (let i = 0; i < s; i++) UI.put(fb, x0 + x * s + i, y0 + y * s + j, c);
     }
   }
-  function slotXY(L, i) { const a = -Math.PI / 2 + (i / LIST.length) * Math.PI * 2; return [L.cx + Math.cos(a) * L.R, L.cy + Math.sin(a) * L.R]; }
+  function slotXY(L, i) {
+    const pg = pageOf(i), it = pageItems(pg), j = it.indexOf(i), n = it.length || 1;
+    const a = -Math.PI / 2 + (j / n) * Math.PI * 2 + (L.spin || 0);
+    return [L.cx + Math.cos(a) * L.R, L.cy + Math.sin(a) * L.R];
+  }
   function drawWheel(fb, S, t) {
     const W = M.wheel; if (!W) return;
     const k = U.ease.outBack(Math.min(1, W.t / 0.22));
     // more moves (the boss TMs) → a wider ring with slightly smaller slots so they never overlap
-    const many = LIST.length > 14, cx = Math.round(fb.w / 2), cy = Math.round(fb.h / 2) + (many ? 2 : 0), R = Math.round(Math.min(fb.w, fb.h) * (many ? 0.37 : 0.3) * k), r = Math.max(many ? 8 : 9, Math.round(Math.min(fb.w, fb.h) * (many ? 0.045 : 0.055)));
-    W.L = { cx, cy, R, r };
+    const cx = Math.round(fb.w / 2), cy = Math.round(fb.h / 2) + 2, R = Math.round(Math.min(fb.w, fb.h) * 0.32 * k), r = Math.max(10, Math.round(Math.min(fb.w, fb.h) * 0.06));
+    const fk = U.ease.outBack ? Math.min(1, W.flipT ?? 1) : 1, spin = (1 - fk) * -W.flipD * 0.9;
+    W.L = { cx, cy, R, r, spin, ax: R + r + 16, dy: Math.min(fb.h - 6, cy + R + r + 14) };
     UI.rectA(fb, 0, 0, fb.w, fb.h, 0xff0a0e20, 0.45 * Math.min(1, W.t / 0.15));
     // ring
     for (let a = 0; a < 200; a++) { const an = (a / 200) * Math.PI * 2; UI.put(fb, Math.round(cx + Math.cos(an) * R), Math.round(cy + Math.sin(an) * R), 0x80ffffff); }
-    LIST.forEach((m, i) => {
+    pageItems(W.page).forEach((i) => {
+      const m = LIST[i];
       const [sx, sy] = slotXY(W.L, i), hov = W.hover === i, own = has(m.id), cur = M.cur === m.id;
       const rr = hov ? r + 3 : r;
       UI.disc(fb, Math.round(sx), Math.round(sy) + 2, rr, 0xff0a0e1a);
@@ -190,7 +223,15 @@ const Moves = (() => {
     Font.draw(fb, own ? m.name : '???', cx, cy - 12, 0xffffffff, { font: 'title', align: 'center' });
     const lines = Font.wrap(own ? m.desc || '' : 'Not learned yet', 'small', Math.round(R * 0.95));
     lines.slice(0, 3).forEach((l, j) => Font.draw(fb, l, cx, cy + 4 + j * 9, 0xffc8d4f0, { font: 'small', align: 'center' }));
-    Font.draw(fb, 'MOVE WHEEL', cx, Math.max(4, cy - R - r - 14), 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 });
+    Font.draw(fb, 'MOVE WHEEL  ' + (W.page + 1) + '/' + PAGES, cx, Math.max(4, cy - R - r - 14), 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 });
+    // page arrows (tap / Q E / mouse wheel / swipe) and dots
+    for (const d of [-1, 1]) {
+      const ax = cx + d * W.L.ax, bob = Math.round(Math.sin(t * 5) * 1.5) * d;
+      UI.disc(fb, ax + bob, cy + 1, 10, 0xff0a0e1a); UI.orb(fb, ax + bob, cy, 10, 0xff3a4a7a, { ol: 0xffffffff });
+      for (let y = -4; y <= 4; y++) { const w = 4 - Math.abs(y); for (let x = 0; x <= w; x++) UI.put(fb, ax + bob + d * (x - 2), cy + y, 0xffffffff); }
+      Font.draw(fb, d < 0 ? 'Q' : 'E', ax + bob, cy + 12, 0xffc8d4f0, { font: 'small', align: 'center', outline: 0xff1b2240 });
+    }
+    for (let p = 0; p < PAGES; p++) { const px = cx + (p - 1) * 10; if (p === W.page) UI.disc(fb, px, W.L.dy, 3, 0xffffe060); else UI.disc(fb, px, W.L.dy, 2, 0xff8a90b0); }
   }
   // a dark pie that shrinks as the move recharges (k = 1 → just used)
   function coolPie(fb, cx, cy, r, k) {
@@ -225,5 +266,5 @@ const Moves = (() => {
   }
   // (the old gallery game's sand piles: nothing to do here)
   function addSand() {}
-  return Object.assign(M, { add, coolLeft, coolK, coolPie, drawChip, ICON, cd, LIST, DEF, has, current, unlock, press, release, openWheel, closeWheel, toggleWheel, select, wheelPoint, wheelKey, tapWheel, update, use, icon, drawWheel, drawLearn, addSand });
+  return Object.assign(M, { add, coolLeft, coolK, coolPie, drawChip, ICON, cd, LIST, DEF, has, current, unlock, press, release, openWheel, closeWheel, toggleWheel, select, wheelPoint, wheelKey, tapWheel, wheelUp, flip, PAGES, pageItems, update, use, icon, drawWheel, drawLearn, addSand });
 })();

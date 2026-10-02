@@ -214,7 +214,7 @@ const Progress = (() => {
     n *= 1 + sk;
     // the same Pokémon again and again: less each time
     n *= repeatK('ph.' + r.species);
-    const lab = 'Photo ' + '★'.repeat(Math.max(1, stars)) + ' ' + nm(r.species) + (sk ? ' · Streak x' + SES.streak : '') + (out.newStar ? ' · new best' : '');
+    const lab = 'Photo ' + '{star}'.repeat(Math.max(1, stars)) + ' ' + nm(r.species) + (sk ? ' · Streak x' + SES.streak : '') + (out.newStar ? ' · new best' : '');
     gain(Math.max(2, n), lab, false, 'photo');
   }
   function wrapGame() {
