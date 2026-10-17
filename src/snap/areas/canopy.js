@@ -184,22 +184,40 @@ Areas.canopy = (() => {
     s.ax = 13; s.ay = 51;
     return s;
   }
+  // the treetop stage: a carved proscenium under a flowering leaf arch, velvet drapes with folds and gold
+  // tiebacks, a painted backdrop, speaker boxes, polished boards with a row of footlights
   function stageSpr(M) {
-    const w = 120, h = 66, s = new ISpr(w, h);
-    // posts
-    for (const px of [5, 113]) for (let y = 8; y < 60; y++) for (let k = 0; k < 4; k++) s.set(px + k, y, M.wood[k === 0 ? 4 : k === 3 ? 1 : 3]);
-    // drapes
-    for (const [x0, dir] of [[9, 1], [111, -1]]) for (let y = 12; y < 50; y++) { const wd = 14 - Math.round((y - 12) * 0.25); for (let k = 0; k < wd; k++) { const x = x0 + dir * k; s.set(x, y, (k % 4 === 0) ? M.cloth[0] : pickR(M.cloth, 0.75 - k / wd * 0.4, x, y)); } }
-    // floor
-    for (let y = 58; y < 66; y++) for (let x = 2; x < w - 2; x++) s.set(x, y, y === 58 ? M.wood[5] : y < 61 ? ((x % 8 === 0) ? M.wood[2] : M.wood[4]) : pickR(M.wood, 0.4 - (y - 61) * 0.06, x, y));
-    // leafy arch with flowers
+    const w = 120, h = 70, s = new ISpr(w, h), fl = 60;
+    // painted backdrop: a dusky sky with a big golden note between the posts
+    for (let y = 14; y < fl; y++) for (let x = 10; x < 110; x++) s.set(x, y, pickR(M.clothB, 0.75 - (y - 14) / 60 + (hash(x >> 2, y >> 2, 3) - 0.5) * 0.1, x, y));
+    for (let k = 0; k < 9; k++) { const x = 18 + hash(k, 1, 5) * 84, y = 18 + hash(k, 2, 5) * 24; s.set(x, y, M.flowerY[2]); }
+    for (let y = 26; y < 44; y++) { s.set(62, y, M.flowerY[1]); s.set(63, y, M.flowerY[2]); }
+    for (let y = -3; y <= 3; y++) for (let x = -4; x <= 4; x++) if (x * x / 16 + y * y / 9 <= 1) s.set(58 + x, 44 + y, M.flowerY[x < 0 ? 2 : 1]);
+    for (let j = 0; j < 6; j++) { s.set(64 + j, 26 + j, M.flowerY[1]); s.set(64 + j, 27 + j, M.flowerY[0]); }
+    // posts with carved capitals
+    for (const px of [5, 111]) for (let y = 8; y < fl + 2; y++) for (let k = 0; k < 5; k++) s.set(px + k, y, M.wood[k === 0 ? 5 : k === 4 ? 1 : (y % 10 === 0 ? 2 : 3)]);
+    // drapes: folds of red velvet gathered by gold tiebacks
+    for (const [x0, dir] of [[10, 1], [110, -1]]) for (let y = 12; y < fl; y++) {
+      const gather = y > 34 && y < 40 ? 0.45 : y >= 40 ? 0.6 + (y - 40) * 0.025 : 1, wd = Math.round(18 * gather);
+      for (let k = 0; k < wd; k++) { const x = x0 + dir * k, fold = Math.sin(k * 1.4 + y * 0.05); s.set(x, y, fold > 0.6 ? M.cloth[3] : fold < -0.5 ? M.cloth[0] : M.cloth[k % 3 ? 2 : 1]); }
+      if (y === 36 || y === 37) for (let k = 0; k < wd + 2; k++) s.set(x0 + dir * k, y, M.flowerY[y === 36 ? 2 : 1]);
+    }
+    // the stage boards with a skirt, footlights along the front
+    for (let y = fl; y < h; y++) for (let x = 2; x < w - 2; x++) s.set(x, y, y === fl ? M.wood[5] : y < fl + 3 ? ((x % 8 === 0) ? M.wood[2] : M.wood[4]) : y === fl + 3 ? M.ink[1] : pickR(M.cloth, 0.55 - (y - fl - 4) * 0.08 + ((x >> 2) % 2 ? 0.08 : 0), x, y));
+    for (let x = 8; x < w - 8; x += 9) { s.set(x, fl - 1, M.lantY[2]); s.set(x + 1, fl - 1, M.lantY[1]); s.set(x, fl - 2, M.lantY[1]); }
+    // speaker boxes at the wings
+    for (const sx of [14, 98]) for (let y = fl - 14; y < fl; y++) for (let x = sx; x < sx + 9; x++) { const q = ((x - sx - 4) ** 2 + (y - (fl - 7)) ** 2); s.set(x, y, x === sx || x === sx + 8 || y === fl - 14 ? M.ink[1] : q < 5 ? M.metal[q < 2 ? 1 : 2] : M.ink[0]); }
+    // the leafy arch with flowers
     const balls = [];
     for (let k = 0; k <= 16; k++) { const t = k / 16; balls.push([6 + t * 108, 12 - Math.sin(t * Math.PI) * 6, 7 + Math.sin(t * Math.PI) * 2]); }
     Paint.foliage(s, balls, M.leaf, 17, { topLight: 0.3 });
     const fr = rng(5);
-    for (let k = 0; k < 14; k++) { const x = 8 + fr() * 104, y = 8 + fr() * 8 - Math.sin((x / w) * Math.PI) * 6; const F = [M.flower, M.flowerY, M.flowerB][k % 3]; s.set(x, y, F[1]); s.set(x + 1, y, F[2]); s.set(x, y + 1, F[0]); }
+    for (let k = 0; k < 18; k++) { const x = 8 + fr() * 104, y = 8 + fr() * 8 - Math.sin((x / w) * Math.PI) * 6; const F = [M.flower, M.flowerY, M.flowerB][k % 3]; s.set(x, y, F[1]); s.set(x + 1, y, F[2]); s.set(x, y + 1, F[0]); }
+    // a little star plaque hanging from the arch
+    for (let y = 13; y < 21; y++) for (let x = 54; x < 67; x++) s.set(x, y, x === 54 || x === 66 || y === 13 || y === 20 ? M.wood[0] : M.wood[4]);
+    for (const [dx, dy] of [[0, -2], [-1, -1], [0, -1], [1, -1], [-2, 0], [-1, 0], [0, 0], [1, 0], [2, 0], [-1, 1], [1, 1], [-1, 2], [1, 2]]) s.set(60 + dx, 17 + dy, M.flowerY[1]);
     // bunting
-    for (let x = 12; x < 108; x++) { const y = 20 + Math.round(Math.sin(((x - 12) / 96) * Math.PI) * 8); s.set(x, y, M.rope[1]); if ((x - 12) % 8 === 0) { const F = [M.cloth, M.clothB, M.flowerY][((x - 12) / 8) % 3]; for (let j = 1; j <= 5; j++) for (let q = -Math.floor((6 - j) / 2); q <= Math.floor((6 - j) / 2); q++) s.set(x + 3 + q, y + j, F[1 + (q < 0 ? 1 : 0)] ?? F[1]); } }
+    for (let x = 12; x < 108; x++) { const y = 23 + Math.round(Math.sin(((x - 12) / 96) * Math.PI) * 6); s.set(x, y, M.rope[1]); if ((x - 12) % 8 === 0) { const F = [M.cloth, M.clothB, M.flowerY][((x - 12) / 8) % 3]; for (let j = 1; j <= 4; j++) for (let q = -Math.floor((5 - j) / 2); q <= Math.floor((5 - j) / 2); q++) s.set(x + 3 + q, y + j, F[1 + (q < 0 ? 1 : 0)] ?? F[1]); } }
     Paint.outline(s, M.ink[0]);
     s.ax = w >> 1; s.ay = h - 1;
     return s;
@@ -244,6 +262,96 @@ Areas.canopy = (() => {
     for (let j = 0; j < 30; j++) { s.set(6 + j * 0.8, 5 + j, M.wood[2]); s.set(7 + j * 0.8, 5 + j, M.wood[1]); s.set(w - 7 - j * 0.8, 5 + j, M.wood[3]); s.set(w - 8 - j * 0.8, 5 + j, M.wood[1]); }
     Paint.outline(s, M.ink[0]);
     s.ax = w >> 1; s.ay = 0;
+    return s;
+  }
+  // a Fortree cottage: log-plank walls with corner posts, a mossy leaf-thatch roof with a deep overhang and a
+  // little chimney, round windows with curtains and flower boxes, a framed door with a hanging shop sign
+  // (returns the sprite with .wins = window centres for the night glow)
+  function cottage(M, w, h, seed) {
+    const r = rng(seed), W2 = w + 16, H2 = h + 30, s = new ISpr(W2, H2), base = H2 - 1, x0 = 8, x1 = x0 + w;
+    const FL = [M.flower, M.flowerY, M.flowerB];
+    for (let y = base - h; y <= base; y++) for (let x = x0; x < x1; x++) {
+      const pl = Math.floor((base - y) / 4), u = (x - x0) / w;
+      let lit = 0.82 - u * 0.4 - ((base - y) % 4 === 0 ? 0.22 : 0) + (hash(pl, Math.floor(x / 9), seed) - 0.5) * 0.14;
+      if (x - x0 < 3 || x1 - x < 3) lit = x - x0 < 3 ? 0.55 : 0.2; // corner posts
+      s.set(x, y, pickR(M.wood, lit, x, y));
+      if (hash(x, y, seed + 9) > 0.993) s.set(x, y, M.wood[0]); // knots
+    }
+    // roof: leaf thatch, layered rows, moss on top, overhanging the walls
+    const rt = base - h - 18;
+    for (let y = 0; y < 20; y++) { const hw = 6 + (w / 2 + 6) * (y / 19); for (let x = -hw; x <= hw; x++) { const X = W2 / 2 + x, row = Math.floor(y / 4), edge = y % 4 === 3; s.set(X, rt + y, edge && (Math.round(x) + row) % 3 !== 0 ? M.leaf[0] : pickR(y < 3 ? M.moss : M.leaf, 0.85 - y / 26 - (x + hw) / (2 * hw) * 0.3 + (hash(Math.round(x), y, seed) - 0.5) * 0.2, X, y)); } }
+    for (let x = -w / 2 - 6; x <= w / 2 + 6; x += 2 + (r() * 3 | 0)) s.under(W2 / 2 + x, rt + 20, M.leaf[1]);
+    const chx = Math.round(W2 / 2 + w * 0.22); for (let y = rt - 6; y < rt + 6; y++) for (let x = 0; x < 5; x++) s.set(chx + x, y, (y - rt) % 3 === 0 ? M.bark[1] : M.bark[x < 2 ? 4 : 2]);
+    // door with frame, step and handle
+    const dx = Math.round(x0 + w * 0.62), dw = 9, dh = 14;
+    for (let y = base - dh; y <= base; y++) for (let x = dx - 1; x <= dx + dw; x++) s.set(x, y, x === dx - 1 || x === dx + dw || y === base - dh ? M.wood[0] : (x - dx) % 3 === 0 ? M.wood[1] : M.wood[2]);
+    s.set(dx + dw - 2, base - 7, M.metal[3]);
+    // round windows: frame, cross mullion, warm glass, curtains, a flower box beneath
+    const wins = [];
+    const win = (cx, cy) => {
+      for (let y = -4; y <= 4; y++) for (let x = -4; x <= 4; x++) { const q = x * x + y * y; if (q > 20) continue; s.set(cx + x, cy + y, q > 12 ? M.wood[0] : x === 0 || y === 0 ? M.wood[1] : Math.abs(x) > 2 && y < 1 ? M.cloth[2] : M.win[y < 0 ? 1 : 0]); }
+      for (let x = -4; x <= 4; x++) { s.set(cx + x, cy + 6, M.wood[3]); s.set(cx + x, cy + 7, M.wood[1]); if ((x + 4) % 2 === 0) s.set(cx + x, cy + 5, FL[(x + 8) % 3][1 + (x & 1)]); else s.set(cx + x, cy + 5, M.leaf[3]); }
+      wins.push([cx, cy]);
+    };
+    win(Math.round(x0 + w * 0.26), base - h + 12);
+    if (w > 66) win(Math.round(x0 + w * 0.88), base - h + 12);
+    // the hanging sign beside the door: a little plank on two chains with a painted icon
+    const sx = dx - 12, sy = base - dh - 2, icon = Math.floor(r() * 4);
+    for (let y = sy - 3; y < sy; y++) { s.set(sx + 1, y, M.metal[1]); s.set(sx + 8, y, M.metal[1]); }
+    for (let y = sy; y < sy + 7; y++) for (let x = sx; x < sx + 10; x++) s.set(x, y, x === sx || x === sx + 9 || y === sy || y === sy + 6 ? M.wood[0] : M.wood[4]);
+    const ic = [[[4, 2], [5, 2], [3, 3], [4, 3], [5, 3], [6, 3], [4, 4], [5, 4]], [[3, 2], [4, 2], [5, 2], [6, 2], [3, 3], [6, 3], [3, 4], [4, 4], [5, 4], [6, 4], [4, 3]], [[5, 1], [5, 2], [5, 3], [4, 4], [3, 4], [4, 3], [6, 1]], [[4, 1], [3, 2], [4, 2], [5, 2], [2, 3], [4, 3], [6, 3], [4, 4], [3, 5], [5, 5]]][icon];
+    const icc = [M.berry[1], M.cloth[2], M.ink[1], M.flowerY[1]][icon];
+    for (const [ix, iy] of ic) s.set(sx + ix, sy + iy - 1 + 1, icc);
+    Paint.outline(s, M.ink[0]);
+    s.ax = Math.round(W2 / 2); s.ay = base; s.wins = wins;
+    return s;
+  }
+  // a string of bunting sagging between two points (flags in alternating colours)
+  function bunting(M, len, sag, seed) {
+    const s = new ISpr(len + 2, sag + 9), C = [M.cloth, M.clothB, M.flowerY, M.leaf], r = rng(seed);
+    for (let x = 0; x <= len; x++) {
+      const y = Math.round(Math.sin((x / len) * Math.PI) * sag);
+      s.set(x, y, M.rope[1]);
+      if (x % 7 === 3 && x > 2 && x < len - 2) { const F = C[Math.floor(r() * C.length)]; for (let j = 1; j <= 5; j++) for (let q = -Math.floor((6 - j) / 2); q <= Math.floor((6 - j) / 2); q++) s.set(x + q, y + j, F[q < 0 ? 2 : 1] ?? F[1]); }
+    }
+    s.ax = 0; s.ay = 0;
+    return s;
+  }
+  // a washing line with clothes pegged on it
+  function laundry(M, len, seed) {
+    const s = new ISpr(len + 2, 22), r = rng(seed), C = [M.cloth, M.clothB, M.flower, M.flowerY, M.egg];
+    for (let x = 0; x <= len; x++) s.set(x, Math.round(Math.sin((x / len) * Math.PI) * 5), M.rope[0]);
+    for (let x = 6; x < len - 8; x += 10 + Math.floor(r() * 8)) {
+      const y0 = Math.round(Math.sin((x / len) * Math.PI) * 5) + 1, F = C[Math.floor(r() * C.length)], kind = r();
+      const cw = kind < 0.4 ? 8 : 6, ch = kind < 0.4 ? 9 : kind < 0.7 ? 12 : 7;
+      for (let y = 0; y < ch; y++) for (let q = 0; q < cw; q++) { if (kind < 0.4 && y > 2 && (q < 1 || q > cw - 2) && y < 6) continue; s.set(x + q, y0 + y, F[q < 2 ? Math.min(F.length - 1, 2) : 1] ?? F[0]); }
+      s.set(x + 1, y0 - 1, M.wood[3]); s.set(x + cw - 2, y0 - 1, M.wood[3]);
+    }
+    s.ax = 0; s.ay = 0;
+    return s;
+  }
+  function birdhouse(M, seed) {
+    const s = new ISpr(14, 20), r = rng(seed);
+    for (let y = 7; y < 18; y++) for (let x = 2; x < 12; x++) s.set(x, y, pickR(M.wood, 0.8 - (x - 2) / 10 * 0.4, x, y));
+    for (let y = 0; y < 7; y++) for (let x = 6 - y - 1; x <= 7 + y; x++) s.set(x, y + 1, pickR(r() < 0.5 ? M.cloth : M.clothB, 0.8 - y / 9, x, y));
+    for (let y = 10; y < 13; y++) for (let x = 6; x < 9; x++) s.set(x, y, M.ink[1]);
+    s.set(7, 14, M.wood[4]); s.set(7, 15, M.wood[1]);
+    for (let y = 18; y < 20; y++) s.set(7, y, M.wood[1]);
+    Paint.outline(s, M.ink[0]);
+    s.ax = 7; s.ay = 19;
+    return s;
+  }
+  function crate(M, w, h, seed) {
+    const s = new ISpr(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) s.set(x, y, x === 0 || y === 0 || x === w - 1 || y === h - 1 || x === y || x === w - 1 - y ? M.wood[1] : pickR(M.wood, 0.75 - x / w * 0.35, x, y));
+    Paint.outline(s, M.ink[0]); s.ax = w >> 1; s.ay = h - 1;
+    return s;
+  }
+  function pot(M, seed, F) {
+    const s = new ISpr(14, 18), b = Paint.bush(M, 12, 9, seed, { ramp: M.leaf, dots: F, nd: 4 });
+    s.paste(b, 7 - b.ax, 10 - b.ay);
+    for (let y = 10; y < 17; y++) { const hw = 4 - (y > 14 ? 1 : 0); for (let x = -hw; x <= hw; x++) s.set(7 + x, y, pickR(M.cloth, 0.8 - (x + hw) / (2 * hw) * 0.5 - (y === 10 ? -0.2 : 0), x, y)); }
+    Paint.outline(s, M.ink[0]); s.ax = 7; s.ay = 16;
     return s;
   }
   // a rolling row of treetops seen from above (fills everything below its crowns)
@@ -360,7 +468,7 @@ Areas.canopy = (() => {
     for (const sg of GEO.segs) if (sg.k === 'deck') { const x0 = sg.x0 + (sg.x0 ? 4 : 0), x1 = sg.x1 - (sg.x1 < GEO.W ? 4 : 0); A.props.push({ frames: [railing(M, x1 - x0)], x: x0, y: DECK - 4, zd: -7 }); }
     // ---- tree houses (on the decks and up the trunks) ----
     for (const [k, h] of GEO.houses.entries()) {
-      const hs = Props2.treehouse(M, h.w, h.h, 7 + k);
+      const hs = cottage(M, h.w, h.h, 7 + k);
       let base;
       if (h.y === null) { const p = put(hs, h.x, -5, { sink: 1, foot: h.w }); base = p.y; }
       else {
@@ -371,28 +479,36 @@ Areas.canopy = (() => {
         for (const lx of [h.x - (h.w + 30) / 2 + 4, h.x + (h.w + 30) / 2 - 4]) { A.props.push({ frames: [lantern(M, 4)], x: lx, y: h.y + 5, zd: -4 }); A.glows.push({ x: lx, y: h.y + 15, r: 22, c: hex('#ff9a50'), a: 0.5, flicker: true }); }
       }
       // window glow at night
-      A.glows.push({ x: h.x - hs.ax + 14 + 4, y: base - hs.ay + (h.h + 10) - h.h + 9, r: 16, c: hex('#ffc060'), a: 0.35 });
+      for (const [wx, wy] of hs.wins) A.glows.push({ x: h.x - hs.ax + wx, y: base - hs.ay + wy, r: 16, c: hex('#ffc060'), a: 0.4 });
       // a lantern by the door
-      if (h.y === null) { A.props.push({ frames: [lantern(M, 6, M.lantY)], x: h.x + h.w / 2 + 2, y: base - h.h + 2, zd: -4 }); A.glows.push({ x: h.x + h.w / 2 + 2, y: base - h.h + 14, r: 22, c: hex('#ffd070'), a: 0.5, flicker: true }); }
+      if (h.y === null) { A.props.push({ frames: [lantern(M, 6, M.lantY)], x: h.x + h.w / 2 + 6, y: base - h.h + 2, zd: -4 }); A.glows.push({ x: h.x + h.w / 2 + 2, y: base - h.h + 14, r: 22, c: hex('#ffd070'), a: 0.5, flicker: true }); }
     }
     // ---- lantern posts on the decks ----
     const post = (x) => { const s = new ISpr(14, 40); for (let y = 2; y < 40; y++) { s.set(3, y, M.wood[3]); s.set(4, y, M.wood[1]); } for (let x2 = 3; x2 < 11; x2++) s.set(x2, 2, M.wood[4]); Paint.outline(s, M.ink[0]); s.ax = 4; s.ay = 39; put(s, x, -3, { sink: 2 }); A.props.push({ frames: [lantern(M, 3)], x: x + 6, y: DECK - 37, zd: -3 }); A.glows.push({ x: x + 6, y: DECK - 29, r: 24, c: hex('#ff9a50'), a: 0.55, flicker: true }); };
-    for (const x of [40, 290, 710, 960 - 20, 1370, 1640, 2030, 2280, 2680, 3080, 3390 - 10]) post(x);
+    const POSTS = [40, 290, 710, 1060 - 20, 1470, 1880, 2270, 2520, 2920, 3440, 3750 - 10];
+    for (const x of POSTS) post(x);
+    // bunting strung between neighbouring lantern posts on the same deck
+    for (let i = 0; i + 1 < POSTS.length; i++) { const a = POSTS[i] + 5, b = POSTS[i + 1] + 3; if (b - a > 520 || GEO.segAt(a).x1 < b) continue; A.props.push({ frames: [bunting(M, b - a, 9 + Math.round((b - a) / 60), a)], x: a, y: DECK - 37, zd: -6.5, sway: 0.6 }); }
+    // washing lines, birdhouses on the trunks, crates, barrels and potted flowers about town
+    for (const [x, len] of [[150, 70], [2330, 80], [3520, 90]]) A.props.push({ frames: [laundry(M, len, x)], x, y: DECK - 30, zd: -6.6, sway: 0.8 });
+    for (const [k, t] of GEO.trunks.entries()) A.props.push({ frames: [birdhouse(M, 60 + k)], x: t.x + (k % 2 ? t.w * 0.2 : -t.w * 0.25), y: DECK - 96 - (k % 3) * 22, zd: -5.5 });
+    for (const [x, k] of [[330 - 40, 0], [1090, 1], [1500, 2], [1860, 0], [2560, 1], [3000, 2], [3560, 0], [3700, 1]]) { if (GEO.segAt(x).k !== 'deck') continue; put(k === 0 ? crate(M, 12, 10, x) : k === 1 ? pot(M, x, [M.flower, M.flowerY, M.flowerB][x % 3]) : crate(M, 9, 8, x), x, -2, { sink: 1 }); }
     // ---- ladders dropping into the mist below ----
-    for (const x of [130, 1560, 2250, 2990]) A.props.push({ frames: [ladder(M, 170)], x, y: DECK + 176, zd: -1 });
+    for (const x of [130, 1800, 2490, 3350]) A.props.push({ frames: [ladder(M, 170)], x, y: DECK + 176, zd: -1 });
     // ---- flower planters, a Kecleon's leafy hideout, nests ----
     const FL = [M.flower, M.flowerY, M.flowerB];
-    for (const [i, x] of [210, 740, 1400, 1470, 1625, 2045, 2700, 2880, 3040, 3370].entries()) put(planter(M, 70 + i, FL[i % 3]), x, -3, { sink: 1, leafy: true });
+    for (const [i, x] of [210, 740, 1500, 1570, 1865, 2285, 2940, 3240, 3400, 3730].entries()) put(planter(M, 70 + i, FL[i % 3]), x, -3, { sink: 1, leafy: true });
     for (let x = GEO.LEAVES.x0; x < GEO.LEAVES.x1; x += 16) put(Paint.bush(M, 30, 22, Math.floor(x), { ramp: M.leaf, dots: r() < 0.5 ? M.flower : null, nd: 4 }), x, -3, { sink: 2, leafy: true, sway: 0.6 });
     A.props.push({ frames: [nestSpr(M, -1, true)], x: GEO.NEST[0], y: GEO.NEST[1] + 4, zd: -5 });
-    A.props.push({ frames: [nestSpr(M, 1, true)], x: 770, y: 452, zd: -5 });
-    A.props.push({ frames: [nestSpr(M, -1, false)], x: 1535, y: 400, zd: -5 });
+    A.props.push({ frames: [nestSpr(M, 1, true)], x: 870, y: 452, zd: -5 });
+    A.props.push({ frames: [nestSpr(M, -1, false)], x: 1775, y: 400, zd: -5 });
     // ---- wind chimes ----
     A.chimes = GEO.CHIMES.map((x, i) => { const sprs = [0, 1, 2].map((f) => chimeSpr(M, i, f)); const p = put(sprs[1], x, -3, { sink: 1, foot: 4 }); p.sprs = sprs; return p; });
     // ---- bird feeder, stage, lookout, fruit basket ----
     A.feederSpr = [feederSpr(M, false), feederSpr(M, true)];
     A.feeder = put(A.feederSpr[0], GEO.FEEDER, -3, { sink: 1, foot: 4 });
     put(stageSpr(M), GEO.STAGE.x, -4, { sink: 1, foot: 20 });
+    for (let k = 0; k < 4; k++) A.glows.push({ x: GEO.STAGE.x - 45 + k * 30, y: DECK - 12, r: 18, c: hex('#ffd890'), a: 0.4 });
     put(lookoutSpr(M), GEO.LOOKOUT.x, -5, { sink: 1, foot: 20 });
     A.glows.push({ x: GEO.LOOKOUT.x - 40, y: DECK - 50, r: 22, c: hex('#ffd070'), a: 0.5, flicker: true }, { x: GEO.LOOKOUT.x + 40, y: DECK - 50, r: 22, c: hex('#ffd070'), a: 0.5, flicker: true });
     A.basket = put(basketSpr(M), GEO.BASKET, -2, { sink: 1 });
@@ -504,7 +620,7 @@ Areas.canopy = (() => {
       // look through the telescope: the camera swings out to whatever is worth seeing
       const pick = (k) => Mons.all.find((m) => m.kind === k && m.alive && m.visible !== false);
       const tgt = pick('altaria') || pick('tropius') || pick('swablu') || pick('chatot');
-      const x = tgt ? tgt.x : 1200, y = tgt ? tgt.y - 20 : DECK - 140;
+      const x = tgt ? tgt.x : 1300, y = tgt ? tgt.y - 20 : DECK - 140;
       HUD.scope(4.4); Game.sfx('select', GEO.LOOKOUT.x, 0.6);
       Game.cine.pan(x, y, { dur: 1.3, hold: 2.6, zoom: 1.3, frame: 0.5 });
       const name = tgt ? ({ altaria: 'an Altaria gliding over the canopy', tropius: 'Tropius munching leaves', swablu: 'a Swablu fluffing its wings', chatot: 'Chatot keeping the beat' })[tgt.kind] : 'an endless sea of treetops';
@@ -561,16 +677,8 @@ Areas.canopy = (() => {
   };
   def.post = (A, fb, cx, cy, t) => {
     drawFog(A, fb, cx, cy, t);
-    // warm dappled light through the leaves by day
-    const hr = Stage.S.hour;
-    if (hr === 'noon' || hr === 'afternoon') {
-      const W = fb.w, H = fb.h, d = fb.d, col = hr === 'afternoon' ? 0xff90d8ff : 0xffb8f0ff;
-      for (let y = 0; y < H; y += 1) for (let x = (y & 1); x < W; x += 2) {
-        const wx = x + cx * 0.7 + y * 0.5;
-        const v = Math.sin(wx * 0.019) * Math.sin(wx * 0.0061 + 1.1) + Math.sin(t * 0.25 + wx * 0.002) * 0.2;
-        if (v > 0.62) { const a = (v - 0.62) * 0.18 * (1 - y / H); if (a > 0.006) { const i = y * W + x; d[i] = U.screen(d[i], col, a); if (x + 1 < W) d[i + 1] = U.screen(d[i + 1], col, a); } }
-      }
-    }
+    // sunbeams slanting down through the crowns, motes and pollen glittering in them
+    { const hr = Stage.S.hour; if (hr !== 'night') Scenic.shafts(fb, cx, cy, t, { c: hex({ dawn: '#ffd8c8', noon: '#fff6d0', afternoon: '#ffe4a8', dusk: '#ffa070' }[hr]), k: { dawn: 0.13, noon: 0.08, afternoon: 0.11, dusk: 0.1 }[hr], slant: hr === 'afternoon' || hr === 'dusk' ? -0.5 : 0.5, par: 0.7, freq: 0.017, th: 0.6, motes: 36 }); }
     CanopyAI.post(A, fb, cx, cy, t);
   };
   def.spawn = (A, G) => { CanopyAI.spawn(A, G, S); if (typeof GroveAI !== 'undefined') GroveAI.spawnCanopy(A, G); };
@@ -580,6 +688,8 @@ Areas.canopy = (() => {
     const out = [{ kind: 'leaf', rate: 1.6, c: hex('#56a848'), c2: hex('#8ccc60'), life: 10, drift: 1.4, vy: 9, y: (x) => World.groundAt(x) - 180 - Math.random() * 120 }];
     if (hour === 'night' || hour === 'dusk') out.push({ kind: 'firefly', rate: 2.5, c: hex('#ffe08a'), life: 8, sway: 14, bob: 8, y: (x) => World.groundAt(x) - 10 - Math.random() * 140 });
     else out.push({ kind: 'mote', rate: 2.5, c: hex('#fff4d0'), life: 5, sway: 10, bob: 4, vy: -2 });
+    // downy feathers drifting off the Swablu and Altaria
+    out.push({ kind: 'petal', rate: 0.5, c: hex('#ffffff'), c2: hex('#d8ecf8'), life: 10, drift: 2, vy: 5, sway: 14, bob: 6, y: (x) => World.groundAt(x) - 60 - Math.random() * 120 });
     return out;
   };
   def.onScan = (A) => CanopyAI.onScan(A);

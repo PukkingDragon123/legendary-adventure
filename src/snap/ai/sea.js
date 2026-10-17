@@ -35,7 +35,7 @@ const SeaAI = (() => {
   /* ================= WAILMER ================= */
   class WailmerM extends Swimmer {
     constructor(x) {
-      super(sp('Wailmer'), { kind: 'wailmer', dex: 'wailmer', x, y: SEA + 90, yaw: 0.6, z: 1.3, scale: 0.28, qPose: 0.06, qFields: { swim: 0.5, puff: 0.2, blow: 0.25, mouth: 0.25, roll: 0.25 }, persona: 'curious', speed: 30, box: { x0: 2050, x1: 3150, y0: SEA + 40, y1: SEA + 220 } });
+      super(sp('Wailmer'), { kind: 'wailmer', dex: 'wailmer', x, y: SEA + 90, yaw: 0.6, z: 1.3, scale: 0.28, qPose: 0.06, qFields: { swim: 0.5, puff: 0.2, blow: 0.25, mouth: 0.25, roll: 0.25 }, persona: 'curious', speed: 30, box: { x0: 2450, x1: 3550, y0: SEA + 40, y1: SEA + 220 } });
       this.swimTop = 16; this.senseR = 160;
     }
     animate(dt, t) { const P = { swim: t * 2 + this.seed, puff: 0.2, blow: 0, mouth: 0.3, eyes: this.blink(t, dt) ? 'blink' : 'open', roll: Math.sin(t * 0.7) * 0.2 }; Object.assign(P, this.o); this.pose = P; }
@@ -68,7 +68,7 @@ const SeaAI = (() => {
       this.mode = 'swim';
     }
     *leap() {
-      yield* this.swimTo(1980 + rnd(0, 120), SEA + 70, 70, 6);
+      yield* this.swimTo(2380 + rnd(0, 120), SEA + 70, 70, 6);
       this.mode = 'air';
       const x0 = this.x, s0 = surf(x0), y0 = this.y; let e = 0; const T = 1.8;
       Game.sfx('whale', this.x, 0.7);
@@ -130,7 +130,7 @@ const SeaAI = (() => {
   /* ================= RELICANTH ================= */
   class RelicanthM extends Swimmer {
     constructor() {
-      super(sp('Relicanth'), { kind: 'relicanth', dex: 'relicanth', x: 3000, y: 930, yaw: Math.PI - 0.6, z: 1.2, scale: 0.4, qPose: 0.06, qFields: { swim: 0.5, fins: 0.25, mouth: 0.25, tilt: 0.25 }, persona: 'calm', speed: 18, box: { x0: 2800, x1: 3120, y0: 800, y1: 935 } });
+      super(sp('Relicanth'), { kind: 'relicanth', dex: 'relicanth', x: 3400, y: 930, yaw: Math.PI - 0.6, z: 1.2, scale: 0.4, qPose: 0.06, qFields: { swim: 0.5, fins: 0.25, mouth: 0.25, tilt: 0.25 }, persona: 'calm', speed: 18, box: { x0: 3200, x1: 3520, y0: 800, y1: 935 } });
       this.swimTop = 30; this.swimBot = 4; this.senseR = 110; this.risen = false;
     }
     animate(dt, t) { const P = { swim: t * 1.4 + this.seed, fins: Math.sin(t * 1.2) * 0.5, mouth: 0, eyes: this.blink(t, dt) ? 'blink' : 'open', tilt: 0 }; Object.assign(P, this.o); this.pose = P; }
@@ -146,13 +146,13 @@ const SeaAI = (() => {
     *rise() {
       this.risen = true;
       HUD.toast('Something ancient stirs in the trench...', { life: 2.6 });
-      Game.cine.pan(2960, 780, { dur: 1.6, hold: 4, zoom: 1.1 });
-      yield* this.swimTo(2960, 760, 30, 10);
+      Game.cine.pan(3360, 780, { dur: 1.6, hold: 4, zoom: 1.1 });
+      yield* this.swimTo(3360, 760, 30, 10);
       yield* this.faceCam(0.5);
       let e = 0;
       while (e < 8) { const dt = yield; e += dt; this.o.mouth = Math.sin(e * 0.8) > 0.7 ? 0.6 : 0; this.o.fins = Math.sin(e * 2) * 0.8; this.setAct('ancient', 0.8 + 0.2 * Math.sin(e)); if (Math.random() < dt * 3) FX.bubbles(this.x + rnd(-20, 20), this.y - 20, 2, SEA); }
       Save.discover('relicanth.rose');
-      yield* this.swimTo(3000, 920, 20, 12);
+      yield* this.swimTo(3400, 920, 20, 12);
     }
     onPoke() { this.emote('note', 1); }
   }
@@ -173,7 +173,7 @@ const SeaAI = (() => {
   const dark = () => hourIs('night') || hourIs('dusk');
 
   /* ================= STARYU ================= */
-  const SHORE = { x0: 930, x1: 1070 }, SHALLOW = { x0: 1150, x1: 1380 }, POOL = { x0: 5000, x1: 5165 };
+  const SHORE = { x0: 1330, x1: 1470 }, SHALLOW = { x0: 1550, x1: 1780 }, POOL = { x0: 5740, x1: 5905 };
   class StaryuM extends Mons.Mon {
     constructor(x, home) {
       super(sp('Staryu'), { kind: 'staryu', dex: 'staryu', x, y: gy(x), yaw: Math.PI / 2, z: 1.8, scale: 0.36, qPose: 0.06, qFields: { spin: 0.2, glow: 0.2, bend: 0.25 }, persona: 'shy', mode: 'land' });
@@ -232,10 +232,10 @@ const SeaAI = (() => {
   }
 
   /* ================= TENTACOOL ================= */
-  const BEACHED_X = 1046;
+  const BEACHED_X = 1446;
   class TentacoolM extends Swimmer {
     constructor(x, y, beached = false) {
-      super(sp('Tentacool'), { kind: 'tentacool', dex: 'tentacool', x, y, yaw: Math.PI / 2 + rnd(-0.4, 0.4), z: 1.5, scale: 0.34, qPose: 0.06, qFields: { pulse: 0.5, gem: 0.25, drift: 0.2 }, persona: 'shy', speed: 20, box: { x0: 1450, x1: 2650, y0: SEA + 14, y1: SEA + 110 } });
+      super(sp('Tentacool'), { kind: 'tentacool', dex: 'tentacool', x, y, yaw: Math.PI / 2 + rnd(-0.4, 0.4), z: 1.5, scale: 0.34, qPose: 0.06, qFields: { pulse: 0.5, gem: 0.25, drift: 0.2 }, persona: 'shy', speed: 20, box: { x0: 1850, x1: 3050, y0: SEA + 14, y1: SEA + 110 } });
       this.swimTop = 8; this.pulseA = rnd(0, 6); this.beached = beached; this.wet = 0; this.senseR = 80;
       if (beached) { this.mode = 'land'; this.y = gy(x); }
     }
@@ -298,7 +298,7 @@ const SeaAI = (() => {
   }
 
   /* ================= CHINCHOU ================= */
-  const TRENCH = { x0: 2770, x1: 3130, y0: 800, y1: 935 };
+  const TRENCH = { x0: 3170, x1: 3530, y0: 800, y1: 935 };
   class ChinchouM extends Swimmer {
     constructor(x, y) {
       super(sp('Chinchou'), { kind: 'chinchou', dex: 'chinchou', x, y, yaw: Math.PI / 2 + rnd(-0.6, 0.6), z: 1.4, scale: 0.36, qPose: 0.06, qFields: { swim: 0.5, glow: 0.15, fins: 0.25, mouth: 0.25 }, persona: 'curious', speed: 30, box: TRENCH });
@@ -352,7 +352,7 @@ const SeaAI = (() => {
   }
 
   /* ================= CARVANHA ================= */
-  const REEF = { x0: 1440, x1: 1900, y0: SEA + 50, y1: SEA + 170 };
+  const REEF = { x0: 1840, x1: 2300, y0: SEA + 50, y1: SEA + 170 };
   class CarvanhaM extends Swimmer {
     constructor(i, x, y) {
       super(sp('Carvanha'), { kind: 'carvanha', dex: 'carvanha', x, y, yaw: 0.4, z: 1.5, scale: 0.34, qPose: 0.06, qFields: { swim: 0.5, bite: 0.25, fins: 0.25, lunge: 0.25 }, persona: 'grumpy', speed: 55, box: REEF });
@@ -443,23 +443,23 @@ const SeaAI = (() => {
   function spawn(A, G) {
     S = { leapReq: null, starSync: 0, carvanha: [], frenzy: false, escortSaid: false };
     const add = (m) => { if (m && m.sp) G.addMon(m); return m; };
-    if (sp('Wailmer')) { S.wailmer = [add(new WailmerM(2300)), add(new WailmerM(2800))]; }
-    if (sp('Clamperl')) { add(new ClamperlM(2250)); add(new ClamperlM(2430)); add(new ClamperlM(2690)); }
+    if (sp('Wailmer')) { S.wailmer = [add(new WailmerM(2700)), add(new WailmerM(3200))]; }
+    if (sp('Clamperl')) { add(new ClamperlM(2650)); add(new ClamperlM(2830)); add(new ClamperlM(3090)); }
     if (sp('Relicanth')) add(new RelicanthM());
-    if (sp('Staryu')) { add(new StaryuM(1200, 'shore')); add(new StaryuM(1270, 'shore')); add(new StaryuM(1340, 'shore')); add(new StaryuM(5070, 'pool')); }
+    if (sp('Staryu')) { add(new StaryuM(1600, 'shore')); add(new StaryuM(1670, 'shore')); add(new StaryuM(1740, 'shore')); add(new StaryuM(5810, 'pool')); }
     if (sp('Tentacool')) {
-      for (const [x, y] of [[1560, SEA + 40], [1720, SEA + 70], [2140, SEA + 30], [2480, SEA + 60]]) add(new TentacoolM(x, y));
+      for (const [x, y] of [[1960, SEA + 40], [2120, SEA + 70], [2540, SEA + 30], [2880, SEA + 60]]) add(new TentacoolM(x, y));
       if (!Save.found('tentacool.rescue')) add(new TentacoolM(BEACHED_X, gy(BEACHED_X), true));
     }
-    if (sp('Chinchou')) { add(new ChinchouM(2860, 880)); add(new ChinchouM(2960, 905)); add(new ChinchouM(3060, 870)); }
-    if (sp('Carvanha')) S.carvanha = [add(new CarvanhaM(0, 1650, SEA + 110)), add(new CarvanhaM(1, 1620, SEA + 100)), add(new CarvanhaM(2, 1600, SEA + 124))];
+    if (sp('Chinchou')) { add(new ChinchouM(3260, 880)); add(new ChinchouM(3360, 905)); add(new ChinchouM(3460, 870)); }
+    if (sp('Carvanha')) S.carvanha = [add(new CarvanhaM(0, 2050, SEA + 110)), add(new CarvanhaM(1, 2020, SEA + 100)), add(new CarvanhaM(2, 2000, SEA + 124))];
   }
   function update(A, dt, t, G) { S.starSync = Math.max(0, (S.starSync || 0) - dt); }
   // a song at the end of the dock in daylight: a Wailmer leaps. At night on the shore, the Staryu flash in time
   function song(x) {
     const m = Game.mudkip;
-    if (!hourIs('dusk', 'night') && m && m.plat && m.x > 1700 && S.wailmer && S.wailmer.length) { S.leapReq = pick(S.wailmer.filter(Boolean)); HUD.toast('A big splash is coming...', { life: 2 }); }
-    if (dark() && m && m.x > 700 && m.x < 1500 && Mons.all.some((q) => q.kind === 'staryu' && Math.abs(q.x - m.x) < 400)) {
+    if (!hourIs('dusk', 'night') && m && m.plat && m.x > 2100 && S.wailmer && S.wailmer.length) { S.leapReq = pick(S.wailmer.filter(Boolean)); HUD.toast('A big splash is coming...', { life: 2 }); }
+    if (dark() && m && m.x > 1100 && m.x < 1900 && Mons.all.some((q) => q.kind === 'staryu' && Math.abs(q.x - m.x) < 400)) {
       S.starSync = 12;
       if (Save.discover('staryu.stars')) HUD.toast('The Staryu flash in time with the music... the shore is full of stars!', { life: 3 });
     }

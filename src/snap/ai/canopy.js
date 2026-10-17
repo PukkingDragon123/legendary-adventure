@@ -30,22 +30,22 @@ const CanopyAI = (() => {
   /* ---------------- shared geometry (the area builds from this too) ---------------- */
   const DECK = 561;
   const GEO = {
-    W: 3400, DECK,
-    trunks: [{ x: 170, w: 44 }, { x: 820, w: 52 }, { x: 1500, w: 48 }, { x: 2150, w: 56 }, { x: 2830, w: 50 }, { x: 3290, w: 40 }],
+    W: 3760, DECK,
+    trunks: [{ x: 170, w: 44 }, { x: 920, w: 52 }, { x: 1740, w: 48 }, { x: 2390, w: 56 }, { x: 3070, w: 50 }, { x: 3650, w: 40 }],
     segs: [
       { k: 'deck', x0: 0, x1: 310 },
       { k: 'bridge', x0: 310, x1: 690, sag: 14 },
-      { k: 'deck', x0: 690, x1: 960 },
-      { k: 'bridge', x0: 960, x1: 1350, sag: 12 },
-      { k: 'deck', x0: 1350, x1: 1650 },
-      { k: 'branch', x0: 1650, x1: 2010, rise: 12 },
-      { k: 'deck', x0: 2010, x1: 2300 },
-      { k: 'bridge', x0: 2300, x1: 2660, sag: 16 },
-      { k: 'deck', x0: 2660, x1: 3400 },
+      { k: 'deck', x0: 690, x1: 1060 },
+      { k: 'bridge', x0: 1060, x1: 1450, sag: 12 },
+      { k: 'deck', x0: 1450, x1: 1890 },
+      { k: 'branch', x0: 1890, x1: 2250, rise: 12 },
+      { k: 'deck', x0: 2250, x1: 2540 },
+      { k: 'bridge', x0: 2540, x1: 2900, sag: 16 },
+      { k: 'deck', x0: 2900, x1: 3760 },
     ],
-    FEEDER: 905, CHIMES: [1385, 1430, 1590], NEST: [2188, 468], LEAVES: { x0: 2205, x1: 2290 },
-    STAGE: { x0: 2905, x1: 3010, x: 2958 }, LOOKOUT: { x0: 3140, x1: 3400, x: 3215 }, BASKET: 3085,
-    houses: [{ x: 88, w: 70, h: 48, y: null }, { x: 858, w: 64, h: 46, y: 432, ladder: 790 }, { x: 2075, w: 74, h: 50, y: null }, { x: 2118, w: 60, h: 44, y: 418, ladder: 2200 }, { x: 2745, w: 66, h: 46, y: null }],
+    FEEDER: 1005, CHIMES: [1485, 1530, 1830], NEST: [2428, 468], LEAVES: { x0: 2445, x1: 2530 },
+    STAGE: { x0: 3265, x1: 3370, x: 3318 }, LOOKOUT: { x0: 3500, x1: 3760, x: 3575 }, BASKET: 3445,
+    houses: [{ x: 88, w: 70, h: 48, y: null }, { x: 958, w: 64, h: 46, y: 432, ladder: 890 }, { x: 2315, w: 74, h: 50, y: null }, { x: 2358, w: 60, h: 44, y: 418, ladder: 2440 }, { x: 2985, w: 66, h: 46, y: null }],
   };
   // walk line: decks, sagging rope bridges and one great arching branch
   GEO.groundAt = (x) => {
@@ -61,13 +61,13 @@ const CanopyAI = (() => {
   GEO.segAt = (x) => GEO.segs.find((s) => x >= s.x0 && x <= s.x1) || GEO.segs[0];
   // where birds like to sit ([x, y] feet position)
   GEO.perches = [
-    [250, 543], [88, 495], [308, 538], [692, 538], [735, 543], [858, 373], [930, 543], [958, 538],
-    [1352, 538], [1640, 543], [1830, 548], [2040, 543], [2075, 493], [2118, 361], [2298, 538], [2662, 538],
-    [2700, 543], [2745, 497], [3140, 543], [3330, 543],
+    [250, 543], [88, 495], [308, 538], [692, 538], [735, 543], [958, 373], [1030, 543], [1058, 538],
+    [1452, 538], [1880, 543], [2070, 548], [2280, 543], [2315, 493], [2358, 361], [2538, 538], [2902, 538],
+    [2940, 543], [2985, 497], [3500, 543], [3690, 543],
   ];
   GEO.FEED_PERCH = [[GEO.FEEDER - 9, 519], [GEO.FEEDER + 9, 519], [GEO.FEEDER, 507]];
   GEO.STAGE_PERCH = [[GEO.STAGE.x, 494], [GEO.STAGE.x0 + 8, 550], [GEO.STAGE.x1 - 6, 550]];
-  GEO.LOOK_PERCH = [[GEO.LOOKOUT.x, 473], [3180, 537], [3250, 537], [3300, 543]];
+  GEO.LOOK_PERCH = [[GEO.LOOKOUT.x, 473], [3540, 537], [3610, 537], [3660, 543]];
   GEO.CHIME_TOP = (i) => [GEO.CHIMES[i] + 13, DECK - 44];
   const CHIME_ORDER = [0, 2, 1];
 
@@ -241,7 +241,7 @@ const CanopyAI = (() => {
         const r = Math.random();
         if (r < 0.45) { this.mode = 'fly'; this.perchAt = null; yield* this.flyTo(clamp(this.x + rnd(-600, 600), 150, GEO.W - 150), rnd(300, 430), this.speed, { act: 'fly', agile: 0.8 }); }
         else if (r < 0.7) yield* this.circle(clamp(mk().x + rnd(-200, 200), 200, GEO.W - 200), rnd(360, 420), rnd(90, 150), rnd(5, 9), 'fly');
-        else { yield* this.land(freePerch(this, mk().x, [GEO.LOOK_PERCH[0], [858, 373], [2118, 361], [88, 495], [2075, 493], [2745, 497]]), 40); yield* hold(this, rnd(4, 8), 'fly', 0.4); }
+        else { yield* this.land(freePerch(this, mk().x, [GEO.LOOK_PERCH[0], [958, 373], [2358, 361], [88, 495], [2315, 493], [2985, 497]]), 40); yield* hold(this, rnd(4, 8), 'fly', 0.4); }
       }
     }
     update(dt, t) { super.update(dt, t); this.stay -= dt; }
@@ -290,14 +290,14 @@ const CanopyAI = (() => {
       yield* wait(rnd(0.3, 1.5));
       for (;;) {
         this.abort = false;
-        if (this.mode !== 'perch') { yield* this.land(freePerch(this, GEO.STAGE.x, [...GEO.STAGE_PERCH, [2700, 543], [2745, 497], [3140, 543]])); continue; }
+        if (this.mode !== 'perch') { yield* this.land(freePerch(this, GEO.STAGE.x, [...GEO.STAGE_PERCH, [2940, 543], [2985, 497], [3500, 543]])); continue; }
         const r = Math.random();
         if (r < 0.4) yield* this.chatter(rnd(2.5, 5));
         else if (r < 0.8) yield* this.beat(rnd(4, 7));
         else yield* this.hop2();
       }
     }
-    *hop2() { yield* this.takeOff(-30); yield* this.land(freePerch(this, GEO.STAGE.x + rnd(-150, 150), [...GEO.STAGE_PERCH, [2700, 543], [2745, 497], [3140, 543], [2662, 538]])); }
+    *hop2() { yield* this.takeOff(-30); yield* this.land(freePerch(this, GEO.STAGE.x + rnd(-150, 150), [...GEO.STAGE_PERCH, [2940, 543], [2985, 497], [3500, 543], [2902, 538]])); }
     *chatter(T) {
       let e = 0, k = 0;
       let bill = 0;
@@ -554,7 +554,7 @@ const CanopyAI = (() => {
   /* ================= TROPIUS (a visitor) ================= */
   class TropiusM extends Walker {
     constructor(x) {
-      super(sp('Tropius'), { kind: 'tropius', dex: 'tropius', x, y: 200, yaw: Math.PI - 0.95, z: 1.2, scale: 0.24, qPose: 0.05, qFields: { step: 0.5, flap: 0.25, neck: 0.2, mouth: 0.25, look: 0.25 }, persona: 'calm', speed: 24, minX: 2690, maxX: 3120 });
+      super(sp('Tropius'), { kind: 'tropius', dex: 'tropius', x, y: 200, yaw: Math.PI - 0.95, z: 1.2, scale: 0.24, qPose: 0.05, qFields: { step: 0.5, flap: 0.25, neck: 0.2, mouth: 0.25, look: 0.25 }, persona: 'calm', speed: 24, minX: 2930, maxX: 3480 });
       this.stepPh = 0; this.senseR = 140; this.zd = -3; this.smell = 500; this.mode = 'air'; this.stay = rnd(45, 70); this.shared = false;
     }
     animate(dt, t) {
@@ -577,7 +577,7 @@ const CanopyAI = (() => {
       }
     }
     *arrive() {
-      const x1 = 2760, x0 = x1 + 520;
+      const x1 = 3000, x0 = x1 + 520;
       let e = 0; const T = 6;
       Game.sfx('whoosh', x1, 0.6);
       while (e < T) { const dt = yield; e += dt; const k = U.ease ? U.ease.inOut(Math.min(1, e / T)) : e / T; this.x = lerp(x0, x1, k); this.y = gy(this.x) - (1 - k) * 170 - Math.sin(e * 3.5) * 2 * (1 - k); this.o.flap = Math.sin(e * 6.5); this.o.neck = 0.4; this.turn(this.face(-1, true), dt, 3); this.setAct('fly', k > 0.2 && k < 0.8 ? 1 : 0.6); if (Math.random() < dt * 3) leafFall(this.x, this.y - 30, 1); }
@@ -635,11 +635,11 @@ const CanopyAI = (() => {
     S = S0; A0 = A; G0 = G;
     Object.assign(S, { stillT: 0, lastHum: -99, humX: -999, duetT: -99, hinted: false, seq: [], chimeT: -9, gust: 0, feeder: { full: false, phase: 'empty', t: 0, scared: false, robber: null }, choir: null, show: 0, music: 0, altaria: null, tropius: null, tropT: rnd(25, 45), tropSeen: false, basketT: -99, lookHint: false, flash: 0 });
     const add = (m) => { if (m && m.sp) G.addMon(m); return m; };
-    if (sp('Swablu')) [[250, 543], [858, 373], [2040, 543], [1640, 543]].forEach((p, i) => add(new SwabluM(i, GEO.perches.find((q) => q[0] === p[0] && q[1] === p[1]) || p)));
+    if (sp('Swablu')) [[250, 543], [958, 373], [2280, 543], [1880, 543]].forEach((p, i) => add(new SwabluM(i, GEO.perches.find((q) => q[0] === p[0] && q[1] === p[1]) || p)));
     if (sp('Chatot')) add(new ChatotM(GEO.STAGE_PERCH[0]));
     if (sp('Taillow')) { add(new TaillowM(0, GEO.NEST)); add(new TaillowM(1, GEO.perches[8])); }
     if (sp('Kecleon')) add(new KecleonM((GEO.LEAVES.x0 + GEO.LEAVES.x1) / 2));
-    if (sp('Altaria') && (chance(0.3) || hourIs('dusk'))) S.altaria = add(new AltariaM(rnd(600, 2800), rnd(330, 400)));
+    if (sp('Altaria') && (chance(0.3) || hourIs('dusk'))) S.altaria = add(new AltariaM(rnd(600, 3040), rnd(330, 400)));
   }
   function callAltaria(x, why) {
     if (!sp('Altaria')) return null;
@@ -655,7 +655,7 @@ const CanopyAI = (() => {
     if (m && m.mode === 'land' && !m.target && Math.abs(m.vx || 0) < 2 && !(m.air > 0)) S.stillT += dt; else S.stillT = 0;
     S.music = Math.max(0, S.music - dt);
     // Tropius drops by in daylight now and then
-    if (sp('Tropius') && !S.tropius && !hourIs('night', 'dusk')) { S.tropT -= dt; if (S.tropT <= 0) { S.tropT = rnd(90, 140); const tr = S.tropius = G.addMon(new TropiusM(3200)); tr.doTask(tr.arrive(), 5); } }
+    if (sp('Tropius') && !S.tropius && !hourIs('night', 'dusk')) { S.tropT -= dt; if (S.tropT <= 0) { S.tropT = rnd(90, 140); const tr = S.tropius = G.addMon(new TropiusM(3560)); tr.doTask(tr.arrive(), 5); } }
     // the feeder: a hung berry draws a thief first
     const F = S.feeder;
     if (F.full) {
@@ -743,7 +743,7 @@ const CanopyAI = (() => {
       S.show = 1;
       const ch = Mons.all.find((q) => q.kind === 'chatot' && q.alive);
       if (ch) { ch.abort = true; ch.doTask(ch.perform(), 5); }
-      const aud = [[2700, 543], [2745, 497], [3140, 543], [2662, 538]];
+      const aud = [[2940, 543], [2985, 497], [3500, 543], [2902, 538]];
       Mons.all.filter((q) => q.kind === 'swablu' && q.alive).sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x)).slice(0, 3).forEach((s, i) => { s.sleeping = false; s.doTask(s.sitAndSing(aud[i] || GEO.STAGE_PERCH[1 + (i % 2)], 12, i === 0 ? 'hum' : 'perch', Math.max(90, Math.abs(s.x - x) / 5)), 4); });
       if (Save.discover('canopy.stage')) HUD.toast('Chatot takes the stage — and the birds gather to listen!', { life: 3 });
       else HUD.toast('An encore on the treetop stage!', { life: 2 });

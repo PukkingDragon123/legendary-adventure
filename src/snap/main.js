@@ -51,7 +51,8 @@ const Game = (() => {
     occ = new Uint8Array(G.VW * G.VH); idb = new Uint16Array(G.VW * G.VH); rawb = new Uint32Array(G.VW * G.VH);
     Stage.S.occ = occ; Stage.S.idb = idb; Stage.S.rawb = rawb;
     // UI canvas: its own integer scale so the device art stays crisp
-    US = Math.max(2, Math.round(devH / 340));
+    // (and at least 2 CSS px per UI pixel, so the pixel text stays readable on 2-3x phone screens)
+    US = Math.max(2, Math.round(devH / 340), Math.min(Math.round(dpr * 2), Math.floor(devH / 190)));
     if (devW / US < 360) US = Math.max(1, Math.floor(devW / 360));
     G.UW = Math.ceil(devW / US); G.UH = Math.ceil(devH / US); G.US = US;
     ui.width = G.UW; ui.height = G.UH;
@@ -201,6 +202,7 @@ const Game = (() => {
   }
   function updateCamera(dt) {
     const c = G.cam, mk = G.mudkip;
+    G.camFollow = false;
     if (!mk) return;
     if (G.mode === 'camera') { G.cine.shot = null; G.cine.zGoal = 1; applyCineZoom(dt); Photo.updateCam(dt); return; }
     // a game or cutscene framing a spot in the world
@@ -214,27 +216,84 @@ const Game = (() => {
     // just out of a battle / cutscene: a smooth glide back to Mudkip
     if (G.camBack > 0) { G.camBack -= dt; c.lookX *= Math.exp(-dt * 6); c.lookY *= Math.exp(-dt * 6); if (G.camF) { G.camF.x *= Math.exp(-dt * 6); G.camF.y *= Math.exp(-dt * 6); } }
     applyCineZoom(dt);
-    const lead = mk.moving ? Math.cos(mk.yaw) * (36 + clamp((Math.abs(mk.vx || 0) - 90) / 40, 0, 1) * 34) : 0;
-    // cinematic framing: lean toward a rare moment happening nearby, drift gently when idle
+    G.camFollow = true;
+    // ---- follow state: measured velocity, look-ahead and a vertical "platform" anchor ----
+    const S = G.camS && G.camS.mk === mk ? G.camS : (G.camS = { mk, px: mk.x, py: mk.y, vx: 0, lead: 0, fy: mk.y, ky: 0 });
+    const c0x = c.x, c0y = c.y, dmx = mk.x - S.px, dmy = mk.y - S.py; S.py = mk.y;
+    let vm = dt > 0 ? (mk.x - S.px) / dt : 0;
+    if (Math.abs(mk.x - S.px) > 40) vm = 0; // a teleport (warp, ride, cutscene) is not motion
+    S.px = mk.x;
+    S.vx += (clamp(vm, -420, 420) - S.vx) * (1 - Math.exp(-dt * 8));
+    const vmy = dt > 0 && Math.abs(dmy) < 40 ? dmy / dt : 0;
+    S.vy = (S.vy || 0) + (clamp(vmy, -700, 700) - (S.vy || 0)) * (1 - Math.exp(-dt * 8));
+    // look-ahead: leads the way in the direction of travel (more when running), settles to a small
+    // lead in the facing direction when Mudkip stops, so the camera never snaps back and forth
+    const spd = Math.abs(S.vx), dir = spd > 18 ? Math.sign(S.vx) : (Math.cos(mk.yaw) >= 0 ? 1 : -1);
+    const leadGoal = dir * (spd > 18 ? G.VW * (0.07 + 0.08 * clamp(spd / 120, 0, 1.4)) : G.VW * 0.04);
+    S.lead += (leadGoal - S.lead) * (1 - Math.exp(-dt * (spd > 18 ? 1.5 : 0.7)));
+    // vertical dead zone: hops and jumps do not drag the camera up and down; it re-frames on landing,
+    // follows big climbs/falls, and tracks freely underwater
+    const airborne = (mk.mode === 'land' && (mk.air || 0) > 0) || mk.mode === 'fall';
+    let trackY = true;
+    if (!airborne || mk.inWater) S.fy = mk.y;
+    else {
+      const top = G.VH * 0.3;
+      if (mk.y > S.fy) S.fy = mk.y; // falling below the take-off line: follow down
+      else if (mk.y < S.fy - top) S.fy = mk.y + top; // way up high (a Wailmer bounce): follow up
+      else trackY = false;
+    }
+    // cinematic framing: lean toward a rare moment happening nearby, and toward an interesting
+    // Pokémon Mudkip is standing next to; drift gently when idle
     let fx = 0, fy = 0;
-    let best = null, bd = 260;
+    let best = null, bd = 260, near = null, nd = 120;
     for (const m of G.mons) {
-      if (m === mk || !m.alive || !m.visible || m.peak < 0.75 || m.hideK > 0.5) continue;
-      const d = DexData.S[m.dex], tier = d && d.beh[m.act.id] ? d.beh[m.act.id].tier : 1;
-      if (tier < 3) continue;
+      if (m === mk || !m.alive || !m.visible || m.hideK > 0.5 || m.layer) continue;
       const dd = Math.hypot(m.x - mk.x, m.y - mk.y);
-      if (dd < bd) { bd = dd; best = m; }
+      if (m.peak >= 0.75) {
+        const d = DexData.S[m.dex], tier = d && d.beh[m.act.id] ? d.beh[m.act.id].tier : 1;
+        if (tier >= 3 && dd < bd) { bd = dd; best = m; }
+      }
+      if (dd < nd && (m.peak > 0.3 || m.aware > 0.4)) { nd = dd; near = m; }
     }
     if (best) { fx = (best.x - mk.x) * 0.4; fy = (best.y - 20 - mk.y) * 0.3; }
+    else if (near && spd < 30) { fx = (near.x - mk.x) * 0.3 - S.lead * 0.6; fy = Math.min(0, (near.y - 16 - mk.y) * 0.25); }
+    else if (spd < 30 && G.area.hot) {
+      // standing by something you can use (a sign, a chest, a door): ease it into the frame
+      let hb = null, hd = 80;
+      for (const h of G.area.hot) { if (h.off || !h.tap) continue; const hx = h.x ?? (h.x0 + h.x1) / 2, d = Math.abs(hx - mk.x); if (d < hd && d > 10) { hd = d; hb = hx; } }
+      if (hb !== null) fx = (hb - mk.x) * 0.3 - S.lead * 0.5;
+    }
     if ((mk.idleT || 0) > 4) { fx += Math.sin(G.rt * 0.25) * 14; fy += Math.sin(G.rt * 0.19) * 6; }
     G.camF = G.camF || { x: 0, y: 0 };
     const kf = 1 - Math.exp(-dt * 1.2);
     G.camF.x += (fx - G.camF.x) * kf; G.camF.y += (fy - G.camF.y) * kf;
-    const tx = mk.x - G.VW * 0.5 + lead + c.lookX + G.camF.x, ty = mk.y - G.VH * (mk.inWater ? 0.5 : (G.area.frameY ?? 0.76)) + c.lookY + G.camF.y;
-    const k = 1 - Math.exp(-dt * 3.2);
-    c.x += (tx - c.x) * k; c.y += (ty - c.y) * k;
+    // ease the framing change at the waterline (a leap out of the sea keeps the underwater framing)
+    S.ky += ((mk.inWater ? 1 : mk.mode === 'fall' ? S.ky : 0) - S.ky) * (1 - Math.exp(-dt * 2));
+    const fr = lerp(G.area.frameY ?? 0.76, 0.5, S.ky);
+    const tx = mk.x - G.VW * 0.5 + S.lead + c.lookX + G.camF.x, ty = S.fy - G.VH * fr + c.lookY + G.camF.y;
+    // critically-damped style follow with velocity feed-forward (no lag while running, no jitter)
+    const k = 1 - Math.exp(-dt * 4), ky = 1 - Math.exp(-dt * (airborne ? 3.2 : 4.5));
+    c.x += (tx - c.x) * k + S.vx * dt * 0.8 * (1 - k);
+    c.y += (ty - c.y) * ky + (trackY && Math.abs(S.vy) > 120 ? S.vy * dt * 0.75 * (1 - ky) : 0); // keep up with long falls
     if (!drag) { c.lookX *= Math.exp(-dt * 1.2); c.lookY *= Math.exp(-dt * 1.2); }
     clampCam();
+    // pixel-lock to Mudkip on an axis only while the camera is tracking Mudkip's motion on it
+    const dcx = c.x - c0x, dcy = c.y - c0y;
+    S.snapX = Math.abs(dmx) > 0.02 && Math.abs(dmx) < 40 && dcx * dmx > 0 && Math.abs(dcx) > Math.abs(dmx) * 0.3;
+    S.snapY = Math.abs(dmy) > 0.02 && Math.abs(dmy) < 40 && dcy * dmy > 0 && Math.abs(dcy) > Math.abs(dmy) * 0.3;
+  }
+  // impact feel: a short hit-pause (the world freezes for a few frames), a directional camera kick
+  // and a tiny buzz on phones
+  G.stopT = 0; G.kickV = { x: 0, y: 0, vx: 0, vy: 0 };
+  G.hitStop = (s) => { if (!calm) G.stopT = Math.min(0.14, Math.max(G.stopT, s)); };
+  G.kick = (dx, dy) => { if (calm) return; G.kickV.vx += dx * 30; G.kickV.vy += dy * 30; };
+  G.buzz = (ms) => { try { if (typeof Pad !== 'undefined' && Pad.touch && navigator.vibrate && !G.noBuzz) navigator.vibrate(ms); } catch (e) { /* not supported */ } };
+  function stepKick(dt) {
+    const K = G.kickV;
+    K.vx += (-260 * K.x - 18 * K.vx) * dt; K.vy += (-260 * K.y - 18 * K.vy) * dt;
+    K.x += K.vx * dt; K.y += K.vy * dt;
+    if (Math.abs(K.x) < 0.05 && Math.abs(K.vx) < 0.5) { K.x = 0; K.vx = 0; }
+    if (Math.abs(K.y) < 0.05 && Math.abs(K.vy) < 0.5) { K.y = 0; K.vy = 0; }
   }
   const SCREEN = () => ({ rhythm: typeof Rhythm !== 'undefined' ? Rhythm : null, bag: typeof Bag !== 'undefined' ? Bag : null, style: typeof Style !== 'undefined' ? Style : null, memory: typeof Memories !== 'undefined' ? Memories : null })[G.mode] || null;
   G.frozenMode = () => G.mode === 'dex' || G.mode === 'map' || G.mode === 'bag' || G.mode === 'style' || G.mode === 'memory' || G.mode === 'rhythm';
@@ -250,6 +309,9 @@ const Game = (() => {
     if (typeof Memories !== 'undefined' && Memories.queue.length && G.mode === 'explore') Memories.update(0);
     // the move wheel slows time right down while you choose
     if (typeof Moves !== 'undefined' && Moves.wheel) dt *= 0.2;
+    // hit-pause: the world all but freezes for a few frames on a big impact
+    const rdt = dt;
+    if (G.stopT > 0) { G.stopT -= dt; dt *= 0.06; }
     G.t += dt;
     const t = G.t;
     G.hourT += dt; if (G.hourT > G.HOUR_LEN) G.nextHour();
@@ -271,7 +333,8 @@ const Game = (() => {
     if (G.area.def.update) G.area.def.update(G.area, dt, t, G);
     FX.update(dt);
     updateCamera(dt);
-    G.shakeA = Math.max(0, G.shakeA - dt * 6);
+    G.shakeA = Math.max(0, G.shakeA * Math.exp(-rdt * 2.5) - rdt * 5);
+    stepKick(rdt);
     Photo.update(dt, t);
     HUD.update(dt);
     Music.update(dt);
@@ -357,8 +420,18 @@ const Game = (() => {
   G.hdFrame = (cx, cy) => { if (!G.hd) return null; pre.set(fb.d); composeHD(cx, cy); return { d: hb, w: fb.w * 2, h: fb.h * 2 }; };
   function render() {
     if (G.area) {
-      const sh = G.shakeA > 0 ? G.shakeA : 0;
-      const cx = Math.round(G.cam.x + (sh ? (Math.random() - 0.5) * sh * 2 : 0)), cy = Math.round(G.cam.y + (sh ? (Math.random() - 0.5) * sh * 2 : 0));
+      // shake: smooth layered noise (no white-noise flicker) plus the spring-back of camera kicks
+      const sh = G.shakeA > 0 ? G.shakeA : 0, T = G.rt;
+      const ox = (sh ? sh * (Math.sin(T * 61.3) * 0.55 + Math.sin(T * 97.1 + 1.7) * 0.35 + Math.sin(T * 23.9 + 4.1) * 0.25) : 0) + G.kickV.x;
+      const oy = (sh ? sh * (Math.sin(T * 71.9 + 0.6) * 0.55 + Math.sin(T * 89.3 + 2.9) * 0.35 + Math.sin(T * 31.7 + 5.3) * 0.25) : 0) + G.kickV.y;
+      let cx = Math.round(G.cam.x + ox), cy = Math.round(G.cam.y + oy);
+      // pixel-lock the follow camera to Mudkip: round the camera *relative* to Mudkip, so Mudkip's
+      // on-screen position changes only when the framing does (no 1-pixel shimmer while running)
+      const mk = G.mudkip;
+      if (G.camFollow && mk && G.camS && !sh && !G.kickV.x && !G.kickV.y) {
+        if (G.camS.snapX) cx = Math.round(mk.x) - Math.round(mk.x - G.cam.x);
+        if (G.camS.snapY) cy = Math.round(mk.y) - Math.round(mk.y - G.cam.y);
+      }
       G.cx = cx; G.cy = cy;
       if (!G.frozenMode() || !G.frozenFrame) {
         drawWorld(cx, cy, G.t);

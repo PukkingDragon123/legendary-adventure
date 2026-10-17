@@ -23,6 +23,19 @@ const Photo = (() => {
     Game.mode = 'camera';
     P.on = true; P.anim = 0; P.zoom = Math.max(1, P.zoom); P.zs = 1;
     P.aim.x = Game.cam.x + Game.VW / 2 + Math.cos(mk.yaw) * 30; P.aim.y = Game.cam.y + Game.VH / 2;
+    // framing assist: start pointed at the most photogenic Pokémon in view (busy doing something
+    // special, close by, in the direction Mudkip faces)
+    let best = null, bs = 0;
+    for (const m of Game.mons) {
+      if (m === mk || !m.alive || !m.visible || !m.spr || m.hideK > 0.6 || m.layer === 'far') continue;
+      const sx = m.x - Game.cam.x, sy = m.y - 10 - Game.cam.y;
+      if (sx < 8 || sx > Game.VW - 8 || sy < 8 || sy > Game.VH + 6) continue;
+      const d = DexData.S[m.dex], tier = d && d.beh[m.act.id] ? d.beh[m.act.id].tier : 1;
+      const ahead = (m.x - mk.x) * Math.cos(mk.yaw) > 0 ? 1.3 : 1;
+      const sc = (1 + tier + m.peak * 2) * ahead / (1 + Math.hypot(m.x - mk.x, m.y - mk.y) / 120);
+      if (sc > bs) { bs = sc; best = m; }
+    }
+    if (best) { const [bx, by] = best.center ? best.center() : [best.x, best.y - 10]; P.aim.x = lerp(P.aim.x, bx, 0.75); P.aim.y = lerp(P.aim.y, by, 0.6); clampAim(); }
     P.focus = null; P.focusK = 0; P.focusT = 0.2;
     HUD.armed = null;
     Game.sfx('hinge'); setTimeout(() => Game.sfx('boot', null, 0.6), 120);
@@ -57,6 +70,18 @@ const Photo = (() => {
   }
   function updateCam(dt) {
     if (P.keyV.x || P.keyV.y) { P.aim.x += P.keyV.x * dt * 160 / P.zs; P.aim.y += P.keyV.y * dt * 160 / P.zs; clampAim(); P.lastAimT = Game.rt; }
+    // framing assist: once you stop aiming, the viewfinder gently keeps the focused Pokémon in the
+    // frame (a locked subject is tracked; an auto-focused one is only nudged back when it drifts out)
+    const f = P.focus;
+    if (f && f.alive && f.spr && !dragAim && Game.rt - P.lastAimT > 0.45 && P.focusK > 0) {
+      const [fx, fy] = f.center ? f.center() : [f.x, f.y - 10];
+      const lock = P.focusMode === 'lock', hw = Game.VW / (2 * P.zs), hh = Game.VH / (2 * P.zs);
+      const zx = hw * (lock ? 0.15 : 0.5), zy = hh * (lock ? 0.15 : 0.45);
+      const ex = fx - P.aim.x, ey = fy - P.aim.y;
+      const ox = Math.abs(ex) > zx ? ex - Math.sign(ex) * zx : 0, oy = Math.abs(ey) > zy ? ey - Math.sign(ey) * zy : 0;
+      const k = 1 - Math.exp(-dt * (lock ? 4 : 2.2));
+      if (ox || oy) { P.aim.x += ox * k; P.aim.y += oy * k; clampAim(); }
+    }
     // keep a locked subject framed gently
     const c = Game.cam;
     const tx = P.aim.x - Game.VW / 2, ty = P.aim.y - Game.VH / 2;
@@ -106,8 +131,10 @@ const Photo = (() => {
     // smooth optical zoom (applied as a CSS scale of the world canvas: pixels grow like a real zoom)
     const zs0 = P.zs;
     P.zs = lerp(P.zs, P.on ? P.zoom : 1, 1 - Math.exp(-dt * 12));
+    if (P.punch > 0) P.punch = Math.max(0, P.punch - dt * 6);
+    const pk = P.on && P.punch > 0 ? 1 + 0.03 * Math.sin(P.punch * Math.PI) : 1;
     if (P.on) P.anim = Math.min(1, P.anim + dt * 4);
-    if (Math.abs(P.zs - zs0) > 0.0005 || P.on) { const c = cv(); c.style.transition = 'none'; c.style.transformOrigin = '50% 50%'; c.style.transform = `scale(${P.zs.toFixed(4)})`; }
+    if (Math.abs(P.zs - zs0) > 0.0005 || P.on) { const c = cv(); c.style.transition = 'none'; c.style.transformOrigin = '50% 50%'; c.style.transform = `scale(${(P.zs * pk).toFixed(4)})`; }
     // lens effects decay
     const L = P.lens;
     for (const d of L.wet) { d.y += d.v * dt; d.life -= dt; }
@@ -130,6 +157,30 @@ const Photo = (() => {
     }
     if (P.focusT > 0) { P.focusT -= dt; if (P.focusT <= 0) P.focusK = 0.01; }
     if (P.focusK > 0 && P.focusK < 1) { P.focusK = Math.min(1, P.focusK + dt * 4.5); if (P.focusK >= 1 && (P.focus || P.focusPt)) Game.sfx('focus'); }
+    // a live coaching tip about the shot in the viewfinder, and a "now!" cue at a Pokémon's peak moment
+    P.tipT = (P.tipT || 0) - dt;
+    if (P.tipT <= 0) { P.tipT = 0.25; P.tip = coach(); }
+    const fo = P.focus, pkv = fo && P.focusK >= 1 && fo.alive ? fo.peak : 0;
+    if (pkv > 0.8 && !P.peakOn) { P.peakOn = true; P.peakT = 1; Game.sfx('blip', null, 0.35); }
+    else if (pkv < 0.6) P.peakOn = false;
+    P.peakT = Math.max(0, (P.peakT || 0) - dt * 1.6);
+  }
+  // what would make this shot better? (cheap: uses the focused Pokémon's box, no test render)
+  function coach() {
+    const f = P.focus;
+    if (!f || !f.alive || !f.spr) return { t: P.focusMode === 'point' ? '' : 'Aim at a Pokémon', c: 0xc0ffffff };
+    if (P.focusK < 1) return { t: 'Focusing...', c: 0xffffe066 };
+    const b = f.bounds(), w = (b.x1 - b.x0) * P.zs, h = (b.y1 - b.y0) * P.zs;
+    const area = (w * h) / (Game.VW * Game.VH), cx = ((b.x0 + b.x1) / 2 - P.aim.x) * P.zs / Game.VW, cy = ((b.y0 + b.y1) / 2 - P.aim.y) * P.zs / Game.VH;
+    const d = DexData.S[f.dex], beh = d && d.beh[f.act.id], tier = beh ? beh.tier : 1;
+    if (f.peak > 0.8 && tier >= 2) return { t: 'NOW! ' + (beh ? beh.n : 'Great moment') + '!', c: 0xff5aff7a, good: true };
+    if (area < 0.035) return { t: 'Too small: get closer or zoom in', c: 0xffffffff };
+    if (area > 0.55) return { t: 'Too close: zoom out a little', c: 0xffffffff };
+    if (Math.hypot(cx, cy) > 0.32) return { t: 'Frame it nearer the middle', c: 0xffffffff };
+    if ((f.facing ? f.facing() : 0.5) < 0.2) return { t: 'It is looking away... wait for it', c: 0xffffffff };
+    if (tier >= 3) return { t: 'Rare behaviour! Snap it!', c: 0xff5aff7a, good: true };
+    if (f.peak > 0.5) return { t: 'Good moment!', c: 0xff5aff7a, good: true };
+    return { t: 'Nice framing. Wait for an action, or hold to capture', c: 0xffd8f0ff };
   }
   // depth of field for this frame: blur radii for the background and the foreground layer
   function dof() {
@@ -142,10 +193,16 @@ const Photo = (() => {
   }
 
   /* ---------- the shutter ---------- */
+  // the shutter's feel: a crisp ka-chunk, a flash, the frame kicks in a hair and the world holds
+  // still for a heartbeat (and a tiny buzz on phones)
+  function clickFeel() {
+    if (SFX.shutterBig) Game.sfx('shutterBig'); else Game.sfx('shutter');
+    P.punch = 1; Game.hitStop && Game.hitStop(0.05); Game.buzz && Game.buzz(18);
+  }
   function shoot() {
     if (!P.on || P.cool > 0) return;
     P.cool = 0.45; P.flash = 1; P.shots++;
-    Game.sfx('shutter'); if (Game.mudkip && Game.mudkip.snapPose) Game.mudkip.snapPose();
+    clickFeel(); if (Game.mudkip && Game.mudkip.snapPose) Game.mudkip.snapPose();
     for (const m of Mons.all) if (m !== Game.mudkip) m.hear('shutter', m.x, 0.5);
     const res = evaluate();
     register(res);
@@ -275,7 +332,7 @@ const Photo = (() => {
   function finishHold(H) {
     const res = H.best;
     P.cool = 0.6; P.flash = 1; P.shots++;
-    Game.sfx('shutter'); if (Game.mudkip && Game.mudkip.snapPose) Game.mudkip.snapPose();
+    clickFeel(); if (Game.mudkip && Game.mudkip.snapPose) Game.mudkip.snapPose();
     for (const m of Mons.all) if (m !== Game.mudkip) m.hear('shutter', m.x, 0.5);
     if (res.buf && !res.img) res.img = bufURL(res.buf);
     res.held = true;
@@ -411,9 +468,9 @@ const Photo = (() => {
       const [ax, ay] = toUI(b.x0, b.y0), [bx, by] = toUI(b.x1, b.y1);
       fx = (ax + bx) / 2; fy = (ay + by) / 2; fw = Math.max(18, bx - ax + 6); fh = Math.max(16, by - ay + 6);
     } else if (P.focusPt) { const [ax, ay] = toUI(P.focusPt.x, P.focusPt.y); if (P.focusMode === 'point') { fx = ax; fy = ay; fw = 26; fh = 22; } }
-    const grow = (1 - Math.min(1, P.focusK)) * 14;
+    const grow = (1 - Math.min(1, P.focusK)) * 14 + (P.peakT || 0) * 8;
     fw += grow; fh += grow;
-    const col = fk ? 0xff5aff7a : P.focusK > 0 ? 0xffffe066 : 0xffffffff;
+    const col = P.peakT > 0 && Math.sin(t * 28) > 0 ? 0xffffffff : fk ? 0xff5aff7a : P.focusK > 0 ? 0xffffe066 : 0xffffffff;
     const bl = 6;
     for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
       const cx = Math.round(fx + (sx * fw) / 2), cy = Math.round(fy + (sy * fh) / 2);
@@ -460,7 +517,11 @@ const Photo = (() => {
       Font.draw(fb, 'CAPTURING  ' + secs, (x0 + x1) / 2, y0 + 6, Math.sin(t * 10) > 0 ? 0xff4a4aff : 0xffffffff, { font: 'small', align: 'center', outline: 0xff0a0e1a });
       if (H.best && H.best.species) Font.draw(fb, 'best so far: ' + (DexData.S[H.best.species] ? DexData.S[H.best.species].name : '') + '  ' + (H.best.rating ? H.best.rating.grade : ''), (x0 + x1) / 2, y0 + 16, 0xffffffff, { font: 'small', align: 'center', outline: 0xff0a0e1a });
       if (H.newBest > 0) { const q = Math.round(H.newBest * 20); for (const [sx, sy] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]]) UI.ring(fb, sx, sy, 6 + q, 0xff5aff7a, 1); }
-    } else if (!P.card) Font.draw(fb, 'tap: snap   hold: capture the moment', (x0 + x1) / 2, y1 - 10, 0xc0ffffff, { font: 'small', align: 'center', outline: 0xff0a0e1a });
+    } else if (!P.card) {
+      Font.draw(fb, 'tap: snap   hold: capture the moment', (x0 + x1) / 2, y1 - 10, 0xc0ffffff, { font: 'small', align: 'center', outline: 0xff0a0e1a });
+      // live coaching: what would make this a better photo right now
+      if (P.tip && P.tip.t) Font.draw(fb, P.tip.t, (x0 + x1) / 2, y1 - 21 - (P.tip.good ? Math.round(Math.abs(Math.sin(t * 8)) * 2) : 0), P.tip.c, { font: 'small', align: 'center', outline: 0xff0a0e1a });
+    }
     // close + grid toggles (top-left of frame)
     const cb = HUD.pressed('camx') ? 1 : 0;
     UI.panel(fb, 4, H - 22 - cb * 0, 20, 18, { r: 3, ol: S.ink, fill: S.btn });
@@ -477,7 +538,7 @@ const Photo = (() => {
     // recent shot polaroid
     drawRecent(fb, t, x0 + 4, y1 - 4);
     // awareness hint: the focused Pokémon noticed you
-    if (P.focus && P.focus.aware > 0.55 && fk) Font.draw(fb, P.focus.persona === 'shy' ? 'It looks nervous...' : P.focus.persona === 'grumpy' ? 'It looks annoyed!' : 'It noticed you!', (x0 + x1) / 2, y1 - 12, 0xffffffff, { font: 'small', align: 'center', outline: 0xff0a0e1a });
+    if (P.focus && P.focus.aware > 0.55 && fk && !P.hold && !P.card) Font.draw(fb, P.focus.persona === 'shy' ? 'It looks nervous...' : P.focus.persona === 'grumpy' ? 'It looks annoyed!' : 'It noticed you!', (x0 + x1) / 2, y1 - 32, 0xffffffff, { font: 'small', align: 'center', outline: 0xff0a0e1a });
   }
   function drawRecent(fb, t, ox = 8, oy = null) {
     const r = P.recent; if (!r) return;
@@ -499,7 +560,7 @@ const Photo = (() => {
       UI.disc(fb, x + 9, y + th + 20, 4, 0xff1b2240); UI.disc(fb, x + 9, y + th + 20, 3, mc);
       Font.draw(fb, String(shown), x + 16, y + th + 18, 0xff1b2240, { font: 'small' });
       Font.draw(fb, DexData.MEDALS[res.medal], x + w - 4, y + th + 18, U.tweak(mc, 0, 1, -0.25), { font: 'small', align: 'right' });
-      if (r.rec && (r.rec.newSpecies || r.rec.newBeh) && Math.sin(r.t * 10) > -0.4) Font.icon(fb, 'new', x + w - 13, y + 1, 1);
+      if (r.rec && (r.rec.newSpecies || r.rec.newBeh) && Math.sin(r.t * 10) > -0.4) Font.icon(fb, 'new', x + w - 18, y + 1, 1);
     } else Font.draw(fb, 'No Pokémon', x + w / 2, y + th + 12, 0xff6a7088, { font: 'small', align: 'center' });
   }
   /* ---------- the rating card ---------- */
@@ -514,8 +575,8 @@ const Photo = (() => {
     const portrait = H > W;
     const cw = Math.min(W - 16, portrait ? 320 : 460), ch = Math.min(H - 16, portrait ? 360 : 230);
     const x0 = Math.round((W - cw) / 2), y0 = Math.round((H - ch) / 2 + (1 - k) * 80 + out * 60);
-    UI.rrect(fb, x0, y0 + 4, cw, ch, 10, 0xff0a0e1a);
-    UI.rrect(fb, x0, y0, cw, ch, 10, 0xff1b2240); UI.rrect(fb, x0 + 2, y0 + 2, cw - 4, ch - 4, 8, CARD.bg);
+    UI.shadow(fb, x0, y0, cw, ch, 10, 4, 0.6);
+    UI.rrect(fb, x0, y0, cw, ch, 10, UI.C.ink); UI.rrect(fb, x0 + 2, y0 + 2, cw - 4, ch - 4, 8, CARD.bg); UI.hline(fb, x0 + 10, x0 + cw - 11, y0 + 2, U.hex('#3a3060'));
     for (let x = x0 + 10; x < x0 + cw - 10; x += 6) UI.put(fb, x, y0 + 5, CARD.dots);
     // the photo, as a polaroid with a strip of tape
     const tb = res.buf;
@@ -528,28 +589,36 @@ const Photo = (() => {
     UI.rectA(fb, px + pw / 2 - 16, py - 9, 32, 9, CARD.tape, 0.8);
     Font.draw(fb, res.species ? C.name + (C.bname ? '  ·  ' + C.bname : '') : 'No Pokémon in shot', px + pw / 2, py + ph + 6, 0xff1b2240, { font: 'small', align: 'center' });
     if (C.held) Font.draw(fb, 'MOMENT CAPTURE', px + 4, py + 4, 0xffffffff, { font: 'small', outline: 0xff1b2240 });
-    if (C.rec && (C.rec.newSpecies || C.rec.newBeh) && Math.sin(C.t * 10) > -0.3) Font.icon(fb, 'new', px + pw - 24, py + 3, 1);
-    // the bars
-    const bx = portrait ? x0 + 16 : px + pw + 18, by = portrait ? py + ph + 26 : y0 + 18, bw = portrait ? cw - 90 : x0 + cw - bx - 70;
+    if (C.rec && (C.rec.newSpecies || C.rec.newBeh) && Math.sin(C.t * 10) > -0.3) Font.icon(fb, 'new', px + pw - 20, py + 3, 1);
+    // the bars (closer together on short screens; the values sit at the card's right edge)
+    const sp = !portrait && ch < 215 ? 16 : 20, bx = portrait ? x0 + 16 : px + pw + 18, by = portrait ? py + ph + 26 : y0 + 16, bw = portrait ? cw - 90 : x0 + cw - 14 - bx - 24;
     const R = res.rating;
     if (R) {
       BARS.forEach(([lab, key, col], i) => {
-        const y = by + i * 20, kk = clamp((C.t - 0.35 - i * 0.18) / 0.5, 0, 1), v = R[key] * U.ease.outCubic(kk);
+        const y = by + i * sp, kk = clamp((C.t - 0.35 - i * 0.18) / 0.5, 0, 1), v = R[key] * U.ease.outCubic(kk);
         Font.draw(fb, lab, bx, y, CARD.label, { font: 'small' });
-        UI.rrect(fb, bx, y + 9, bw, 7, 3, CARD.track); UI.rrect(fb, bx + 1, y + 10, Math.max(0, Math.round((bw - 2) * v)), 5, 2, col);
-        if (kk > 0) Font.draw(fb, String(Math.round(v * 100)), bx + bw + 4, y + 8, 0xffffffff, { font: 'small' });
+        UI.rrect(fb, bx, y + 8, bw, 7, 3, CARD.track); UI.rrect(fb, bx + 1, y + 9, Math.max(0, Math.round((bw - 2) * v)), 5, 2, col);
+        if (v > 0.02) UI.hline(fb, bx + 2, bx + Math.max(2, Math.round((bw - 2) * v) - 2), y + 9, U.tweak(col, 0, 1, 0.15));
+        if (kk > 0) Font.draw(fb, String(Math.round(v * 100)), portrait ? bx + bw + 4 : x0 + cw - 14, y + 7, 0xffffffff, { font: 'small', align: portrait ? 'left' : 'right' });
         if (kk > 0 && kk < 0.1 && !C['s' + i]) { C['s' + i] = 1; Game.sfx('blip', null, 0.3); }
       });
-      // grade stamp
+      // grade stamp: slammed onto the corner of the polaroid
       const gk = clamp((C.t - 1.5) / 0.3, 0, 1);
       if (gk > 0) {
         if (!C.stamped) { C.stamped = 1; Game.sfx('stamp'); setTimeout(() => SFX.rank(0, 1, res.medal || 1), 120); Game.shake && Game.shake(1.5); }
-        const gx = portrait ? x0 + cw - 40 : x0 + cw - 38, gy = portrait ? by + 40 : y0 + ch - 70, s = gk < 1 ? 3 - gk * 1 : 2;
+        const gx = portrait ? x0 + cw - 40 : px + pw - 16, gy = portrait ? by + 40 : py + ph - 14, s = gk < 1 ? 3 - gk * 1 : 2;
+        if (gk >= 1 && !C.burst) { C.burst = 1; UI.burst(gx, gy, 14, { speed: 60, c: GRADE_C[R.grade] }); UI.pop(gx, gy, 26, 0xffffffff); }
         const col = GRADE_C[R.grade];
         UI.disc(fb, gx, gy, 24, 0xff0a0e1a); UI.ring(fb, gx, gy, 22, col, 3); UI.ring(fb, gx, gy, 17, col, 1);
         Font.draw(fb, R.grade, gx, gy - 9 * s / 2 - 2, col, { font: 'title', align: 'center', sc: Math.round(s) });
         if (R.grade === 'S') for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + t * 2; UI.put(fb, Math.round(gx + Math.cos(a) * 29), Math.round(gy + Math.sin(a) * 29), 0xfffff4a0); }
       }
+    }
+    // no Pokémon in the frame: a friendly tip instead of the bars
+    if (!R && !res.species && !portrait) {
+      const tx = px + pw + 18, tw = x0 + cw - 14 - tx, cyM = y0 + ch / 2 - 20;
+      Font.draw(fb, 'Nothing to rate', tx + tw / 2, cyM, 0xffffffff, { font: 'body', align: 'center' });
+      Font.draw(fb, 'Aim at a Pokémon and wait for it to do something fun!', tx + tw / 2, cyM + 16, CARD.label, { font: 'small', align: 'center', maxW: tw, lh: 9 });
     }
     // points and medal
     const pts = res.species ? Math.round(res.score * clamp((C.t - 1.7) / 1, 0, 1)) : 0;
@@ -560,7 +629,7 @@ const Photo = (() => {
       Font.draw(fb, pts + ' pts', bx + 16, ty + 1, 0xffffffff, { font: 'body' });
       Font.draw(fb, DexData.MEDALS[res.medal || 1] + '  ' + '{star}'.repeat(res.stars || 0), bx + 16, ty + 13, U.tweak(mc, 0, 1, 0.1), { font: 'small' });
     }
-    if (C.t > 0.8) Font.draw(fb, 'tap to continue', x0 + cw - 10, y0 + ch - 11, CARD.hint, { font: 'small', align: 'right' });
+    if (C.t > 0.8) Font.draw(fb, (typeof Pad !== 'undefined' && Pad.touch ? 'tap' : 'click / Space') + ' to continue', portrait ? x0 + cw - 10 : px - 2, y0 + ch - 11, CARD.hint, { font: 'small', align: portrait ? 'right' : 'left' });
   }
   function cardDown() { if (!P.card) return false; if (P.card.t > 0.5) P.card = null; return true; }
   function cardKey(k) { if (!P.card) return false; if (P.card.t > 0.5 && (k === ' ' || k === 'Enter' || k === 'Escape' || k === 'x')) { P.card = null; return true; } return k === ' ' || k === 'Enter'; }

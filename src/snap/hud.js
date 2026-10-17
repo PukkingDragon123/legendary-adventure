@@ -22,10 +22,13 @@ const HUD = (() => {
     if (b.drag) b.drag(ux, uy, 'up');
     if (ux >= b.x - 6 && uy >= b.y - 6 && ux < b.x + b.w + 6 && uy < b.y + b.h + 6 && b.fn) b.fn(ux, uy);
   }
-  function hover(ux, uy) { H.hoverId = null; for (const b of H.btns) if (ux >= b.x && uy >= b.y && ux < b.x + b.w && uy < b.y + b.h) H.hoverId = b.id; }
+  function hover(ux, uy) { H.hoverId = null; H.mouse = [ux, uy]; if (typeof Talk !== 'undefined') Talk.mouse = H.mouse; for (const b of H.btns) if (ux >= b.x && uy >= b.y && ux < b.x + b.w && uy < b.y + b.h) H.hoverId = b.id; }
   const pressed = (id) => H.press && H.press.b.id === id;
 
-  function toast(msg, o = {}) { H.toasts.push(Object.assign({ msg, t: 0, life: o.life || 2.8, icon: o.icon || null, col: o.col || null }, o)); if (H.toasts.length > 3) H.toasts.shift(); }
+  // (a note belongs to the screen it was made on: notes from the world wait while a menu is open)
+  function toast(msg, o = {}) { H.toasts.push(Object.assign({ msg, t: 0, life: o.life || 2.8, icon: o.icon || null, col: o.col || null, mode: Game.mode === 'title' ? 'explore' : Game.mode }, o)); if (H.toasts.length > 4) H.toasts.shift(); }
+  const MENUS = { bag: 1, style: 1, dex: 1, map: 1 };
+  const toastHere = (tt) => tt.mode === Game.mode || Game.mode === 'explore' || Game.mode === 'camera' || (tt.t > 0.3 && !MENUS[Game.mode]);
   function banner(name, sub) { H.ban = { name, sub, t: 0 }; }
   function tool(id) {
     const mk = Game.mudkip;
@@ -64,7 +67,8 @@ const HUD = (() => {
   }
   function update(dt) {
     if (H.scopeV) { H.scopeV.t += dt; if (H.scopeV.t > H.scopeV.dur) H.scopeV = null; }
-    for (const t of H.toasts) t.t += dt;
+    const hold = Game.mode === 'explore' && (banUp() || (typeof Progress !== 'undefined' && Progress.celebrating && Progress.celebrating()));
+    if (!hold) for (const t of H.toasts) if (toastHere(t)) t.t += dt;
     H.toasts = H.toasts.filter((t) => t.t < t.life);
     if (H.ban) { H.ban.t += dt; if (H.ban.t > 4) H.ban = null; }
     H.scanT = Math.max(0, H.scanT - dt);
@@ -110,7 +114,7 @@ const HUD = (() => {
     const R = 15, cx = L ? Math.round(L.camX) : fb.w - R - 10, cy = L ? Math.round(L.camY) : fb.h - R - 16;
     const p = pressed('cam') ? 1 : 0;
     // pulse ring when something special is happening
-    if (H.op >= 3) { const k = (H.opT * 1.6) % 1; UI.ring(fb, cx, cy, R + 3 + Math.round(k * 8), H.op >= 4 ? 0xffffd23a : 0xffffffff, 1); if (Math.sin(H.opT * 8) > 0) Font.draw(fb, '!', cx + R - 2, cy - R - 6, 0xffffd23a, { font: 'title', outline: INK }); }
+    if (H.op >= 3) { const k = (H.opT * 1.6) % 1; UI.ring(fb, cx, cy, R + 3 + Math.round(k * 8), H.op >= 4 ? 0xff3ad2ff : 0xffffffff, 1); if (Math.sin(H.opT * 8) > 0) Font.draw(fb, '!', cx + R - 2, cy - R - 6, 0xff3ad2ff, { font: 'title', outline: INK }); }
     UI.disc(fb, cx, cy + 2, R + 1, 0xff0a0e1a);
     UI.disc(fb, cx, cy + p, R + 1, S.ink);
     // Poké Ball-style camera: skin-coloured top, white bottom, black band, lens button
@@ -192,8 +196,42 @@ const HUD = (() => {
     else { const r = U.hex('#ff5a6a'); for (let i = -2; i <= 2; i++) { UI.put(fb, cx + 4 + i, cy + i, r); UI.put(fb, cx + 4 + i, cy - i, r); } }
   }
   const TOPI = { dex: (fb, x, y, S, t) => icoDex(fb, x, y, S), map: (fb, x, y) => icoMap(fb, x, y), bag: (fb, x, y) => icoBag(fb, x, y), style: (fb, x, y, S, t) => icoHat(fb, x, y, t), snd: (fb, x, y) => icoSound(fb, x, y, Sound.on), games: (fb, x, y, S, t) => { UI.disc(fb, x, y + 1, 7, INK); UI.disc(fb, x, y, 6, U.hex('#ff5a4a')); UI.rect(fb, x - 6, y, 13, 1, INK); UI.disc(fb, x, y, 2, 0xffffffff); UI.put(fb, x - 3, y - 3, 0xffffc0c0); } };
+  const TIP = { dex: 'Pokédex  P', map: 'Map  M', bag: 'Bag  B', style: 'Wardrobe  V', snd: 'Sound', games: 'Playground  H', quests: 'Quests  L', clock: 'Time of day  T' };
+  // a hover tooltip: a small plate under (or over) a button, kept on screen
+  function tipAt(fb, label, cx, y) {
+    const w = Font.measure(label, 'small') + 10, x = U.clamp(Math.round(cx - w / 2), 3, fb.w - w - 3);
+    UI.chip(fb, x, y, label, { w: w, h: 10, bg: UI.C.navy });
+  }
+  const BADGE = [U.hex('#ff4a5a'), U.hex('#b81e30')];
+  // a square icon button of the top bar (raised face, sinks when pressed, gold rim on hover)
+  function topBtn(fb, S, id, x, y, sz, fill, fn, drawIcon, badge, t) {
+    const dn = pressed(id), hov = H.hoverId === id;
+    UI.button(fb, x, y, sz, sz, { r: 6, fill, hover: hov, down: dn, ol: S.ink });
+    drawIcon(x + sz / 2, y + sz / 2 + (dn ? 1 : 0));
+    btn(id, x - 1, y - 1, sz + 2, sz + 4, () => { UI.pop(x + sz / 2, y + sz / 2, sz / 2 + 2); fn(); });
+    if (badge) {
+      const bx = x + sz - 2, by = y + 2 - (Math.sin(t * 5 + x) > 0.85 ? 1 : 0), ph = (t * 0.8 + x * 0.01) % 1;
+      if (ph < 0.35) UI.ring(fb, bx, by, 3 + Math.round(ph * 10), U.mix(BADGE[0], 0xffffffff, ph * 2), 1);
+      UI.disc(fb, bx, by + 1, 3, UI.C.shadow); UI.disc(fb, bx, by, 3, BADGE[1]); UI.disc(fb, bx, by, 2, BADGE[0]); UI.put(fb, bx - 1, by - 1, 0xffffffff);
+    }
+    return hov;
+  }
+  // the points counter rolls up to the real value (and the coin spins while it does)
+  function coinChip(fb, S, x, y, t) {
+    const real = Save.data.points | 0;
+    if (H.coin === undefined || H.coin > real) H.coin = real;
+    if (H.coin < real) { const was = H.coin; H.coin = Math.min(real, H.coin + Math.max(1, Math.ceil((real - H.coin) * 0.12))); if ((H.coin / 25 | 0) !== (was / 25 | 0)) { H.coinBump = 1; } H.coinT = 0.6; }
+    H.coinT = Math.max(0, (H.coinT || 0) - 1 / 60); H.coinBump = Math.max(0, (H.coinBump || 0) - 0.12);
+    const txt = String(H.coin), w = Math.max(44, Font.measure(txt, 'small') + 22), bump = H.coinBump > 0 ? -1 : 0;
+    UI.plate(fb, x, y + 4, w, 16, { r: 5, fill: U.mix(S.btn, 0xff000000, 0.25), ol: S.ink, hi: null });
+    // the coin: a little gold disc that spins (squashes) while counting
+    const cx = x + 9, cy = y + 12 + bump, sq = H.coinT > 0 ? Math.abs(Math.cos(t * 14)) : 1, rw = Math.max(1, Math.round(4 * sq));
+    for (let yy = -4; yy <= 4; yy++) for (let xx = -rw; xx <= rw; xx++) { const q = (xx / rw) ** 2 + (yy / 4) ** 2; if (q > 1.05) continue; UI.put(fb, cx + xx, cy + yy, q > 0.6 ? 0xff1a80c8 : xx + yy < -1 ? 0xffc0f6ff : 0xff3ad2ff); }
+    Font.draw(fb, txt, x + 17, y + 9 + bump, H.coinT > 0 ? UI.C.goldL : 0xffffffff, { font: 'small', shadow: UI.C.ink });
+    return w;
+  }
   function drawTop(fb, S, t) {
-    // right: Pokédex, map, bag, wardrobe, sound — icon buttons, no words
+    // right: quest log, Pokédex, map, bag, wardrobe, sound — icon buttons, no words
     const bw = 24, y = 6;
     const items = [
       { id: 'dex', fn: () => (Game.mode === 'dex' ? Dex.close() : Dex.open()), badge: Quests.unseen() },
@@ -203,36 +241,26 @@ const HUD = (() => {
       { id: 'snd', fn: () => { const v = Sound.set(!Sound.on); U.store.set('mk-snap-sound', v); Music.onSound(v); } },
     ].filter((it) => typeof Progress === 'undefined' || Progress.hudOk(it.id));
     if (typeof Progress !== 'undefined') items.unshift({ id: 'quests', fn: () => Progress.openLog(), badge: Progress.logBadge() });
+    H.rightX = fb.w - 6 - items.length * (bw + 3);
+    let tip = null;
     items.forEach((it, i) => {
       const x = fb.w - 6 - (items.length - i) * (bw + 3);
-      const p = pressed(it.id) ? 1 : 0, hov = H.hoverId === it.id;
-      UI.rrect(fb, x, y + 2, bw, bw, 6, 0xff0a0e1a);
-      const fill = it.id === 'dex' ? S.body : hov ? U.tweak(S.btn, 0, 1, 0.08) : S.btn;
-      UI.panel(fb, x, y + p, bw, bw, { r: 6, ol: S.ink, fill, hi: U.tweak(fill, 0, 1, 0.16) });
-      if (TOPI[it.id]) TOPI[it.id](fb, x + bw / 2, y + p + bw / 2, S, t); else if (it.id === 'quests') Progress.icon(fb, x + bw / 2, y + p + bw / 2, t);
-      btn(it.id, x - 1, y - 1, bw + 2, bw + 4, it.fn);
-      if (it.badge) { UI.disc(fb, x + bw - 2, y + 2, 3, 0xffff3a4a); UI.put(fb, x + bw - 2, y + 2, 0xffffffff); }
-      if (hov) Font.draw(fb, { dex: 'Pokédex (P)', map: 'Map (M)', bag: 'Bag (B)', style: 'Wardrobe (V)', snd: 'Sound', games: 'Playground (H)', quests: 'Quests (L)' }[it.id], x + bw / 2, y + bw + 5, 0xffffffff, { font: 'small', align: 'center', outline: INK });
+      const fill = it.id === 'dex' ? S.body : S.btn;
+      const hov = topBtn(fb, S, it.id, x, y, bw, fill, it.fn, (cx, cy) => { if (TOPI[it.id]) TOPI[it.id](fb, cx, cy, S, t); else if (it.id === 'quests') Progress.icon(fb, cx, cy, t); }, it.badge, t);
+      if (hov) tip = [TIP[it.id], x + bw / 2];
     });
-    // left: clock (tap = let time pass) + points
-    const hr = Game.hour();
-    const x = 6;
-    const p = pressed('clock') ? 1 : 0;
-    UI.rrect(fb, x, y + 2, 24, 24, 6, 0xff0a0e1a);
-    UI.panel(fb, x, y + p, 24, 24, { r: 6, ol: S.ink, fill: S.btn });
-    Font.icon(fb, hr === 'night' || hr === 'dusk' ? 'moon' : 'sun', x + 5, y + 5 + p, 2);
-    btn('clock', x - 1, y - 1, 26, 28, () => Game.tryTime());
-    UI.panel(fb, x + 28, y + 4, 64, 16, { r: 4, ol: S.ink, fill: U.mix(S.btn, 0xff000000, 0.2), hi: null, sh: null });
-    Font.draw(fb, '{coin}' + Save.data.points, x + 32, y + 9, 0xffffffff, { font: 'small' });
-    // season chip (tap = next season)
+    // left: clock (tap = let time pass), points, season
+    const hr = Game.hour(), x = 6;
+    if (topBtn(fb, S, 'clock', x, y, 24, S.btn, () => Game.tryTime(), (cx, cy) => Font.icon(fb, hr === 'night' || hr === 'dusk' ? 'moon' : 'sun', cx - 7, cy - 7, 2), false, t)) tip = [TIP.clock, x + 12];
+    const cw = coinChip(fb, S, x + 28, y, t);
+    let lx = x + 28 + cw + 4;
     if (typeof Seasons !== 'undefined' && (typeof Progress === 'undefined' || Progress.has('season'))) {
-      const sx = x + 96, ps = pressed('season') ? 1 : 0, sn = Seasons.cur;
-      UI.rrect(fb, sx, y + 2, 24, 24, 6, 0xff0a0e1a);
-      UI.panel(fb, sx, y + ps, 24, 24, { r: 6, ol: S.ink, fill: U.mix(S.btn, U.hex({ spring: '#ff9ec4', summer: '#4ab860', autumn: '#e2741c', winter: '#9ad8ff' }[sn]), 0.25) });
-      Seasons.icon(fb, sx + 12, y + 12 + ps, sn, t);
-      btn('season', sx - 1, y - 1, 26, 28, () => Seasons.next());
-      if (H.hoverId === 'season') Font.draw(fb, Seasons.NAME[sn] + ' (N)', sx + 12, y + 29, 0xffffffff, { font: 'small', align: 'center', outline: INK });
+      const sn = Seasons.cur, sc = U.mix(S.btn, U.hex({ spring: '#ff9ec4', summer: '#4ab860', autumn: '#e2741c', winter: '#9ad8ff' }[sn]), 0.3);
+      if (topBtn(fb, S, 'season', lx, y, 24, sc, () => Seasons.next(), (cx, cy) => Seasons.icon(fb, cx, cy, sn, t), false, t)) tip = [Seasons.NAME[sn] + '  N', lx + 12];
+      lx += 28;
     }
+    H.leftX = lx;
+    if (tip) tipAt(fb, tip[0], tip[1], y + bw + 5);
   }
   // throw a berry at the nearest Pokémon in front (or just ahead)
   function throwBerry() {
@@ -245,30 +273,57 @@ const HUD = (() => {
     const tx = best ? best.x - d * 10 : mk.x + d * 60, ty = best ? best.y - 4 : World.standY(mk.x + d * 60);
     mk.wakeUp(); mk.doTask(mk.throwBerry(tx, ty, kind), 2);
   }
+  // the area name card: unrolls sideways in place under the top bar (never sweeps over the
+  // buttons), a shine runs across it, then it rolls back up
+  const banUp = () => !!H.ban && H.ban.t < 3.9;
   function drawBanner(fb, S, t) {
     const b = H.ban; if (!b) return;
-    const k = b.t < 0.4 ? U.ease.outBack(b.t / 0.4) : b.t > 3.4 ? 1 - U.ease.inCubic((b.t - 3.4) / 0.6) : 1;
-    const w = Math.max(Font.measure(b.name, 'title') + 40, Font.measure(b.sub, 'small') + 40), h = 34;
-    const x = Math.round(fb.w / 2 - w / 2), y = Math.round(-h + (h + 34) * k);
-    UI.body(fb, x, y, w, h, S, { r: 5 });
-    UI.screen(fb, x + 6, y + 5, w - 12, h - 10, { fill: S.screen, rim: S.ink, glare: false });
-    Font.draw(fb, b.name, fb.w / 2, y + 10, S.screenText, { font: 'title', align: 'center' });
-    Font.draw(fb, b.sub, fb.w / 2, y + h + 4, 0xffffffff, { font: 'small', align: 'center', outline: INK });
+    const kin = b.t < 0.4 ? U.ease.outBack(b.t / 0.4) : 1, kout = b.t > 3.4 ? 1 - U.ease.inCubic(Math.min(1, (b.t - 3.4) / 0.45)) : 1, k = Math.max(0, Math.min(kin, kout));
+    if (k <= 0.03) return;
+    const C = UI.C, w = Math.max(Font.measure(b.name, 'title') + 36, Font.measure(b.sub || '', 'small') + 30, 120), h = 38;
+    const ww = Math.max(14, Math.round(w * k)), x = Math.round(fb.w / 2 - ww / 2), y = 36;
+    UI.shadow(fb, x, y, ww, h, 6, 3, 0.5);
+    UI.body(fb, x, y, ww, h, S, { r: 6 });
+    if (ww < w * 0.8) return;
+    const sx = x + 6, sw = ww - 12, clip = { x0: sx + 1, y0: y + 6, x1: sx + sw - 1, y1: y + h - 6 };
+    UI.screen(fb, sx, y + 5, sw, h - 10, { fill: S.screen, rim: S.ink, glare: false });
+    Font.draw(fb, b.name, fb.w / 2, y + 9, S.screenText, { font: 'title', align: 'center', clip });
+    if (b.sub) Font.draw(fb, b.sub, fb.w / 2, y + 24, U.mix(S.screenText, S.screen, 0.35), { font: 'small', align: 'center', clip });
+    // shine sweep
+    const ph = (b.t - 0.35) / 0.7;
+    if (ph > 0 && ph < 1) { const gx = sx + Math.round(ph * (sw + 30)) - 15; for (let yy = y + 6; yy < y + h - 6; yy++) for (let d = 0; d < 4; d++) { const xx = gx + d - (yy - y) * 0.6; if (xx > sx && xx < sx + sw - 1) UI.blend(fb, Math.round(xx), yy, 0xffffffff, d === 1 || d === 2 ? 0.55 : 0.25); } }
+    if (!b.fired && b.t > 0.3) { b.fired = 1; UI.burst(x + 8, y + 6, 5, { speed: 30, c: C.goldL }); UI.burst(x + ww - 8, y + 6, 5, { speed: 30, c: C.goldL }); }
   }
-  // notifications: a quiet feed that slides in at the top-left (no pop-up boxes)
+  // notifications: a quiet stack of glassy notes sliding in at the top-left (bottom-left over
+  // full-screen menus); they wait while the area name card is up
+  function toastLayout(fb, list) {
+    const maxW = Math.min(200, Math.round(fb.w * 0.44));
+    return list.map((tt) => {
+      const ic = tt.icon && Font.ICONS[tt.icon] ? tt.icon : null, iw = ic ? Font.ICONS[ic].w + 4 : 0;
+      const lines = Font.wrap(tt.msg, 'small', maxW - 14 - iw).slice(0, 4);
+      return { tt, ic, iw, lines, w: Math.max(...lines.map((l) => Font.measure(l, 'small'))) + 14 + iw, h: lines.length * 9 + 6 };
+    });
+  }
   function drawToasts(fb, S, t, bottom = false, top = 34) {
-    const maxW = Math.min(190, Math.round(fb.w * 0.42));
-    let y = bottom ? fb.h - 18 - 14 * H.toasts.length : top;
-    for (const tt of H.toasts) {
-      const k = Math.min(1, tt.t / 0.25, (tt.life - tt.t) / 0.4);
-      if (k <= 0) continue;
-      const lines = Font.wrap ? Font.wrap(tt.msg, 'small', maxW) : [tt.msg];
-      const w = Math.max(...lines.map((l) => Font.measure(l, 'small'))) + 14, h = lines.length * 9 + 5;
-      const x = Math.round(6 - (1 - k) * (w + 10));
-      UI.rectA(fb, x, y, w, h, 0xff0a0e20, 0.45 * k);
-      UI.rect(fb, x, y, 2, h, tt.col ?? S.accent);
-      lines.forEach((l, i) => Font.draw(fb, l, x + 8, y + 3 + i * 9, 0xffffffff, { font: 'small', shadow: 0xff0a0e20 }));
-      y += h + 3;
+    if (!bottom && (banUp() || (typeof Progress !== 'undefined' && Progress.celebrating && Progress.celebrating()))) return;
+    const C = UI.C, L = toastLayout(fb, H.toasts.filter(toastHere).slice(-3));
+    // over full-screen menus the notes rise from the bottom centre like a snackbar
+    let y = bottom ? fb.h - 4 - L.reduce((s, q) => s + q.h + 3, 0) : top;
+    for (const q of L) {
+      const tt = q.tt, kin = Math.min(1, tt.t / 0.28), kout = Math.min(1, (tt.life - tt.t) / 0.35);
+      if (kout <= 0) continue;
+      const e = U.ease.outBack(kin), col = tt.col ?? S.accent;
+      const x = bottom ? Math.round(fb.w / 2 - q.w / 2) : Math.round(6 - (1 - e) * (q.w + 12) - (1 - kout) * 14);
+      if (bottom) y += Math.round((1 - e) * 14 + (1 - kout) * 8);
+      UI.plate(fb, x, y, q.w, q.h, { r: 3, fill: C.navy, a: 0.8 * kout, sa: 0.25 * kout, hi: null });
+      UI.rect(fb, x + 2, y + 2, 2, q.h - 4, col);
+      if (q.ic) Font.icon(fb, q.ic, x + 7, y + Math.round((q.h - Font.ICONS[q.ic].h) / 2), 1);
+      q.lines.forEach((l, i) => Font.draw(fb, l, x + 8 + q.iw, y + 3 + i * 9, 0xffffffff, { font: 'small', shadow: C.ink }));
+      // the time left, as a hairline along the bottom
+      const lw = Math.round((q.w - 8) * Math.max(0, 1 - tt.t / tt.life));
+      if (lw > 0) UI.hline(fb, x + 5, x + 5 + lw, y + q.h - 2, U.mix(col, C.navy, 0.45));
+      if (bottom) y -= Math.round((1 - e) * 14 + (1 - kout) * 8);
+      y += q.h + 3;
     }
   }
   function drawScan(fb, S, t) {
@@ -285,16 +340,22 @@ const HUD = (() => {
     const w = 250, h = 96, x = Math.round(fb.w / 2 - w / 2), y = Math.round(fb.h * 0.28 - h / 2 + Math.sin(t * 1.5) * 2);
     UI.body(fb, x, y, w, h, S, { r: 8, screws: true });
     UI.lens(fb, x + 22, y + 22, 9, S, 0.5 + 0.5 * Math.sin(t * 3), t);
-    UI.led(fb, x + 42, y + 12, 0xffff4a4a, Math.sin(t * 4) > 0); UI.led(fb, x + 50, y + 12, 0xffffd23a, true); UI.led(fb, x + 58, y + 12, 0xff4ade6a, Math.sin(t * 4 + 2) > 0);
+    UI.led(fb, x + 42, y + 12, 0xffff4a4a, Math.sin(t * 4) > 0); UI.led(fb, x + 50, y + 12, 0xff3ad2ff, true); UI.led(fb, x + 58, y + 12, 0xff4ade6a, Math.sin(t * 4 + 2) > 0);
     UI.screen(fb, x + 40, y + 24, w - 56, h - 38, { fill: S.screen, rim: S.ink });
     Font.draw(fb, 'MUDKIP', x + w / 2 + 12, y + 30, S.screenText, { font: 'title', align: 'center', sc: 2 });
     Font.draw(fb, 'S N A P', x + w / 2 + 12, y + 68, S.accent, { font: 'title', align: 'center' });
     Font.draw(fb, 'A Pokémon photo journey', fb.w / 2, y + h + 8, 0xffffffff, { font: 'body', align: 'center', outline: INK });
-    if (Math.sin(t * 3) > -0.3) Font.draw(fb, 'Tap to start', fb.w / 2, fb.h * 0.72, 0xffffd23a, { font: 'title', align: 'center', outline: INK });
-    Font.draw(fb, '{cam} Snap Pokémon  ·  {pb} Fill the Pokédex  ·  {note} Solve photo puzzles', fb.w / 2, fb.h - 22, 0xffffffff, { font: 'small', align: 'center', outline: INK });
+    // a big friendly start button that breathes
+    const lab = typeof Pad !== 'undefined' && Pad.touch ? 'TAP TO START' : 'CLICK OR PRESS ENTER', bw = Font.measure(lab, 'small') + 30, by = Math.round(fb.h * 0.7) + (Math.sin(t * 3) > 0.6 ? -1 : 0);
+    UI.button(fb, Math.round(fb.w / 2 - bw / 2), by, bw, 18, { label: lab, fill: S.accent, hover: Math.sin(t * 3) > 0, r: 6 });
+    if ((t * 0.7) % 1 < 0.25) UI.twinkle(fb, fb.w / 2 + bw / 2 - 3, by + 2, 2);
+    const feat = '{cam} Snap Pokémon  ·  {pb} Fill the Pokédex  ·  {note} Solve photo puzzles', fl = Font.measure(feat, 'small') <= fb.w - 12 ? [feat] : ['{cam} Snap Pokémon  ·  {pb} Fill the Pokédex', '{note} Solve photo puzzles'];
+    fl.forEach((l, i) => Font.draw(fb, l, fb.w / 2, fb.h - 12 - (fl.length - i) * 10, 0xffffffff, { font: 'small', align: 'center', outline: INK }));
     btn('start', 0, 0, fb.w, fb.h, () => Game.start());
   }
-  function draw(fb, t) {
+  // every frame: the screen for the current mode, then the UI sparkles on top of everything
+  function draw(fb, t) { drawMode(fb, t); UI.drawFx(fb); }
+  function drawMode(fb, t) {
     H.btns.length = 0;
     const S = UI.skin();
     if (Game.mode === 'title') { drawTitle(fb, t); return; }
@@ -319,18 +380,21 @@ const HUD = (() => {
     if (typeof Boardwalk !== 'undefined' && Boardwalk.drawUI) Boardwalk.drawUI(fb, t);
     if (typeof Hosts !== 'undefined' && Hosts.drawUI) Hosts.drawUI(fb, t);
     if (typeof Harvest !== 'undefined' && !Talk.busy()) Harvest.drawPrompt(fb, t);
-    drawTop(fb, S, t);
+    // (the move wheel is modal: the top bar, the area card and notes step aside while it is open)
+    const wheel = typeof Moves !== 'undefined' && !!Moves.wheel;
+    if (!wheel) drawTop(fb, S, t);
     if (typeof Pad !== 'undefined') Pad.draw(fb, S, t);
     if (!Talk.busy()) drawCameraButton(fb, S, t);
     Music.drawUI(fb, t, 'explore');
-    drawBanner(fb, S, t);
+    // a bigger moment (a new move, a level-up) folds the area card away early
+    if (H.ban && H.ban.t < 3.4 && ((typeof Moves !== 'undefined' && Moves.learnFx) || (typeof Progress !== 'undefined' && Progress.lvUp && Progress.lvUp.t >= 0))) H.ban.t = 3.4;
+    if (!wheel) drawBanner(fb, S, t);
     drawScope(fb, t);
-    drawToasts(fb, S, t, false, typeof Progress !== 'undefined' ? Progress.toastTop(fb) : 34);
-    Quests.drawPop(fb, t);
+    if (!wheel) { drawToasts(fb, S, t, false, typeof Progress !== 'undefined' ? Progress.toastTop(fb) : 34); Quests.drawPop(fb, t); }
     if (WorldMap.reveal) WorldMap.drawReveal(fb, t);
     if (typeof Moves !== 'undefined') { if (Moves.drawChip && !Talk.busy()) Moves.drawChip(fb, S, t); Moves.drawWheel(fb, S, t); Moves.drawLearn(fb, S, t); }
     Talk.drawDialog(fb, t);
     if (Photo.drawCard) Photo.drawCard(fb, t);
   }
-  return Object.assign(H, { btn, down, move, up, hover, pressed, toast, banner, tool, update, draw, iconAt, ICONS, scope, throwBerry, icoBag, icoHat, icoDex, icoMap });
+  return Object.assign(H, { btn, down, move, up, hover, pressed, toast, banner, banUp, tool, update, draw, iconAt, ICONS, scope, throwBerry, icoBag, icoHat, icoDex, icoMap });
 })();

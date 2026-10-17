@@ -17,8 +17,9 @@ const WorldMap = (() => {
   const { clamp, lerp, smooth, hex, mix, fbm, vnoise, ease } = U;
   const N = 512, SC = N / 256;           // grid resolution; world units run 0..256
   const M = { on: false, t: 0, dist: 1, sel: null, drag: null, built: false, anim: 0, closing: 0, travel: null, shot: null, reveal: null, idleT: 0 };
-  const CAM = { fx: 128, fy: 150, yaw: 0.6, pitch: 0.55, zoom: 1 };
-  const GOAL = { fx: 128, fy: 150, yaw: 0.6, pitch: 0.55, zoom: 1 };
+  // tele > 1: a longer lens from further away (same framing, much less perspective): the overview
+  const CAM = { fx: 128, fy: 150, yaw: 0.6, pitch: 0.55, zoom: 1, tele: 1 };
+  const GOAL = { fx: 128, fy: 150, yaw: 0.6, pitch: 0.55, zoom: 1, tele: 1 };
   // locations in world space (0..256) with a nice viewing angle for each
   const LOC = {
     beach: { x: 118, y: 191, yaw: 0.25, label: 'Coral Cove' },
@@ -37,6 +38,18 @@ const WorldMap = (() => {
   let SPR = null, BB = [], CLOUDS = [], PUFFS = [], BIRDS = [], SPOUT = [], STARS = [];
   const OCEAN = hex('#153a88'), OCEAN2 = hex('#2a58aa'), DARKSEA = hex('#0a1840'), ROUTE_C = hex('#fff2b0'), ROUTE_S = hex('#5a4020'), NAVY = hex('#0a1030'), BALL_R = hex('#e8323c'), HERE_C = hex('#3a78c8');
   const SIN = new Float32Array(1024); for (let i = 0; i < 1024; i++) SIN[i] = Math.sin(i / 1024 * Math.PI * 2);
+  // The island is authored in "design" coordinates; a gentle radial warp pushes the middle of the
+  // island outwards so the places (and their landmarks) get more room: world = wp(design).
+  const WC = { x: 128, y: 138, A: 0.36, S: 78 };
+  const wsc = (r) => 1 + WC.A * Math.exp(-(r * r) / (WC.S * WC.S));
+  function wp(x, y) { const dx = x - WC.x, dy = y - WC.y, s = wsc(Math.hypot(dx, dy)); return [WC.x + dx * s, WC.y + dy * s]; }
+  function iwp(x, y) {
+    const dx = x - WC.x, dy = y - WC.y, R = Math.hypot(dx, dy); if (R < 1e-6) return [x, y];
+    let lo = 0, hi = R; for (let i = 0; i < 16; i++) { const m = (lo + hi) / 2; if (m * wsc(m) < R) lo = m; else hi = m; }
+    const r = (lo + hi) / 2; return [WC.x + (dx * r) / R, WC.y + (dy * r) / R];
+  }
+  let DX = null, DY = null; // design coordinates of every grid cell
+  function warpLocs() { for (const id in LOC) { const L = LOC[id]; if (L.w) continue; const [x, y] = wp(L.x, L.y); L.dx = L.x; L.dy = L.y; L.x = x; L.y = y; L.w = 1; } }
 
   /* ================= terrain ================= */
   const segD = (x, y, ax, ay, bx, by) => { const vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy || 1; const k = clamp(((x - ax) * vx + (y - ay) * vy) / L, 0, 1); return Math.hypot(x - ax - vx * k, y - ay - vy * k); };
@@ -67,34 +80,34 @@ const WorldMap = (() => {
   function build() {
     const NN = N * N;
     HM = new Float32Array(NN); CM = new Uint32Array(NN); WL = new Float32Array(NN); WATER = new Uint8Array(NN); COAST = new Uint8Array(NN); WPH = new Uint8Array(NN);
-    for (let gy = 0; gy < N; gy++) for (let gx = 0; gx < N; gx++) HM[gy * N + gx] = ground(gx / SC, gy / SC);
+    DX = new Float32Array(NN); DY = new Float32Array(NN);
+    warpLocs();
+    for (let gy = 0; gy < N; gy++) for (let gx = 0; gx < N; gx++) { const i = gy * N + gx, [x, y] = iwp(gx / SC, gy / SC); DX[i] = x; DY[i] = y; HM[i] = ground(x, y); }
     // leafy canopy bumps (so forests are lumpy and catch the light)
-    const forestK = (x, y) => {
-      const h = HM[(y * SC | 0) * N + (x * SC | 0)];
+    const forestK = (i) => {
+      const h = HM[i], x = DX[i], y = DY[i];
       if (h < 0.1 || h > 0.85) return 0;
       const wood = vnoise(x * 0.06, y * 0.06, 9) > 0.46 || Math.hypot(x - 178, y - 130) < 26 || Math.hypot(x - 150, y - 86) < 20;
       return wood ? 1 : 0;
     };
-    for (let gy = 0; gy < N; gy++) for (let gx = 0; gx < N; gx++) {
-      const x = gx / SC, y = gy / SC;
-      if (forestK(x, y)) HM[gy * N + gx] += Math.max(0, vnoise(x * 0.8, y * 0.8, 19) - 0.35) * 0.14;
-    }
+    for (let i = 0; i < NN; i++) if (forestK(i)) HM[i] += Math.max(0, vnoise(DX[i] * 0.8, DY[i] * 0.8, 19) - 0.35) * 0.14;
     // sea
     for (let i = 0; i < NN; i++) if (HM[i] < 0.02) { WATER[i] = 1; WL[i] = 0.02; }
     // lakes (a mountain tarn under the falls, the woods pond)
     const hAt = (x, y) => HM[clamp(Math.round(y * SC), 0, N - 1) * N + clamp(Math.round(x * SC), 0, N - 1)];
-    for (const L of LAKES) {
-      const lvl = hAt(L.x, L.y) - 0.01;
-      L.level = lvl;
-      stampDisc(L.x, L.y, L.r + 2.5, (i, dd) => {
-        if (dd < L.r) { WATER[i] = 1; WL[i] = lvl; HM[i] = Math.min(HM[i], lvl - 0.04 - (L.r - dd) * 0.01); }
-        else HM[i] = Math.min(HM[i], lerp(lvl + 0.012, HM[i], (dd - L.r) / 2.5));
+    for (const L0 of LAKES) {
+      const [lx, ly] = wp(L0.x, L0.y), lr = L0.r * wsc(Math.hypot(L0.x - WC.x, L0.y - WC.y));
+      const lvl = hAt(lx, ly) - 0.01;
+      L0.level = lvl;
+      stampDisc(lx, ly, lr + 2.5, (i, dd) => {
+        if (dd < lr) { WATER[i] = 1; WL[i] = lvl; HM[i] = Math.min(HM[i], lvl - 0.04 - (lr - dd) * 0.01); }
+        else HM[i] = Math.min(HM[i], lerp(lvl + 0.012, HM[i], (dd - lr) / 2.5));
       });
     }
     // rivers, always running downhill
     for (const R of RIVERS) {
       const pts = [];
-      for (let s = 0; s < R.length - 1; s++) { const [ax, ay] = R[s], [bx, by] = R[s + 1], n = Math.ceil(Math.hypot(bx - ax, by - ay) * 2); for (let k = 0; k < n; k++) pts.push([lerp(ax, bx, k / n), lerp(ay, by, k / n)]); }
+      for (let s = 0; s < R.length - 1; s++) { const [ax, ay] = R[s], [bx, by] = R[s + 1], n = Math.ceil(Math.hypot(bx - ax, by - ay) * 2.5); for (let k = 0; k < n; k++) pts.push(wp(lerp(ax, bx, k / n), lerp(ay, by, k / n))); }
       let lvl = 9;
       pts.forEach(([x, y], k) => {
         lvl = Math.max(0.02, Math.min(lvl, hAt(x, y) - 0.02));
@@ -106,7 +119,7 @@ const WorldMap = (() => {
       });
     }
     // the dock in the cove: planks on posts over the water
-    for (let y = 195.5; y < 207.5; y += 0.5) for (let x = 113.5; x < 115.6; x += 0.5) { const i = Math.round(y * SC) * N + Math.round(x * SC); WATER[i] = 0; HM[i] = 0.05; }
+    for (let y = 195.5; y < 207.5; y += 0.25) for (let x = 113.5; x < 115.6; x += 0.25) { const [wx, wy] = wp(x, y), i = Math.round(wy * SC) * N + Math.round(wx * SC); WATER[i] = 0; HM[i] = 0.05; }
     // distance to the coast for sea cells (waves and foam)
     let front = [];
     for (let i = 0; i < NN; i++) if (!WATER[i]) front.push(i);
@@ -132,7 +145,7 @@ const WorldMap = (() => {
     const wood = C('#2e7a36'), wood2 = C('#215c2c'), lush = C('#1f6430'), lush2 = C('#2f8a3a');
     const rock = C('#8e7e6c'), rock2 = C('#6a5e54'), snow = C('#f4f8ff'), ash = C('#8a8084'), lava = C('#ff6a2a'), cliff = C('#c49a6a'), plank = C('#a87a4a');
     for (let gy = 0; gy < N; gy++) for (let gx = 0; gx < N; gx++) {
-      const i = gy * N + gx, x = gx / SC, y = gy / SC, h = HM[i];
+      const i = gy * N + gx, x = DX[i], y = DY[i], h = HM[i];
       const n = U.hash(gx, gy, 3), f = vnoise(x * 0.9, y * 0.9, 13);
       let c;
       if (WATER[i]) {
@@ -245,8 +258,9 @@ const WorldMap = (() => {
   function placeBillboards() {
     BB = [];
     const r = U.rng(4242);
-    const add = (s, x, y, o = {}) => { const b = Object.assign({ s, x, y, dh: 0, sc: 1 }, o); BB.push(b); return b; };
-    const land = (x, y) => { const i = Math.round(y * SC) * N + Math.round(x * SC); return !WATER[i] ? HM[i] : null; };
+    // (positions are in design coordinates; `world: true` for ones that already are in world space)
+    const add = (s, x, y, o = {}) => { if (!o.world) [x, y] = wp(x, y); const b = Object.assign({ s, x, y, dh: 0, sc: 1 }, o); BB.push(b); return b; };
+    const land = (x, y, world) => { if (!world) [x, y] = wp(x, y); const i = clamp(Math.round(y * SC), 0, N - 1) * N + clamp(Math.round(x * SC), 0, N - 1); return !WATER[i] ? HM[i] : null; };
     // Coral Cove: town, palms, lighthouse, boats
     for (const [x, y, k] of [[104, 186, 'houseR'], [110, 182, 'houseB'], [124, 182, 'houseR'], [130, 187, 'houseG'], [98, 190, 'houseB']]) if (land(x, y) !== null) add(k, x, y);
     for (let k = 0; k < 90 && BB.filter((b) => b.s === 'palm').length < 12; k++) { const a = r() * Math.PI, x = 118 + Math.cos(a + Math.PI) * 22 * (0.9 + r() * 0.3), y = 207 - Math.sin(a) * 19 * (0.9 + r() * 0.25); const h = land(x, y); if (h !== null && h < 0.12) add('palm', x, y, { sc: 0.9 + r() * 0.3 }); }
@@ -271,21 +285,21 @@ const WorldMap = (() => {
     for (let k = 0; k < 900 && BB.length < 420; k++) {
       const x = 20 + r() * 216, y = 30 + r() * 200, h = land(x, y);
       if (h === null || h < 0.09) continue;
-      const nearLoc = Object.values(LOC).some((L) => Math.hypot(L.x - x, L.y - y) < 7);
+      const [wx, wy] = wp(x, y), nearLoc = Object.values(LOC).some((L) => Math.hypot(L.x - wx, L.y - wy) < 8);
       if (nearLoc) continue;
       const woods = vnoise(x * 0.06, y * 0.06, 9) > 0.46;
       if (h > 0.62 && h < 1.3) { if (r() < 0.55) add(h > 1.05 ? 'snowpine' : 'pine', x, y, { sc: 0.8 + r() * 0.4 }); }
       else if (h < 0.62 && (woods ? r() < 0.8 : r() < 0.18)) add('tree', x, y, { sc: 0.75 + r() * 0.45 });
     }
     // sea rocks with surf
-    for (let k = 0; k < 400 && BB.filter((b) => b.s === 'rock').length < 14; k++) { const x = r() * 256, y = r() * 256, i = Math.round(y * SC) * N + Math.round(x * SC); if (WATER[i] && COAST[i] >= 3 && COAST[i] <= 7) add('rock', x, y, { sc: 0.8 + r() * 0.5, sea: true }); }
+    for (let k = 0; k < 400 && BB.filter((b) => b.s === 'rock').length < 14; k++) { const x = r() * 256, y = r() * 256, i = Math.min(N - 1, Math.round(y * SC)) * N + Math.min(N - 1, Math.round(x * SC)); if (WATER[i] && COAST[i] >= 3 && COAST[i] <= 7) add('rock', x, y, { sc: 0.8 + r() * 0.5, sea: true, world: true }); }
     M.wailord = add('wailord', 44, 222, { sea: true, sc: 1.1 });
     for (const b of BB) b.h = heightAt(b.x, b.y) + b.dh;
     // clouds, birds, stars
     CLOUDS = [];
     for (let k = 0; k < 9; k++) CLOUDS.push({ x: r() * 256, y: r() * 256, h: 2.5 + r() * 0.6, big: r() < 0.55 ? 0 : 1, sc: 1 + r() * 0.6 });
     BIRDS = [];
-    for (let k = 0; k < 6; k++) BIRDS.push({ a: r() * 6.28, r: 10 + r() * 8, cx: 120 + r() * 10, cy: 200 + r() * 8, h: 1.1 + r() * 0.4, sp: 0.5 + r() * 0.3 });
+    for (let k = 0; k < 6; k++) { const [bx, by] = wp(120 + r() * 10, 200 + r() * 8); BIRDS.push({ a: r() * 6.28, r: 10 + r() * 8, cx: bx, cy: by, h: 1.1 + r() * 0.4, sp: 0.5 + r() * 0.3 }); }
     STARS = [];
     for (let k = 0; k < 120; k++) STARS.push({ u: r(), v: r(), b: r() });
   }
@@ -304,13 +318,18 @@ const WorldMap = (() => {
     const k = S.ez(clamp(S.t / S.dur, 0, 1));
     CAM.fx = lerp(S.from.fx, S.to.fx, k); CAM.fy = lerp(S.from.fy, S.to.fy, k);
     CAM.yaw = S.from.yaw + wrapA(S.to.yaw - S.from.yaw) * k;
-    CAM.pitch = lerp(S.from.pitch, S.to.pitch, k); CAM.zoom = lerp(S.from.zoom, S.to.zoom, k);
+    CAM.pitch = lerp(S.from.pitch, S.to.pitch, k); CAM.zoom = lerp(S.from.zoom, S.to.zoom, k); CAM.tele = lerp(S.from.tele ?? 1, S.to.tele ?? 1, k);
     if (S.t >= S.dur) { M.shot = null; Object.assign(GOAL, CAM); }
   }
   function select(id) {
     M.sel = id; SFX.select(); M.idleT = 0;
     const L = LOC[id];
-    shot({ fx: L.x, fy: L.y, yaw: CAM.yaw + wrapA(L.yaw - CAM.yaw) * 0.6, pitch: 0.5, zoom: 0.72 }, 1.15);
+    // frame the place in the space the info card leaves free (to its right)
+    const yaw = CAM.yaw + wrapA(L.yaw - CAM.yaw) * 0.6, zoom = 0.74, UW = (typeof Game !== 'undefined' && Game.UW) || 480, UH = (typeof Game !== 'undefined' && Game.UH) || 280;
+    const cr = cardRect(UW, UH, 1), dx = Math.max(0, (cr.x + cr.w + UW) / 2 - UW / 2 - 16), fov = UW / UH > 1.2 ? 0.9 : 0.62;
+    const side = (dx * fov * 150 * zoom * (M.distGoal ?? 1) * 2) / UW;
+    shot({ fx: L.x - Math.cos(yaw) * side, fy: L.y + 3 - Math.sin(yaw) * side, yaw, pitch: 0.58, zoom, tele: 1 }, 1.15);
+    M.distGoal = 1;
   }
   function path(a, b) {
     // breadth-first over the routes, then stitch the arcs
@@ -344,12 +363,12 @@ const WorldMap = (() => {
       const u = ease.inOut(T.t / FLY), [x, y, dir] = pathAt(T, u), k = Math.min(1, T.t / 0.5);
       CAM.fx = lerp(T.start.fx, x, k); CAM.fy = lerp(T.start.fy, y, k);
       if (T.total > 4) CAM.yaw += wrapA(dir - CAM.yaw) * Math.min(1, dt * 2.4);
-      CAM.pitch = lerp(CAM.pitch, 0.66, dt * 2); CAM.zoom = lerp(CAM.zoom, 1.05, dt * 2);
+      CAM.pitch = lerp(CAM.pitch, 0.66, dt * 2); CAM.zoom = lerp(CAM.zoom, 1.05, dt * 2); CAM.tele = lerp(CAM.tele, 1, dt * 2.5);
       T.mark = [x, y];
     } else {
       const k = ease.inCubic(clamp((T.t - FLY) / DIVE, 0, 1)), L = LOC[T.id];
       CAM.fx = lerp(CAM.fx, L.x, dt * 6); CAM.fy = lerp(CAM.fy, L.y, dt * 6);
-      CAM.zoom = lerp(1.05, 0.24, k); CAM.pitch = lerp(0.66, 0.28, k); T.mark = [L.x, L.y];
+      CAM.zoom = lerp(1.05, 0.24, k); CAM.pitch = lerp(0.66, 0.28, k); CAM.tele = lerp(CAM.tele, 1, dt * 6); T.mark = [L.x, L.y];
     }
     if (T.t > FLY + DIVE - 0.2 && !T.done && T.t > FLY + DIVE - 0.2 + WIPE) {
       T.done = true;
@@ -366,10 +385,11 @@ const WorldMap = (() => {
     if (!M.built) build();
     lockFog();
     Game.mode = 'map'; M.on = true; M.t = 0; M.anim = 0; M.closing = 0; M.travel = null; M.reveal = null; M.idleT = 0;
-    M.sel = Game.areaId && LOC[Game.areaId] ? Game.areaId : 'beach';
-    const L = LOC[M.sel];
-    Object.assign(CAM, { fx: 128, fy: 140, yaw: L.yaw - 1.2, pitch: 0.95, zoom: 2.0 });
-    shot({ fx: L.x, fy: L.y, yaw: L.yaw, pitch: 0.55, zoom: 0.9 }, 2.0);
+    M.sel = null; // the overview first: every place labelled, where you are glowing
+    M.dist = M.distGoal = 1; M.spinV = 0;
+    // sweep in from high above to an overview of the whole island (where you are is selected)
+    Object.assign(CAM, { fx: 128, fy: 140, yaw: -1.1, pitch: 0.98, zoom: 2.0, tele: 1 });
+    overviewShot(2.0);
     SFX.dexOpen();
   }
   function close() { if (M.closing || M.travel) return; M.closing = 0.001; SFX.back(); }
@@ -381,15 +401,19 @@ const WorldMap = (() => {
     else if (!M.drag) {
       M.idleT += dt;
       GOAL.yaw += dt * 0.035;
+      if (M.spinV) { GOAL.yaw += M.spinV * dt; M.spinV *= Math.exp(-dt * 3.5); if (Math.abs(M.spinV) < 0.02) M.spinV = 0; }
       const k = 1 - Math.exp(-dt * 3);
-      CAM.fx = lerp(CAM.fx, GOAL.fx, k); CAM.fy = lerp(CAM.fy, GOAL.fy, k); CAM.yaw += wrapA(GOAL.yaw - CAM.yaw) * k; CAM.pitch = lerp(CAM.pitch, GOAL.pitch, k); CAM.zoom = lerp(CAM.zoom, GOAL.zoom, k);
+      CAM.fx = lerp(CAM.fx, GOAL.fx, k); CAM.fy = lerp(CAM.fy, GOAL.fy, k); CAM.yaw += wrapA(GOAL.yaw - CAM.yaw) * k; CAM.pitch = lerp(CAM.pitch, GOAL.pitch, k); CAM.zoom = lerp(CAM.zoom, GOAL.zoom, k); CAM.tele = lerp(CAM.tele, GOAL.tele ?? 1, k);
     }
+    // smooth zoom (wheel, buttons and keys ease toward the goal; a pinch drives it directly)
+    if (M.dist !== M.distSet) M.distGoal = M.dist;
+    M.dist = M.distSet = lerp(M.dist, M.distGoal ?? M.dist, 1 - Math.exp(-dt * 9));
     // life on the map
     const t = M.t;
     for (const c of CLOUDS) { c.x += dt * 1.6; if (c.x > 290) c.x -= 330; }
-    if (!PUFFS.last || t - PUFFS.last > 0.5) { PUFFS.last = t; PUFFS.push({ x: 128 + Math.random() * 2 - 1, y: 110, h: 1.62, t: 0, sc: 0.4 }); }
+    if (!PUFFS.last || t - PUFFS.last > 0.5) { PUFFS.last = t; const [vx, vy] = wp(128, 110); PUFFS.push({ x: vx + Math.random() * 2 - 1, y: vy, h: 1.62, t: 0, sc: 0.4 }); }
     for (let i = PUFFS.length - 1; i >= 0; i--) { const p = PUFFS[i]; p.t += dt; p.h += dt * 0.2; p.x += dt * 2.4; p.y += dt * 0.6; p.sc = 0.4 + p.t * 0.22; if (p.t > 6) PUFFS.splice(i, 1); }
-    if (M.wailord) { M.wailord.x = 44 + Math.sin(t * 0.07) * 14; M.wailord.y = 222 + Math.cos(t * 0.05) * 5; if ((t % 7) < dt) for (let k = 0; k < 10; k++) SPOUT.push({ x: M.wailord.x + 1, y: M.wailord.y, h: 0.12, vh: 0.5 + Math.random() * 0.25, vx: (Math.random() - 0.5) * 1.5, t: 0 }); }
+    if (M.wailord) { const [wx, wy] = wp(44 + Math.sin(t * 0.07) * 14, 222 + Math.cos(t * 0.05) * 5); M.wailord.x = wx; M.wailord.y = wy; if ((t % 7) < dt) for (let k = 0; k < 10; k++) SPOUT.push({ x: M.wailord.x + 1, y: M.wailord.y, h: 0.12, vh: 0.5 + Math.random() * 0.25, vx: (Math.random() - 0.5) * 1.5, t: 0 }); }
     for (let i = SPOUT.length - 1; i >= 0; i--) { const s = SPOUT[i]; s.t += dt; s.h += s.vh * dt; s.vh -= dt * 0.9; s.x += s.vx * dt; if (s.h < 0.03 || s.t > 2) SPOUT.splice(i, 1); }
     if (M.boats) { const b = M.boats[1]; b.x += dt * (b.drift || 0) * 0.5; if (b.x > 90) b.x = 40; }
     for (const b of BIRDS) b.a += dt * b.sp;
@@ -413,12 +437,12 @@ const WorldMap = (() => {
   function render(fb, V, t) {
     const d = fb.d, FW = fb.w, W = V.w, H = V.h, X0 = V.x, Y0 = V.y, HCf = hourCfg();
     if (!ZB || ZBW !== fb.w || ZBH !== fb.h) { ZB = new Float32Array(fb.w * fb.h); ZBW = fb.w; ZBH = fb.h; }
-    const D = 150 * CAM.zoom * M.dist;
+    const tele = Math.max(1, CAM.tele || 1), HS = 60 * tele, D = 150 * CAM.zoom * M.dist * tele;
     const sinY = Math.sin(CAM.yaw), cosY = Math.cos(CAM.yaw);
     const camX = CAM.fx - sinY * D, camY = CAM.fy + cosY * D;
-    const K = H * 0.108, a = lerp(0.9, 5.6, CAM.pitch) * (H > W * 1.2 ? 1.45 : 1), hF = heightAt(CAM.fx, CAM.fy);
-    const camH = hF * 60 + a * D, focusY = Y0 + H * 0.56, horizon = focusY - a * K;
-    const fov = W / H > 1.2 ? 0.9 : 0.62;
+    const K = H * 0.108, a = lerp(0.9, 5.6, CAM.pitch) * (H > W * 1.2 ? 1.45 : 1) * tele, hF = heightAt(CAM.fx, CAM.fy);
+    const camH = hF * HS + a * D, focusY = Y0 + H * 0.56, horizon = focusY - a * K;
+    const fov = (W / H > 1.2 ? 0.9 : 0.62) / tele;
     // ---- sky ----
     const sunX = X0 + W * (0.5 + Math.sin(CAM.yaw + 1.2) * 0.62), sunY = horizon - (H * 0.5) * Math.max(0.08, HCf.sun) - 6;
     const skyBot = Math.min(Y0 + H, Math.max(Y0, Math.ceil(horizon + 40)));
@@ -435,8 +459,8 @@ const WorldMap = (() => {
     // ---- terrain (front-to-back voxel columns) ----
     const ybuf = new Int32Array(W).fill(Y0 + H), prevH = new Float32Array(W).fill(-1);
     const fogC = HCf.sky1, tone = HCf.tone, shimmer = Math.floor(t * 5), wav = t * 1.7;
-    const zBottom = (camH - hF * 60) * K / Math.max(8, Y0 + H - horizon), zStart = Math.max(3, zBottom * 0.55), zEnd = Math.min(560, D + 330);
-    const glint = new Float32Array(W); if (!HCf.night) for (let sx = 0; sx < W; sx++) glint[sx] = Math.max(0, 1 - Math.abs(X0 + sx - sunX) / 34);
+    const zBottom = (camH - hF * HS) * K / Math.max(8, Y0 + H - horizon), zStart = Math.max(3, zBottom * 0.55), zEnd = Math.min(560 * tele, D + 330 * tele);
+    const waveT = 1.45 + clamp((tele - 1) * 0.3, 0, 0.42), glint = new Float32Array(W); if (!HCf.night) for (let sx = 0; sx < W; sx++) glint[sx] = Math.max(0, 1 - Math.abs(X0 + sx - sunX) / 34);
     const cls = CLOUDS.map((c) => ({ x: c.x - 16, y: c.y + 9, r2: (c.big ? 7 : 5.5) ** 2 * c.sc * c.sc }));
     const fogOn = !!FOGM, faceK = 0.2;
     for (let z = zStart; z < zEnd; z += Math.max(0.45, z * 0.0105)) {
@@ -444,12 +468,12 @@ const WorldMap = (() => {
       const lx = camX + sinY * z + cosY * plx, ly = camY - cosY * z + sinY * plx;
       const dx = (cosY * 2 * fov * z) / W, dy = (sinY * 2 * fov * z) / W;
       let px = lx, py = ly;
-      const fog = clamp((z - D - 50) / 300, 0, 0.88), fogK = (fog * 256) | 0, near = z < 70, shade = z < D + 200;
-      const pz = (camH / z) * K + horizon, hk = 60 / z * K;
+      const fog = clamp((z - D - 50 * tele) / (300 * tele), 0, 0.88), fogK = (fog * 256) | 0, near = z < 70 * tele, shade = z < D + 200 * tele;
+      const pz = (camH / z) * K + horizon, hk = HS / z * K;
       for (let sx = 0; sx < W; sx++, px += dx, py += dy) {
         const gx = px * SC, gy = py * SC;
         let h, c, i = -1;
-        if (gx < 0 || gy < 0 || gx >= N - 1 || gy >= N - 1) { h = 0.02; const w1 = SIN[((gx * 5 + gy * 3) * 3 + (wav * 160 | 0)) & 1023] + SIN[((gx * 3 - gy * 4) * 2 - (wav * 120 | 0)) & 1023]; c = w1 > 1.45 ? OCEAN2 : OCEAN; }
+        if (gx < 0 || gy < 0 || gx >= N - 1 || gy >= N - 1) { h = 0.02; const w1 = SIN[((gx * 5 + gy * 3) * 3 + (wav * 160 | 0)) & 1023] + SIN[((gx * 3 - gy * 4) * 2 - (wav * 120 | 0)) & 1023]; c = w1 > waveT ? OCEAN2 : OCEAN; }
         else {
           const ix = gx | 0, iy = gy | 0; i = iy * N + ix;
           if (WATER[i]) {
@@ -457,7 +481,7 @@ const WorldMap = (() => {
             const cz = COAST[i];
             // rolling swell, foam on the shore, glitter toward the sun
             const w1 = SIN[((ix * 5 + iy * 3) * 3 + (wav * 160 | 0)) & 1023] + SIN[((ix * 3 - iy * 4) * 2 - (wav * 120 | 0)) & 1023];
-            if (w1 > 1.45) c = mix(c, 0xffffffff, 0.16); else if (w1 < -1.5) c = mix(c, DARKSEA, 0.12);
+            if (w1 > waveT) c = mix(c, 0xffffffff, 0.16); else if (w1 < -1.5) c = mix(c, DARKSEA, 0.12);
             if (cz === 1) c = mix(c, 0xffffffff, 0.5);
             else if (cz > 1 && cz < 7) { const ph = ((t * 1.4 + WPH[i] / 256 * 0.6) % 4) + 1.2; if (Math.abs(cz - ph) < 0.55) c = mix(c, 0xffffffff, 0.34); }
             const hs = (Math.imul(i ^ (shimmer * 40503), 2654435761) >>> 22);
@@ -482,7 +506,8 @@ const WorldMap = (() => {
         }
       }
     }
-    const P = { camX, camY, camH, horizon, K, sinY, cosY, fov, W, H, X0, Y0, D, night: HCf.night, tone };
+    const P = { camX, camY, camH, horizon, K, sinY, cosY, fov, W, H, X0, Y0, D, night: HCf.night, tone, tele, HS };
+    dotTele = tele;
     // ---- routes (marching dashes) ----
     for (const [a, b] of ROUTES) {
       const on = Save.unlocked(a) && Save.unlocked(b), pts = routePts(a, b, 0.9);
@@ -496,7 +521,7 @@ const WorldMap = (() => {
     // ---- billboards, far to near ----
     const items = [];
     for (const b of BB) { const p = project(P, b.x, b.y, b.h + (b.bob ? Math.sin(t * 2 + b.x) * 0.012 : 0)); if (p && p[2] > 2) items.push({ p, b }); }
-    for (const c of CLOUDS) { const p = project(P, c.x, c.y, c.h); if (p && p[2] > 45) items.push({ p, b: { s: 'cloud', big: c.big, sc: c.sc * 0.95, alpha: clamp((p[2] - 45) / 40, 0, 0.82) } }); }
+    for (const c of CLOUDS) { const p = project(P, c.x, c.y, c.h); if (p && p[2] > 45 * tele) items.push({ p, b: { s: 'cloud', big: c.big, sc: c.sc * 0.95, alpha: clamp((p[2] - 45 * tele) / (40 * tele), 0, 0.82) } }); }
     for (const q of PUFFS) { const p = project(P, q.x, q.y, q.h); if (p) items.push({ p, b: { s: 'puff', sc: q.sc, alpha: 0.6 * (1 - q.t / 6) } }); }
     items.sort((A, B) => B.p[2] - A.p[2]);
     for (const { p, b } of items) {
@@ -510,9 +535,9 @@ const WorldMap = (() => {
     for (const q of BIRDS) { const p = project(P, q.cx + Math.cos(q.a) * q.r, q.cy + Math.sin(q.a) * q.r * 0.6, q.h + Math.sin(q.a * 3) * 0.05); if (p) blit(fb, V, P, SPR[Math.floor(t * 6 + q.r) % 2 ? 'bird0' : 'bird1'], p, 1, HCf.night); }
     // night: a sweeping lighthouse beam, fireflies over the woods
     if (HCf.night) {
-      const lp = project(P, 143, 219, heightAt(143, 219) + 0.92);
+      const [hx0, hy0] = wp(143, 219), lp = project(P, hx0, hy0, heightAt(hx0, hy0) + 0.92);
       if (lp) { const ang = t * 1.1; beam(fb, V, lp[0], lp[1] - 1, ang); }
-      for (let k = 0; k < 40; k++) { const x = 178 + Math.sin(k * 12.9 + t * 0.3) * 22, y = 130 + Math.cos(k * 7.3 + t * 0.25) * 20; if (Math.sin(t * 3 + k) < 0.2) continue; const p = project(P, x, y, heightAt(x, y) + 0.1); if (p) dot(fb, V, p, 0xff8affe0, 0); }
+      for (let k = 0; k < 40; k++) { if (Math.sin(t * 3 + k) < 0.2) continue; const [x, y] = wp(178 + Math.sin(k * 12.9 + t * 0.3) * 22, 130 + Math.cos(k * 7.3 + t * 0.25) * 20); const p = project(P, x, y, heightAt(x, y) + 0.1); if (p) dot(fb, V, p, 0xff8affe0, 0); }
     }
     return P;
   }
@@ -520,14 +545,14 @@ const WorldMap = (() => {
     const rx = x - P.camX, ry = y - P.camY;
     const z = rx * P.sinY - ry * P.cosY, side = rx * P.cosY + ry * P.sinY;
     if (z < 3) return null;
-    return [P.X0 + P.W / 2 + (side / (P.fov * z)) * (P.W / 2), (P.camH - h * 60) / z * P.K + P.horizon, z];
+    return [P.X0 + P.W / 2 + (side / (P.fov * z)) * (P.W / 2), (P.camH - h * (P.HS || 60)) / z * P.K + P.horizon, z];
   }
   function blit(fb, V, P, s, p, sc0, night, alpha = 1) {
-    const z = p[2], sc = sc0 * (200 / z) * (P.W / 400);
+    const z = p[2], sc = sc0 * (200 * (P.tele || 1) / z) * (P.W / 400);
     if (sc < 0.2) return;
     const w = s.w * sc, h = s.h * sc, x0 = Math.round(p[0] - w / 2), y0 = Math.round(p[1] - h), x1 = Math.round(x0 + w), y1 = Math.round(p[1]);
-    const d = fb.d, FW = fb.w, src = night ? s.nd : s.d, zt = z - 1.5;
-    const fog = clamp((z - P.D - 50) / 300, 0, 0.88), fogK = (fog * 256) | 0, fogC = HC.sky1;
+    const d = fb.d, FW = fb.w, src = night ? s.nd : s.d, zt = z - 1.5 * (P.tele || 1);
+    const fog = clamp((z - P.D - 50 * (P.tele || 1)) / (300 * (P.tele || 1)), 0, 0.88), fogK = (fog * 256) | 0, fogC = HC.sky1;
     for (let y = Math.max(V.y, y0); y < Math.min(V.y + V.h, y1); y++) {
       const sy = Math.min(s.h - 1, ((y - y0) / sc) | 0), row = sy * s.w, o0 = y * FW;
       for (let x = Math.max(V.x, x0); x < Math.min(V.x + V.w, x1); x++) {
@@ -540,11 +565,12 @@ const WorldMap = (() => {
       }
     }
   }
+  let dotTele = 1;
   function dot(fb, V, p, c, sh) {
     const x = Math.round(p[0]), y = Math.round(p[1]), FW = fb.w;
     for (const [dx, dy, col] of sh ? [[0, 1, sh], [1, 1, sh], [0, 0, c], [1, 0, c]] : [[0, 0, c]]) {
       const X = x + dx, Y = y + dy; if (X < V.x || Y < V.y || X >= V.x + V.w || Y >= V.y + V.h) continue;
-      const o = Y * FW + X; if (ZB[o] < p[2] - 2.5) continue;
+      const o = Y * FW + X; if (ZB[o] < p[2] - 2.5 * (dotTele || 1)) continue;
       fb.d[o] = (col >>> 24) < 255 ? U.mix(fb.d[o], col | 0xff000000, 0.5) : col;
     }
   }
@@ -561,12 +587,72 @@ const WorldMap = (() => {
   }
 
   /* ================= overlay: pins, labels, card, HUD ================= */
+  // the selected place's info card (bosses.js lines its BOSS tab up with this rectangle)
+  function cardRect(W, H, k) { const cw = Math.min(214, W - 16), ch = 80; return { x: 8, y: H - ch - 8 + Math.round((1 - k) * 90), w: cw, h: ch }; }
+  const overlap = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  // a place's label: [quest badge] name [Lv chip], as one box so nothing can overlap it
+  function labelSize(id) {
+    const un = Save.unlocked(id), lbl = un ? LOC[id].label : '???', nw = Font.measure(lbl, 'small');
+    const rl = typeof Bosses !== 'undefined' && Bosses.REC ? Bosses.REC[id] : 0, lt = rl ? 'Lv' + rl : '', lw = lt ? Font.measure(lt, 'small') + 6 : 0;
+    const qm = M.questMark ? M.questMark(id) : null, qw = qm ? 11 : 0;
+    return { lbl, un, nw, lt, lw, qm, qw, rl, w: nw + 10 + lw + qw, h: 12 };
+  }
+  function drawLabel(fb, S, L, x, y, id, sel, here, t) {
+    const C = UI.C, fill = sel ? S.accent : here ? hex('#2a86d8') : L.un ? C.navy : hex('#4a5068');
+    UI.shadow(fb, x, y, L.w, L.h, 3, 2, 0.45);
+    const hov = HUD.hoverId === 'pin-' + id, fl = hov && !sel ? U.tweak(fill, 0, 1, 0.08) : fill;
+    UI.rrect(fb, x - 1, y - 1, L.w + 2, L.h + 2, 4, sel || hov ? C.goldL : C.ink);
+    UI.rrect(fb, x, y, L.w, L.h, 3, fl);
+    UI.hline(fb, x + 3, x + L.w - 4, y, U.tweak(fill, 0, 1, 0.14));
+    let xx = x + 5;
+    if (L.qm) {
+      const qc = L.qm === 'ready' ? hex('#ffc830') : hex('#7a86b8'), cx = x + 6, cy = y + 6, bob = L.qm === 'ready' ? Math.round(Math.sin(t * 6)) : 0;
+      if (L.qm === 'tracked' || L.qm === 'ready') UI.ring(fb, cx, cy + bob, 6, C.goldL, 1);
+      UI.disc(fb, cx, cy + bob, 5, C.ink); UI.disc(fb, cx, cy + bob, 4, qc);
+      if (L.qm === 'ready') Font.draw(fb, '!', cx, cy - 3 + bob, C.ink, { font: 'small', align: 'center' }); else Font.draw(fb, '?', cx, cy - 3 + bob, 0xffffffff, { font: 'small', align: 'center' });
+      xx += L.qw;
+    }
+    Font.draw(fb, L.lbl, xx, y + 3, 0xffffffff, { font: 'small', shadow: U.tweak(fill, 0, 1, -0.25) });
+    if (L.lt) {
+      const under = typeof Progress !== 'undefined' && Progress.level && Progress.level() < L.rl, lx = x + L.w - L.lw - 1;
+      UI.rrect(fb, lx, y + 1, L.lw, L.h - 2, 2, under ? hex('#c8303c') : hex('#3a9a4a'));
+      Font.draw(fb, L.lt, lx + L.lw / 2, y + 3, 0xffffffff, { font: 'small', align: 'center' });
+    }
+  }
+  // the marker: a ball-headed pin standing on the place, ringed with its Pokédex completion
+  function drawPin(fb, S, pin, t) {
+    const C = UI.C, { id, g, top } = pin, un = Save.unlocked(id), here = Game.areaId === id, sel = M.sel === id, pct = completion(id);
+    const gx = Math.round(g[0]), gy = Math.round(g[1]), px = Math.round(top[0]), py = Math.round(top[1]) - (sel ? Math.round(Math.abs(Math.sin(t * 4)) * 2) : 0);
+    for (let x = -4; x <= 4; x++) for (let y = -1; y <= 1; y++) if ((x * x) / 16 + y * y <= 1.2) UI.blend(fb, gx + x, gy + y, 0xff000000, 0.35);
+    UI.line(fb, gx, gy, px, py + 6, C.ink); UI.line(fb, gx + 1, gy, px + 1, py + 6, hex('#8a90b0'));
+    if (here) { const k = (t * 0.9) % 1; UI.ring(fb, px, py, 10 + Math.round(k * 7), U.mix(hex('#5affff'), hex('#2a86d8'), k), 1); }
+    if (sel) UI.ring(fb, px, py, 11, C.goldL, 1);
+    for (let a = 0; a < 44; a++) { const ang = (a / 44) * Math.PI * 2 - Math.PI / 2; UI.put(fb, Math.round(px + Math.cos(ang) * 8), Math.round(py + Math.sin(ang) * 8), a / 44 < pct ? (pct >= 1 ? hex('#ffd23a') : hex('#5aff7a')) : hex('#3a4058')); }
+    UI.disc(fb, px, py + 1, 7, C.shadow);
+    UI.orb(fb, px, py, 6, un ? (here ? hex('#4ab8ff') : S.body) : hex('#6a7088'), { ol: C.ink });
+    Font.icon(fb, un ? (here ? 'cam' : 'pb') : 'lock', px - (un ? (here ? 4 : 3) : 2), py - 3, 1);
+  }
+  function overviewShot(dur = 1.4) {
+    const xs = Object.values(LOC).map((L) => L.x), ys = Object.values(LOC).map((L) => L.y);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const wide = typeof Game !== 'undefined' && Game.UW / Math.max(1, Game.UH) > 1.95;
+    shot({ fx: cx, fy: cy + 2, yaw: CAM.yaw + wrapA(0.08 - CAM.yaw) * 0.85, pitch: 0.78, zoom: wide ? 1.4 : 1.3, tele: 2.4 }, dur);
+  }
   function draw(fb, t) {
-    const S = UI.skin(), W = fb.w, H = fb.h;
+    const S = UI.skin(), C = UI.C, W = fb.w, H = fb.h;
     const k = M.closing ? 1 - M.closing / 0.4 : Math.min(1, M.anim * 1.6);
     const V = { x: 0, y: 0, w: W, h: H };
     const P = render(fb, V, t);
-    // pins
+    // highlighted route: from here to the selected place, gold dots marching along it
+    if (M.sel && Game.areaId && LOC[Game.areaId] && M.sel !== Game.areaId && !M.travel && Save.unlocked(M.sel)) {
+      const pts = path(Game.areaId, M.sel);
+      let acc = 0;
+      for (let q = 1; q < pts.length; q++) {
+        const [ax, ay] = pts[q - 1], [bx, by] = pts[q], L2 = Math.hypot(bx - ax, by - ay);
+        for (let d = 0; d < L2; d += 0.6) { acc += 0.6; const ph = (acc * 0.5 - t * 3) % 3; if (ph > -1) continue; const x = lerp(ax, bx, d / L2), y = lerp(ay, by, d / L2), p = project(P, x, y, heightAt(x, y) + 0.02); if (p) dot(fb, V, p, hex('#ffe07a'), hex('#7a4a10')); }
+      }
+    }
+    // pins (far to near)
     const pins = [];
     for (const id in LOC) {
       const L = LOC[id], gh = heightAt(L.x, L.y);
@@ -574,85 +660,114 @@ const WorldMap = (() => {
       if (!g || !top || g[0] < -20 || g[0] > W + 20 || g[1] < -20 || g[1] > H + 40) continue;
       pins.push({ id, g, top, L });
     }
+    pins.sort((A, B) => B.g[2] - A.g[2]);
     // ground rings
     for (const { id, L } of pins) {
       const sel = M.sel === id, R = sel ? 4 + Math.sin(t * 4) * 0.8 : 3;
-      for (let a = 0; a < 24; a++) { const an = a / 24 * Math.PI * 2, x = L.x + Math.cos(an) * R, y = L.y + Math.sin(an) * R; const p = project(P, x, y, heightAt(x, y) + 0.01); if (p) dot(fb, V, p, sel ? 0xff5affff : 0xffffffff, 0); }
+      for (let a = 0; a < 24; a++) { const an = a / 24 * Math.PI * 2, x = L.x + Math.cos(an) * R, y = L.y + Math.sin(an) * R; const p = project(P, x, y, heightAt(x, y) + 0.01); if (p) dot(fb, V, p, sel ? hex('#ffe07a') : 0xffffffff, 0); }
     }
-    // labels (stacked so they never overlap)
-    pins.sort((A, B) => B.top[1] - A.top[1]);
-    const boxes = [];
+    for (const pin of pins) drawPin(fb, S, pin, t);
+    // labels: placed one by one (selected first, then where you are, then near to far), each in the
+    // first free spot around its pin, never over another label, a pin, the bars or the card
+    const card = M.sel && DexData.AREAS[M.sel] && !M.travel ? cardRect(W, H, k) : null;
+    const trk = !M.travel && M.trackText ? M.trackText() : null;
+    const keep = [{ x0: 0, y0: 0, x1: W, y1: 22 }, { x0: W - 26, y0: 22, x1: W, y1: 66 }];
+    if (trk) keep.push({ x0: 0, y0: 22, x1: Math.min(W - 30, Font.measure(trk, 'small') + 30), y1: 36 });
+    if (card) keep.push({ x0: card.x - 2, y0: card.y - 14, x1: card.x + card.w + 2, y1: H });
+    else if (!M.travel) keep.push({ x0: W / 2 - 110, y0: H - 16, x1: W / 2 + 110, y1: H });
+    const heads = pins.map((p) => ({ x0: p.top[0] - 9, y0: p.top[1] - 9, x1: p.top[0] + 9, y1: p.top[1] + 9 }));
+    const placed = [], order = pins.slice().sort((A, B) => (B.id === M.sel) - (A.id === M.sel) || (B.id === Game.areaId) - (A.id === Game.areaId) || A.g[2] - B.g[2]);
+    for (const pin of order) {
+      if (M.travel && pin.id !== M.travel.id) { pin.box = null; continue; } // flying: only the destination keeps its label
+      const Lb = labelSize(pin.id), w = Lb.w, h = Lb.h, px = pin.top[0], py = pin.top[1], gy = pin.g[1];
+      const cand = [[px - w / 2, py - 11 - h], [px + 11, py - h / 2], [px - 11 - w, py - h / 2], [px + 3, py - 10 - h], [px - w - 3, py - 10 - h], [px - w / 2, py - 25 - h], [px + 12, py - 16 - h], [px - w - 12, py - 16 - h], [px - w / 2, gy + 4], [px - w / 2, py - 39 - h]];
+      let best = null, bs = 1e9;
+      for (const [cx0, cy0] of cand) {
+        const r = { x0: Math.round(cx0), y0: Math.round(cy0), x1: Math.round(cx0) + w, y1: Math.round(cy0) + h };
+        let sc = 0;
+        if (r.x0 < 2 || r.x1 > W - 2 || r.y0 < 23 || r.y1 > H - 2) sc += 5000;
+        for (const q of placed) sc += overlap(r, { x0: q.x0 - 3, y0: q.y0 - 2, x1: q.x1 + 3, y1: q.y1 + 2 }) * 4;
+        for (const q of heads) sc += overlap(r, q) * 2;
+        for (const q of keep) sc += overlap(r, q) * 3;
+        if (sc < bs) { bs = sc; best = r; }
+        if (sc === 0) break;
+      }
+      placed.push(best); pin.box = best; pin.Lb = Lb;
+    }
     for (const pin of pins) {
-      const { id, top } = pin, un = Save.unlocked(id), lbl = un ? LOC[id].label : '???';
-      const tw = Font.measure(lbl, 'small') + 8, bx = Math.round(top[0] - tw / 2);
-      let by = Math.round(top[1] - 30 - (M.sel === id ? Math.sin(t * 3) * 1.5 : 0));
-      for (let g = 0; g < 8; g++) { const hit = boxes.find((q) => bx < q.x1 && bx + tw > q.x0 && by < q.y1 && by + 12 > q.y0); if (!hit) break; by = hit.y0 - 13; }
-      boxes.push({ x0: bx, x1: bx + tw, y0: by, y1: by + 12 });
-      pin.box = { bx, by, tw, lbl, un };
+      const b = pin.box, px = Math.round(pin.top[0]), py = Math.round(pin.top[1]);
+      if (!b) continue;
+      // leader line from the pin head to the nearest edge of its label
+      const lx = clamp(px, b.x0 + 2, b.x1 - 3), ly = clamp(py, b.y0, b.y1 - 1);
+      if (Math.hypot(lx - px, ly - py) > 9) UI.line(fb, px, py, lx, ly, hex('#e8ecff'));
     }
     for (const pin of pins) {
-      const { id, g, top, box } = pin, { bx, by, tw, lbl, un } = box;
-      const here = Game.areaId === id, sel = M.sel === id, pct = completion(id);
-      const px = Math.round(top[0]), py = Math.round(top[1]);
-      // pole + badge
-      UI.line(fb, Math.round(g[0]), Math.round(g[1]), px, py + 6, 0xff1b2240);
-      for (let a = 0; a < 40; a++) { const ang = (a / 40) * Math.PI * 2 - Math.PI / 2; UI.put(fb, Math.round(px + Math.cos(ang) * 8), Math.round(py + Math.sin(ang) * 8), a / 40 < pct ? (pct >= 1 ? 0xff4ad8ff : 0xff5aff7a) : 0xff3a4058); }
-      UI.orb(fb, px, py, 6, un ? (here ? 0xff4ab8ff : S.body) : 0xff6a7088, { ol: 0xff1b2240 });
-      Font.icon(fb, un ? (here ? 'cam' : 'pb') : 'lock', px - (un ? (here ? 4 : 3) : 2), py - 3, 1);
-      // label
-      if (by + 12 < py - 8) UI.line(fb, px, by + 12, px, py - 8, 0xaa1b2240);
-      UI.rrect(fb, bx, by, tw, 12, 3, sel ? S.accent : 0xff1b2240);
-      Font.draw(fb, lbl, bx + tw / 2, by + 3, 0xffffffff, { font: 'small', align: 'center' });
-      if (typeof Bosses !== 'undefined' && Bosses.REC && Bosses.REC[id]) { const rl = Bosses.REC[id], lt = 'Lv' + rl, lw2 = Font.measure(lt, 'small') + 4, under = typeof Progress !== 'undefined' && Progress.level && Progress.level() < rl; UI.rrect(fb, bx + tw - 2, by - 5, lw2, 9, 2, under ? 0xff2a2ad0 : 0xff4a8a2a); Font.draw(fb, lt, bx + tw - 2 + lw2 / 2, by - 4, 0xffffffff, { font: 'small', align: 'center' }); }
-      if (here) Font.draw(fb, 'you are here', px, py + 11, 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 });
-      HUD.btn('pin-' + id, Math.min(bx, px - 10), by - 2, Math.max(tw, 20), py + 10 - by, () => { if (!M.travel) select(id); });
+      const { id } = pin, b = pin.box;
+      if (!b) continue;
+      drawLabel(fb, S, pin.Lb, b.x0, b.y0, id, M.sel === id, Game.areaId === id, t);
+      const hx0 = Math.min(b.x0, pin.top[0] - 9), hy0 = Math.min(b.y0, pin.top[1] - 9), hx1 = Math.max(b.x1, pin.top[0] + 9), hy1 = Math.max(b.y1, pin.top[1] + 9);
+      HUD.btn('pin-' + id, Math.round(hx0), Math.round(hy0), Math.round(hx1 - hx0), Math.round(hy1 - hy0), () => { if (!M.travel) select(id); });
     }
-    // travel marker: a glowing trail over the route
+    // travel marker: a glowing dot and its trail over the route
     if (M.travel && M.travel.mark) {
       const [x, y] = M.travel.mark, p = project(P, x, y, heightAt(x, y) + 0.25);
-      if (p) { UI.disc(fb, Math.round(p[0]), Math.round(p[1]), 3, 0xffffffff); UI.disc(fb, Math.round(p[0]), Math.round(p[1]), 2, 0xff4ab8ff); for (let q = 1; q < 6; q++) { const u = clamp(ease.inOut(M.travel.t / FLY) - q * 0.02, 0, 1), [qx, qy] = pathAt(M.travel, u), pp = project(P, qx, qy, heightAt(qx, qy) + 0.25); if (pp) UI.put(fb, Math.round(pp[0]), Math.round(pp[1]), 0xffbfe8ff); } }
+      if (p) { UI.disc(fb, Math.round(p[0]), Math.round(p[1]), 3, 0xffffffff); UI.disc(fb, Math.round(p[0]), Math.round(p[1]), 2, hex('#4ab8ff')); for (let q = 1; q < 6; q++) { const u = clamp(ease.inOut(M.travel.t / FLY) - q * 0.02, 0, 1), [qx, qy] = pathAt(M.travel, u), pp = project(P, qx, qy, heightAt(qx, qy) + 0.25); if (pp) UI.put(fb, Math.round(pp[0]), Math.round(pp[1]), hex('#bfe8ff')); } }
     }
     // rift in the sky once Palkia or Dialga has appeared
     if (Save.found('palkia.met') || Save.found('dialga.met')) {
-      const p = project(P, 60, 190, 2.4);
-      if (p) { const x = Math.round(p[0]), y = Math.round(p[1]); for (let a = 0; a < 30; a++) UI.put(fb, x + Math.round(Math.sin(a * 0.7 + t) * 6), y + a - 15, a % 2 ? 0xffff9ae8 : 0xff9ad8ff); Font.draw(fb, 'Rift', x, y - 22, 0xffffc8f0, { font: 'small', align: 'center', outline: 0xff1b2240 }); }
+      const [rx0, ry0] = wp(60, 190), p = project(P, rx0, ry0, 2.4);
+      if (p) { const x = Math.round(p[0]), y = Math.round(p[1]); for (let a = 0; a < 30; a++) UI.put(fb, x + Math.round(Math.sin(a * 0.7 + t) * 6), y + a - 15, a % 2 ? hex('#e89aff') : hex('#ffd89a')); Font.draw(fb, 'Rift', x, y - 22, hex('#f0c8ff'), { font: 'small', align: 'center', outline: C.ink }); }
     }
-    // top bar: title, compass, close
+    // top bar: compass, title, zoom, close
     const bar = Math.round((1 - k) * -24);
-    UI.rectA(fb, 0, bar, W, 20, NAVY, 0.6);
-    Font.draw(fb, 'HOENN PHOTO MAP', 26, bar + 6, 0xffffffff, { font: 'small' });
+    UI.rectA(fb, 0, bar, W, 20, NAVY, 0.72); UI.hline(fb, 0, W - 1, bar + 20, C.ink);
     compass(fb, 12, bar + 10, CAM.yaw);
-    UI.panel(fb, W - 22, bar + 3, 16, 14, { r: 3, ol: S.ink, fill: S.btn }); Font.icon(fb, 'cross', W - 16, bar + 7, 1);
+    Font.draw(fb, 'HOENN PHOTO MAP', 26, bar + 6, 0xffffffff, { font: 'small', shadow: C.ink });
+    const hx = HUD.hoverId === 'mapx', px = HUD.pressed('mapx');
+    UI.closeBtn(fb, W - 22, bar + 3, { hover: hx, down: px });
     HUD.btn('mapx', W - 26, bar, 26, 20, () => close());
-    if (!M.sel && !M.travel) Font.draw(fb, 'tap a place  ·  drag to spin  ·  pinch to zoom', W / 2, H - 12, 0xffffffff, { font: 'small', align: 'center', outline: 0xff1b2240 });
+    if (trk) UI.chip(fb, 6, bar + 25, trk, { bg: hex('#5a3a10'), fg: hex('#ffe07a'), h: 10, pad: 10 });
+    // zoom buttons
+    [['mapzin', '+', -0.22, 26], ['mapzout', '-', 0.22, 44]].forEach(([bid, lab, d, by]) => {
+      UI.button(fb, W - 22, bar + by, 16, 15, { label: lab, hover: HUD.hoverId === bid, down: HUD.pressed(bid), fill: C.navyL });
+      HUD.btn(bid, W - 24, bar + by - 1, 20, 17, () => zoomBy(d));
+    });
+    if (!M.sel && !M.travel) UI.chip(fb, W / 2, H - 14, typeof Pad !== 'undefined' && Pad.touch ? 'tap a place  ·  drag to spin  ·  pinch to zoom' : 'click a place  ·  drag to spin  ·  wheel to zoom', { align: 'center', bg: C.navy, h: 10, pad: 12 });
     // info card for the selected place
-    if (M.sel && DexData.AREAS[M.sel] && !M.travel) {
-      const a = DexData.AREAS[M.sel], un = Save.unlocked(M.sel), here = M.sel === Game.areaId;
-      const cw = Math.min(214, W - 16), ch = 80, cx = 8, cyy = H - ch - 8 + Math.round((1 - k) * 90);
-      UI.panel(fb, cx, cyy, cw, ch, { r: 5, ol: S.ink, fill: 0xfff4f6fb });
-      UI.rect(fb, cx + 3, cyy + 3, 3, ch - 6, un ? S.accent : 0xff8a90a8);
-      Font.draw(fb, un ? a.name : '??? (locked)', cx + 10, cyy + 7, 0xff1b2240, { font: 'title' });
-      Font.draw(fb, a.sub, cx + 10, cyy + 23, 0xff5a6080, { font: 'small' });
-      Font.draw(fb, un ? a.blurb : ((typeof Bosses !== 'undefined' && Bosses.lockNote(M.sel)) || (M.sel === 'stage' ? 'Gather Meloetta\'s band to open the stage.' : 'Earn ' + a.need + ' research stamps to open (' + Quests.stamps() + ' so far).')), cx + 10, cyy + 33, un ? 0xff1b2240 : hex('#b8242a'), { font: 'small', maxW: cw - 18, lh: 9 });
+    if (card) {
+      const a = DexData.AREAS[M.sel], un = Save.unlocked(M.sel), here = M.sel === Game.areaId, { x: cx, y: cyy, w: cw, h: ch } = card;
+      UI.shadow(fb, cx, cyy, cw, ch, 5, 3, 0.55);
+      UI.panel(fb, cx, cyy, cw, ch, { r: 5, ol: C.ink, fill: hex('#f6f7fc') });
+      UI.rect(fb, cx + 3, cyy + 3, 3, ch - 6, un ? S.accent : hex('#8a90a8'));
+      Font.draw(fb, un ? a.name : '??? (locked)', cx + 10, cyy + 6, C.text, { font: 'title' });
+      Font.draw(fb, a.sub, cx + 10, cyy + 22, C.dim, { font: 'small' });
+      const note = un ? a.blurb : ((typeof Bosses !== 'undefined' && Bosses.lockNote(M.sel)) || (M.sel === 'stage' ? 'Gather Meloetta\'s band to open the stage.' : 'Earn ' + a.need + ' research stamps to open (' + Quests.stamps() + ' so far).'));
+      const ls = Font.wrap(note, 'small', cw - 18).slice(0, 3);
+      ls.forEach((l, i) => Font.draw(fb, i === 2 && Font.wrap(note, 'small', cw - 18).length > 3 ? l.replace(/.{0,2}$/, '..') : l, cx + 10, cyy + 32 + i * 9, un ? C.text : hex('#b8242a'), { font: 'small' }));
       const sp = DexData.ORDER.filter((q) => (DexData.S[q].area || []).includes(M.sel)), seen = sp.filter((q) => Save.data.seen[q]).length, pc = completion(M.sel);
-      Font.draw(fb, 'Pokémon ' + seen + '/' + sp.length, cx + 10, cyy + ch - 12, 0xff1b2240, { font: 'small' });
-      const bw = 40, bxx = cx + 14 + Font.measure('Pokémon ' + seen + '/' + sp.length, 'small'); UI.rrect(fb, bxx, cyy + ch - 12, bw, 6, 2, 0xffd4d8e4); if (pc > 0) UI.rrect(fb, bxx, cyy + ch - 12, Math.max(3, Math.round(bw * pc)), 6, 2, pc >= 1 ? 0xff4ad8ff : 0xff5ad07a);
-      Font.draw(fb, Math.round(pc * 100) + '%', bxx + bw + 4, cyy + ch - 12, 0xff1b2240, { font: 'small' });
+      const pl = 'Pokémon ' + seen + '/' + sp.length, py2 = cyy + ch - 12;
+      Font.draw(fb, pl, cx + 10, py2, C.text, { font: 'small' });
+      const bw = 40, bxx = cx + 14 + Font.measure(pl, 'small'); UI.rrect(fb, bxx, py2, bw, 6, 2, hex('#d4d8e4')); if (pc > 0) UI.rrect(fb, bxx, py2, Math.max(3, Math.round(bw * pc)), 6, 2, pc >= 1 ? hex('#ffd23a') : hex('#5ad07a'));
+      Font.draw(fb, Math.round(pc * 100) + '%', bxx + bw + 4, py2, C.text, { font: 'small' });
       if (un && !here) {
         const bx = cx + cw - 56, by = cyy + ch - 21;
-        UI.panel(fb, bx, by, 50, 16, { r: 3, ol: S.ink, fill: S.accent });
-        Font.draw(fb, 'Travel', bx + 25, by + 5, 0xffffffff, { font: 'small', align: 'center' });
-        HUD.btn('travel', bx, by, 50, 16, () => { if (!Areas[M.sel]) { HUD.toast('This place is still being built — coming in a future update!', { life: 2.6 }); SFX.error(); return; } travelTo(M.sel); });
-      } else if (here) { const tw = Font.measure('You are here', 'small') + 8; UI.rrect(fb, cx + cw - tw - 6, cyy + 6, tw, 11, 3, HERE_C); Font.draw(fb, 'You are here', cx + cw - 6 - tw / 2, cyy + 9, 0xffffffff, { font: 'small', align: 'center' }); }
+        UI.button(fb, bx, by, 50, 16, { label: 'Travel', icon: 'right', fill: S.accent, hover: HUD.hoverId === 'travel', down: HUD.pressed('travel') });
+        HUD.btn('travel', bx - 2, by - 2, 54, 20, () => { if (!Areas[M.sel]) { HUD.toast('This place is still being built — coming in a future update!', { life: 2.6 }); SFX.error(); return; } UI.burst(bx + 25, by + 8, 10, { speed: 45 }); travelTo(M.sel); });
+      } else if (here) UI.chip(fb, cx + cw - 7, cyy + 7, 'You are here', { align: 'right', bg: hex('#2a86d8'), h: 10, pad: 10 });
     }
     // travel: the Poké Ball wipe closes as the camera dives in
     if (M.travel && M.travel.t > FLY + DIVE - 0.2) wipe(fb, clamp((M.travel.t - (FLY + DIVE - 0.2)) / WIPE, 0, 1), W, H);
-    // background drag area (spin / tilt; a tap on empty ground deselects)
+    // background drag area (spin / tilt with a little momentum; a tap on empty ground goes back to the overview)
     HUD.btn('mapdrag', 0, 20, W, H - 20, null, { drag: (ux, uy, ph) => {
       if (M.travel) return;
-      if (ph === 'down') { M.drag = { x: ux, y: uy, yaw: CAM.yaw, pitch: CAM.pitch, moved: 0 }; M.shot = null; }
-      else if (ph === 'move' && M.drag) { M.drag.moved = Math.max(M.drag.moved, Math.hypot(ux - M.drag.x, uy - M.drag.y)); CAM.yaw = M.drag.yaw - (ux - M.drag.x) * 0.012; CAM.pitch = clamp(M.drag.pitch + (uy - M.drag.y) * 0.006, 0.12, 1); Object.assign(GOAL, CAM); }
-      else { if (M.drag && M.drag.moved < 3 && M.sel) { M.sel = null; GOAL.zoom = Math.max(GOAL.zoom, 1.05); } M.drag = null; }
+      const now = performance.now();
+      if (ph === 'down') { M.drag = { x: ux, y: uy, yaw: CAM.yaw, pitch: CAM.pitch, moved: 0, lx: ux, lt: now, v: 0 }; M.shot = null; M.spinV = 0; }
+      else if (ph === 'move' && M.drag) {
+        const D = M.drag; D.moved = Math.max(D.moved, Math.hypot(ux - D.x, uy - D.y));
+        const dtm = Math.max(1, now - D.lt); D.v = lerp(D.v, -(ux - D.lx) * 0.012 / (dtm / 1000), 0.5); D.lx = ux; D.lt = now;
+        CAM.yaw = D.yaw - (ux - D.x) * 0.012; CAM.pitch = clamp(D.pitch + (uy - D.y) * 0.006, 0.12, 1); Object.assign(GOAL, CAM);
+      }
+      else { const D = M.drag; if (D && D.moved < 3 && M.sel) { M.sel = null; overviewShot(1.1); } else if (D && now - D.lt < 90) M.spinV = clamp(D.v, -3, 3); M.drag = null; }
     } });
     const dragB = HUD.btns.pop(); HUD.btns.unshift(dragB);
   }
@@ -684,13 +799,18 @@ const WorldMap = (() => {
     return tot ? got / tot : 0;
   }
   function down() {} function move() {} function up() {}
-  function wheel(dy) { M.dist = clamp(M.dist * Math.exp(dy * 0.001), 0.55, 1.6); }
+  function zoomBy(d) { M.distGoal = clamp((M.distGoal ?? M.dist) * Math.exp(d), 0.55, 1.6); SFX.select && Game.sfx('blip', null, 0.3); }
+  function wheel(dy) { M.distGoal = clamp((M.distGoal ?? M.dist) * Math.exp(dy * 0.0012), 0.55, 1.6); }
   function key(k) {
     if (k === 'Escape' || k === 'm') close();
     if (M.travel) return;
     if (k === 'ArrowLeft') GOAL.yaw -= 0.3; if (k === 'ArrowRight') GOAL.yaw += 0.3;
     if (k === 'ArrowUp') GOAL.pitch = clamp(GOAL.pitch + 0.1, 0.12, 1); if (k === 'ArrowDown') GOAL.pitch = clamp(GOAL.pitch - 0.1, 0.12, 1);
+    if (k === '+' || k === '=') zoomBy(-0.22); if (k === '-' || k === '_') zoomBy(0.22);
+    // Tab / [ ] step through the places
+    if (k === 'Tab' || k === ']' || k === '[') { const ids = Object.keys(LOC), i = ids.indexOf(M.sel); select(ids[(i + (k === '[' ? ids.length - 1 : 1) + ids.length) % ids.length]); return; }
+    if (k === 'Enter' && M.sel && M.sel !== Game.areaId && Save.unlocked(M.sel) && Areas[M.sel]) { travelTo(M.sel); return; }
     M.shot = null;
   }
-  return Object.assign(M, { open, close, update, draw, drawReveal, down, move, up, wheel, key, LOC, CAM, select, travelTo });
+  return Object.assign(M, { open, close, update, draw, drawReveal, down, move, up, wheel, key, zoomBy, LOC, CAM, GOAL, select, travelTo, cardRect, overviewShot, wp, questMark: null, trackText: null });
 })();

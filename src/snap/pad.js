@@ -25,8 +25,8 @@ const Pad = (() => {
     // floating stick: a finger landing anywhere in the lower-left zone becomes the stick's centre
     // a new finger in the stick zone always takes the stick over (a lost touch-end can never leave it stuck)
     if (P.touch && ux < (P.UW || 400) * 0.42 && uy > (P.UH || 240) * 0.38 && !inC(ux, uy, L.bx, L.by, L.bR + 8) && !inC(ux, uy, L.ax, L.ay, L.aR + 8)) { P.stick = { pid, t: performance.now(), x0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sx : ux, y0: inC(ux, uy, L.sx, L.sy, L.R * 1.4) ? L.sy : uy }; stickMove(ux, uy); return true; }
-    if (inC(ux, uy, L.ax, L.ay, L.aR + 6)) { P.a = { pid }; P.jumpHeld = true; Game.mudkip && Game.mudkip.jumpPress(); P.hint = 0; return true; }
-    if (inC(ux, uy, L.bx, L.by, L.bR + 6)) { P.b = { pid, t: 0 }; Moves.press(); return true; }
+    if (inC(ux, uy, L.ax, L.ay, L.aR + 6)) { P.a = { pid }; P.jumpHeld = true; P.aFx = 1; Game.mudkip && Game.mudkip.jumpPress(); P.hint = 0; return true; }
+    if (inC(ux, uy, L.bx, L.by, L.bR + 6)) { P.b = { pid, t: 0 }; P.bFx = 1; Moves.press(); return true; }
     return false;
   }
   function stickMove(ux, uy) {
@@ -51,12 +51,15 @@ const Pad = (() => {
   function apply(mk, dt) {
     if (P.b) P.b.t += dt;
     if (!mk) return;
+    mk.keyMag = 1;
     if (Game.mode !== 'explore' || (typeof Talk !== 'undefined' && Talk.busy())) { mk.keyDir = 0; mk.keyY = 0; mk.running = false; mk.jumpHeld = false; return; }
     if (typeof Arcade !== 'undefined' && Arcade.live && Arcade.drive(mk, dt)) return;
     const K = P.keys;
     const sx = Math.abs(P.dx) > 0.16 ? Math.sign(P.dx) : 0, sy = Math.abs(P.dy) > 0.6 && Math.abs(P.dy) > Math.abs(P.dx) ? Math.sign(P.dy) : 0;
     const swim = mk.mode === 'swim';
     mk.keyDir = K.dx || sx;
+    // analog speed from the stick (keys are always full speed)
+    mk.keyMag = K.dx ? 1 : sx ? clamp(0.35 + (Math.abs(P.dx) - 0.16) / 0.6, 0.35, 1) : 1;
     mk.keyY = K.dy || (swim ? (Math.abs(P.dy) > 0.25 ? P.dy : 0) : sy > 0 ? 1 : 0);
     mk.running = K.run || Math.abs(P.dx) > 0.85;
     mk.sneak = K.sneak;
@@ -73,13 +76,18 @@ const Pad = (() => {
       for (let y = -L.R; y <= L.R; y++) for (let x = -L.R; x <= L.R; x++) { const q = x * x + y * y; if (q > L.R * L.R) continue; const X = L.sx + x, Y = L.sy + y; if (X < 0 || Y < 0 || X >= W || Y >= H) continue; const i = Y * W + X, v = fb.d[i]; const a = q > (L.R - 2) ** 2 ? 0.55 : on ? 0.3 : 0.2; fb.d[i] = v ? U.mix(v, 0xff0a0e20, a) : (((a * 255) | 0) << 24 | 0x200e0a) >>> 0; }
       UI.ring(fb, L.sx, L.sy, L.R, 0x90ffffff, 1);
       for (const [ax, ay] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { const x = L.sx + ax * (L.R - 6), y = L.sy + ay * (L.R - 6); for (let k = 0; k < 3; k++) for (let j = -k; j <= k; j++) UI.put(fb, Math.round(x + (ax ? -ax * k : j)), Math.round(y + (ay ? -ay * k : j)), 0xa0ffffff); }
-      const kx = Math.round(L.sx + P.dx * L.R * 0.6), ky = Math.round(L.sy + P.dy * L.R * 0.6), kr = Math.round(L.R * 0.45);
+      // the knob springs after the finger (and back to the centre on release) instead of teleporting
+      P.kx = (P.kx ?? 0) + (P.dx - (P.kx ?? 0)) * (on ? 0.6 : 0.3); P.ky = (P.ky ?? 0) + (P.dy - (P.ky ?? 0)) * (on ? 0.6 : 0.3);
+      const kx = Math.round(L.sx + P.kx * L.R * 0.6), ky = Math.round(L.sy + P.ky * L.R * 0.6), kr = Math.round(L.R * 0.45);
       UI.disc(fb, kx, ky + 1, kr, 0xff0a0e1a); UI.orb(fb, kx, ky, kr, on ? S.accent : S.btn, { ol: INK });
     }
     // A: jump
     const pa = P.a ? 1 : 0;
     UI.disc(fb, L.ax, L.ay + 2, L.aR, 0xff0a0e1a); UI.orb(fb, L.ax, L.ay + pa, L.aR, pa ? U.tweak(S.accent, 0, 1, -0.1) : S.accent, { ol: INK });
     jumpIcon(fb, L.ax, L.ay + pa, L.aR);
+    // a ring pulses out of a button when it is pressed
+    if (P.aFx > 0) { UI.ring(fb, L.ax, L.ay, Math.round(L.aR + (1 - P.aFx) * 9), U.mix(0x00ffffff, 0xffffffff, P.aFx) | 0xff000000, 1); P.aFx = Math.max(0, P.aFx - 0.12); }
+    if (P.bFx > 0) { UI.ring(fb, L.bx, L.by, Math.round(L.bR + (1 - P.bFx) * 8), 0xffffffff, 1); P.bFx = Math.max(0, P.bFx - 0.12); }
     Font.draw(fb, 'A', L.ax + L.aR - 4, L.ay - L.aR - 2, 0xffffffff, { font: 'small', outline: INK });
     // B: the selected move (tap = use, hold = move wheel)
     const pb = P.b ? 1 : 0, mv = Moves.current();
@@ -89,7 +97,12 @@ const Pad = (() => {
     if (P.b && P.b.t > 0.18) { const k = Math.min(1, (P.b.t - 0.18) / 0.3); for (let a = 0; a < 32 * k; a++) { const an = -Math.PI / 2 + a / 32 * Math.PI * 2; UI.put(fb, Math.round(L.bx + Math.cos(an) * (L.bR + 3)), Math.round(L.by + Math.sin(an) * (L.bR + 3)), 0xffffffff); } }
     Font.draw(fb, 'B', L.bx + L.bR - 3, L.by - L.bR - 2, 0xffffffff, { font: 'small', outline: INK });
     // keyboard hint (fades after the first jump)
-    if (!P.touch && P.hint > 0 && Game.t > 3 && !(typeof Arcade !== 'undefined' && Arcade.live)) { P.hint = Math.max(0, P.hint - 1 / 900); const a = Math.min(1, P.hint * 3); if (a > 0.05) Font.draw(fb, 'Arrows move  ·  Space jump (again: flip, Down: belly flop)  ·  E pick up  ·  X move  ·  Q wheel  ·  F throw berry  ·  G guitar jam  ·  C camera  ·  Shift run', W / 2, H - 10, U.mix(0x00ffffff, 0xffffffff, a) | 0xff000000, { font: 'small', align: 'center', outline: INK }); }
+    if (!P.touch && P.hint > 0 && Game.t > 3 && !(typeof Arcade !== 'undefined' && Arcade.live)) { P.hint = Math.max(0, P.hint - 1 / 900); const a = Math.min(1, P.hint * 3); if (a > 0.05) { // (wrapped to fit beside the buttons, on a soft plate)
+        const lines = Font.wrap('Arrows move  ·  Space jump (again: flip, Down: belly flop)  ·  E pick up  ·  X move  ·  Q wheel  ·  F throw berry  ·  G guitar jam  ·  C camera  ·  Shift run', 'small', W - 140).slice(0, 3);
+        const lw = Math.max(...lines.map((l) => Font.measure(l, 'small'))) + 12, lh = lines.length * 9 + 4, lx = Math.round((W - 100) / 2 - lw / 2), ly = H - lh - 4;
+        UI.rectA(fb, lx, ly, lw, lh, 0xff200e0a, 0.5 * a);
+        lines.forEach((l, i) => Font.draw(fb, l, lx + lw / 2, ly + 3 + i * 9, U.mix(0x00ffffff, 0xffffffff, a) | 0xff000000, { font: 'small', align: 'center' }));
+      } }
   }
   // two stacked up-chevrons (jump!)
   function jumpIcon(fb, cx, cy, r) {

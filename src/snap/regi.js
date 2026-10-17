@@ -8,7 +8,7 @@
 ------------------------------------------------------------------- */
 const Regi = (() => {
   const { hex } = U;
-  const WALL = 2720, STONES = [2780, 2825, 2870];
+  const WALL = 3080, STONES = [3140, 3185, 3230];
   const NAMES = ['FIRST', 'SECOND', 'THIRD'], GLYPH = ['SUN', 'MOON', 'STAR'];
   const R = { order: [0, 1, 2], lit: [], done: false, flash: 0, read: false };
   function shuffle() { const o = [0, 1, 2]; for (let i = 2; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [o[i], o[j]] = [o[j], o[i]]; } R.order = o; R.lit = []; }

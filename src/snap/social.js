@@ -136,7 +136,7 @@ const Social = (() => {
       const up = m.kind === 'walrein' ? 380 : 300;
       if (mk.mode === 'fall') mk.vy = -up; else { mk.vair = up; mk.air = Math.max(mk.air, 1); }
       mk.pound = false; mk.hang = 0; mk.jumping = false;
-      Game.sfx('boing', m.x, 0.8); FX.add({ type: 'ring', x: mk.x, y: b.y0, r0: 3, r1: 14, flat: 0.35, life: 0.3, c: 0xffffffff, layer: 3 });
+      Game.sfx('boing', m.x, 0.8); Game.hitStop(0.045); Game.kick(0, 0.9); Game.buzz(12); FX.add({ type: 'ring', x: mk.x, y: b.y0, r0: 3, r1: 14, flat: 0.35, life: 0.3, c: 0xffffffff, layer: 3 });
       if (m.sleeping) m.wake();
       if (m.kind === 'walrein') { m.emote('anger', 1.2); say(m, 'HRRAAH-CHOO!'); Game.sfx('freeze', m.x, 0.9); for (let i = 0; i < 18; i++) FX.add({ type: 'spark', x: m.x + (Math.random() - 0.5) * 30, y: b.y0 + (Math.random() - 0.5) * 10, size: 1 + (Math.random() * 2 | 0), life: 0.5, c: 0xffffffff, c2: U.hex('#bfefff'), layer: 3 }); mk.vx = (mk.x < m.x ? -1 : 1) * 160; mk.tint = 0xffffe8c0; mk.tintK = 0.5; setTimeout(() => { mk.tintK = 0; }, 1500); }
       else if (m.persona === 'grumpy') { m.annoy += 0.4; m.emote('anger', 1); say(m, pick(['GET OFF!', 'Hey!!'])); }
@@ -260,11 +260,144 @@ const Social = (() => {
     Save.discover('wailmer.gulp');
   }
 
+  /* ---------- personal space: nobody stands inside anybody else ---------- */
+  const kin = (a, b) => a.parent === b || b.parent === a || (a.parent && a.parent === b.parent);
+  // (road punks, champions, territorial bosses and legends keep their marks: their scripts rely on them)
+  const special = (m) => m.terr || m.rooted || m.noSocial || m.punk || m.champ || String(m.kind).startsWith('punk-') || (DexData.S[m.dex] && DexData.S[m.dex].legendary);
+  const walker = (m) => m.alive && m.visible && !m.layer && m.mode === 'land' && (m.air || 0) <= 0 && m.walkTo && !m.sleeping && m.hideK < 0.3 && m.spr && !special(m) && m.width() < 70;
+  function* shuffle(m, tx) {
+    yield* m.walkTo(tx, Math.max(28, (m.speed || 45) * 0.8), { min: m.minX, max: m.maxX });
+    let e = 0; const T = rnd(0.3, 0.9);
+    while (e < T) { const dt = yield; e += dt; }
+  }
+  // Pokémon standing on top of each other drift apart (the less busy one steps aside)
+  const grounded = (m) => m !== Game.mudkip && m.alive && m.visible && !m.layer && m.mode === 'land' && m.hideK < 0.3;
+  const canShuffle = (m) => walker(m) && !m.busy(1) && !m.moving;
+  function spread() {
+    // (big Pokémon and special ones hold their ground; the small one beside them moves)
+    const L = Mons.all.filter(grounded).sort((a, b) => a.x - b.x);
+    for (let i = 0; i < L.length; i++) {
+      for (let j = i + 1; j < L.length; j++) {
+        const a = L[i], b = L[j], dx = b.x - a.x, need = (a.width() + b.width()) * 0.3 + 4;
+        if (dx > need) break;
+        if (Math.abs((a.zd || 0) - (b.zd || 0)) > 6 || Math.abs(a.y - b.y) > 18 || kin(a, b)) continue;
+        const ca = canShuffle(a), cb = canShuffle(b);
+        const m = ca && cb ? (a.width() <= b.width() ? a : b) : ca ? a : cb ? b : null;
+        if (!m || (m.sepT || 0) > Game.t) continue;
+        m.sepT = Game.t + rnd(2.5, 4);
+        const away = m === a ? -1 : 1, lo = m.minX ?? m.home - m.range * 1.5, hi = m.maxX ?? m.home + m.range * 1.5;
+        let tx = m.x + away * (need - dx + rnd(8, 22));
+        if (tx < lo || tx > hi || World.isWet(tx, 16)) tx = m.x - away * (need + rnd(8, 22)); // boxed in: go round the other side
+        tx = clamp(tx, lo, hi);
+        if (World.isWet(tx, 16) || Math.abs(World.groundAt(tx) - World.groundAt(m.x)) > 20) continue;
+        m.doTask(shuffle(m, tx), 1);
+      }
+    }
+  }
+  // swimmers drift apart softly when they bunch up (no two Wailmer in the same spot)
+  function waterSpace(dt) {
+    const L = Mons.all.filter((m) => m !== Game.mudkip && m.alive && m.visible && !m.layer && m.mode === 'swim' && !special(m) && m.spr && !m.busy(5));
+    for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+      const a = L[i], b = L[j], dx = b.x - a.x, dy = b.y - a.y, need = (a.width() + b.width()) * 0.32;
+      if (Math.abs(dx) > need || Math.abs(dy) > need) continue;
+      const d = Math.hypot(dx, dy); if (d >= need) continue;
+      const k = (1 - d / need) * 26 * dt, ux = d > 0.01 ? dx / d : Math.random() - 0.5, uy = d > 0.01 ? dy / d : 0;
+      const wa = b.width() / (a.width() + b.width()), wb = 1 - wa; // the smaller one gives way more
+      a.x -= ux * k * wa * 2; a.y -= uy * k * wa; b.x += ux * k * wb * 2; b.y += uy * k * wb;
+    }
+  }
+  // on arrival in an area: Pokémon that spawned on top of each other are nudged apart at once
+  function settle() {
+    const movable = (m) => !special(m) && !m.parent && m.width() < 70;
+    const L = Mons.all.filter((m) => m !== Game.mudkip && m.alive && !m.layer && m.mode === 'land').sort((a, b) => a.x - b.x);
+    for (let pass = 0; pass < 3; pass++) {
+      for (let i = 0; i + 1 < L.length; i++) {
+        const a = L[i], b = L[i + 1], need = (a.width() + b.width()) * 0.32 + 4, dx = b.x - a.x;
+        if (dx >= need || Math.abs((a.zd || 0) - (b.zd || 0)) > 6 || kin(a, b) || Math.abs(World.groundAt(a.x) - World.groundAt(b.x)) > 18) continue;
+        const ma = movable(a), mb = movable(b); if (!ma && !mb) continue;
+        const push = (need - dx) / (ma && mb ? 2 : 1), bh = b.maxX ?? b.home + b.range * 1.5, al = a.minX ?? a.home - a.range * 1.5;
+        if ((mb && World.isWet(b.x + push, 16)) || (ma && World.isWet(a.x - push, 16))) continue;
+        if (mb) b.x = Math.min(bh, b.x + push);
+        if (ma) a.x = Math.max(al, a.x - push);
+      }
+      L.sort((a, b) => a.x - b.x);
+    }
+  }
+  U.on && U.on('area', () => { try { settle(); } catch (e) { console.error(e); } });
+  // Mudkip walking right into a Pokémon: it reacts like a creature would — hops back, steps aside,
+  // turns to look, or (grumpy ones) stands its ground and glares
+  // (in this 2.5D lane "stepping aside" means stepping back in depth, so Mudkip passes in front)
+  function* makeWay(m, mk, d, scared) {
+    m.emote(scared ? 'shock' : pick(['shock', 'note', 'bulb']), 0.8);
+    if (onLand(m)) { m.vair = scared ? 170 : 110; m.air = Math.max(m.air, 0.5); }
+    const zd0 = m.wayZd ?? (m.zd || 0), back = zd0 - Math.max(4, (Game.area.band || 12) * 0.5);
+    m.wayZd = zd0;
+    const lo = m.minX ?? m.home - m.range * 1.5, hi = m.maxX ?? m.home + m.range * 1.5;
+    let e = 0;
+    const dry = !World.isWet(m.x + d * 14, 16);
+    while (e < 0.35) { const dt = yield; e += dt; m.zd = lerp(zd0, back, U.ease.inOut(Math.min(1, e / 0.35))); if (dry) m.x = clamp(m.x + d * 30 * dt, lo, hi); m.moving = 30; m.turn(m.face(mk.x > m.x ? 1 : -1, false), dt, 8); }
+    // watch it go by
+    e = 0;
+    while (e < 3 && Math.abs(mk.x - m.x) < m.width() * 0.5 + 24) { const dt = yield; e += dt; m.turn(m.face(mk.x > m.x ? 1 : -1, false), dt, 6); m.setAct(m.act.id === 'idle' ? 'notice' : m.act.id, 0.35); }
+    e = 0; const T = rnd(0.4, 1);
+    while (e < T) { const dt = yield; e += dt; m.turn(m.face(mk.x > m.x ? 1 : -1, false), dt, 6); }
+    // and back into its place in the lane
+    e = 0;
+    while (e < 0.45) { const dt = yield; e += dt; m.zd = lerp(back, zd0, U.ease.inOut(Math.min(1, e / 0.45))); m.moving = 20; }
+    m.zd = zd0; m.wayZd = undefined;
+  }
+  function personalSpace(mk, dt) {
+    // anyone interrupted while stepping aside drifts back to its place in the lane
+    for (const m of Mons.all) if (m.wayZd !== undefined && !(m.task && m.task.way && !m.task.done)) { m.zd = U.approach(m.zd || 0, m.wayZd, dt * 12); if (m.zd === m.wayZd) m.wayZd = undefined; }
+    if (!mk || mk.mode !== 'land' || !mk.moving || mk.air > 4 || mk.task && !mk.task.done) return;
+    const dir = Math.sign(mk.vx || 0); if (!dir) return;
+    for (const m of Mons.all) {
+      if (m === mk || !walker(m) || m.busy(2) || (m.wayT || 0) > Game.t) continue;
+      const dx = m.x - mk.x;
+      if (dx * dir < -4 || Math.abs(dx) > m.width() * 0.32 + 8 || Math.abs((m.y - m.zd) - mk.y) > 14) continue;
+      m.wayT = Game.t + rnd(3, 5);
+      if (m.persona === 'shy') { m.doTask(m.flee(mk), 4); continue; }
+      if (m.persona === 'grumpy') { m.emote('anger', 0.9); m.annoy += 0.12; m.doTask(glare(m, mk), 2); continue; }
+      if (m.doTask(makeWay(m, mk, dir, Math.abs(mk.vx) > 120), 2)) m.task.way = true;
+    }
+  }
+  function* glare(m, mk) { let e = 0; while (e < 1.4) { const dt = yield; e += dt; m.turn(m.face(mk.x > m.x ? 1 : -1, false), dt, 8); m.setAct(m.act.id, 0.4); } }
+  // idle Pokémon glance over at Mudkip when it comes close (and now and then at the camera)
+  function* glance(m, mk) {
+    let e = 0; const T = rnd(1.2, 2.4), cam = Math.random() < 0.3;
+    while (e < T && m.alive) {
+      const dt = yield; e += dt;
+      const side = mk.x > m.x ? 1 : -1;
+      m.turn(cam ? Math.PI / 2 + side * -0.45 : m.face(side, m.mode !== 'land'), dt, 4);
+      if (m.mode === 'swim' || m.mode === 'fly') { m.vx = (m.vx || 0) * Math.exp(-dt * 3); m.vy = (m.vy || 0) * Math.exp(-dt * 3); }
+      m.setAct(m.act.id === 'idle' ? 'notice' : m.act.id, cam ? 0.55 : 0.3);
+    }
+  }
+  function glances(mk) {
+    if (!mk) return;
+    for (const m of Mons.all) {
+      if (m === mk || !m.alive || !m.visible || m.layer || m.sleeping || m.hideK > 0.3 || m.busy(1) || m.moving || special(m) || m.mode === 'perch' || m.mode === 'fly') continue;
+      if ((m.glanceT || 0) > Game.t) continue;
+      const d = Math.hypot(m.x - mk.x, (m.y - mk.y) * 1.3);
+      if (d > 90 || d < 12) continue;
+      m.glanceT = Game.t + rnd(7, 14);
+      if (Math.random() < 0.6) m.doTask(glance(m, mk), 1);
+    }
+  }
+
   function update(dt, t) {
     if (Game.mode !== 'explore' && Game.mode !== 'camera') return;
     const mk = Game.mudkip;
     wailmerCheck(mk, dt);
     stompCheck(mk, dt);
+    // (not while a minigame, card battle or conversation is running: those place everyone themselves)
+    const scripted = (typeof Arcade !== 'undefined' && Arcade.live) || (typeof Cards !== 'undefined' && Cards.live) || (typeof Talk !== 'undefined' && Talk.busy());
+    if (!scripted) {
+      personalSpace(mk, dt);
+      waterSpace(dt);
+      S.spreadT = (S.spreadT || 0) - dt;
+      if (S.spreadT <= 0) { S.spreadT = 0.5; spread(); glances(mk); }
+    }
     S.pairT -= dt; S.camT -= dt;
     if (S.pairT <= 0) { S.pairT = pairUp() ? rnd(4, 8) : 2; }
     if (S.camT <= 0) { S.camT = camVisit() ? rnd(20, 35) : 6; }

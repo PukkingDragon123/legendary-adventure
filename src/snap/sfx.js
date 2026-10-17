@@ -63,6 +63,26 @@ const SFX = (() => {
     evolve(pan = 0, v = 1) { const d = out(pan, v * 0.5), t = now(); for (let i = 0; i < 16; i++) tone(d, 'triangle', N(60 + i * 2), N(60 + i * 2), t + i * 0.2, 0.22, 0.07 + i * 0.004); [72, 76, 79, 84].forEach((n) => tone(d, 'sine', N(n), N(n), t + 3.4, 1.4, 0.1)); noise(d, t + 3.3, 1.2, 0.2, 'highpass', 4000, 1, 9000); },
     chirp(pan = 0, v = 1) { const d = out(pan, v * 0.25), t = now(); tone(d, 'sine', N(96), N(100), t, 0.05, 0.1); tone(d, 'sine', N(100), N(96), t + 0.07, 0.05, 0.08); },
     bongo(pan = 0, v = 1) { const d = out(pan, v * 0.5), t = now(); tone(d, 'sine', 220, 150, t, 0.12, 0.4); tone(d, 'sine', 330, 240, t + 0.16, 0.1, 0.3); noise(d, t, 0.03, 0.2, 'bandpass', 2000, 2); },
+    // footfalls (each slightly detuned so a run never sounds like a machine gun)
+    stepsand(pan = 0, v = 1) { const d = out(pan, v * 0.5), t = now(), j = 0.85 + Math.random() * 0.3; noise(d, t, 0.07, 0.11, 'lowpass', 1300 * j, 0.8); noise(d, t + 0.012, 0.05, 0.05, 'bandpass', 3200 * j, 1.2); },
+    stepgrass(pan = 0, v = 1) { const d = out(pan, v * 0.5), t = now(), j = 0.85 + Math.random() * 0.3; noise(d, t, 0.06, 0.07, 'bandpass', 2800 * j, 1.1); noise(d, t + 0.02, 0.05, 0.05, 'highpass', 4800 * j, 0.8); },
+    stepwood(pan = 0, v = 1) { const d = out(pan, v * 0.5), t = now(), j = 0.9 + Math.random() * 0.2; tone(d, 'sine', 210 * j, 150 * j, t, 0.06, 0.16); tone(d, 'triangle', 640 * j, 420 * j, t, 0.025, 0.05); noise(d, t, 0.03, 0.08, 'bandpass', 1100 * j, 2); },
+    steprock(pan = 0, v = 1) { const d = out(pan, v * 0.5), t = now(), j = 0.85 + Math.random() * 0.3; noise(d, t, 0.03, 0.12, 'bandpass', 1900 * j, 2.5); tone(d, 'sine', 380 * j, 260 * j, t, 0.035, 0.06); },
+    stepsnow(pan = 0, v = 1) { const d = out(pan, v * 0.5), t = now(), j = 0.85 + Math.random() * 0.3; noise(d, t, 0.05, 0.08, 'lowpass', 1500 * j, 0.7, 2600 * j); noise(d, t + 0.03, 0.06, 0.06, 'bandpass', 2400 * j, 1.5); },
+    stepice(pan = 0, v = 1) { const d = out(pan, v * 0.5), t = now(), j = 0.9 + Math.random() * 0.2; tone(d, 'sine', 1500 * j, 1250 * j, t, 0.04, 0.03); noise(d, t, 0.035, 0.07, 'highpass', 3800 * j, 1); },
+    stepwet(pan = 0, v = 1) { const d = out(pan, v * 0.5), t = now(), j = 0.85 + Math.random() * 0.3; noise(d, t, 0.08, 0.1, 'lowpass', 1700 * j, 0.8, 600); tone(d, 'sine', 560 * j, 260 * j, t + 0.01, 0.05, 0.05); },
+    // into and out of the water
+    dive(pan = 0, v = 1) { const d = out(pan, v * 0.7), t = now(); noise(d, t, 0.3, 0.3, 'lowpass', 2600, 0.7, 300); tone(d, 'sine', 900, 180, t, 0.18, 0.12); tone(d, 'sine', 300, 600, t + 0.16, 0.12, 0.05); },
+    surface(pan = 0, v = 1) { const d = out(pan, v * 0.6), t = now(); noise(d, t, 0.18, 0.18, 'bandpass', 1400, 0.8, 3200); tone(d, 'sine', 260, 720, t, 0.09, 0.08); },
+    drip(pan = 0, v = 1) { const d = out(pan, v * 0.4), t = now(), f = 1100 + Math.random() * 700; tone(d, 'sine', f, f * 1.6, t, 0.04, 0.06); },
+    // pick-ups: a rising pop that climbs the scale when you grab several in a row
+    collect(pan = 0, v = 1, n = 0) { const d = out(pan, v * 0.45), t = now(), b = 76 + Math.min(12, (n | 0) * 2); tone(d, 'square', N(b), N(b), t, 0.05, 0.1); tone(d, 'square', N(b + 7), N(b + 7), t + 0.05, 0.08, 0.1); tone(d, 'sine', N(b + 19), N(b + 19), t + 0.05, 0.16, 0.05); },
+    magnet(pan = 0, v = 1) { const d = out(pan, v * 0.3), t = now(); tone(d, 'sine', 500, 1600, t, 0.14, 0.08); },
+    // impacts
+    impact(pan = 0, v = 1) { const d = out(pan, v * 0.8), t = now(); tone(d, 'sine', 120, 45, t, 0.22, 0.45); noise(d, t, 0.12, 0.35, 'lowpass', 800, 0.8, 200); noise(d, t, 0.04, 0.2, 'bandpass', 2400, 1.5); },
+    hit(pan = 0, v = 1) { const d = out(pan, v * 0.7), t = now(); tone(d, 'square', 300, 120, t, 0.07, 0.12); noise(d, t, 0.05, 0.3, 'bandpass', 1800, 1.2); tone(d, 'sine', 180, 70, t, 0.12, 0.3); },
+    // the shutter's satisfying "ka-chunk" with a tiny film-advance whirr after it
+    shutterBig(pan = 0, v = 1) { const d = out(pan, v), t = now(); noise(d, t, 0.025, 0.6, 'highpass', 2800); tone(d, 'square', 2000, 900, t, 0.01, 0.14); tone(d, 'sine', 180, 90, t, 0.06, 0.2); noise(d, t + 0.06, 0.04, 0.45, 'bandpass', 2400, 2); tone(d, 'square', 1500, 700, t + 0.06, 0.012, 0.1); noise(d, t + 0.13, 0.26, 0.07, 'bandpass', 900, 4, 1900); tone(d, 'triangle', 220, 330, t + 0.14, 0.24, 0.025); },
     unlock(pan = 0, v = 1) { const d = out(pan, v * 0.45), t = now(); [60, 64, 67, 72, 76, 79, 84].forEach((n, i) => { tone(d, 'square', N(n), N(n), t + i * 0.06, 0.12, 0.09); }); tone(d, 'triangle', N(72), N(72), t + 0.5, 0.6, 0.14); },
   };
   const api = {};

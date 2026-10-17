@@ -24,10 +24,10 @@ const ForestAI = (() => {
   const TAU = Math.PI * 2;
   const gy = (x) => World.groundAt(x);
   const sp = (name) => { try { return (0, eval)(name); } catch (e) { return null; } };
-  const RIVER = { x0: 930, x1: 1475, level: 578 }, POND = { x0: 2250, x1: 2780, level: 576 };
-  const POOL = { x0: 1150, x1: 1250 };
-  const GRASS = { x0: 1840, x1: 2020 };
-  const STUMP = 2860, TREE = 560, LEVER = 1760, BANK = 2195;
+  const RIVER = { x0: 1090, x1: 1635, level: 578 }, POND = { x0: 2840, x1: 3370, level: 576 };
+  const POOL = { x0: 1310, x1: 1410 };
+  const GRASS = { x0: 2280, x1: 2460 };
+  const STUMP = 3570, TREE = 720, LEVER = 2080, BANK = 2785;
   const WEATHERS = ['clear', 'rain', 'sun', 'snow'];
   let S = {}, A0 = null, G0 = null;
   const wet = () => Weather.W.rain > 0.45;
@@ -38,7 +38,7 @@ const ForestAI = (() => {
   class CastformM extends Mons.Mon {
     constructor(x) {
       super(sp('Castform'), { kind: 'castform', dex: 'castform', x, y: gy(x) - 44, yaw: 1.3, z: 2.2, scale: 0.62, qPose: 0.05, qFields: { bob: 0.1, spin: 0.2, tilt: 0.1, squash: 0.1, mouth: 0.25 }, persona: 'curious', mode: 'float' });
-      this.form = 'normal'; this.speed = 38; this.hover = 44; this.minX = 1500; this.maxX = 2100; this.senseR = 150;
+      this.form = 'normal'; this.speed = 38; this.hover = 44; this.minX = 1660; this.maxX = 2540; this.senseR = 150;
       this.spin = 0; this.sq = 0; this.wetT = 0; this.fxT = 0;
     }
     want() {
@@ -253,7 +253,7 @@ const ForestAI = (() => {
   /* ================= TROPIUS ================= */
   class TropiusM extends Walker {
     constructor(x) {
-      super(sp('Tropius'), { kind: 'tropius', dex: 'tropius', x, y: gy(x), yaw: Math.PI - 0.95, z: 1.2, scale: 0.26, qPose: 0.05, qFields: { step: 0.5, flap: 0.25, neck: 0.2, mouth: 0.25, look: 0.25 }, persona: 'calm', speed: 26, minX: 220, maxX: 900 });
+      super(sp('Tropius'), { kind: 'tropius', dex: 'tropius', x, y: gy(x), yaw: Math.PI - 0.95, z: 1.2, scale: 0.26, qPose: 0.05, qFields: { step: 0.5, flap: 0.25, neck: 0.2, mouth: 0.25, look: 0.25 }, persona: 'calm', speed: 26, minX: 220, maxX: 1060 });
       this.stepPh = 0; this.senseR = 140; this.zd = -3; this.smell = 460;
     }
     animate(dt, t) {
@@ -314,12 +314,12 @@ const ForestAI = (() => {
       this.emote('shock', 0.8);
       Game.sfx('whoosh', this.x, 0.8);
       this.mode = 'air';
-      const x0 = this.x, dir = this.x < 560 ? 1 : -1;
+      const x0 = this.x, dir = this.x < 720 ? 1 : -1;
       let e = 0; const T = 7.5;
       while (e < T) {
         const dt = yield; e += dt; const k = e / T;
         const lift = Math.sin(k * Math.PI);
-        this.x = clamp(x0 + dir * Math.sin(k * Math.PI) * 260, 120, 1000);
+        this.x = clamp(x0 + dir * Math.sin(k * Math.PI) * 260, 120, 1160);
         this.y = gy(this.x) - lift * 150 - Math.sin(e * 3.5) * 3;
         this.o.flap = Math.sin(e * 5.5) * (0.7 + 0.3 * lift); this.o.neck = 0.35 + Math.sin(e * 5.5 + 1) * 0.1; this.o.step = Math.PI * 0.5; this.o.mouth = lift > 0.8 ? 0.3 : 0;
         this.turn(this.face(dir * Math.cos(k * Math.PI) >= 0 ? 1 : -1, true), dt, 3);
@@ -337,7 +337,7 @@ const ForestAI = (() => {
       HUD.toast('All aboard! Tropius takes to the sky.', { life: 2.2 });
       Game.sfx('whoosh', this.x, 1);
       this.mode = 'air'; this.emote('heart');
-      const x0 = this.x, dir = x0 < 1600 ? 1 : -1, span = 1300;
+      const x0 = this.x, dir = x0 < 1920 ? 1 : -1, span = 1300;
       let e = 0; const T = 16;
       while (e < T) {
         const dt = yield; e += dt; const k = e / T;
@@ -356,7 +356,7 @@ const ForestAI = (() => {
         if (Math.random() < dt * 4) FX.add({ type: 'drop', x: this.x + rnd(-24, 24), y: this.y - 20, vx: rnd(-20, 20), vy: 10, g: 50, life: 1.8, c: hex('#56a042'), c2: hex('#8ccc5a'), size: 2, floor: gy(this.x), layer: 3 });
       }
       this.mode = 'land';
-      m.mode = 'land'; m.x = this.x + (this.x > 1600 ? -30 : 30); m.y = gy(m.x); m.plat = null;
+      m.mode = 'land'; m.x = this.x + (this.x > 1920 ? -30 : 30); m.y = gy(m.x); m.plat = null;
       S.riding = false;
       FX.poof(this.x, gy(this.x), hex('#a8742e'), hex('#c89040'), 6, 6);
       Save.discover('tropius.ride');
@@ -490,7 +490,7 @@ const ForestAI = (() => {
   /* ================= LUDICOLO ================= */
   class LudicoloM extends Walker {
     constructor() {
-      super(sp('Ludicolo'), { kind: 'ludicolo', dex: 'ludicolo', x: 2420, y: POND.level + 40, yaw: Math.PI / 2 - 0.35, z: 1.9, scale: 0.28, qPose: 0.05, qFields: { dance: 0.35, mouth: 0.25, lean: 0.2 }, persona: 'showoff', speed: 40, minX: 2140, maxX: 2240 });
+      super(sp('Ludicolo'), { kind: 'ludicolo', dex: 'ludicolo', x: 3010, y: POND.level + 40, yaw: Math.PI / 2 - 0.35, z: 1.9, scale: 0.28, qPose: 0.05, qFields: { dance: 0.35, mouth: 0.25, lean: 0.2 }, persona: 'showoff', speed: 40, minX: 2730, maxX: 2830 });
       this.mode = 'hidden'; this.visible = false; this.senseR = 160; this.leftT = -99; this.zd = 1;
     }
     physics(dt, t) { if (this.mode === 'land') super.physics(dt, t); }
@@ -500,7 +500,7 @@ const ForestAI = (() => {
     *show() {
       // burst out of the pond and land on the bank
       this.visible = true; this.mode = 'air';
-      const x0 = 2400, x1 = BANK, s0 = surf(x0);
+      const x0 = 2990, x1 = BANK, s0 = surf(x0);
       this.x = x0; this.y = s0 + 30;
       FX.splashAt(x0, s0, { power: 1.1 }); Game.sfx('splash', x0, 1);
       HUD.toast('The music drew a Ludicolo out of the pond!', { life: 2.6 });
@@ -530,8 +530,8 @@ const ForestAI = (() => {
       this.mode = 'air';
       const bx = this.x, by = this.y;
       e = 0;
-      while (e < 1) { const dt = yield; e += dt; const k = e; this.x = lerp(bx, 2400, k); this.y = lerp(by, surf(2400) + 30, k) - Math.sin(k * Math.PI) * 70; this.setAct('dance', 0.5); }
-      FX.splashAt(2400, surf(2400), { power: 1 }); Game.sfx('splash', 2400, 0.9);
+      while (e < 1) { const dt = yield; e += dt; const k = e; this.x = lerp(bx, 2990, k); this.y = lerp(by, surf(2990) + 30, k) - Math.sin(k * Math.PI) * 70; this.setAct('dance', 0.5); }
+      FX.splashAt(2990, surf(2990), { power: 1 }); Game.sfx('splash', 2990, 0.9);
       this.visible = false; this.mode = 'hidden'; this.leftT = Game.t;
     }
     onPoke() { this.emote('music2', 1); }
@@ -540,7 +540,7 @@ const ForestAI = (() => {
   /* ================= VOLBEAT / ILLUMISE ================= */
   class BugM extends Flyer {
     constructor(spName, kind, i, o) {
-      super(sp(spName), Object.assign({ kind, dex: kind, x: 2100 + i * 150 + rnd(-40, 40), y: 300, yaw: 1, z: 2.4, qPose: 0.06, qFields: { flap: 0.34, arms: 0.25, glow: 0.25, lean: 0.25, mouth: 0.25 }, speed: 55 }, o));
+      super(sp(spName), Object.assign({ kind, dex: kind, x: 2540 + i * 150 + rnd(-40, 40), y: 300, yaw: 1, z: 2.4, qPose: 0.06, qFields: { flap: 0.34, arms: 0.25, glow: 0.25, lean: 0.25, mouth: 0.25 }, speed: 55 }, o));
       this.i = i; this.flapPh = Math.random() * 6; this.glow = 0.6; this.leave = false;
       this.gl = { x: this.x, y: this.y, r: 16, c: hex(kind === 'volbeat' ? '#d8ff8a' : '#ffc8f0'), a: 0, k: 1 };
       A0.glows.push(this.gl);
@@ -566,14 +566,14 @@ const ForestAI = (() => {
     slot(t) {
       const n = Mons.all.filter((m) => m.kind === 'volbeat').length || 1;
       const ph = S.showPh;
-      if (this.kind === 'illumise') return S.heart ? [2520 + Math.sin(ph) * 10, 440 + Math.sin(ph * 2) * 6] : [2520 + Math.sin(ph * 0.9) * 150, 430 + Math.sin(ph * 1.8) * 40];
+      if (this.kind === 'illumise') return S.heart ? [3110 + Math.sin(ph) * 10, 440 + Math.sin(ph * 2) * 6] : [3110 + Math.sin(ph * 0.9) * 150, 430 + Math.sin(ph * 1.8) * 40];
       if (S.heart) {
         const a = ph * 0.7 + (this.i / n) * TAU;
         const hx = 16 * Math.pow(Math.sin(a), 3), hy = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a));
-        return [2520 + hx * 4.4, 432 + hy * 4.4];
+        return [3110 + hx * 4.4, 432 + hy * 4.4];
       }
       const q = ph - (this.i + 1) * 0.42;
-      return [2520 + Math.sin(q * 0.9) * 150, 430 + Math.sin(q * 1.8) * 40];
+      return [3110 + Math.sin(q * 0.9) * 150, 430 + Math.sin(q * 1.8) * 40];
     }
     brain() { return this.life(); }
     *life() {
@@ -582,7 +582,7 @@ const ForestAI = (() => {
         if (this.leave) { yield* this.go(); return; }
         if (S.showOn) { yield* this.perform(); continue; }
         // free flight: wander over the pond, tails pulsing
-        const tx = rnd(2150, 2900), ty = rnd(380, 500);
+        const tx = rnd(2740, 3610), ty = rnd(380, 500);
         yield* this.flyTo(tx, ty, 40, { act: this.kind === 'volbeat' ? 'glow' : 'fly', peak: () => 0.3 + 0.3 * this.glow, stop: () => S.showOn || this.leave, agile: 1.5 });
         this.glow = 0.5 + 0.5 * Math.sin(Game.t * 2 + this.i);
       }
@@ -621,13 +621,13 @@ const ForestAI = (() => {
     S = S0; A0 = A; G0 = G;
     Object.assign(S, { weather: 'clear', leverT: -9, rainClock: rnd(60, 100), natRain: 0, rainbow: 0, rbT: 0, rainWas: 0, storm: 0, shared: false, treeT: -99, poolTries: 0, flash: 0, showOn: false, showT: 6, showPh: 0, heart: false, heartReq: false, bugs: null, feebas: null, milotic: null, ludi: null, rainSnd: 0, bushT: {} });
     const add = (m) => { if (m && m.sp) G.addMon(m); return m; };
-    if (sp('Castform')) add(new CastformM(1680));
-    if (sp('Kecleon')) add(new KecleonM(1930));
-    if (sp('Tropius')) add(new TropiusM(720));
-    if (sp('Lotad')) { add(new LotadM(1040, RIVER)); add(new LotadM(1360, RIVER)); add(new LotadM(2380, POND)); add(new LotadM(2620, POND)); }
+    if (sp('Castform')) add(new CastformM(2000));
+    if (sp('Kecleon')) add(new KecleonM(2370));
+    if (sp('Tropius')) add(new TropiusM(880));
+    if (sp('Lotad')) { add(new LotadM(1200, RIVER)); add(new LotadM(1520, RIVER)); add(new LotadM(2970, POND)); add(new LotadM(3210, POND)); }
     if (sp('Ludicolo')) S.ludi = add(new LudicoloM());
-    if (sp('Feebas') && Save.found('forest.feebas')) S.feebas = add(new FeebasM(1200, RIVER.level + 30));
-    if (sp('Milotic') && Save.found('forest.milotic')) S.milotic = add(new MiloticM(1300));
+    if (sp('Feebas') && Save.found('forest.feebas')) S.feebas = add(new FeebasM(1360, RIVER.level + 30));
+    if (sp('Milotic') && Save.found('forest.milotic')) S.milotic = add(new MiloticM(1460));
     if (hourIs('night', 'dusk')) spawnBugs(true);
   }
   function spawnBugs(instant = false) {
@@ -710,10 +710,10 @@ const ForestAI = (() => {
     if (S.feebas && S.feebas.alive) { HUD.toast('Feebas hides shyly in the quiet pool.', { life: 2 }); return; }
     if (!sp('Feebas')) return;
     S.poolTries++;
-    FX.add({ type: 'ripple', x: 1205, y: RIVER.level + 1, r0: 2, r1: 18, flat: 0.3, life: 1.4, c: 0xffffffff, layer: 2 });
-    if (S.poolTries < 3) { HUD.toast(S.poolTries === 1 ? 'Just ripples...' : 'Something flickered under the water!', { life: 2 }); Game.sfx('plop', 1200, 0.6); return; }
+    FX.add({ type: 'ripple', x: 1365, y: RIVER.level + 1, r0: 2, r1: 18, flat: 0.3, life: 1.4, c: 0xffffffff, layer: 2 });
+    if (S.poolTries < 3) { HUD.toast(S.poolTries === 1 ? 'Just ripples...' : 'Something flickered under the water!', { life: 2 }); Game.sfx('plop', 1360, 0.6); return; }
     S.poolTries = 0;
-    const f = G0.addMon(new FeebasM(1200, RIVER.level + 30));
+    const f = G0.addMon(new FeebasM(1360, RIVER.level + 30));
     f.doTask(f.splashOut(), 5);
     S.feebas = f;
     Save.discover('forest.feebas');
@@ -725,12 +725,12 @@ const ForestAI = (() => {
   }
   function song(x) {
     if (S.ludi && S.ludi.mode === 'hidden' && x > POND.x0 - 180 && x < STUMP + 90 && Game.t - S.ludi.leftT > 12) S.ludi.doTask(S.ludi.show(), 5);
-    if (S.bugs && x > 2050) S.heartReq = true;
+    if (S.bugs && x > 2490) S.heartReq = true;
   }
   function onScan(A) {
     let n = 0;
     const mx = mk().x, near = (x) => Math.abs(x - mx) < Game.VW * 0.7;
-    if (S.ludi && S.ludi.mode === 'hidden' && near(2450)) { FX.bubbles(2400, POND.level + 20, 4, POND.level); HUD.toast('Scan: something in the pond bubbles happily whenever there is music.', { life: 3 }); n++; }
+    if (S.ludi && S.ludi.mode === 'hidden' && near(3040)) { FX.bubbles(2990, POND.level + 20, 4, POND.level); HUD.toast('Scan: something in the pond bubbles happily whenever there is music.', { life: 3 }); n++; }
     if (Game.t - S.treeT > 30 && near(TREE)) { FX.sparkles(TREE, gy(TREE) - 110, 6, 30, 0xffffffff, hex('#ffd850')); HUD.toast('Scan: ripe fruit up in that tree. Tropius love it.', { life: 2.6 }); n++; }
     if (S.bugs && near(STUMP)) { HUD.toast('Scan: the Volbeat dance to music under the stars.', { life: 2.6 }); n++; }
     if (S.feebas && S.feebas.alive && !S.milotic) { HUD.toast('Scan: Feebas gazes at the sky, as if waiting for colours...', { life: 3 }); n++; }
@@ -743,7 +743,7 @@ const ForestAI = (() => {
     if (k <= 0.01) return;
     const W = fb.w, H = fb.h, d = fb.d;
     const hz = Stage.horizonS(cy);
-    const X0 = W * 0.5 + (1900 - (cx + W * 0.5)) * 0.08, Y0 = hz + 60;
+    const X0 = W * 0.5 + (2340 - (cx + W * 0.5)) * 0.08, Y0 = hz + 60;
     const R = Math.max(W, H) * 0.6, bw = 3, n = RB.length;
     const r1 = R, r0 = R - bw * n;
     const yEnd = Math.min(H, Math.round(hz + 70));

@@ -24,7 +24,7 @@ const BeachAI = (() => {
   /* ================= SPHEAL ================= */
   class SphealM extends Walker {
     constructor(x) {
-      super(sp('Spheal'), { kind: 'spheal', dex: 'spheal', x, y: gy(x), yaw: Math.PI - 1.1, z: 2.2, scale: 0.3, qPose: 0.05, qFields: { roll: 0.2, clap: 0.2, mouth: 0.25, squash: 0.03 }, persona: 'curious', speed: 40, minX: 280, maxX: 1000 });
+      super(sp('Spheal'), { kind: 'spheal', dex: 'spheal', x, y: gy(x), yaw: Math.PI - 1.1, z: 2.2, scale: 0.3, qPose: 0.05, qFields: { roll: 0.2, clap: 0.2, mouth: 0.25, squash: 0.03 }, persona: 'curious', speed: 40, minX: 280, maxX: 1400 });
       this.roll = 0; this.sq = new Spring(220, 10); this.happyT = 0; this.senseR = 130; this.floe = null;
     }
     animate(dt, t) {
@@ -125,7 +125,7 @@ const BeachAI = (() => {
   /* ================= SEALEO ================= */
   class SealeoM extends Walker {
     constructor(x) {
-      super(sp('Sealeo'), { kind: 'sealeo', dex: 'sealeo', x, y: gy(x), yaw: Math.PI - 1.05, z: 1.6, scale: 0.34, qPose: 0.05, qFields: { headPitch: 0.06, clap: 0.2, flipper: 0.2, mouth: 0.25 }, persona: 'showoff', speed: 36, minX: 700, maxX: 1060 });
+      super(sp('Sealeo'), { kind: 'sealeo', dex: 'sealeo', x, y: gy(x), yaw: Math.PI - 1.05, z: 1.6, scale: 0.34, qPose: 0.05, qFields: { headPitch: 0.06, clap: 0.2, flipper: 0.2, mouth: 0.25 }, persona: 'showoff', speed: 36, minX: 1100, maxX: 1460 });
       this.sq = new Spring(220, 10); this.carry = null; this.senseR = 170;
     }
     animate(dt, t) {
@@ -366,7 +366,7 @@ const BeachAI = (() => {
   /* ================= CORPHISH ================= */
   class CorphishM extends Walker {
     constructor(x, o = {}) {
-      super(sp('Corphish'), { kind: 'corphish', dex: 'corphish', x, y: gy(x), yaw: Math.PI / 2, z: 2, scale: 0.42, qPose: 0.06, qFields: { walk: 0.5, clawN: 0.2, clawF: 0.2 }, persona: 'grumpy', speed: 50, minX: o.minX ?? 300, maxX: o.maxX ?? 1040 });
+      super(sp('Corphish'), { kind: 'corphish', dex: 'corphish', x, y: gy(x), yaw: Math.PI / 2, z: 2, scale: 0.42, qPose: 0.06, qFields: { walk: 0.5, clawN: 0.2, clawF: 0.2 }, persona: 'grumpy', speed: 50, minX: o.minX ?? 300, maxX: o.maxX ?? 1440 });
       this.walkPh = 0; this.bury = 0; this.under = !!o.under; this.senseR = 110;
       if (this.under) { this.minX = o.minX; this.maxX = o.maxX; }
     }
@@ -463,7 +463,7 @@ const BeachAI = (() => {
   /* ================= LUVDISC school ================= */
   class LuvdiscM extends Swimmer {
     constructor(x, y, i) {
-      super(sp('Luvdisc'), { kind: 'luvdisc', dex: 'luvdisc', x, y, yaw: 0.6, z: 1.8, scale: 0.26, qPose: 0.05, qFields: { wiggle: 0.25, kiss: 0.25, tilt: 0.1 }, persona: 'shy', speed: 42, box: { x0: 1060, x1: 1900, y0: SEA + 24, y1: SEA + 150 } });
+      super(sp('Luvdisc'), { kind: 'luvdisc', dex: 'luvdisc', x, y, yaw: 0.6, z: 1.8, scale: 0.26, qPose: 0.05, qFields: { wiggle: 0.25, kiss: 0.25, tilt: 0.1 }, persona: 'shy', speed: 42, box: { x0: 1460, x1: 2300, y0: SEA + 24, y1: SEA + 150 } });
       this.i = i; this.wig = Math.random() * 6; this.senseR = 90; this.alert = 1.4;
     }
     animate(dt, t) {
@@ -533,7 +533,7 @@ const BeachAI = (() => {
   /* ================= PELIPPER ================= */
   class PelipperM extends Flyer {
     constructor(A) {
-      super(sp('Pelipper'), { kind: 'pelipper', dex: 'pelipper', x: 1660, y: 420, yaw: 1, z: 2.5, scale: 0.4, qPose: 0.06, qFields: { flap: 0.15, spread: 0.1, bill: 0.1, pouch: 0.1 }, persona: 'calm', speed: 70 });
+      super(sp('Pelipper'), { kind: 'pelipper', dex: 'pelipper', x: 2060, y: 420, yaw: 1, z: 2.5, scale: 0.4, qPose: 0.06, qFields: { flap: 0.15, spread: 0.1, bill: 0.1, pouch: 0.1 }, persona: 'calm', speed: 70 });
       this.A = A; this.flapPh = 0; this.perches = A.dockLamps.map(([x, y]) => [x, y - 6]); this.pouch = 0; this.target = null;
     }
     animate(dt, t) {
@@ -549,7 +549,7 @@ const BeachAI = (() => {
       for (;;) {
         if (this.target) { const it = this.target; this.target = null; yield* this.scoop(it); continue; }
         const r = Math.random();
-        if (r < 0.45) yield* this.circle(1400 + rnd(-300, 300), 380 + rnd(-40, 20), rnd(120, 220), rnd(6, 12), 'fly');
+        if (r < 0.45) yield* this.circle(1800 + rnd(-300, 300), 380 + rnd(-40, 20), rnd(120, 220), rnd(6, 12), 'fly');
         else yield* this.perch();
       }
     }
@@ -597,7 +597,7 @@ const BeachAI = (() => {
   /* ================= generic sea swimmers for new species (models from Mantine.js etc.) ================= */
   class MantineM extends Swimmer {
     constructor() {
-      super(sp('Mantine'), { kind: 'mantine', dex: 'mantine', x: 1700, y: SEA + 110, yaw: 0.7, z: 1.5, scale: 0.34, qPose: 0.06, qFields: { flap: 0.15, bank: 0.1, pitch: 0.1 }, persona: 'calm', speed: 46, box: { x0: 1200, x1: 2500, y0: SEA + 50, y1: SEA + 170 } });
+      super(sp('Mantine'), { kind: 'mantine', dex: 'mantine', x: 2100, y: SEA + 110, yaw: 0.7, z: 1.5, scale: 0.34, qPose: 0.06, qFields: { flap: 0.15, bank: 0.1, pitch: 0.1 }, persona: 'calm', speed: 46, box: { x0: 1600, x1: 2900, y0: SEA + 50, y1: SEA + 170 } });
       this.flapPh = 0; this.rider = null; this.swimTop = 16;
     }
     animate(dt, t) {
@@ -645,7 +645,7 @@ const BeachAI = (() => {
   }
   class RemoraidM extends Swimmer {
     constructor(mantine) {
-      super(sp('Remoraid'), { kind: 'remoraid', dex: 'remoraid', x: 1650, y: SEA + 140, yaw: 0.7, z: 1.6, scale: 0.24, qPose: 0.06, qFields: { tail: 0.2 }, persona: 'curious', speed: 55, box: { x0: 1200, x1: 2400, y0: SEA + 40, y1: SEA + 180 } });
+      super(sp('Remoraid'), { kind: 'remoraid', dex: 'remoraid', x: 2050, y: SEA + 140, yaw: 0.7, z: 1.6, scale: 0.24, qPose: 0.06, qFields: { tail: 0.2 }, persona: 'curious', speed: 55, box: { x0: 1600, x1: 2800, y0: SEA + 40, y1: SEA + 180 } });
       this.mant = mantine;
     }
     animate(dt, t) { const P = { tail: Math.sin(t * 7 + this.seed) * 0.6, mouth: 0.2, fins: 0.5, eyes: this.blink(t, dt) ? 'blink' : 'open' }; Object.assign(P, this.o); this.pose = P; }
@@ -678,14 +678,14 @@ const BeachAI = (() => {
     drawExtra(fb, cx, cy, P, t) { if (hourIs('night') && this.spr) { const b = this.bounds(); for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) { const X = x - cx, Y = y - cy; if (X < 0 || Y < 0 || X >= fb.w || Y >= fb.h) continue; if (this.hit(x, y, 0) && U.hash(x, y, Math.floor(t * 3)) > 0.9) fb.d[Y * fb.w + X] = U.screen(fb.d[Y * fb.w + X], 0xffe0a0ff, 0.6); } } }
   }
   class SharpedoM extends Swimmer {
-    constructor() { super(sp('Sharpedo'), { kind: 'sharpedo', dex: 'sharpedo', x: 2700, y: 820, yaw: 0.3, z: 1.4, scale: 0.36, qPose: 0.06, qFields: { tail: 0.2, mouth: 0.1 }, persona: 'grumpy', speed: 70, box: { x0: 2350, x1: 3080, y0: 640, y1: 1080 } }); this.senseR = 130; this.alert = 1.5; this.swimTop = 30; }
+    constructor() { super(sp('Sharpedo'), { kind: 'sharpedo', dex: 'sharpedo', x: 3100, y: 820, yaw: 0.3, z: 1.4, scale: 0.36, qPose: 0.06, qFields: { tail: 0.2, mouth: 0.1 }, persona: 'grumpy', speed: 70, box: { x0: 2750, x1: 3480, y0: 640, y1: 1080 } }); this.senseR = 130; this.alert = 1.5; this.swimTop = 30; }
     animate(dt, t) { const P = { tail: Math.sin(t * (4 + this.moving * 0.05) + this.seed) * 0.7, mouth: 0.1, lunge: 0, eyes: 'open' }; Object.assign(P, this.o); this.pose = P; }
     brain() { return this.life(); }
     *life() {
       for (;;) {
-        const prey = Mons.all.find((m) => m.kind === 'luvdisc' && m.x > 1850 && m.alive);
+        const prey = Mons.all.find((m) => m.kind === 'luvdisc' && m.x > 2250 && m.alive);
         if (prey && chance(0.5)) { yield* this.chase(prey); continue; }
-        if (chance(0.08)) { const l = Mons.all.filter((m) => m.kind === 'luvdisc' && !S.heartOn); if (l.length) { const v = pick(l); v.doTask(v.swimTo(2000 + rnd(0, 150), SEA + rnd(60, 150), 60, 6), 2); } }
+        if (chance(0.08)) { const l = Mons.all.filter((m) => m.kind === 'luvdisc' && !S.heartOn); if (l.length) { const v = pick(l); v.doTask(v.swimTo(2400 + rnd(0, 150), SEA + rnd(60, 150), 60, 6), 2); } }
         yield* this.cruise(rnd(3, 6), 'patrol');
       }
     }
@@ -709,7 +709,7 @@ const BeachAI = (() => {
   }
   // far-away giant on the horizon sea band (projected with parallax)
   class FarWailord extends Mons.Mon {
-    constructor() { super(sp('Wailord'), { kind: 'wailord', dex: 'wailord', x: 2200, y: 460, yaw: 0.35, z: 0, scale: 0.026, qPose: 0.08, persona: 'calm' }); this.layer = 'sea'; this.always = true; this.p = 0.12; this.wx = 2200; this.spout = 0; this.visible = true; this.noShadow = true; this.breach = 0; }
+    constructor() { super(sp('Wailord'), { kind: 'wailord', dex: 'wailord', x: 2600, y: 460, yaw: 0.35, z: 0, scale: 0.026, qPose: 0.08, persona: 'calm' }); this.layer = 'sea'; this.always = true; this.p = 0.12; this.wx = 2600; this.spout = 0; this.visible = true; this.noShadow = true; this.breach = 0; }
     senses() {}
     animate(dt, t) { const P = { tail: Math.sin(t * 0.8) * 0.3, fin: Math.sin(t * 0.6) * 0.3, mouth: 0, eyes: 'open', blow: this.spout, roll: 0 }; Object.assign(P, this.o); this.pose = P; }
     brain() { return this.life(); }
@@ -717,7 +717,7 @@ const BeachAI = (() => {
       for (;;) {
         this.setAct('swim', 0.3);
         let e = 0; const T = rnd(18, 34);
-        while (e < T) { const dt = yield; e += dt; this.wx += dt * 4; if (this.wx > 3000) this.wx = 1500; if (S.breachReq) break; }
+        while (e < T) { const dt = yield; e += dt; this.wx += dt * 4; if (this.wx > 3400) this.wx = 1900; if (S.breachReq) break; }
         if (S.breachReq) { S.breachReq = false; yield* this.doBreach(); continue; }
         // spout
         e = 0;
@@ -732,7 +732,7 @@ const BeachAI = (() => {
       while (e < 4.5) { const dt = yield; e += dt; const k = e / 4.5; this.breach = Math.sin(k * Math.PI); this.o.roll = k * 0.8; this.setAct('breach', this.breach > 0.8 ? 1 : 0.6); }
       this.breach = 0;
       Game.sfx('rumble', null, 1); Game.shake(3);
-      S.swell = 1; S.swellX = 2600;
+      S.swell = 1; S.swellX = 3000;
       this.p = 0.12;
     }
     // world-space position on the sea band (for draw, hit tests and photo framing)
@@ -766,7 +766,7 @@ const BeachAI = (() => {
     facing() { return 0.3; }
   }
   class KyogreM extends Swimmer {
-    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 12340, y: 1060, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 12060, x1: 12480, y0: 900, y1: 1110 } }); this.swimTop = 20; }
+    constructor() { super(sp('Kyogre'), { kind: 'kyogre', dex: 'kyogre', x: 13740, y: 1060, yaw: Math.PI - 0.5, z: 0.8, scale: 0.28, qPose: 0.06, qFields: { fin: 0.15, tail: 0.15 }, persona: 'calm', speed: 30, box: { x0: 13460, x1: 13880, y0: 900, y1: 1110 } }); this.swimTop = 20; }
     senses() {}
     animate(dt, t) { const P = { fin: Math.sin(t * 1.2) * 0.5, tail: Math.sin(t * 1.4 + 1) * 0.5, mouth: 0.1, eyes: 'open', glow: 0.6 + 0.4 * Math.sin(t * 2), headPitch: -0.1, roll: 0 }; Object.assign(P, this.o); this.pose = P; }
     brain() { return this.life(); }
@@ -774,10 +774,10 @@ const BeachAI = (() => {
       Weather.set({ rain: 1, fog: 0.2, storm: 1 });
       Game.sfx('rumble', null, 1);
       HUD.toast('The sea is churning... something huge is rising!', { life: 3 });
-      yield* this.swimTo(2980, 760, 40, 12);
+      yield* this.swimTo(3380, 760, 40, 12);
       let e = 0;
       while (e < 30) { const dt = yield; e += dt; this.y = 760 + Math.sin(e * 0.7) * 12; this.setAct('rise', 0.8 + 0.2 * Math.sin(e)); this.o.mouth = Math.sin(e * 0.5) > 0.8 ? 1 : 0.1; if (Math.random() < dt * 3) FX.bubbles(this.x + rnd(-40, 40), this.y - 20, 2, SEA); }
-      yield* this.swimTo(2980, 935, 30, 10);
+      yield* this.swimTo(3380, 935, 30, 10);
       Weather.set({ rain: 0, fog: 0 });
       this.remove();
     }
@@ -790,19 +790,19 @@ const BeachAI = (() => {
     S.events = {}; S.heartOn = false; S.swell = 0;
     AI.floes.length = 0;
     const add = (m) => { if (m && m.sp) G.addMon(m); return m; };
-    if (sp('Spheal')) for (const x of [470, 880]) add(new SphealM(x));
-    if (sp('Sealeo')) add(new SealeoM(1010));
+    if (sp('Spheal')) for (const x of [670, 1280]) add(new SphealM(x));
+    if (sp('Sealeo')) add(new SealeoM(1410));
     if (sp('Walrein')) add(new WalreinM(A));
-    if (sp('Corphish')) { add(new CorphishM(330)); add(new CorphishM(4400, { minX: 4280, maxX: 4640 })); add(new CorphishM(1760, { under: true, minX: 1500, maxX: 2200 })); }
-    if (sp('Luvdisc')) for (let i = 0; i < 6; i++) add(new LuvdiscM(1200 + i * 80, SEA + 50 + (i % 3) * 30, i));
+    if (sp('Corphish')) { add(new CorphishM(330)); add(new CorphishM(5140, { minX: 5020, maxX: 5380 })); add(new CorphishM(2160, { under: true, minX: 1900, maxX: 2600 })); }
+    if (sp('Luvdisc')) for (let i = 0; i < 6; i++) add(new LuvdiscM(1600 + i * 80, SEA + 50 + (i % 3) * 30, i));
     if (sp('Pelipper')) add(new PelipperM(A));
     if (sp('Mantine')) { const m = add(new MantineM()); if (sp('Remoraid')) add(new RemoraidM(m)); }
-    if (sp('Corsola')) { add(new CorsolaM(1420)); add(new CorsolaM(2020)); }
+    if (sp('Corsola')) { add(new CorsolaM(1820)); add(new CorsolaM(2420)); }
     if (sp('Sharpedo')) add(new SharpedoM());
     if (sp('Wingull')) for (let i = 0; i < 2; i++) add(new WingullM(i));
     if (sp('Wailord')) S.wailord = add(new FarWailord());
     // the beach ball
-    S.ball = new Critters.BeachBall(610, gy(610) - 11);
+    S.ball = new Critters.BeachBall(810, gy(810) - 11);
     S.ball.kind = 'ball';
     Secrets.spawn(A, G);
   }
@@ -822,7 +822,7 @@ const BeachAI = (() => {
     // heart school at dusk (or a sunset song)
     const dusk = hourIs('dusk');
     S.heartT -= dt;
-    if (dusk && !S.heartOn && S.heartT <= 0) { S.heartOn = true; S.heartT = 18; S.heartX = 1500; S.heartY = SEA + 90; S.leap = false; S.leapI = 0; }
+    if (dusk && !S.heartOn && S.heartT <= 0) { S.heartOn = true; S.heartT = 18; S.heartX = 1900; S.heartY = SEA + 90; S.leap = false; S.leapI = 0; }
     if (S.heartOn && S.heartT <= 0) { S.heartOn = false; S.heartT = 25; S.leap = false; }
     if (!dusk && S.heartOn) S.heartOn = false;
     // swell (after a breach) rolls toward the shore
@@ -844,7 +844,7 @@ const BeachAI = (() => {
     const W = fb.w, H = fb.h, d = fb.d, hsh = U.hash, fbm = U.fbm, mix = U.mix;
     const night = Stage.S.hour === 'night' || Stage.S.hour === 'dusk';
     const waterAt = (dep) => { const k1 = clamp(dep / 260, 0, 1), k2 = clamp((dep - 260) / 520, 0, 1); return k2 > 0 ? mix(C.deep, C.abyss, k2) : mix(C.top, C.deep, k1 * k1 * 0.4 + k1 * 0.6); };
-    const drop = (wx) => clamp((wx - 10700) / 1600, 0, 1) * 250 + Math.max(0, 1 - Math.abs(wx - 2950) / 420) * 160;
+    const drop = (wx) => clamp((wx - 12100) / 1600, 0, 1) * 250 + Math.max(0, 1 - Math.abs(wx - 3350) / 420) * 160;
     const LAY = [[0.3, 330, 0.3, 11], [0.5, 430, 0.48, 23], [0.72, 520, 0.64, 37]];
     const rowC = new Uint32Array(H * 4);
     for (const [p, base, dark, seed] of LAY) {
@@ -902,12 +902,12 @@ const BeachAI = (() => {
     if (!Save.found('beach.chest')) {
       Save.discover('beach.chest');
       A.chest.frames = [Props.chest(A.M, true)];
-      FX.sparkles(2330, gy(2330) - 14, 14, 40); FX.bubbles(2330, gy(2330) - 10, 10, SEA); Game.cine.pan(2330, gy(2330) - 20, { hold: 1.6 });
-      Game.sfx('chest', 2330, 1); SFX.reward();
+      FX.sparkles(2730, gy(2730) - 14, 14, 40); FX.bubbles(2730, gy(2730) - 10, 10, SEA); Game.cine.pan(2730, gy(2730) - 20, { hold: 1.6 });
+      Game.sfx('chest', 2730, 1); SFX.reward();
       Save.addItem('berry', 3); Save.addItem('blueorb', 1);
       HUD.toast('Found the Blue Orb and 3 berries!', { life: 3.5, icon: 'spark' });
       setTimeout(() => HUD.toast('The Blue Orb glows faintly... like the deepest abyss at the far end of the cove, at night.', { life: 4 }), 1800);
-    } else { FX.bubbles(2330, gy(2330) - 10, 4, SEA); Game.sfx('bubble', 2330, 0.6); }
+    } else { FX.bubbles(2730, gy(2730) - 10, 4, SEA); Game.sfx('bubble', 2730, 0.6); }
   }
   function boatTap(A, b) { Secrets.boat(A, b); }
   function crystalRock(A, rock) { Secrets.rock(A, rock); }
@@ -933,7 +933,7 @@ const BeachAI = (() => {
 
   /* ================= WINGULL ================= */
   class WingullM extends Flyer {
-    constructor(i) { super(sp('Wingull'), { kind: 'wingull', dex: 'wingull', x: 1200 + i * 600, y: 380, yaw: 1, z: 2.6, scale: 0.5, qPose: 0.06, qFields: { flap: 0.15, spread: 0.1 }, persona: 'curious', speed: 90 }); this.i = i; this.flapPh = Math.random() * 6; this.hat = null; }
+    constructor(i) { super(sp('Wingull'), { kind: 'wingull', dex: 'wingull', x: 1600 + i * 600, y: 380, yaw: 1, z: 2.6, scale: 0.5, qPose: 0.06, qFields: { flap: 0.15, spread: 0.1 }, persona: 'curious', speed: 90 }); this.i = i; this.flapPh = Math.random() * 6; this.hat = null; }
     animate(dt, t) { this.flapPh += dt * (this.glide ? 1.5 : 6); const P = { flap: this.glide ? Math.sin(this.flapPh) * 0.1 : Math.sin(this.flapPh) * 0.8, spread: 1, bill: 0.1, feet: 0, eyes: this.blink(t, dt) ? 'blink' : 'open' }; Object.assign(P, this.o); this.pose = P; }
     brain() { return this.life(); }
     *life() {
@@ -943,7 +943,7 @@ const BeachAI = (() => {
         if (Wind.v > 0.95) { yield* this.hover(); continue; }
         const r = Math.random();
         if (r < 0.25) yield* this.dive();
-        else yield* this.circle(1500 + this.i * 500 + rnd(-200, 200), 360 + rnd(-40, 40), rnd(90, 180), rnd(5, 10), 'fly');
+        else yield* this.circle(1900 + this.i * 500 + rnd(-200, 200), 360 + rnd(-40, 40), rnd(90, 180), rnd(5, 10), 'fly');
       }
     }
     *hover() { this.glide = true; let e = 0; while (e < 4 && Wind.v > 0.8) { const dt = yield; e += dt; this.y += Math.sin(e * 2) * dt * 6; this.x -= (Wind.v - 0.6) * dt * 12; this.setAct('glide', 0.8 + 0.2 * Math.sin(e * 3)); } this.glide = false; }
@@ -962,7 +962,7 @@ const BeachAI = (() => {
       this.emote('note'); m.emote('shock');
       HUD.toast('A Wingull stole your hat!', { life: 2.4 });
       this.setAct('steal', 1);
-      yield* this.flyTo(3980, gy(3980) - 110, 110, { act: 'steal', peak: () => 0.7 });
+      yield* this.flyTo(4380, gy(4380) - 110, 110, { act: 'steal', peak: () => 0.7 });
       Secrets.dropHat(this.hat);
       this.hat = null; S.hatThief = null;
     }
@@ -972,18 +972,18 @@ const BeachAI = (() => {
   /* ================= secrets ================= */
   const Secrets = {
     spawn(A, G) {
-      if (Save.found('dialga.met') && sp('Dialga')) Legends.dialga(A, G, 990);
-      if (Save.found('palkia.met') && sp('Palkia')) Legends.palkia(A, G, 1850);
+      if (Save.found('dialga.met') && sp('Dialga')) Legends.dialga(A, G, 1390);
+      if (Save.found('palkia.met') && sp('Palkia')) Legends.palkia(A, G, 2250);
       S.rockPokes = 0;
     },
     update(A, dt, t, G) {
       const m = G.mudkip;
       // Kyogre: the Blue Orb in the trench at night
-      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 11860 && m.y > 900 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(12340, 980, { dur: 1.6, hold: 4, zoom: 1.1 }); }
+      if (!S.kyogre && Save.itemN('blueorb') > 0 && hourIs('night') && m.inWater && m.x > 13260 && m.y > 900 && sp('Kyogre')) { S.kyogre = G.addMon(new KyogreM()); Save.discover('kyogre.woke'); Game.cine.pan(13740, 980, { dur: 1.6, hold: 4, zoom: 1.1 }); }
     },
     song(x) {
       const m = Game.mudkip;
-      if (hourIs('dusk') && m.plat && m.x > 1760 && S.wailord) { S.breachReq = true; Game.cine.pan(m.x + 120, m.y - 110, { dur: 1.4, hold: 5, zoom: 1.06 }); HUD.toast('Far out at sea, something answers the song...', { life: 3 }); Save.discover('wailord.song'); }
+      if (hourIs('dusk') && m.plat && m.x > 2160 && S.wailord) { S.breachReq = true; Game.cine.pan(m.x + 120, m.y - 110, { dur: 1.4, hold: 5, zoom: 1.06 }); HUD.toast('Far out at sea, something answers the song...', { life: 3 }); Save.discover('wailord.song'); }
       if (S.heartOn) { S.leap = true; }
     },
     boat(A, b) {
@@ -994,7 +994,7 @@ const BeachAI = (() => {
           b.frames = [Props.boat(A.M, b.frames[0].w - 4, { hull: A.M.boatR })];
           FX.sparkles(b.x, b.y - 10, 16, 40, 0xffffffff, hex('#ffc8f0')); SFX.reward();
           HUD.toast('You found the Lustrous Orb! Space ripples over the dock...', { life: 3.5 });
-          if (sp('Palkia')) { Save.discover('palkia.met'); Legends.palkia(A, Game, 1850, true); }
+          if (sp('Palkia')) { Save.discover('palkia.met'); Legends.palkia(A, Game, 2250, true); }
         }
       } else { b.shake = 0.4; Game.sfx('knock', b.x, 0.6); FX.splashAt(b.x + 30, surf(b.x + 30), { power: 0.2, n: 4 }); }
     },
@@ -1009,7 +1009,7 @@ const BeachAI = (() => {
       }
     },
     dropHat(hat) {
-      const x = 3995, y = gy(3995);
+      const x = 4395, y = gy(4395);
       Stage.A.addHot({ x0: x - 12, x1: x + 12, y0: y - 16, y1: y + 2, x, reach: 30, hat, tap() { this.off = true; const mk0 = Game.mudkip; mk0.look.hat = hat; HUD.toast('Got your hat back!', { life: 2 }); Game.sfx('twinkle', x, 0.8); } });
       FX.sparkles(x, y - 6, 8, 20);
     },
@@ -1017,10 +1017,10 @@ const BeachAI = (() => {
       let n = 0;
       const mx = Game.mudkip.x;
       const near = (x) => Math.abs(x - mx) < Game.VW * 0.7;
-      if (!Save.found('dialga.met') && near(948)) { FX.sparkles(948, gy(948) - 12, 8, 16, 0xffffffff, hex('#9fd8ff')); HUD.toast('Scan: something humming under that rock...', { life: 2.6 }); n++; }
+      if (!Save.found('dialga.met') && near(1348)) { FX.sparkles(1348, gy(1348) - 12, 8, 16, 0xffffffff, hex('#9fd8ff')); HUD.toast('Scan: something humming under that rock...', { life: 2.6 }); n++; }
       for (const b of A.boats) if (b.orb && near(b.x)) { FX.sparkles(b.x, b.y - 8, 8, 20, 0xffffffff, hex('#ffc8f0')); HUD.toast('Scan: a strange glow in that boat.', { life: 2.6 }); n++; }
-      if (!Save.found('beach.chest') && near(2330)) { FX.sparkles(2330, gy(2330) - 10, 8, 16); n++; }
-      if (Save.itemN('blueorb') > 0 && near(2860)) { HUD.toast('Scan: the Blue Orb pulses when pointed at the trench.', { life: 2.6 }); n++; }
+      if (!Save.found('beach.chest') && near(2730)) { FX.sparkles(2730, gy(2730) - 10, 8, 16); n++; }
+      if (Save.itemN('blueorb') > 0 && near(3260)) { HUD.toast('Scan: the Blue Orb pulses when pointed at the trench.', { life: 2.6 }); n++; }
       return n;
     },
   };
@@ -1047,7 +1047,7 @@ const BeachAI = (() => {
     },
     palkia(A, G, x, entrance = false) {
       const p = new (class extends Walker {
-        constructor() { super(sp('Palkia'), { kind: 'palkia', dex: 'palkia', x, y: DOCKY, yaw: 1.2, z: 2.4, scale: 0.9, qPose: 0.05, persona: 'calm', speed: 30, minX: 1500, maxX: 1870 }); this.plat = World.platAt(x); }
+        constructor() { super(sp('Palkia'), { kind: 'palkia', dex: 'palkia', x, y: DOCKY, yaw: 1.2, z: 2.4, scale: 0.9, qPose: 0.05, persona: 'calm', speed: 30, minX: 1900, maxX: 2270 }); this.plat = World.platAt(x); }
         animate(dt, t) { const P = { walk: this.moving ? t * 8 : 0, hop: 0, headPitch: 0, mouth: 0.1, eyes: this.blink(t, dt) ? 'blink' : 'open', gem: 0.5 + 0.5 * Math.sin(t * 3), tailWag: Math.sin(t * 2) * 0.3 }; Object.assign(P, this.o); this.pose = P; }
         brain() { return (function* (s) { for (;;) { if (chance(0.3)) yield* s.blink2(); else yield* s.idle(rnd(2, 4), 'blink'); } })(this); }
         *blink2() {

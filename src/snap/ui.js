@@ -136,5 +136,109 @@ const UI = (() => {
   }
   function led(fb, x, y, c, on = true) { disc(fb, x, y, 2, 0xff1b2240); disc(fb, x, y, 1, on ? c : U.mix(c, 0xff000000, 0.6)); if (on) put(fb, x - 1, y - 1, 0xffffffff); }
 
-  return { put, blend, rect, rectA, hline, vline, line, rrect, panel, screen, disc, ring, orb, pix, img, imgFit, text, skin, SKINS, body, lens, led };
+  /* ================= the shared design kit =================
+     One palette and one way to draw plates, buttons, chips, close buttons, sparkles and
+     screen dims, so the HUD, quest log, map, wheel, bag, wardrobe and save screens all
+     read as the same device. (Colours are packed ABGR: always build them with hex().) */
+  const C = {
+    ink: hex('#141a30'), shadow: hex('#0a0e1a'),
+    navy: hex('#1d2546'), navyL: hex('#2c3868'), navyLL: hex('#3e4c86'), navyD: hex('#111730'),
+    cream: hex('#fbfaf4'), paper: hex('#f4f6fb'), line: hex('#d8deea'), sel: hex('#dbe8ff'),
+    text: hex('#1b2240'), dim: hex('#5e6688'), faint: hex('#9aa0b8'),
+    gold: hex('#ffd23a'), goldL: hex('#fff0a0'), goldD: hex('#c88a18'),
+    cyan: hex('#3ad8ff'), blue: hex('#3a78e8'), blueD: hex('#2456b8'), green: hex('#2ab870'), greenD: hex('#1d8a50'),
+    red: hex('#e8384a'), redD: hex('#a8202e'), pink: hex('#ff7ab0'), orange: hex('#f28a2a'), purple: hex('#8a5ee6'), white: 0xffffffff,
+  };
+  // translucent rounded box (keeps the world visible underneath)
+  function rrectA(fb, x, y, w, h, r, c, a) {
+    x |= 0; y |= 0;
+    for (let yy = 0; yy < h; yy++) {
+      let inset = 0;
+      if (yy < r) inset = r - Math.round(Math.sqrt(r * r - (r - yy - 0.5) ** 2));
+      else if (yy >= h - r) inset = r - Math.round(Math.sqrt(r * r - (yy - (h - r) + 0.5) ** 2));
+      rectA(fb, x + inset, y + yy, w - inset * 2, 1, c, a);
+    }
+  }
+  // a soft drop shadow under a box
+  const shadow = (fb, x, y, w, h, r = 4, dy = 2, a = 0.55) => rrectA(fb, x, y + dy, w, h, r, C.shadow, a);
+  // dark plate (labels, toasts, chips): outline, fill (optionally see-through), a 1px top highlight
+  function plate(fb, x, y, w, h, o = {}) {
+    const r = o.r ?? 3, fill = o.fill ?? C.navy;
+    if (o.shadow !== false) shadow(fb, x, y, w, h, r, o.dy ?? 2, o.sa ?? 0.5);
+    if (o.a !== undefined && o.a < 1) { rrectA(fb, x, y, w, h, r, o.ol ?? C.ink, Math.min(1, o.a + 0.25)); rrectA(fb, x + 1, y + 1, w - 2, h - 2, Math.max(0, r - 1), fill, o.a); }
+    else { rrect(fb, x, y, w, h, r, o.ol ?? C.ink); rrect(fb, x + 1, y + 1, w - 2, h - 2, Math.max(0, r - 1), fill); }
+    if (o.hi !== null && h > 6) hline(fb, x + r, x + w - 1 - r, y + 1, o.hi ?? U.tweak(fill, 0, 1, 0.1));
+  }
+  // the one button style: a raised face on a dark base; pressed = the face sinks 1px,
+  // hovered = a brighter face and a gold rim; label/icon centred (o: fill, fg, label, icon, font, hover, down, on, off, r)
+  function button(fb, x, y, w, h, o = {}) {
+    x |= 0; y |= 0;
+    const r = o.r ?? 3, dn = o.down ? 1 : 0, f0 = o.fill ?? C.navyL;
+    const fill = o.off ? U.mix(f0, 0xff808890, 0.55) : o.hover && !dn ? U.tweak(f0, 0, 1, 0.08) : f0;
+    rrect(fb, x, y + 1, w, h + 1, r, C.shadow);
+    rrect(fb, x, y + dn, w, h, r, (o.hover || o.on) && !o.off ? C.goldL : o.ol ?? C.ink);
+    rrect(fb, x + 1, y + 1 + dn, w - 2, h - 2, Math.max(0, r - 1), fill);
+    if (h > 7) {
+      hline(fb, x + r, x + w - 1 - r, y + 1 + dn, U.tweak(fill, 0, 1, dn ? 0.04 : 0.14));
+      if (!dn) hline(fb, x + r, x + w - 1 - r, y + h - 2, U.tweak(fill, 0, 1, -0.1));
+    }
+    const font = o.font || 'small', fg = o.fg ?? (o.off ? 0xffd0d4e0 : 0xffffffff), lab = o.label ?? '';
+    const ic = o.icon && Font.ICONS[o.icon], lw = lab ? Font.measure(lab, font) : 0, iw = ic ? ic.w + (lab ? 3 : 0) : 0;
+    const cx = Math.round(x + w / 2 - (lw + iw) / 2), cy = y + dn + (font === 'small' ? Math.floor((h - 5) / 2) - 1 : Math.floor((h - 10) / 2));
+    if (ic) Font.icon(fb, o.icon, cx, y + dn + Math.floor((h - ic.h) / 2), 1);
+    if (lab) Font.draw(fb, lab, cx + iw, cy, fg, { font, shadow: U.tweak(fill, 0, 1, -0.22) });
+  }
+  // the standard close button (16x14), a cross on a navy face
+  function closeBtn(fb, x, y, o = {}) {
+    button(fb, x, y, 16, 14, Object.assign({ fill: C.navyL }, o));
+    const dn = o.down ? 1 : 0, c = o.hover ? C.goldL : 0xffffffff;
+    for (let i = 0; i < 5; i++) { put(fb, x + 5 + i, y + 4 + i + dn, c); put(fb, x + 9 - i, y + 4 + i + dn, c); put(fb, x + 6 + i, y + 4 + i + dn, c); put(fb, x + 10 - i, y + 4 + i + dn, c); }
+  }
+  // a small pill with text; returns its width
+  function chip(fb, x, y, txt, o = {}) {
+    const font = o.font || 'small', w = (o.w ?? Font.measure(txt, font) + (o.pad ?? 8)), h = o.h ?? 10, bg = o.bg ?? C.navy;
+    x = Math.round(o.align === 'center' ? x - w / 2 : o.align === 'right' ? x - w : x); y = Math.round(y);
+    if (o.ol !== null) rrect(fb, x - 1, y - 1, w + 2, h + 2, (o.r ?? 3) + 1, o.ol ?? C.ink);
+    rrect(fb, x, y, w, h, o.r ?? 3, bg);
+    if (h > 6) hline(fb, x + 2, x + w - 3, y, U.tweak(bg, 0, 1, 0.12));
+    Font.draw(fb, txt, x + w / 2, y + Math.round((h - 5) / 2), o.fg ?? 0xffffffff, { font, align: 'center' });
+    return w;
+  }
+  // a four-point twinkle of radius r (the tips in colour c)
+  function twinkle(fb, x, y, r, c = C.goldL) {
+    x = Math.round(x); y = Math.round(y);
+    put(fb, x, y, 0xffffffff);
+    for (let i = 1; i <= r; i++) { const cc = i === r ? c : 0xffffffff; put(fb, x - i, y, cc); put(fb, x + i, y, cc); put(fb, x, y - i, cc); put(fb, x, y + i, cc); }
+  }
+  // dim the whole screen (k = 0..1 fades it in)
+  const dim = (fb, k = 1, a = 0.5) => { if (k > 0) rectA(fb, 0, 0, fb.w, fb.h, C.navyD, a * Math.min(1, k)); };
+  // section header: accent text with a hairline running to the right edge
+  function header(fb, txt, x, y, w, c = C.blue, line = C.line) {
+    const tw = Font.measure(txt, 'small');
+    Font.draw(fb, txt, x, y, c, { font: 'small' });
+    if (w > tw + 8) hline(fb, x + tw + 4, x + w, y + 3, line);
+  }
+  /* ---- UI particles: sparkle bursts and press rings that any screen can fire ---- */
+  const FX = { list: [], last: 0 };
+  function burst(x, y, n = 8, o = {}) {
+    for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + Math.random() * 0.5, v = (o.speed ?? 40) * (0.6 + Math.random() * 0.7); FX.list.push({ k: 's', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (o.up ?? 15), t: 0, life: (o.life ?? 0.55) * (0.7 + Math.random() * 0.6), c: o.c ?? C.goldL, g: o.g ?? 60, big: Math.random() < 0.35 }); }
+    if (FX.list.length > 160) FX.list.splice(0, FX.list.length - 160);
+  }
+  function pop(x, y, r = 10, c = 0xffffffff) { FX.list.push({ k: 'r', x, y, r, t: 0, life: 0.28, c }); }
+  function drawFx(fb) {
+    const now = performance.now() / 1000, dt = Math.min(0.05, Math.max(0, now - (FX.last || now))); FX.last = now;
+    for (const p of FX.list) {
+      p.t += dt;
+      if (p.k === 's') { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt; p.vx *= 1 - dt * 2; }
+      const k = p.t / p.life; if (k >= 1) continue;
+      if (p.k === 'r') { ring(fb, Math.round(p.x), Math.round(p.y), Math.round(p.r * (0.6 + k * 0.8)), k < 0.5 ? p.c : U.mix(p.c, C.navyL, k), 1); continue; }
+      if (k > 0.7 && Math.floor(p.t * 24) % 2) continue;
+      twinkle(fb, p.x, p.y, p.big && k < 0.5 ? 2 : k < 0.6 ? 1 : 0, p.c);
+    }
+    FX.list = FX.list.filter((p) => p.t < p.life);
+  }
+  // eased open/close factor for panels: t = seconds since open, closing = seconds since close (or 0)
+  const openK = (t, dur = 0.24) => U.ease.outBack(Math.min(1, Math.max(0, t / dur)));
+
+  return { put, blend, rect, rectA, rrectA, hline, vline, line, rrect, panel, screen, disc, ring, orb, pix, img, imgFit, text, skin, SKINS, body, lens, led, C, shadow, plate, button, closeBtn, chip, twinkle, dim, header, burst, pop, drawFx, FX, openK };
 })();

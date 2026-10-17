@@ -14,20 +14,20 @@
 ------------------------------------------------------------------- */
 Areas.volcano = (() => {
   const { clamp, lerp, rng, hash, bayer4, vnoise, mix, hex } = U;
-  const SPRING = { x0: 1720, x1: 2060, level: 562 };
-  const LAVA = { x0: 3930, x1: 4690, y: 626 }, PUDDLE = { x0: 3158, x1: 3242, y: 497 };
+  const SPRING = { x0: 2020, x1: 2360, level: 562 };
+  const LAVA = { x0: 4230, x1: 4990, y: 626 }, PUDDLE = { x0: 3458, x1: 3542, y: 497 };
   const LAVAS = [LAVA, PUDDLE];
-  const VENTS = [1540, 2190, 2470];
-  const STONES = [3790, 3860, 4730, 4660];
-  const BATH = 2330;
+  const VENTS = [1840, 2490, 2770];
+  const STONES = [4090, 4160, 5030, 4960];
+  const BATH = 2630;
   const def = {
     id: 'volcano', name: 'Fiery Path', sub: 'Mt. Chimney · Lavaridge', music: 'ashen', seed: 77, noSeason: true,
-    W: 4800, H: 1000, sea: null, refY: 560, h0: 116, cy0: 330, ph: 0.05, skyH: 300, sunH: 150, band: 12, waves: 0.5,
+    W: 5100, H: 1000, sea: null, refY: 560, h0: 116, cy0: 330, ph: 0.05, skyH: 300, sunH: 150, band: 12, waves: 0.5,
     camY: [-60, 860], frameY: 0.74, start: 220,
     intro: { x: 900, y: 300, dur: 3.4 },
-    ground: [[0, 560], [200, 556], [500, 548], [800, 540], [1100, 534], [1350, 536], [1450, 546], [1600, 548], [1700, 552], [1728, 572], [1760, 600], [1840, 614], [1940, 614], [2020, 598], [2052, 572], [2080, 552], [2300, 548], [2600, 546], [2750, 548], [2850, 530], [2950, 508], [3050, 514], [3120, 486], [3150, 492], [3170, 506], [3230, 506], [3250, 474], [3350, 490], [3450, 462], [3560, 470], [3680, 474], [3760, 486], [3840, 500], [3900, 560], [3950, 632], [4050, 666], [4300, 680], [4550, 668], [4660, 634], [4710, 566], [4760, 512], [4800, 506]],
+    ground: [[0, 560], [200, 556], [500, 548], [800, 540], [1400, 534], [1650, 536], [1750, 546], [1900, 548], [2000, 552], [2028, 572], [2060, 600], [2140, 614], [2240, 614], [2320, 598], [2352, 572], [2380, 552], [2600, 548], [2900, 546], [3050, 548], [3150, 530], [3250, 508], [3350, 514], [3420, 486], [3450, 492], [3470, 506], [3530, 506], [3550, 474], [3650, 490], [3750, 462], [3860, 470], [3980, 474], [4060, 486], [4140, 500], [4200, 560], [4250, 632], [4350, 666], [4600, 680], [4850, 668], [4960, 634], [5010, 566], [5060, 512], [5100, 506]],
     water: [{ x0: SPRING.x0, x1: SPRING.x1, level: SPRING.level, kind: 'spring' }],
-    plats: [{ x0: 2968, x1: 3036, y: 474, kind: 'ledge' }, { x0: 3392, x1: 3450, y: 428, kind: 'ledge' }],
+    plats: [{ x0: 3268, x1: 3336, y: 474, kind: 'ledge' }, { x0: 3692, x1: 3750, y: 428, kind: 'ledge' }],
     sky: {
       dawn: [[0, '#40406e'], [0.35, '#7a6a98'], [0.65, '#d49a96'], [0.85, '#f4b890'], [1, '#ffd0a0']],
       noon: [[0, '#4a78b0'], [0.4, '#7a9ec4'], [0.72, '#b8bec8'], [0.9, '#dccdb8'], [1, '#ecd8b8']],
@@ -59,8 +59,12 @@ Areas.volcano = (() => {
       smoke: ['#5a524e', '#7a726c', '#9a928a', '#bab2aa'],
       flower: ['#c8406a', '#ff7aa0', '#ffd0e0'],
       herb: ['#2a5a2a', '#3a7a34', '#5aa048', '#8ac868'],
+      sulf: ['#7a6a10', '#c8b028', '#f4e060', '#fff8b0'],
+      obsid: ['#0a0812', '#1c1626', '#3a2e4e', '#7a6aa0'],
     },
   };
+  // basalt and ash lit from below by the lava (a hot, tinted copy of each ramp)
+  for (const key of ['rock', 'rockR', 'mid', 'far']) def.mats[key + 'L'] = { c: Scenic.tint(def.mats[key], '#ff5a14', key === 'far' ? 0.4 : 0.5, 0.22), noSeason: true };
   def.cycleRate = 5;
   def.waterCols = (hour) => {
     const night = hour === 'night';
@@ -99,7 +103,20 @@ Areas.volcano = (() => {
     s.ax = (w + 12) >> 1; s.ay = base - 1;
     return s;
   }
-  function ashTree(M, H, seed) { return Paint.tree(M, H, seed, { trunkRamp: M.bark, leafRamp: M.leafA, crownW: H * 0.8, crownH: H * 0.5, trunkW: Math.max(3, H * 0.06) }); }
+  function ashTree(M, H, seed) { return Scenic.bark(Paint.tree(M, H, seed, { trunkRamp: M.bark, leafRamp: M.leafA, crownW: H * 0.8, crownH: H * 0.5, trunkW: Math.max(3, H * 0.06) }), M.bark, { seed, minRun: 3, furrow: 0.4 }); }
+  // a glowing crack network creeping through rock (random walks that fork), baking lava light onto the rock around it
+  function cracks(s, M, x0, x1, y0, y1, n, seed, from, to) {
+    const r = rng(seed);
+    for (let k = 0; k < n; k++) {
+      let x = x0 + r() * (x1 - x0), y = y0 + r() * (y1 - y0); if (!s.get(x | 0, y | 0)) continue;
+      const pts = []; let a = Math.PI / 2 + (r() - 0.5) * 1.4;
+      for (let j = 0; j < 14 + r() * 40; j++) { if (!s.get(x | 0, y | 0)) break; pts.push([x | 0, y | 0]); x += Math.cos(a) * 1.2; y += Math.sin(a); a += (r() - 0.5) * 0.9; if (r() < 0.06) a += (r() < 0.5 ? -1 : 1) * 0.9; }
+      if (pts.length < 6) continue;
+      const [mx, my] = pts[pts.length >> 1];
+      Scenic.bakeLight(s, mx, my, 10 + pts.length * 0.4, from, to, { k: 0.8 });
+      for (const [px, py] of pts) { s.set(px, py, M.crack[2]); if (r() < 0.5) s.set(px + 1, py, M.crack[1]); }
+    }
+  }
   function stoneSpr(M, i, lit) {
     const w = 22, h = 26, s = new ISpr(w + 2, h + 2);
     for (let y = 0; y < h; y++) { const hw = w / 2 - (y < 5 ? (5 - y) * 1.2 : 0); for (let x = -hw; x <= hw; x++) s.set(w / 2 + 1 + x, y + 1, pickR(M.rock, 0.65 - (x + hw) / (2 * hw) * 0.4 - y / h * 0.2, x, y)); }
@@ -124,7 +141,7 @@ Areas.volcano = (() => {
     const M = A.M, r = rng(A.seed);
     const gy = (x) => World.groundAt(x);
     const inSpring = (x) => x > SPRING.x0 + 14 && x < SPRING.x1 - 14;
-    const zone = (x) => (x < 1450 ? 'ash' : x < 2780 ? 'town' : x < 3720 ? 'pass' : 'crater');
+    const zone = (x) => (x < 1750 ? 'ash' : x < 3080 ? 'town' : x < 4020 ? 'pass' : 'crater');
     // ---- terrain ----
     Terrain.paint(A, {
       bb: 7, bf: 5,
@@ -134,7 +151,7 @@ Areas.volcano = (() => {
         let t = 0.62 - u * 0.36 + (n - 0.5) * 0.35;
         if (u < 0.15) t += 0.2;
         if (z === 'ash') { if (n1v > 0.6) return e.pickR(M.ashG, t, x, y); if (e.hash(x, y, 7) > 0.96) return M.rock[3]; return e.pickR(M.ash, t + 0.1, x, y); }
-        if (z === 'town') { const tile = ((x >> 3) + (y >> 1)) % 2; if (Math.abs(x - BATH) < 120 || (x > 1560 && x < 1700)) return e.pickR(M.stone, t + (tile ? 0.08 : -0.05), x, y); if (n1v > 0.62) return e.pickR(M.herb, t, x, y); return e.pickR(M.ash, t, x, y); }
+        if (z === 'town') { const tile = ((x >> 3) + (y >> 1)) % 2; if (Math.abs(x - BATH) < 120 || (x > 1860 && x < 2000)) return e.pickR(M.stone, t + (tile ? 0.08 : -0.05), x, y); if (n1v > 0.62) return e.pickR(M.herb, t, x, y); return e.pickR(M.ash, t, x, y); }
         if (e.hash(x, y, 9) > 0.985) return M.crack[1];
         return e.pickR(z === 'crater' ? M.rockR : M.rock, t + 0.1, x, y);
       },
@@ -157,30 +174,35 @@ Areas.volcano = (() => {
     });
     for (let k = 0; k < 70; k++) { const x = r() * A.W; Terrain.stamp(A, Paint.rock(M, 6 + r() * 9, 4 + r() * 5, k, { ramp: M.rock, flat: false, cracks: 0 }), x, gy(x) + 16 + r() * 90); }
     const put = (s, x, zd, o) => A.put(s, x, zd, o);
+    Scenic.laneRoots(A, M, { p: 0, rock: M.rock, ok: (x) => !inSpring(x) && !lavaAt(x), seed: 77, stones: Math.round(A.W / 24), big: 5, lip: M.ash, lipLen: 3 });
+    // sulfur crusts around the steam vents, obsidian shards glinting in the pass
+    const sulfur = (seed) => { const rr = rng(seed), s2 = new ISpr(20, 10); for (let k = 0; k < 7; k++) { const x = 2 + rr() * 15, hh = 2 + rr() * 5; for (let y = 0; y < hh; y++) for (let q = 0; q < 2; q++) s2.set(x + q, 9 - y, M.sulf[q === 0 ? 3 - (y > hh / 2 ? 0 : 1) : 1]); } Paint.outline(s2, M.ink[0]); s2.ax = 10; s2.ay = 9; return s2; };
+    for (const x of VENTS) { put(sulfur(x), x - 12, 2, { sink: 0 }); put(sulfur(x + 1), x + 14, -2, { sink: 0 }); }
+    for (let x = 3120; x < 4100; x += 70 + r() * 110) { if (lavaAt(x)) continue; const c = Props2.crystal(M, 3 + r() * 4, Math.floor(x), M.obsid); put(c, x, r() < 0.5 ? -3 : 2, { sink: 1 }); }
     // ---- Ashen Slopes ----
-    for (let x = 40; x < 1440; x += 60 + r() * 120) { const k = r(); if (k < 0.16) put(ashTree(M, 70 + r() * 50, Math.floor(x)), x, -5, { sink: 4, foot: 16 }); else if (k < 0.7) put(Paint.tuft(M, 12 + r() * 12, 12 + r() * 14, Math.floor(x), { ramp: M.ashG }), x, r() < 0.5 ? 3 : -3, { windFrames: true }); else put(Paint.rock(M, 16 + r() * 22, 10 + r() * 12, Math.floor(x), { ramp: M.rock }), x, r() < 0.5 ? 2 : -3, { sink: 3 }); }
-    for (let x = 300; x < 1200; x += 9 + r() * 10) if (r() < 0.5) put(Paint.tuft(M, 14, 18 + r() * 12, Math.floor(x * 3), { ramp: M.ashG, density: 1.1 }), x, r() < 0.5 ? 2 : -2, { windFrames: true });
+    for (let x = 40; x < 1740; x += 60 + r() * 120) { const k = r(); if (k < 0.16) put(ashTree(M, 70 + r() * 50, Math.floor(x)), x, -5, { sink: 4, foot: 16 }); else if (k < 0.7) put(Paint.tuft(M, 12 + r() * 12, 12 + r() * 14, Math.floor(x), { ramp: M.ashG }), x, r() < 0.5 ? 3 : -3, { windFrames: true }); else put(Paint.rock(M, 16 + r() * 22, 10 + r() * 12, Math.floor(x), { ramp: M.rock }), x, r() < 0.5 ? 2 : -3, { sink: 3 }); }
+    for (let x = 300; x < 1500; x += 9 + r() * 10) if (r() < 0.5) put(Paint.tuft(M, 14, 18 + r() * 12, Math.floor(x * 3), { ramp: M.ashG, density: 1.1 }), x, r() < 0.5 ? 2 : -2, { windFrames: true });
     // the glass workshop
     A.glassHut = put(hut(M, 70, 44, 5), 980, -4, { sink: 2 });
     A.glows.push({ x: 980, y: gy(980) - 30, r: 30, c: hex('#ffb050'), a: 0.4, flicker: true });
     // ---- Lavaridge ----
     A.bath = put(bathhouse(M), BATH, -5, { sink: 2 });
-    for (const [x, w] of [[1500, 64], [2640, 72]]) { put(hut(M, w, 46, x), x, -5, { sink: 2 }); A.glows.push({ x, y: gy(x) - 32, r: 26, c: hex('#ffc060'), a: 0.4, flicker: true }); }
+    for (const [x, w] of [[1800, 64], [2940, 72]]) { put(hut(M, w, 46, x), x, -5, { sink: 2 }); A.glows.push({ x, y: gy(x) - 32, r: 26, c: hex('#ffc060'), a: 0.4, flicker: true }); }
     A.glows.push({ x: BATH, y: gy(BATH) - 40, r: 60, c: hex('#ffb050'), a: 0.45, flicker: true });
     for (let x = SPRING.x0 - 30; x < SPRING.x1 + 40; x += 22 + r() * 30) if (!inSpring(x)) put(Paint.rock(M, 12 + r() * 10, 8 + r() * 6, Math.floor(x), { ramp: M.stone }), x, r() < 0.5 ? 3 : -2, { sink: 3 });
-    for (const x of [1640, 2120, 2560]) put(Paint.bush(M, 22, 14, Math.floor(x), { ramp: M.herb, dots: M.flower, nd: 6 }), x, -3, { sink: 2 });
+    for (const x of [1940, 2420, 2860]) put(Paint.bush(M, 22, 14, Math.floor(x), { ramp: M.herb, dots: M.flower, nd: 6 }), x, -3, { sink: 2 });
     A.glows.push({ x: (SPRING.x0 + SPRING.x1) / 2, y: SPRING.level - 4, r: 150, flat: 4, c: hex('#9af0e0'), a: 0.18, always: true });
     // steam vents
     for (const x of VENTS) { const s = Paint.rock(M, 18, 8, Math.floor(x), { ramp: M.stone }); put(s, x, 1, { sink: 2 }); }
     // ---- Jagged Pass ----
     for (const p of def.plats) A.props.push({ frames: [shelf(M, p.x1 - p.x0, gy((p.x0 + p.x1) / 2) - p.y + 6, p.x0)], x: p.x0, y: p.y, zd: -3 });
-    for (let x = 2800; x < 3720; x += 50 + r() * 90) { if (x > PUDDLE.x0 - 10 && x < PUDDLE.x1 + 10) continue; put(Paint.rock(M, 20 + r() * 30, 14 + r() * 22, Math.floor(x), { ramp: r() < 0.5 ? M.rock : M.rockR, cracks: 2 }), x, r() < 0.5 ? -3 : 2, { sink: 4 }); }
+    for (let x = 3100; x < 4020; x += 50 + r() * 90) { if (x > PUDDLE.x0 - 10 && x < PUDDLE.x1 + 10) continue; put(Paint.rock(M, 20 + r() * 30, 14 + r() * 22, Math.floor(x), { ramp: r() < 0.5 ? M.rock : M.rockR, cracks: 2 }), x, r() < 0.5 ? -3 : 2, { sink: 4 }); }
     A.glows.push({ x: (PUDDLE.x0 + PUDDLE.x1) / 2, y: PUDDLE.y, r: 60, flat: 2.2, c: hex('#ff7020'), a: 0.5, always: true, flicker: true });
     // ---- the crater ----
     S.stoneSpr = [0, 1, 2, 3].map((i) => [stoneSpr(M, i, false), stoneSpr(M, i, true)]);
     A.stones = STONES.map((x, i) => put(S.stoneSpr[i][0], x, -2, { sink: 2 }));
     A.glows.push({ x: (LAVA.x0 + LAVA.x1) / 2, y: LAVA.y, r: 420, flat: 2.6, c: hex('#ff5a10'), a: 0.55, always: true, flicker: true });
-    for (let x = 3740; x < A.W - 20; x += 90 + r() * 120) if (!(x > LAVA.x0 - 30 && x < LAVA.x1 + 30)) put(Paint.rock(M, 18 + r() * 20, 12 + r() * 14, Math.floor(x), { ramp: M.rockR }), x, -3, { sink: 3 });
+    for (let x = 4040; x < A.W - 20; x += 90 + r() * 120) if (!(x > LAVA.x0 - 30 && x < LAVA.x1 + 30)) put(Paint.rock(M, 18 + r() * 20, 12 + r() * 14, Math.floor(x), { ramp: M.rockR }), x, -3, { sink: 3 });
     // micro detail
     const det = (key, ramp, x, zd) => { const s = Paint.miniSpr(key, ramp); A.details.push({ s, x, y: gy(x) + zd, zd }); };
     for (let x = 10; x < A.W; x += 5 + r() * 12) { if (inSpring(x) || lavaAt(x)) continue; const k = r(), zd = (r() - 0.5) * 10, z = zone(x); if (k < 0.25) det('pebble2', z === 'ash' ? M.ash : M.rock, x, zd); else if (k < 0.35 && z !== 'crater') det('twig', M.bark, x, zd); else if (k < 0.42 && z === 'town') det('flower', M.flower, x, zd); else if (k < 0.5 && z !== 'ash') det('pebble', M.rockR, x, zd); }
@@ -195,6 +217,9 @@ Areas.volcano = (() => {
       for (let x = S.peakU - 22; x < S.peakU + 22; x++) { const d = 1 - Math.abs(x - S.peakU) / 22, top = h - 104 * 0.98 + d * 9; for (let y = 0; y < top; y++) if (s.get(x, y)) s.set(x, y, 0); s.set(x, Math.round(top), M.ember[1]); }
       // ash streaks down the slopes
       for (let k = 0; k < 40; k++) { let x = S.peakU + (r() - 0.5) * 240, y = h - 96 + r() * 30; for (let j = 0; j < 24; j++) { if (s.get(x, y)) s.set(x, y, M.far[4]); x += (x < S.peakU ? -1 : 1) * 0.7; y += 1.3; } }
+      // lava rivulets running down the cone from the crater lip (they glow through the dusk and night)
+      for (let k = 0; k < 7; k++) { let x = S.peakU + (r() - 0.5) * 30, y = h - 104 * 0.98 + 10; const dir = x < S.peakU ? -1 : 1; for (let j = 0; j < 30 + r() * 40; j++) { if (!s.get(x | 0, y | 0)) break; s.set(x, y, j < 8 ? M.lava[4] : M.lava[j % 5 === 0 ? 2 : 3]); x += dir * (0.3 + r() * 0.6); y += 1; } }
+      Scenic.bakeLight(s, S.peakU, h - 96, 40, [M.far], M.farL, { flat: 0.8, k: 0.8 });
       const L = A.layer(s, 0.04, { haze: 0.5, base: h - 1, x: -80 }); L.skirt = M.far[2]; S.farL = L;
     }
     // jagged volcanic hills with ashy tree lines
@@ -209,16 +234,20 @@ Areas.volcano = (() => {
     {
       const w = 2200, h = 110, s = new ISpr(w, h);
       Paint.ridge(s, M, { ramp: M.mid, base: h, amp: 50, seed: 33, freq: 0.01 });
-      for (let k = 0; k < 9; k++) { const x = 600 + k * 70 + r() * 20, hs = hut(M, 30 + r() * 20, 18 + r() * 10, 90 + k); s.paste(hs, Math.round(x - hs.ax), h - hs.h - 4); }
-      for (let x = 0; x < w; x += 40 + r() * 70) { const tr = ashTree(M, 40 + r() * 30, Math.floor(x * 7)); s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 3); }
+      for (let k = 0; k < 9; k++) { const x = 700 + k * 70 + r() * 20, hs = hut(M, 30 + r() * 20, 18 + r() * 10, 90 + k); s.paste(hs, Math.round(x - hs.ax), h - hs.h - 4); }
+      for (let x = 0; x < w; x += 40 + r() * 70) { if (x > 1150) continue; const tr = ashTree(M, 40 + r() * 30, Math.floor(x * 7)); s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 3); }
+      // beyond the town the hills turn to black basalt veined with magma
+      cracks(s, M, 1150, w, 20, h, 50, 33, [M.mid], M.midL);
       const L = A.layer(s, 0.34, { haze: 0.28, base: h - 1, x: 20 }); L.skirt = M.mid[2];
     }
     // near basalt wall with lava falls far to the right
     {
       const w = 3200, h = 120, s = new ISpr(w, h);
-      Paint.ridge(s, M, { ramp: M.rock, base: h, amp: 64, seed: 45, freq: 0.009, peaks: [[2500, 400, 1]] });
-      for (let x = 0; x < 1100; x += 110 + r() * 150) { const tr = ashTree(M, 50 + r() * 30, Math.floor(x * 11)); s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 2); }
-      for (const fx of [2280, 2560, 2700]) for (let y = 40; y < h; y++) { const top = s.get(fx, y); if (!top) continue; for (let q = -2; q <= 2; q++) s.set(fx + q + Math.round(Math.sin(y * 0.1) * 1.2), y, M.lava[(y + q) % 6 < 3 ? 3 : 4]); }
+      Paint.ridge(s, M, { ramp: M.rock, base: h, amp: 64, seed: 45, freq: 0.009, peaks: [[2656, 400, 1]] });
+      for (let x = 0; x < 1256; x += 110 + r() * 150) { const tr = ashTree(M, 50 + r() * 30, Math.floor(x * 11)); s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 2); }
+      cracks(s, M, 1560, w, 30, h, 70, 45, [M.rock], M.rockL);
+      for (const fx of [2436, 2716, 2856]) Scenic.bakeLight(s, fx, h - 10, 46, [M.rock], M.rockL, { flat: 0.7, k: 1 });
+      for (const fx of [2436, 2716, 2856]) for (let y = 40; y < h; y++) { const top = s.get(fx, y); if (!top) continue; for (let q = -2; q <= 2; q++) s.set(fx + q + Math.round(Math.sin(y * 0.1) * 1.2), y, M.lava[(y + q) % 6 < 3 ? 3 : 4]); }
       const L = A.layer(s, 0.52, { haze: 0.18, base: h - 1, x: 0 }); L.skirt = M.rock[1];
     }
     // ---- 2.5D floor: ash fields, the warm stones of Lavaridge, black basalt and a lava lake reaching back ----
@@ -228,40 +257,40 @@ Areas.volcano = (() => {
         row(wz, p, t) { return { tq: Math.floor(t * 3), t }; },
         tex(wx, wz, p, t, R) {
           const n = Stage.noiseAt(wx * 0.4, wz * 1.2), n2v = Stage.noiseAt(wx * 1.7 + 50, wz * 3.1);
-          if (wx < 1450) { if (n > 0.66) return M.ashG[n > 0.74 ? 3 : 2]; if (n2v > 0.9) return M.rock[3]; return M.ash[n < 0.3 ? 2 : n > 0.55 ? 4 : 3]; }
-          if (wx < 2780) { const k = (1 - p) / 0.45, sp = Math.abs(wx - 1890) < 170 * (1 - k * 0.8) && k < 0.9; if (sp) return n2v > 0.8 ? M.steam[2] : M.stone[1]; if (n > 0.64) return M.herb[2]; return M.stone[n2v > 0.5 ? 3 : 2]; }
+          if (wx < 1750) { if (n > 0.66) return M.ashG[n > 0.74 ? 3 : 2]; if (n2v > 0.9) return M.rock[3]; return M.ash[n < 0.3 ? 2 : n > 0.55 ? 4 : 3]; }
+          if (wx < 3080) { const k = (1 - p) / 0.45, sp = Math.abs(wx - 2190) < 170 * (1 - k * 0.8) && k < 0.9; if (sp) return n2v > 0.8 ? M.steam[2] : M.stone[1]; if (n > 0.64) return M.herb[2]; return M.stone[n2v > 0.5 ? 3 : 2]; }
           // basalt with glowing cracks; the lava lake stretches into the distance
-          const lk = Math.abs(wx - 4310) < 360 * (1 - (1 - p) * 0.7);
-          if (wx > 3860 && lk) { const f = Math.sin(wx * 0.05 + wz * 0.3 + R.t * 1.5) + Math.sin(wx * 0.013 - wz * 0.2 - R.t * 0.8); return f > 1.2 ? M.lava[5] : f > 0.3 ? M.lava[3] : f > -0.6 ? M.lava[2] : M.lava[1]; }
+          const lk = Math.abs(wx - 4610) < 360 * (1 - (1 - p) * 0.7);
+          if (wx > 4160 && lk) { const f = Math.sin(wx * 0.05 + wz * 0.3 + R.t * 1.5) + Math.sin(wx * 0.013 - wz * 0.2 - R.t * 0.8); return f > 1.2 ? M.lava[5] : f > 0.3 ? M.lava[3] : f > -0.6 ? M.lava[2] : M.lava[1]; }
           const v = Math.abs(Math.sin(wx * 0.07 + n * 6) + Math.sin(wz * 0.4 - wx * 0.01));
           if (v < 0.06) return M.crack[2];
-          return (wx > 3720 ? M.rockR : M.rock)[n < 0.35 ? 2 : n > 0.6 ? 4 : 3];
+          return (wx > 4020 ? M.rockR : M.rock)[n < 0.35 ? 2 : n > 0.6 ? 4 : 3];
         } };
       const r2 = rng(3131);
-      const place = (make, n, p0, p1, xr) => { for (let i = 0, g = 0; i < n && g < n * 25; g++) { const p = p0 + r2() * (p1 - p0), wx = xr[0] + r2() * (xr[1] - xr[0]); if (wx > 3860 && Math.abs(wx - 4310) < 400) continue; if (make(p, wx, i)) i++; } };
-      place((p, wx, i) => A.scatterAt(ashTree(M, Math.round((60 + r2() * 40) * p), 4000 + i), wx, p), 7, 0.57, 0.9, [0, 1500]);
-      place((p, wx, i) => A.scatterAt(Paint.tuft(M, Math.round((10 + r2() * 10) * p), Math.round((10 + r2() * 12) * p), 4100 + i, { ramp: M.ashG }), wx, p, { windFrames: true }), 60, 0.58, 0.98, [0, 1500]);
-      place((p, wx, i) => A.scatterAt(Paint.rock(M, Math.round((14 + r2() * 26) * p), Math.round((9 + r2() * 18) * p), 4200 + i, { ramp: wx > 3700 ? M.rockR : M.rock, cracks: 1 }), wx, p), 50, 0.56, 0.98, [0, A.W]);
-      place((p, wx, i) => A.scatterAt(hut(M, Math.round(60 * p), Math.round(38 * p), 4300 + i), wx, p), 5, 0.6, 0.75, [1500, 2700]);
-      place((p, wx, i) => A.scatterAt(Paint.bush(M, Math.round(20 * p), Math.round(12 * p), 4400 + i, { ramp: M.herb, dots: M.flower, nd: 3 }), wx, p), 16, 0.6, 0.95, [1500, 2750]);
+      const place = (make, n, p0, p1, xr) => { for (let i = 0, g = 0; i < n && g < n * 25; g++) { const p = p0 + r2() * (p1 - p0), wx = xr[0] + r2() * (xr[1] - xr[0]); if (wx > 4160 && Math.abs(wx - 4610) < 400) continue; if (make(p, wx, i)) i++; } };
+      place((p, wx, i) => A.scatterAt(ashTree(M, Math.round((60 + r2() * 40) * p), 4000 + i), wx, p), 7, 0.57, 0.9, [0, 1800]);
+      place((p, wx, i) => A.scatterAt(Paint.tuft(M, Math.round((10 + r2() * 10) * p), Math.round((10 + r2() * 12) * p), 4100 + i, { ramp: M.ashG }), wx, p, { windFrames: true }), 60, 0.58, 0.98, [0, 1800]);
+      place((p, wx, i) => A.scatterAt(Paint.rock(M, Math.round((14 + r2() * 26) * p), Math.round((9 + r2() * 18) * p), 4200 + i, { ramp: wx > 4000 ? M.rockR : M.rock, cracks: 1 }), wx, p), 50, 0.56, 0.98, [0, A.W]);
+      place((p, wx, i) => A.scatterAt(hut(M, Math.round(60 * p), Math.round(38 * p), 4300 + i), wx, p), 5, 0.6, 0.75, [1800, 3000]);
+      place((p, wx, i) => A.scatterAt(Paint.bush(M, Math.round(20 * p), Math.round(12 * p), 4400 + i, { ramp: M.herb, dots: M.flower, nd: 3 }), wx, p), 16, 0.6, 0.95, [1800, 3050]);
     }
     // ---- foreground ----
     for (let x = -60; x < A.W; x += 150 + r() * 170) {
       if (x > LAVA.x0 && x < LAVA.x1) continue;
-      let s = x < 2780 ? Paint.clump(x < 1450 ? M.ashG : M.herb, 50 + r() * 40, 60 + r() * 30, Math.floor(x * 11), 'grass', { n: 11 }) : Paint.rock(M, 60 + r() * 40, 40 + r() * 30, Math.floor(x), { ramp: M.rock, cracks: 3 });
+      let s = x < 3080 ? Paint.clump(x < 1750 ? M.ashG : M.herb, 50 + r() * 40, 60 + r() * 30, Math.floor(x * 11), 'grass', { n: 11 }) : Paint.rock(M, 60 + r() * 40, 40 + r() * 30, Math.floor(x), { ramp: M.rock, cracks: 3 });
       s = Paint.edge(s, M.ink[0]);
-      A.foreItem(s, x, gy(x) + 62 + r() * 24, { p: 1.35, sway: x < 2780 ? 2 : 0, flip: r() < 0.5 });
+      A.foreItem(s, x, gy(x) + 62 + r() * 24, { p: 1.35, sway: x < 3080 ? 2 : 0, flip: r() < 0.5 });
     }
     A.foreDark = 0.25; A.foreTint = 0xff0a0a1a;
     // ---- hotspots ----
-    A.addHot({ x0: 950, x1: 1010, y0: gy(980) - 50, y1: gy(980), x: 980, reach: 50, tap() { const n = Save.data.stats.soot || 0; HUD.toast(n >= 30 ? 'The glassblower made you a little glass flute from your ash! (It whistles.)' : 'The glass workshop. "Collect volcanic ash by walking through the ashy grass and I will make you something!" (' + n + '/30)', { life: 3.2 }); if (n >= 30 && Save.discover('volcano.flute')) { Save.addPoints(500); Game.sfx('reward'); } } });
+    A.addHot({ x0: 950, x1: 1310, y0: gy(980) - 50, y1: gy(980), x: 980, reach: 50, tap() { const n = Save.data.stats.soot || 0; HUD.toast(n >= 30 ? 'The glassblower made you a little glass flute from your ash! (It whistles.)' : 'The glass workshop. "Collect volcanic ash by walking through the ashy grass and I will make you something!" (' + n + '/30)', { life: 3.2 }); if (n >= 30 && Save.discover('volcano.flute')) { Save.addPoints(500); Game.sfx('reward'); } } });
     A.addHot({ x0: BATH - 70, x1: BATH + 70, y0: gy(BATH) - 90, y1: gy(BATH), x: BATH, reach: 60, tap() { HUD.toast('Lavaridge Bathhouse: "Soak in the spring out back — it\'s good for tired fins!"', { life: 3 }); } });
     STONES.forEach((x, i) => A.addHot({ x0: x - 12, x1: x + 12, y0: gy(x) - 28, y1: gy(x), x, reach: 34, tap() { stoneHit(i); } }));
   };
 
   /* ---------------- the Magma Stones puzzle ---------------- */
   function newSeq() { S.seq = [0, 1, 2, 3].sort(() => Math.random() - 0.5); S.input = []; }
-  function showSeq() { if (S.solved) return; if (!S.seq.length) newSeq(); S.showT = 0; S.showI = 0; Game.sfx('lava', 4300, 0.9); }
+  function showSeq() { if (S.solved) return; if (!S.seq.length) newSeq(); S.showT = 0; S.showI = 0; Game.sfx('lava', 4600, 0.9); }
   function stoneHit(i) {
     if (S.solved) { HUD.toast('The magma stones are warm and quiet now.', { life: 2 }); return; }
     if (S.showI >= 0) return;
@@ -275,8 +304,8 @@ Areas.volcano = (() => {
   }
   function solved() {
     S.solved = true; S.flash = 1; Save.discover('volcano.stones'); Save.addPoints(800);
-    Game.shake(6); Game.sfx('rumble', 4300, 1); setTimeout(() => Game.sfx('reward'), 800);
-    if (Game.cine) Game.cine.pan(4310, LAVA.y - 70, { hold: 2.8, zoom: 1.1 });
+    Game.shake(6); Game.sfx('rumble', 4600, 1); setTimeout(() => Game.sfx('reward'), 800);
+    if (Game.cine) Game.cine.pan(4610, LAVA.y - 70, { hold: 2.8, zoom: 1.1 });
     if (!Save.itemN('redorb')) { Save.addItem('redorb', 1); HUD.toast('The Red Orb rose out of the lava! Something deep in the magma stirs...', { life: 4 }); }
     if (typeof Legends !== 'undefined' && Legends.wakeGroudon) setTimeout(() => Legends.wakeGroudon(), 1400);
   }
@@ -341,6 +370,9 @@ Areas.volcano = (() => {
       if (p.k === 'ash') { d[i] = mix(d[i], 0xffd0ccc8, 0.85); if (p.big) { d[i + 1] = mix(d[i + 1], 0xffb0aca8, 0.7); d[i + W] = mix(d[i + W], 0xffa8a4a0, 0.6); } }
       else { const a = Math.min(1, p.life * 2); d[i] = U.screen(d[i], 0xff3a9aff, a); d[i - W] = U.screen(d[i - W], 0xff2a6aff, a * 0.5); }
     }
+    // heat shimmer over the little lava puddle in the pass, a hot red haze hanging low over the crater
+    { const px0 = PUDDLE.x0 - 20 - cx, px1 = PUDDLE.x1 + 20 - cx, py1 = PUDDLE.y - cy; if (px1 > 0 && px0 < W) Scenic.heat(fb, px0, px1, py1 - 34, py1, t, 1); }
+    if (LAVA.x1 - cx > 0 && LAVA.x0 - cx < W) Scenic.mist(fb, cx, cy, t, { k: Stage.S.hour === 'night' ? 0.32 : 0.2, c: hex('#ff6a28'), y: LAVA.y, up: 70, down: 4, speed: 6, x0: LAVA.x0 - 40, x1: LAVA.x1 + 40, fade: 80, step: 4 });
     // heat shimmer above the lava
     const lx0 = Math.max(0, Math.floor(LAVA.x0 - cx)), lx1 = Math.min(W, Math.ceil(LAVA.x1 - cx)), ly1 = Math.min(H, Math.round(LAVA.y - cy)), ly0 = Math.max(0, ly1 - 60);
     if (lx1 > lx0 && ly1 > 0) {
@@ -361,11 +393,13 @@ Areas.volcano = (() => {
   def.update = (A, dt, t, G) => {
     const mk = G.mudkip, cx = Game.cam.x, cy = Game.cam.y, VW = Game.VW, VH = Game.VH;
     // ash + embers
-    const wantAsh = cx < 1600 ? 150 : cx < 2800 ? 40 : 12, wantEmb = cx + VW > 3600 ? 40 : 0;
+    const wantAsh = cx < 1900 ? 150 : cx < 3100 ? 40 : 12, wantEmb = cx + VW > 3900 ? 40 : 0;
     let na = 0, ne = 0; for (const p of S.ash) p.k === 'ash' ? na++ : ne++;
     for (let k = 0; k < 3 && na < wantAsh; k++, na++) S.ash.push({ k: 'ash', x: cx + Math.random() * (VW + 60) - 30, y: cy - 10 + (S.ash.length < 20 ? Math.random() * VH : 0), vy: 12 + Math.random() * 16, ph: Math.random() * 6, big: Math.random() < 0.25, life: 20 });
     for (let k = 0; k < 2 && ne < wantEmb; k++, ne++) { const x = rnd2(Math.max(cx, LAVA.x0), Math.min(cx + VW, LAVA.x1)); S.ash.push({ k: 'ember', x, y: LAVA.y - 2, vy: -rnd2(20, 50), ph: Math.random() * 6, life: rnd2(1.5, 3) }); }
     for (let i = S.ash.length - 1; i >= 0; i--) { const p = S.ash[i]; p.life -= dt; p.x += (Math.sin(t * 1.3 + p.ph) * 10 + (p.k === 'ash' ? 6 : 0)) * dt; p.y += p.vy * dt; if (p.life <= 0 || p.y > cy + VH + 10 || p.y < cy - 60 || (p.k === 'ash' && p.y > World.groundAt(p.x))) S.ash.splice(i, 1); }
+    // fumaroles: wisps of grey smoke curling out of the cracks in the pass and around the crater
+    if (cx + VW > 3080 && Math.random() < dt * 3) { const x = rnd2(Math.max(cx, 3100), cx + VW); if (!lavaAt(x)) FX.add({ type: 'dust', x, y: World.groundAt(x) - 2, vx: rnd2(-4, 4) + 3, vy: -rnd2(8, 18), r: 2 + Math.random() * 3, life: 2.2, c: 0xff8a8680, c2: 0xff5a5654, layer: 2 }); }
     // steam over the hot spring
     if (Math.random() < dt * 8) { const x = rnd2(SPRING.x0 + 20, SPRING.x1 - 20); FX.add({ type: 'dust', x, y: SPRING.level - 2, vx: rnd2(-6, 6), vy: -rnd2(12, 24), r: 3 + Math.random() * 3, life: 1.6, c: 0xfff4f0ec, c2: 0xffd8d4d0, layer: 3 }); }
     // steam vents: every few seconds a hot blast that throws Mudkip sky-high
@@ -379,7 +413,7 @@ Areas.volcano = (() => {
       }
     }
     // ash collecting in the ashy grass (for the glassblower)
-    if (mk && mk.moving && mk.x < 1450 && mk.mode === 'land') { S.sootT = (S.sootT || 0) + dt; if (S.sootT > 1.2) { S.sootT = 0; const n = (Save.data.stats.soot || 0) + 1; if (n <= 30) { Save.data.stats.soot = n; Save.save(); if (n % 10 === 0 || n === 30) HUD.toast('Ash collected: ' + n + '/30', { life: 1.4 }); } } }
+    if (mk && mk.moving && mk.x < 1750 && mk.mode === 'land') { S.sootT = (S.sootT || 0) + dt; if (S.sootT > 1.2) { S.sootT = 0; const n = (Save.data.stats.soot || 0) + 1; if (n <= 30) { Save.data.stats.soot = n; Save.save(); if (n % 10 === 0 || n === 30) HUD.toast('Ash collected: ' + n + '/30', { life: 1.4 }); } } }
     // lava! too hot to touch: Mudkip bounces out yelping
     S.burnCool -= dt;
     if (mk && S.burnCool <= 0) {
@@ -399,7 +433,7 @@ Areas.volcano = (() => {
       else if (i !== S.showI || S.showT < 0.02) { S.showI = i; const st = S.seq[i]; S.lit[st] = 0.7; Game.sfx('lava', STONES[st], 0.7); FX.add({ type: 'ring', x: STONES[st], y: World.groundAt(STONES[st]) - 12, r0: 3, r1: 18, life: 0.5, c: hex('#ffc040'), layer: 3 }); }
     }
     for (let k = 0; k < 4; k++) { S.lit[k] = Math.max(0, S.lit[k] - dt); if (A.stones) A.stones[k].frames = [S.stoneSpr[k][S.lit[k] > 0 || S.solved ? 1 : 0]]; }
-    if (!S.solved && mk && S.showI < 0 && !S.seq.length && Math.abs(mk.x - 3830) < 60 && !S.hinted) { S.hinted = true; HUD.toast('Four carved stones ring the crater... tap one to wake the lava.', { life: 3 }); }
+    if (!S.solved && mk && S.showI < 0 && !S.seq.length && Math.abs(mk.x - 4130) < 60 && !S.hinted) { S.hinted = true; HUD.toast('Four carved stones ring the crater... tap one to wake the lava.', { life: 3 }); }
     if (typeof VolcanoAI !== 'undefined') VolcanoAI.update(A, dt, t, G);
   };
   def.weather = () => ({ rain: 0, fog: 0.12 });
@@ -407,14 +441,17 @@ Areas.volcano = (() => {
     const out = [{ kind: 'mote', rate: 2, c: hex('#e0d8ce'), life: 6, sway: 10, bob: 4, vy: 2 }];
     if (hour === 'night' || hour === 'dusk') out.push({ kind: 'firefly', rate: 1.2, c: hex('#ff9a4a'), life: 6, sway: 12, bob: 6, y: (x) => World.groundAt(x) - 10 - Math.random() * 60 });
     else out.push({ kind: 'bird', rate: 0.1, group: [2, 3], vx0: 22, par: 0.3, c: hex('#2a2024'), life: 40, sway: 3, bob: 3, y: () => 150 + Math.random() * 60 });
+    // embers swirling up out of the cracks in the pass and the crater
+    const cx = Game.cam.x + Game.VW / 2, hot = cx > 3000 ? (cx > 4000 ? 7 : 3.5) : cx > 2600 ? 1 : 0;
+    if (hot) out.push({ kind: 'ember', rate: hot, c: hex('#ffb040'), c2: hex('#ff4a10'), big: Math.random() < 0.25, life: 3 + Math.random() * 2, sway: 14, bob: 4, vy: -16 - Math.random() * 14, wob: 2.5, y: (x) => World.groundAt(x) - Math.random() * 20 });
     return out;
   };
-  def.onScan = (A) => { const mk = Game.mudkip; if (mk && mk.x > 3700) { HUD.toast(S.solved ? 'Scan: a colossal heat signature in the magma... awake.' : 'Scan: a colossal heat signature sleeps in the magma. The four stones hum.', { life: 3 }); return true; } return false; };
+  def.onScan = (A) => { const mk = Game.mudkip; if (mk && mk.x > 4000) { HUD.toast(S.solved ? 'Scan: a colossal heat signature in the magma... awake.' : 'Scan: a colossal heat signature sleeps in the magma. The four stones hum.', { life: 3 }); return true; } return false; };
   def.onSong = (x) => { if (typeof VolcanoAI !== 'undefined' && VolcanoAI.song) VolcanoAI.song(x); };
   def.photoBonus = (A, crop, subs, main) => {
     if (subs.some((s) => s.sp === 'groudon')) return { pts: 800, name: 'Lord of the land' };
-    if (Game.mudkip && Game.mudkip.x > 3700) return { pts: 250, name: 'Magma glow' };
-    if (Game.mudkip && Game.mudkip.x < 1450) return { pts: 150, name: 'Ashfall' };
+    if (Game.mudkip && Game.mudkip.x > 4000) return { pts: 250, name: 'Magma glow' };
+    if (Game.mudkip && Game.mudkip.x < 1750) return { pts: 150, name: 'Ashfall' };
     return null;
   };
   def.S = S; def.LAVAS = LAVAS; def.STONES = STONES; def.SPRING = SPRING; def.LAVA = LAVA; def.PUDDLE = PUDDLE;

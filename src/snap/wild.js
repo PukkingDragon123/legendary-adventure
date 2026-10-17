@@ -258,32 +258,32 @@ const Wild = (() => {
   const wrap = (id, fn) => { const A = Areas[id]; if (!A) return; const s0 = A.spawn; A.spawn = (a, G) => { s0(a, G); try { fn(a, G); } catch (e) { console.error(e); } }; };
   wrap('beach', (A, G) => {
     // spread out along the whole cove: the start stays calm, the rest of the coast has its own residents
-    E.add(G, 'marshtomp', 4100, { minX: 3990, maxX: 4230 });
-    E.add(G, 'swampert', 5780, { range: 120 });
-    E.add(G, 'wynaut', 6560, { range: 120 }); E.add(G, 'wynaut', 6620, { range: 120 });
-    E.add(G, 'crawdaunt', 7900, { range: 180 });
-    E.add(G, 'vibrava', 4620, { range: 200 }); E.add(G, 'vibrava', 4880, { range: 160 });
-    E.add(G, 'flygon', 5060, { range: 220 });
+    E.add(G, 'marshtomp', 4720, { minX: 4600, maxX: 4840 });
+    E.add(G, 'swampert', 6760, { range: 120 });
+    E.add(G, 'wynaut', 7540, { range: 120 }); E.add(G, 'wynaut', 7600, { range: 120 });
+    E.add(G, 'crawdaunt', 9300, { range: 180 });
+    E.add(G, 'vibrava', 5360, { range: 200 }); E.add(G, 'vibrava', 5620, { range: 160 });
+    E.add(G, 'flygon', 5800, { range: 220 });
     const h = Game.hour();
-    if (h === 'night' || h === 'dusk') E.add(G, 'starmie', 2000, { box: { x0: 1500, x1: 2600, y0: World.SEA + 30, y1: World.SEA + 160 } });
+    if (h === 'night' || h === 'dusk') E.add(G, 'starmie', 2400, { box: { x0: 1900, x1: 3000, y0: World.SEA + 30, y1: World.SEA + 160 } });
   });
   wrap('forest', (A, G) => {
-    const POND = { x0: 2250, x1: 2780, level: 576 }, RIVER = { x0: 930, x1: 1475, level: 578 };
-    E.add(G, 'lombre', 1540, { range: 200, water: RIVER });
-    for (const x of [380, 1900, 2950]) E.add(G, 'budew', x, { range: 90 });
-    E.add(G, 'nuzleaf', 660, { range: 160 });
-    E.add(G, 'linoone', 3000, { minX: 2830, maxX: 3240 });
-    E.add(G, 'breloom', 2960, { range: 150 });
-    E.add(G, 'masquerain', 2520, { minX: POND.x0 + 30, maxX: POND.x1 - 30 });
-    E.family(G, 'marill', 'azurill', 2200, 2, { water: POND, range: 200 });
-    E.add(G, 'azumarill', 2840, { water: POND, range: 220 });
-    E.add(G, 'vigoroth', 560, { range: 260 });
-    E.add(G, 'slaking', 3160, { range: 60 });
-    E.add(G, 'latias', 1800, { range: 900, y: 300 });
+    const POND = { x0: 2840, x1: 3370, level: 576 }, RIVER = { x0: 1090, x1: 1635, level: 578 };
+    E.add(G, 'lombre', 1700, { range: 200, water: RIVER });
+    for (const x of [380, 2340, 3660]) E.add(G, 'budew', x, { range: 90 });
+    E.add(G, 'nuzleaf', 820, { range: 160 });
+    E.add(G, 'linoone', 3710, { minX: 3540, maxX: 4110 });
+    E.add(G, 'breloom', 3670, { range: 150 });
+    E.add(G, 'masquerain', 3110, { minX: POND.x0 + 30, maxX: POND.x1 - 30 });
+    E.family(G, 'marill', 'azurill', 2790, 2, { water: POND, range: 200 });
+    E.add(G, 'azumarill', 3550, { water: POND, range: 220 });
+    E.add(G, 'vigoroth', 720, { range: 260 });
+    E.add(G, 'slaking', 4030, { range: 60 });
+    E.add(G, 'latias', 2240, { range: 900, y: 300 });
   });
   wrap('canopy', (A, G) => {
-    E.add(G, 'snorunt', 900, { range: 200 }); E.add(G, 'snorunt', 2200, { range: 200 });
-    E.add(G, 'swellow', 1400, { range: 900 });
+    E.add(G, 'snorunt', 1000, { range: 200 }); E.add(G, 'snorunt', 2440, { range: 200 });
+    E.add(G, 'swellow', 1500, { range: 1000 });
   });
   return { fx };
 })();

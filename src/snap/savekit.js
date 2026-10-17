@@ -40,13 +40,17 @@ const SaveKit = (() => {
     c.st = state;
     c.hideAt = state === 'saved' ? K.rt + 1.6 : state === 'saving' ? K.rt + 6 : Infinity;
   }
-  function chipRect(fb) { return { x: Math.round(fb.w / 2) - 9, y: 3, w: 18, h: 16 }; }
+  // (top centre; in the Rotom Dex it steps aside so it does not sit on Rotom's antenna)
+  function chipRect(fb) { return { x: Math.round(fb.w / 2) - 9 + (Game.mode === 'dex' ? 64 : 0), y: 3, w: 18, h: 16 }; }
   function drawChip(fb, dt) {
     const c = K.ch;
     if (c.st && K.rt > c.hideAt && Save.status.ok) c.st = null;
     if (!Save.status.ok && c.st !== 'bad') chip('bad');
     c.vis += ((c.st ? 1 : 0) - c.vis) * Math.min(1, dt * 10);
     if (c.vis < 0.05 || !Game.started) return null;
+    // (it keeps out of the way of full-screen menus and dialogues, unless saving is broken)
+    const modal = Game.mode === 'map' || Game.mode === 'bag' || Game.mode === 'style' || Game.mode === 'camera' || (typeof Progress !== 'undefined' && Progress.log) || (typeof Talk !== 'undefined' && Talk.dlg) || (typeof Moves !== 'undefined' && Moves.wheel) || (typeof Photo !== 'undefined' && Photo.card);
+    if (modal && c.st !== 'bad') return null;
     c.t += dt;
     const r = chipRect(fb), y = r.y - Math.round((1 - c.vis) * 18), bad = c.st === 'bad';
     const on = K.hover === 'chip';
@@ -61,10 +65,8 @@ const SaveKit = (() => {
 
   /* ---------- widgets ---------- */
   function button(fb, id, lab, x, y, w, o = {}) {
-    const S = UI.skin(), h = o.h || 14, on = K.hover === id, dn = K.press === id;
-    const fill = o.col !== undefined ? o.col : S.btn;
-    UI.panel(fb, x, y + (dn ? 1 : 0), w, h, { r: 3, ol: on ? GOLD : S.ink, fill: on ? U.tweak(fill, 0, 1, 0.1) : fill });
-    Font.draw(fb, lab, x + w / 2, y + Math.round((h - 8) / 2) + (dn ? 1 : 0), WHITE, { font: 'small', align: 'center' });
+    const S = UI.skin(), h = o.h || 14;
+    UI.button(fb, x, y, w, h, { label: lab, fill: o.col !== undefined ? o.col : S.btn, hover: K.hover === id, down: K.press === id, ol: S.ink });
     K.rects.push({ id, x, y, w, h, fn: o.fn });
     return x + w + 4;
   }
@@ -90,14 +92,14 @@ const SaveKit = (() => {
     if (ta) K.rects.push({ id: 'ta-' + ta, x, y, w, h, ta });
   }
   function frame(fb, W, H, title, ic) {
-    const S = UI.skin(), x = Math.round((fb.w - W) / 2), y = Math.round((fb.h - H) / 2);
-    UI.rectA(fb, 0, 0, fb.w, fb.h, H_('#0a0e20'), 0.5);
-    UI.rrect(fb, x, y + 3, W, H, 8, H_('#0a0e1a'));
+    const S = UI.skin(), mt = (K.m && K.m.t) || 0, x = Math.round((fb.w - W) / 2), y = Math.round((fb.h - H) / 2 + (1 - UI.openK(mt, 0.24)) * 22);
+    UI.dim(fb, Math.min(1, mt / 0.15), 0.5);
+    UI.shadow(fb, x, y, W, H, 8, 3, 0.6);
     UI.body(fb, x, y, W, H, S, { r: 8 });
     if (ic === 'disk') disk(fb, x + 10, y + 7); else Font.icon(fb, 'warn', x + 8, y + 6, 2);
     Font.draw(fb, title, x + 24, y + 7, WHITE, { font: 'title', outline: INK });
     if (!K.m.sticky) {
-      UI.panel(fb, x + W - 22, y + 5, 16, 14, { r: 3, ol: K.hover === 'x' ? GOLD : S.ink, fill: S.btn }); Font.icon(fb, 'cross', x + W - 17, y + 9, 1);
+      UI.closeBtn(fb, x + W - 22, y + 5, { hover: K.hover === 'x', down: K.press === 'x' });
       K.rects.push({ id: 'x', x: x + W - 24, y: y + 3, w: 20, h: 18, fn: () => close() });
     }
     return { x, y, W, H, S };

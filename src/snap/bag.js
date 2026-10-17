@@ -30,6 +30,8 @@ const Bag = (() => {
   function open() {
     if (Game.mode !== 'explore') return;
     Game.mode = 'bag'; Game.frozenFrame = false; B.t = 0; B.sel = 0;
+    // items picked up since the last look wear a NEW tag while the bag is open
+    const it = Save.data.items || {}; B.fresh0 = {}; for (const k in it) if (it[k] > 0 && !B.seen[k]) { B.fresh0[k] = 1; B.seen[k] = 1; }
     if (typeof Pad !== 'undefined') Pad.reset();
     Game.sfx('dexOpen', null, 0.6);
     Game.pushBack && Game.pushBack();
@@ -78,75 +80,86 @@ const Bag = (() => {
     icegem: { m: ['..a..', '.awa.', 'abbba', '.bcb.', '..c..'], c: { a: U.hex('#dff8ff'), w: 0xffffffff, b: U.hex('#8ad8f8'), c: U.hex('#3a9ad8') } },
   };
   function draw(fb, t) {
-    const S = UI.skin(), W = fb.w, H = fb.h;
-    UI.rectA(fb, 0, 0, W, H, 0xff0a0e20, 0.55);
-    const k = U.ease.outBack(Math.min(1, B.t / 0.25));
-    const pw = Math.min(W - 20, 380), ph = Math.min(H - 20, 250), x0 = Math.round((W - pw) / 2), y0 = Math.round((H - ph) / 2 + (1 - k) * 60);
-    // the backpack: stitched leather body, flap, straps
-    const leather = 0xff2a6ad8, leatherL = 0xff4a8ef0, leatherD = 0xff1a4aa0, flap = 0xff2058c0;
-    UI.rrect(fb, x0, y0 + 4, pw, ph, 14, 0xff0a0e1a);
-    UI.rrect(fb, x0, y0, pw, ph, 14, INK); UI.rrect(fb, x0 + 2, y0 + 2, pw - 4, ph - 4, 12, leather);
+    const S = UI.skin(), C = UI.C, W = fb.w, H = fb.h, hx = U.hex;
+    UI.dim(fb, Math.min(1, B.t / 0.15), 0.55);
+    const k = UI.openK(B.t, 0.26);
+    const pw = Math.min(W - 16, 390), ph = Math.min(H - 10, 250), x0 = Math.round((W - pw) / 2), y0 = Math.round((H - ph) / 2 + (1 - k) * 60);
+    // the backpack: stitched leather body with a flap
+    const leather = hx('#d86a2a'), leatherL = hx('#f08e4a'), leatherD = hx('#a04a1a'), flap = hx('#c05820'), stitch = hx('#ffb87a');
+    UI.shadow(fb, x0, y0, pw, ph, 14, 4, 0.6);
+    UI.rrect(fb, x0, y0, pw, ph, 14, C.ink); UI.rrect(fb, x0 + 2, y0 + 2, pw - 4, ph - 4, 12, leather);
     UI.hline(fb, x0 + 14, x0 + pw - 14, y0 + 3, leatherL); UI.hline(fb, x0 + 14, x0 + pw - 14, y0 + ph - 4, leatherD);
-    for (let x = x0 + 12; x < x0 + pw - 12; x += 4) { UI.put(fb, x, y0 + 7, 0xff7ab8ff); UI.put(fb, x, y0 + ph - 8, 0xff7ab8ff); }
-    for (let y = y0 + 12; y < y0 + ph - 12; y += 4) { UI.put(fb, x0 + 6, y, 0xff7ab8ff); UI.put(fb, x0 + pw - 7, y, 0xff7ab8ff); }
-    UI.rrect(fb, x0 + 10, y0 + 10, pw - 20, 30, 8, INK); UI.rrect(fb, x0 + 11, y0 + 11, pw - 22, 28, 7, flap);
-    Font.draw(fb, 'BAG', x0 + 20, y0 + 19, WHITE, { font: 'title' });
-    // buckle + close
-    UI.rrect(fb, x0 + pw / 2 - 8, y0 + 34, 16, 10, 2, INK); UI.rect(fb, x0 + pw / 2 - 6, y0 + 36, 12, 6, 0xff3ad2ff); UI.put(fb, x0 + pw / 2 - 5, y0 + 37, WHITE);
-    const cx = x0 + pw - 26, cy = y0 + 14, cp = HUD.pressed('bagx') ? 1 : 0;
-    UI.panel(fb, cx, cy + cp, 18, 18, { r: 4, ol: INK, fill: S.btn }); Font.icon(fb, 'cross', cx + 6, cy + 6 + cp, 1);
-    HUD.btn('bagx', cx - 2, cy - 2, 22, 22, close);
+    for (let x = x0 + 12; x < x0 + pw - 12; x += 4) { UI.put(fb, x, y0 + 7, stitch); UI.put(fb, x, y0 + ph - 8, stitch); }
+    for (let y = y0 + 12; y < y0 + ph - 12; y += 4) { UI.put(fb, x0 + 6, y, stitch); UI.put(fb, x0 + pw - 7, y, stitch); }
+    UI.rrect(fb, x0 + 10, y0 + 9, pw - 20, 28, 8, C.ink); UI.rrect(fb, x0 + 11, y0 + 10, pw - 22, 26, 7, flap); UI.hline(fb, x0 + 18, x0 + pw - 18, y0 + 11, leatherL);
+    HUD.icoBag(fb, x0 + 25, y0 + 23);
+    Font.draw(fb, 'BAG', x0 + 36, y0 + 17, WHITE, { font: 'title', outline: C.ink });
+    // buckle
+    UI.rrect(fb, x0 + pw / 2 - 8, y0 + 32, 16, 10, 2, C.ink); UI.rect(fb, x0 + pw / 2 - 6, y0 + 34, 12, 6, hx('#ffd23a')); UI.put(fb, x0 + pw / 2 - 5, y0 + 35, WHITE);
+    // close
+    const cx = x0 + pw - 30, cy = y0 + 15;
+    UI.closeBtn(fb, cx, cy, { hover: HUD.hoverId === 'bagx', down: HUD.pressed('bagx') });
+    HUD.btn('bagx', cx - 3, cy - 3, 22, 20, close);
     // tabs
-    let tx = x0 + 60;
+    let tx = x0 + 76;
     TABS.forEach((name, i) => {
-      const w = Font.measure(name, 'small') + 14, on = B.tab === i;
-      UI.panel(fb, tx, y0 + 16 + (on ? 0 : 2), w, 14, { r: 4, ol: INK, fill: on ? 0xffffd23a : 0xff15336b, hi: null, sh: null });
-      Font.draw(fb, name, tx + w / 2, y0 + 19 + (on ? 0 : 2), on ? INK : WHITE, { font: 'small', align: 'center' });
-      HUD.btn('bagt' + i, tx, y0 + 14, w, 18, () => { B.tab = i; B.sel = 0; Game.sfx('page', null, 0.4); });
+      const w = Font.measure(name, 'small') + 16, on = B.tab === i, id = 'bagt' + i;
+      if (tx + w > cx - 6) return;
+      UI.button(fb, tx, y0 + 15, w, 14, { label: name, fill: on ? hx('#ffd23a') : hx('#8a3a12'), fg: on ? C.ink : WHITE, hover: HUD.hoverId === id, down: HUD.pressed(id) });
+      HUD.btn(id, tx, y0 + 13, w, 18, () => { if (B.tab !== i) { B.tab = i; B.sel = 0; Game.sfx('page', null, 0.4); } });
       tx += w + 4;
     });
     // list pocket
-    const lx = x0 + 12, ly = y0 + 48, lw = pw - 24, lh = ph - 60;
-    UI.rrect(fb, lx, ly, lw, lh, 8, INK); UI.rrect(fb, lx + 1, ly + 1, lw - 2, lh - 2, 7, 0xfff4efe2);
-    const L = listFor(B.tab), rowH = 20, maxRows = Math.floor((lh - 34) / rowH);
+    const lx = x0 + 12, ly = y0 + 45, lw = pw - 24, lh = ph - 56;
+    UI.rrect(fb, lx, ly, lw, lh, 8, C.ink); UI.rrect(fb, lx + 1, ly + 1, lw - 2, lh - 2, 7, hx('#fbf6ea'));
+    const L = listFor(B.tab), rowH = 19, descH = 24, maxRows = Math.max(1, Math.floor((lh - descH - 8) / rowH));
     B.sel = clamp(B.sel, 0, Math.max(0, L.length - 1));
     const first = clamp(B.sel - maxRows + 1, 0, Math.max(0, L.length - maxRows));
     for (let r = 0; r < Math.min(maxRows, L.length - first); r++) {
-      const i = first + r, it = L[i], y = ly + 6 + r * rowH, sel = i === B.sel;
-      if (sel) UI.rrect(fb, lx + 4, y - 1, lw - 8, rowH - 1, 5, 0xffffe6a8);
+      const i = first + r, it = L[i], y = ly + 5 + r * rowH, sel = i === B.sel, rid = 'bagr' + i;
+      if (sel) { UI.rrect(fb, lx + 4, y - 1, lw - 12, rowH - 1, 5, hx('#ffe9b0')); UI.rect(fb, lx + 4, y + 2, 2, rowH - 7, hx('#e07a2a')); }
+      else if (HUD.hoverId === rid) UI.rrect(fb, lx + 4, y - 1, lw - 12, rowH - 1, 5, hx('#f4ecd8'));
       if (B.tab === 0) {
-        const ic = IC[it.id]; if (ic) UI.pix(fb, ic.m, lx + 10, y + 2, ic.c, 2);
-        Font.draw(fb, it.name, lx + 30, y + 5, INK, { font: 'small' });
-        if (!it.always) Font.draw(fb, '×' + Save.itemN(it.id), lx + lw - 70, y + 5, INK, { font: 'small', align: 'right' });
-        B.seen[it.id] = 1;
+        const ic = IC[it.id]; if (ic) UI.pix(fb, ic.m, lx + 11, y + 2, ic.c, 2); else if (it.id === 'jam') Font.icon(fb, 'note', lx + 12, y + 4, 2);
+        Font.draw(fb, it.name, lx + 30, y + 5, C.text, { font: 'small' });
+        if (!it.always) Font.draw(fb, '×' + Save.itemN(it.id), lx + lw - 76, y + 5, C.dim, { font: 'small', align: 'right' });
+        if (B.fresh0 && B.fresh0[it.id]) Font.icon(fb, 'new', lx + 30 + Font.measure(it.name, 'small') + 4, y + 2, 1);
       } else if (B.tab === 1) {
         const own = Moves.has(it.id);
-        UI.disc(fb, lx + 16, y + 8, 7, INK); UI.disc(fb, lx + 16, y + 8, 6, own ? it.col : 0xff8a8ea0);
+        UI.disc(fb, lx + 16, y + 8, 7, C.ink); UI.disc(fb, lx + 16, y + 8, 6, own ? it.col : hx('#8a8ea0'));
         if (own) Moves.icon(fb, it.id, lx + 16, y + 8, 1); else Font.draw(fb, '?', lx + 16, y + 5, WHITE, { font: 'small', align: 'center' });
-        Font.draw(fb, (it.tm ? it.tm + '  ' : '      ') + (own ? it.name : '???'), lx + 30, y + 5, own ? INK : 0xff7a7e90, { font: 'small' });
-        if (Moves.current().id === it.id) Font.draw(fb, 'ON B', lx + lw - 10, y + 5, 0xff2a8a4a, { font: 'small', align: 'right' });
-        else if (!own) Font.draw(fb, 'not learned', lx + lw - 10, y + 5, 0xff9a9eb0, { font: 'small', align: 'right' });
+        if (it.tm) UI.chip(fb, lx + 28, y + 3, it.tm, { bg: own ? hx('#3a78e8') : hx('#9aa0b8'), h: 9, pad: 6, ol: null });
+        Font.draw(fb, own ? it.name : '???', lx + (it.tm ? 62 : 30), y + 5, own ? C.text : hx('#8a8ea0'), { font: 'small' });
+        if (Moves.current().id === it.id) UI.chip(fb, lx + lw - 12, y + 3, 'ON B', { align: 'right', bg: hx('#2ab870'), h: 9, pad: 8, ol: null });
+        else if (!own) Font.draw(fb, 'not learned', lx + lw - 12, y + 5, hx('#a0a4b4'), { font: 'small', align: 'right' });
       } else {
-        UI.rrect(fb, lx + 8, y + 1, 16, 14, 3, INK); UI.rrect(fb, lx + 9, y + 2, 14, 12, 2, it.seen ? 0xffc04a9a : 0xff5a5e70);
+        UI.rrect(fb, lx + 8, y + 1, 16, 14, 3, C.ink); UI.rrect(fb, lx + 9, y + 2, 14, 12, 2, it.seen ? hx('#c04a9a') : hx('#5a5e70'));
         Font.draw(fb, it.no, lx + 16, y + 5, WHITE, { font: 'small', align: 'center' });
-        Font.draw(fb, it.seen ? it.title : '? ? ?', lx + 30, y + 5, it.seen ? INK : 0xff7a7e90, { font: 'small' });
-        if (it.seen) Font.draw(fb, it.who + '  >', lx + lw - 10, y + 5, 0xffa0306a, { font: 'small', align: 'right' });
+        Font.draw(fb, it.seen ? it.title : '? ? ?', lx + 30, y + 5, it.seen ? C.text : hx('#8a8ea0'), { font: 'small' });
+        if (it.seen) Font.draw(fb, it.who + '  >', lx + lw - 12, y + 5, hx('#a0306a'), { font: 'small', align: 'right' });
       }
-      HUD.btn('bagr' + i, lx + 4, y - 1, lw - 8, rowH - 1, () => { if (B.tab === 0) { B.sel = i; Game.sfx('blip', null, 0.4); } else { B.sel = i; act(B.tab, i); } });
+      HUD.btn(rid, lx + 4, y - 1, lw - 12, rowH - 1, () => { if (B.tab === 0) { B.sel = i; Game.sfx('blip', null, 0.4); } else { B.sel = i; act(B.tab, i); } });
       // the action button sits on top of the row (buttons registered later win)
       if (B.tab === 0 && (it.use || it.trade)) {
-        const lab = it.use || ('Trade +' + it.trade), bw = Math.min(58, Font.measure(lab, 'small') + 10), bx = lx + lw - 64, pr = HUD.pressed('baga' + i) ? 1 : 0;
-        UI.panel(fb, bx, y + 1 + pr, bw, 14, { r: 3, ol: INK, fill: it.use ? 0xff2ab870 : 0xff2a6ad8 }); Font.draw(fb, lab, bx + bw / 2, y + 4 + pr, WHITE, { font: 'small', align: 'center' });
-        HUD.btn('baga' + i, bx - 1, y, bw + 2, 16, () => { B.sel = i; act(0, i); });
+        const lab = it.use || ('Trade +' + it.trade), bw = Math.min(62, Font.measure(lab, 'small') + 14), bx = lx + lw - 68, aid = 'baga' + i;
+        UI.button(fb, bx, y + 1, bw, 14, { label: lab, fill: it.use ? hx('#2ab870') : hx('#3a78e8'), hover: HUD.hoverId === aid, down: HUD.pressed(aid) });
+        HUD.btn(aid, bx - 1, y, bw + 2, 16, () => { B.sel = i; UI.pop(bx + bw / 2, y + 8, 10); act(0, i); });
       }
     }
-    if (!L.length) Font.draw(fb, 'Empty!', lx + lw / 2, ly + 30, 0xff8a8ea0, { font: 'body', align: 'center' });
+    if (!L.length) Font.draw(fb, 'Empty!', lx + lw / 2, ly + 30, hx('#8a8ea0'), { font: 'body', align: 'center' });
+    // scroll bar
+    if (L.length > maxRows) {
+      const th = Math.max(8, Math.round((maxRows * rowH) * maxRows / L.length)), tr = maxRows * rowH, ty = ly + 5 + Math.round((tr - th) * first / Math.max(1, L.length - maxRows));
+      UI.rect(fb, lx + lw - 6, ly + 5, 2, tr, hx('#eadcc0')); UI.rect(fb, lx + lw - 6, ty, 2, th, hx('#c08a5a'));
+    }
     // description strip
-    const it = L[B.sel];
-    UI.rect(fb, lx + 6, ly + lh - 30, lw - 12, 1, 0xffd8d0bc);
+    const it = L[B.sel], dy = ly + lh - descH;
+    UI.hline(fb, lx + 6, lx + lw - 7, dy - 2, hx('#e2d6bc'));
     const desc = !it ? '' : B.tab === 0 ? it.desc : B.tab === 1 ? (Moves.has(it.id) ? it.desc || '' : 'How to learn: ' + (it.how || '?')) : it.seen ? 'Replay this memory.' : 'Discover something legendary to unlock it.';
-    Font.wrap(desc, 'small', lw - 20).slice(0, 2).forEach((l, i) => Font.draw(fb, l, lx + 10, ly + lh - 25 + i * 9, 0xff4a4e62, { font: 'small' }));
-    Font.draw(fb, '{coin}' + Save.data.points, x0 + pw - 40, y0 + ph - 1, WHITE, { font: 'small', align: 'right', outline: INK });
+    Font.wrap(desc, 'small', lw - 20).slice(0, 2).forEach((l, i) => Font.draw(fb, l, lx + 10, dy + 3 + i * 9, hx('#4a4e62'), { font: 'small' }));
+    // points
+    const pts = '{coin}' + Save.data.points, pwid = Font.measure(pts, 'small') + 12;
+    UI.chip(fb, x0 + pw - 18 - pwid, y0 + ph - 6, pts, { w: pwid, h: 10, bg: hx('#8a3a12') });
   }
   return Object.assign(B, { open, close, update, key, wheel, draw, fresh, ITEMS });
 })();

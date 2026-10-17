@@ -17,7 +17,7 @@ const Lighthouse = (() => {
   const pickR = (ramp, t, x, y) => { const n = ramp.length, v = clamp(t, 0, 0.999) * n; return ramp[clamp(Math.floor(v) + ((v % 1) > U.bayer4(x, y) ? 1 : 0), 0, n - 1)]; };
   const S = { near: null, fade: null, pans: [], lit: false, keeper: null, told: false };
   const B = Areas.beach;
-  const DX = 3998; // door x on the islet
+  const DX = 4398; // door x on the islet
 
   /* ================= interior geometry ================= */
   const W = 640, H = 1080, G0 = 1000;
@@ -89,6 +89,9 @@ const Lighthouse = (() => {
         // keeper's room: plaster above a wooden wainscot
         if (y > 700) v = (x % 18 === 0 || y === 701) ? M.wood[1] : pickR(M.wood, cyl(x) + 0.1, x, y);
         else v = pickR(M.plaster, cyl(x) + 0.15 + (hash(x >> 2, y >> 2, 7) - 0.5) * 0.12, x, y);
+      } else if (y > 962 && y < G0) {
+        // the entrance hall's wooden wainscot: a top rail, beaded boards
+        v = y < 965 ? (y === 963 ? M.wood[4] : M.wood[1]) : y > 995 ? M.wood[1] : (x % 14 === 0 ? M.wood[0] : x % 14 === 1 ? M.wood[3] : pickR(M.wood, cyl(x) - 0.08 + (hash(x >> 3, y >> 4, 31) - 0.5) * 0.12, x, y));
       } else {
         const row = Math.floor(y / 8), off = (row % 2) * 9, bx = Math.floor((x + off) / 18);
         const mortar = y % 8 === 0 || (x + off) % 18 === 0;
@@ -171,6 +174,24 @@ const Lighthouse = (() => {
     for (let y = 930; y < 962; y++) for (let x = 90; x < 104; x++) if (Math.abs(x - 97) < 3 + (y - 930) * 0.14) s.set(x, y, pickR(M.brass, 0.8 - (x - 90) / 20, x, y));
     s.rect(96, 928, 3, 3, M.iron[1]);
     for (let a = 0; a < 6.3; a += 0.02) for (let r = 8; r < 13; r++) { const x = Math.round(180 + Math.cos(a) * r), y = Math.round(930 + Math.sin(a) * r); s.set(x, y, Math.floor((a + 0.4) / 0.785) % 2 ? M.redT[2] : M.plaster[4]); }
+
+    // a framed painting of Wailord at sea, a brass barometer, and wall sconces by the stairs
+    for (let y = 896; y < 932; y++) for (let x = 548; x < 604; x++) {
+      const e = x < 551 || x > 600 || y < 899 || y > 928;
+      if (e) { s.set(x, y, x === 548 || y === 896 ? M.brass[3] : M.brass[1]); continue; }
+      const hz = 914 + Math.round(Math.sin(x * 0.2) * 0.6);
+      let v = y < hz ? pickR(M.sky, 1 - (y - 899) / 20, x, y) : pickR(M.sea, 0.75 - (y - hz) / 18, x, y);
+      const wx = (x - 576) / 16, wy = (y - 916) / 6; if (wx * wx + wy * wy < 1 && y < 918) v = M.cloth[1];
+      if (Math.abs(x - 571) < 1 && y < 909 && y > 904) v = M.paper[2];
+      s.set(x, y, v);
+    }
+    for (let a = 0; a < 6.3; a += 0.03) for (let r = 0; r < 9; r++) s.set(Math.round(348 + Math.cos(a) * r), Math.round(912 + Math.sin(a) * r), r > 7 ? M.brass[1] : r > 6 ? M.brass[3] : M.paper[2]);
+    for (let r = 0; r < 6; r++) s.set(348 + Math.round(Math.cos(-0.9) * r), 912 + Math.round(Math.sin(-0.9) * r), M.ink[0]);
+    for (const [lx, ly] of [[140, 930]]) {
+      for (let x = 0; x < 6; x++) s.set(lx - 3 + x, ly + 8, M.iron[1]);
+      for (let y = 0; y < 8; y++) for (let x = -2; x <= 2; x++) s.set(lx + x, ly + y, Math.abs(x) === 2 || y === 0 ? M.iron[0] : M.lamp[y < 4 ? 2 : 1]);
+      s.set(lx, ly - 1, M.iron[1]); s.set(lx, ly - 2, M.iron[1]);
+    }
 
     /* ---- keeper's room ---- */
     // rug
@@ -278,7 +299,7 @@ const Lighthouse = (() => {
     // lights: the stove, the candle, the doorway, and the great lens
     A.glows.push({ x: 398, y: 720, r: 40, c: hex('#ff9a40'), a: 0.6, flicker: true });
     A.glows.push({ x: 230, y: 700, r: 26, c: hex('#ffd080'), a: 0.6, flicker: true });
-    A.glows.push({ x: 45, y: 972, r: 50, c: hex('#e0f0ff'), a: 0.35, flicker: false });
+    A.glows.push({ x: 45, y: 972, r: 50, c: hex('#e0f0ff'), a: 0.35, flicker: false }, { x: 140, y: 935, r: 30, c: hex('#ffd080'), a: 0.5, flicker: true });
     A.lensGlow = { x: LENS, y: PL.fl2.y - 70, r: 150, c: hex('#fff0a0'), a: S.lit ? 0.9 : 0, flicker: false };
     A.glows.push(A.lensGlow);
     for (const [x, y] of [[250, 918], [330, 645], [490, 520], [560, 820]]) A.glows.push({ x, y, r: 34, c: hex('#bfe4ff'), a: 0.25, flicker: false });
@@ -400,7 +421,7 @@ const Lighthouse = (() => {
       const gy = A.gallery.y;
       if (Save.discover('lighthouse.gallery')) { Save.addPoints(250); }
       HUD.toast('From the gallery: all of Coral Cove spread out below!', { life: 3.4, col: 0xffffe8a0 });
-      S.pans = [{ x: 2600, y: gy + 170, dur: 2.4, hold: 1.4, zoom: 1.06 }, { x: 1300, y: gy + 180, dur: 2.2, hold: 1.8, zoom: 1.1 }, { x: 5200, y: gy + 150, dur: 3.2, hold: 1.6, zoom: 1.06 }];
+      S.pans = [{ x: 3000, y: gy + 170, dur: 2.4, hold: 1.4, zoom: 1.06 }, { x: 1700, y: gy + 180, dur: 2.2, hold: 1.8, zoom: 1.1 }, { x: 5940, y: gy + 150, dur: 3.2, hold: 1.6, zoom: 1.06 }];
       S.panWait = 0.8;
     });
   }
@@ -428,15 +449,27 @@ const Lighthouse = (() => {
     for (let x = -44; x <= 44; x++) { s.set(cx + x, 58, M.metal[3]); s.set(cx + x, 59, M.metal[1]); s.set(cx + x, 65, M.metal[2]); if (x % 5 === 0 || Math.abs(x) === 44) for (let y = 60; y < 72; y++) s.set(cx + x, y, M.metal[x % 10 === 0 ? 1 : 2]); }
     // corbels under the gallery
     for (let y = 76; y < 92; y++) { const hw = Math.round(42 - (y - 76) * 0.8); for (let x = -hw; x <= hw; x++) s.set(cx + x, y, (x + 64) % 9 < 2 && y > 78 ? M.ink[1] : pickR(M.lhW, cyl((x + hw) / (2 * hw + 1)) - 0.25, x, y)); }
-    // the tower: red and white bands, tapering, masonry courses
+    // the tower: red and white bands, tapering; a lit side and a core shadow on the curve, masonry courses
+    // with joints that follow the curvature, grime toward the base and rain streaks under the windows
+    const W5 = [M.metal[2], M.lhW[0], M.lhW[1], M.lhW[2], M.tWhite ? M.tWhite[2] : M.lhW[2]];
+    const R5 = [M.boatR ? M.boatR[0] : M.lhR[0], M.lhR[0], M.lhR[1], M.lhR[1], M.lhR[2], M.lhR[2]];
+    const shade = (u) => clamp(0.16 + 0.8 * Math.max(0, Math.cos((u - 0.3) * Math.PI * 0.92)) + (u > 0.88 ? (u - 0.88) * 1.6 : 0), 0, 1);
+    const WINS = [[-12, 118, 0], [10, 160, 0], [-14, 204, 1], [12, 246, 0], [-8, 280, 1]];
     for (let y = 92; y < AY; y++) {
-      const k = (y - 92) / (AY - 92), hw = Math.round(29 + k * 19), band = Math.floor((y - 92) / 39) % 2;
+      const k = (y - 92) / (AY - 92), hw = Math.round(29 + k * 19), band = Math.floor((y - 92) / 39) % 2, row = Math.floor((y - 92) / 6);
       for (let x = -hw; x <= hw; x++) {
+        if (Math.abs(x) === hw) { s.set(cx + x, y, M.ink[0]); continue; }
         const u = (x + hw) / (2 * hw + 1);
-        let t = cyl(u) + (y % 7 === 0 ? -0.18 : 0) + ((Math.floor(y / 7) % 2 ? x + 3 : x) % 11 === 0 && y % 7 ? -0.1 : 0);
-        s.set(cx + x, y, Math.abs(x) === hw ? M.ink[0] : pickR(band ? M.lhR : M.lhW, t, x, y));
+        let t = shade(u);
+        const jx = Math.round(Math.asin(clamp(x / hw, -1, 1)) * 13) + (row % 2) * 6;
+        if ((y - 92) % 6 === 0) t -= 0.2; else if (((jx % 13) + 13) % 13 === 0) t -= 0.12;
+        let dirt = Math.max(0, (y - (AY - 80)) / 80) * 0.3;
+        for (const [dx, wy] of WINS) if (Math.abs(x - dx) <= 3 - (y - wy) / 18 && y > wy + 13 && y < wy + 40) dirt += 0.4 * (1 - (y - wy - 13) / 27);
+        if (hash(x, y, 7) < dirt) t -= 0.2;
+        s.set(cx + x, y, pickR(band ? R5 : W5, t, x, y));
       }
       if ((y - 92) % 39 === 0) for (let x = -hw; x <= hw; x++) s.set(cx + x, y, M.ink[1]);
+      if ((y - 92) % 39 === 1) for (let x = -hw + 1; x < hw; x++) s.set(cx + x, y, pickR(band ? R5 : W5, shade((x + hw) / (2 * hw + 1)) + 0.2, x, y));
     }
     // windows spiralling up (warm where the keeper lives)
     for (const [dx, wy, warm] of [[-12, 118, 0], [10, 160, 0], [-14, 204, 1], [12, 246, 0], [-8, 280, 1]]) {
@@ -457,13 +490,21 @@ const Lighthouse = (() => {
     s.rect(cx + 4, AY - 15, 2, 2, M.gold[2]);
     for (let y = AY - 48; y < AY - 43; y++) for (let x = -3; x <= 3; x++) s.set(cx + x, y, Math.abs(x) === 3 ? M.metal[1] : M.lamp[1]);
     for (let x = -8; x <= 8; x++) for (let y = AY - 56; y < AY - 51; y++) s.set(cx + x, y, Math.abs(x) === 8 || y === AY - 56 || y === AY - 52 ? M.wood[1] : M.gold[1]);
-    // steps and the rocky foundation (reaching down into the waves)
+    // steps and the rocky foundation (reaching down into the waves): irregular dressed stones, moss on their
+    // upper edges, a dark wet band with algae and barnacles low down
     for (let y = AY; y < h; y++) {
       const k = (y - AY) / (h - AY), hw = Math.round(52 + k * 14 + Math.sin(y * 0.7) * 1.5);
+      const row = Math.floor((y - AY) / 9), ry = (y - AY) % 9;
       for (let x = -hw; x <= hw; x++) {
-        const u = (x + hw) / (2 * hw + 1), row = Math.floor((y - AY) / 9), bx = Math.floor((x + (row % 2) * 7 + 70) / 14);
-        const mortar = (y - AY) % 9 === 0 || (x + (row % 2) * 7 + 70) % 14 === 0;
-        s.set(cx + x, y, mortar ? M.rockU[0] : hash(bx, row, 3) > 0.8 && y > AY + 20 ? M.moss[1] : pickR(M.rock, 0.95 - u * 0.7 - k * 0.3 + (hash(bx, row, 2) - 0.5) * 0.2, x, y));
+        const u = (x + hw) / (2 * hw + 1), off = Math.floor(hash(row, 0, 4) * 12), sw = 10 + Math.floor(hash(row, 1, 4) * 8);
+        const bxp = x + 80 + off, bx = Math.floor(bxp / sw), jx = bxp % sw;
+        const mortar = ry === 0 || jx === 0;
+        const tone = hash(bx, row, 3);
+        let t = 0.92 - u * 0.62 - k * 0.32 + (tone - 0.5) * 0.3 + (ry === 1 ? 0.12 : 0) + (jx === 1 ? 0.06 : jx === sw - 1 ? -0.1 : 0);
+        let c = mortar ? M.rockU[0] : pickR(M.rock, t, x, y);
+        if (!mortar && ry <= 2 && k < 0.55 && hash(bx * 5 + jx, row, 6) > 0.62 - (2 - ry) * 0.1) c = M.moss[ry === 1 ? 2 : 1];
+        if (k > 0.55 && !mortar) { if (hash(x, y, 8) < (k - 0.55) * 1.4) c = M.rockU[1]; if (hash(x >> 1, y >> 1, 9) > 0.86) c = M.algae[hash(x, y, 2) > 0.5 ? 1 : 0]; else if (hash(x, y, 10) > 0.95) c = M.pebble ? M.pebble[3] : M.rock[5]; }
+        s.set(cx + x, y, c);
       }
     }
     for (let y = AY; y < AY + 6; y++) for (let x = -18; x <= 18; x++) s.set(cx + x, y, y === AY ? M.rock[5] : pickR(M.rock, 0.8 - (x + 18) / 50, x, y));
@@ -482,8 +523,8 @@ const Lighthouse = (() => {
       else A.lighthouse = A.put(spr, DX, -4, { y: gy + 1 });
       A.lhX = DX; A.lhY = gy + 1 - (spr.ay - spr.lampY);
       // the old telescope hotspot becomes the door
-      A.hot = A.hot.filter((h) => h.x !== 3962);
-      for (const g of A.glows) if (g.x === 3962) { g.x = DX; g.y = A.lhY; g.r = 90; }
+      A.hot = A.hot.filter((h) => h.x !== 4362);
+      for (const g of A.glows) if (g.x === 4362) { g.x = DX; g.y = A.lhY; g.r = 90; }
       A.glows.push({ x: DX, y: gy - 46, r: 26, c: hex('#ffe0a0'), a: 0.5, flicker: true });
       A.addHot({ x0: DX - 10, x1: DX + 10, y0: gy - 40, y1: gy, x: DX, reach: 24, tap: () => { const mk = Game.mudkip; if (mk && !mk.plat) enterTower(); } });
       // the gallery: a walkable ring high up the tower

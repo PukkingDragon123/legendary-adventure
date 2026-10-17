@@ -1144,8 +1144,9 @@ const Dex = (() => {
     scrollPanel(fb, 'entry', I, (b, y0) => {
       let y = y0 + 5;
       const x = I.x + 5, w = I.w - 12;
-      Font.draw(b, 'NO.' + pad3(d.no), x, y + 1, P.faint, { font: 'small' });
-      Font.draw(b, stat(sp) ? d.name : '???', x + 28, y - 2, P.text, { font: 'title' });
+      const noT = 'NO.' + pad3(d.no), noW = Font.measure(noT, 'small') + 5;
+      Font.draw(b, noT, x, y + 1, P.faint, { font: 'small' });
+      Font.draw(b, stat(sp) ? d.name : '???', x + noW, y - 2, P.text, { font: 'title' });
       let tx = I.x + I.w - 8;
       for (const ty2 of d.type.slice().reverse()) { const w2 = Font.measure(ty2.toUpperCase(), 'small') + 8; tx -= w2; typePill(b, ty2, tx, y - 1); tx -= 2; }
       y += 14;

@@ -13,7 +13,7 @@
 const Boardwalk = (() => {
   const { rng, hex, pick, clamp } = U;
   const B = Areas.beach;
-  const X0 = 5640, X1 = 8160, BAR = 6260, RING = 7240, POST = 5900, TOWER = 7760;
+  const X0 = 6620, X1 = 9560, BAR = 7240, RING = 8420, POST = 6880, TOWER = 9160;
   const S = { champ: null, barkeep: null, lights: [] };
   if (!B) return S;
   const gy = (x) => World.groundAt(x);
@@ -142,8 +142,10 @@ const Boardwalk = (() => {
     const M = A.M, r = rng(9191);
     const put = (s, x, zd, o) => A.put(s, x, zd, o);
     // palms and grass along the back
-    for (let x = X0 + 60; x < X1; x += 160 + r() * 140) put(Paint.palm(M, 110 + r() * 40, Math.floor(x), { lean: (r() - 0.5) * 0.5 }), x, -5, { windFrames: true, sink: 3 });
-    for (let x = X0; x < X1; x += 14 + r() * 26) put(Paint.tuft(M, 10 + r() * 10, 10 + r() * 10, Math.floor(x * 3), { ramp: M.grass, flowers: r() < 0.3 ? [M.flowerP] : r() < 0.3 ? [M.flowerY] : null }), x, -4 + r() * 2, { windFrames: true });
+    const Art = B.Art, BW = B.BWK, onDeck = (x) => x > BW.x0 && x < BW.x1 && !(x > BW.gap[0] && x < BW.gap[1]);
+    for (let x = X0 + 60; x < X1; x += 180 + r() * 150) put((Art ? Art.palm : Paint.palm)(M, 110 + r() * 40, Math.floor(x), { lean: (r() - 0.5) * 0.5 }), x, -6, { windFrames: true, sink: 3 });
+    // beach grass behind the deck, and in the sand around the sumo ring (none growing through the planks)
+    for (let x = X0; x < X1; x += 14 + r() * 26) { const deck = onDeck(x); if (deck && r() < 0.5) continue; put(Paint.tuft(M, 10 + r() * 10, 10 + r() * 10, Math.floor(x * 3), { ramp: M.grass, flowers: r() < 0.3 ? [M.flowerP] : r() < 0.3 ? [M.flowerY] : null }), x, deck ? -6 : -4 + r() * 6, { windFrames: true }); }
     // the tiki bar, stools and a menu board
     A.bar = put(tikiBar(M), BAR, -3, { sink: 2 });
     for (const dx of [-40, -14, 14, 40]) put(stool(M), BAR + dx, 1, { sink: 1 });
@@ -156,11 +158,36 @@ const Boardwalk = (() => {
     // the Pelipper Post stand
     put(postStand(M), POST, -2, { sink: 2 });
     // beach life: umbrellas + towels, surfboards stuck in the sand, a sandcastle, the lifeguard tower
-    for (const x of [6560, 6760, 7980]) { put(Props.umbrella(M, Math.floor(x)), x, -1, { sink: 2 }); put(Props.towel(M), x + 22, 2, { sink: 1 }); }
-    [[6900, M.umbA], [6914, M.coralP], [6928, M.umbB]].forEach(([x, c], i) => put(surfboard(M, c, i + 5), x, -3, { sink: 6 }));
-    put(Props.sandcastle(M), 6640, 1, { sink: 2 });
+    for (const x of [7540, 7740, 9380]) { put(Props.umbrella(M, Math.floor(x)), x, -1, { sink: 2 }); put(Props.towel(M), x + 22, 2, { sink: 1 }); }
+    [[7880, M.umbA], [7894, M.coralP], [7908, M.umbB]].forEach(([x, c], i) => put(surfboard(M, c, i + 5), x, -3, { sink: 6 }));
+    put(Props.sandcastle(M), 7620, 1, { sink: 2 });
     put(tower(M), TOWER, -4, { sink: 2 });
     for (let x = X0 + 30; x < X1; x += 90 + r() * 90) put(Props.driftwood(M, 18 + r() * 16, Math.floor(x)), x, 2, { sink: 1 });
+    if (Art) {
+      // lamp posts along the deck, festoon lights strung between them (they glow at dusk and at night)
+      const LP = [6700, 7020, 7470, 7800, 8130, 8700, 9010, 9330], tops = [];
+      for (const lx of LP) {
+        const s = Art.lampPost(M, 56), p = put(s, lx, -5, { sink: 1 });
+        tops.push([lx, p.y - 54]);
+        A.glows.push({ x: lx, y: p.y - 48, r: 30, c: hex('#ffd890'), a: 0.6 }, { x: lx, y: p.y + 2, r: 52, c: hex('#ffbe6a'), a: 0.32, flat: 3 });
+      }
+      for (let i = 0; i < tops.length - 1; i++) {
+        const [x0, y0] = tops[i], [x1, y1] = tops[i + 1];
+        if (x1 - x0 > 480) continue;
+        const L = Art.lights(M, x1 - x0, Math.round(y1 - y0), 12 + Math.round((x1 - x0) / 40), i);
+        put(L, x0, -5, { y: y0 + 5, noOcc: true });
+        L.bulbs.forEach(([bx, by], k) => { if (k % 3 === 1) A.glows.push({ x: x0 + bx - L.ax, y: y0 + by - L.ay, r: 11, c: hex(['#ff86b8', '#86dcff', '#ffe27a'][(k + i) % 3]), a: 0.45, flicker: k % 2 === 0 }); });
+      }
+      // tiki torches by the bar and the ring
+      for (const tx of [BAR - 84, BAR + 84, RING - 150, RING + 150]) { put(Art.tiki(M, 40, tx), tx, -2, { fps: 8, phase: tx % 7, sink: 3 }); A.glows.push({ x: tx, y: gy(tx) - 50, r: 34, c: hex('#ff9a40'), a: 0.65, flicker: true }); }
+      // striped huts, an ice-cream cart, benches, deck chairs, a life ring and a signpost to the kelp forest
+      [[8040, M.tRed], [8092, M.umbA], [8144, M.coralT]].forEach(([hx, c], i) => put(Art.hut(M, c, 10 + i), hx, -6, { sink: 2 }));
+      put(Art.cart(M), 7395, -3, { sink: 1 });
+      put(Art.bench(M), 6975, -5, { sink: 1 }); put(Art.bench(M), 8840, -5, { sink: 1 });
+      put(Art.deckChair(M, M.umbA), 7570, -1, { sink: 1 }); put(Art.deckChair(M, M.tRed, true), 7772, -1, { sink: 1 }); put(Art.cooler(M, M.coralT), 7796, 2, { sink: 1 });
+      put(Art.lifebuoy(M), 9470, -5, { sink: 2 });
+      put(Art.signpost(M, 'kelp', 1), 9525, -5, { sink: 2 });
+    }
     // string lights between the palms glow at dusk and night
     S.lights.length = 0;
     for (let x = BAR - 60; x <= BAR + 60; x += 20) A.glows.push({ x, y: gy(x) - 66, r: 12, c: hex('#ffd070'), a: 0.5 });
@@ -205,10 +232,10 @@ const Boardwalk = (() => {
     if (typeof Eco !== 'undefined') {
       const lb = Eco.add(G, 'lombre', BAR, { minX: BAR - 34, maxX: BAR + 34, range: 34 });
       if (lb) { lb.forceAwake = 1e9; lb.barkeep = true; lb.acc3 = { hat: 'straw' }; S.barkeep = lb; }
-      Eco.add(G, 'marill', 6700, { range: 200 }); Eco.add(G, 'azurill', 6760, { range: 160 });
-      Eco.add(G, 'linoone', 7000, { minX: X0 + 100, maxX: X1 - 100 });
-      Eco.add(G, 'swellow', 7400, { range: 600 });
-      Eco.add(G, 'spinda', 7560, { range: 120 });
+      Eco.add(G, 'marill', 7680, { range: 200 }); Eco.add(G, 'azurill', 7740, { range: 160 });
+      Eco.add(G, 'linoone', 7980, { minX: X0 + 100, maxX: X1 - 100 });
+      Eco.add(G, 'swellow', 8580, { range: 600 });
+      Eco.add(G, 'spinda', 8740, { range: 120 });
     }
   };
 
@@ -292,7 +319,7 @@ const Boardwalk = (() => {
   }
 
   /* ---------------- the Kelp Forest (past the boardwalk, before the deep blue) ---------------- */
-  const KF = { x0: 9150, x1: 10780 };
+  const KF = { x0: 10550, x1: 12180 };
   const kb0 = B.build;
   B.build = (A) => {
     kb0(A);
@@ -312,8 +339,8 @@ const Boardwalk = (() => {
     }
     // sunbeams through the canopy, and a sunken treasure crate for the curious
     A.glows.push({ x: (KF.x0 + KF.x1) / 2, y: SEA + 120, r: 160, c: hex('#9af0c0'), a: 0.12, always: true });
-    A.put(Props.crate(M), 10180, 1, { sink: 3 });
-    A.addHot({ x0: 10160, x1: 10200, y0: gy(10180) - 16, y1: gy(10180), x: 10180, reach: 40, tap() { if (Save.discover('beach.kelpcrate')) { Save.addPoints(250); Save.addItem('pearl', 2); HUD.toast('A sunken crate in the Kelp Forest! +2 Pearls', { life: 2.6 }); FX.sparkles(10180, gy(10180) - 8, 14, 20); } else HUD.toast('The old crate is empty now. Kelp sways all around.', { life: 2 }); } });
+    A.put(Props.crate(M), 11580, 1, { sink: 3 });
+    A.addHot({ x0: 11560, x1: 11600, y0: gy(11580) - 16, y1: gy(11580), x: 11580, reach: 40, tap() { if (Save.discover('beach.kelpcrate')) { Save.addPoints(250); Save.addItem('pearl', 2); HUD.toast('A sunken crate in the Kelp Forest! +2 Pearls', { life: 2.6 }); FX.sparkles(11580, gy(11580) - 8, 14, 20); } else HUD.toast('The old crate is empty now. Kelp sways all around.', { life: 2 }); } });
     A.addHot({ x0: KF.x0, x1: KF.x0 + 60, y0: SEA, y1: gy(KF.x0), x: KF.x0 + 30, reach: 80, tap() { if (Save.discover('beach.kelpforest')) { Save.addPoints(200); HUD.toast('Discovered the Kelp Forest!', { life: 2.4, col: 0xff7ae0a0 }); } } });
   };
   const ks0 = B.spawn;
@@ -323,11 +350,11 @@ const Boardwalk = (() => {
     const box = { x0: KF.x0, x1: KF.x1, y0: SEA + 30, y1: 760 };
     const add = (m) => { if (m && m.sp) { m.box = Object.assign({}, box); m.home = m.x; G.addMon(m); } return m; };
     try {
-      if (C.WailmerM) { add(new C.WailmerM(9500)); add(new C.WailmerM(10300)); }
-      if (C.TentacoolM) for (const [x, y] of [[9300, SEA + 60], [9800, SEA + 90], [10500, SEA + 50]]) add(new C.TentacoolM(x, y));
-      if (C.ChinchouM) for (const [x, y] of [[9650, 720], [10050, 740], [10600, 730]]) add(new C.ChinchouM(x, y));
-      if (C.ClamperlM) for (const x of [9420, 10380]) { const m = new C.ClamperlM(x); if (m.sp) G.addMon(m); }
-      const L = BeachAI.classes.LuvdiscM; if (L) for (let i = 0; i < 4; i++) add(new L(9900 + i * 40, SEA + 80 + (i % 2) * 30, i + 6));
+      if (C.WailmerM) { add(new C.WailmerM(10900)); add(new C.WailmerM(11700)); }
+      if (C.TentacoolM) for (const [x, y] of [[10700, SEA + 60], [11200, SEA + 90], [11900, SEA + 50]]) add(new C.TentacoolM(x, y));
+      if (C.ChinchouM) for (const [x, y] of [[11050, 720], [11450, 740], [12000, 730]]) add(new C.ChinchouM(x, y));
+      if (C.ClamperlM) for (const x of [10820, 11780]) { const m = new C.ClamperlM(x); if (m.sp) G.addMon(m); }
+      const L = BeachAI.classes.LuvdiscM; if (L) for (let i = 0; i < 4; i++) add(new L(11300 + i * 40, SEA + 80 + (i % 2) * 30, i + 6));
     } catch (e) { console.error(e); }
   };
   S.KF = KF;

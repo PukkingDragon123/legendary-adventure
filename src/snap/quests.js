@@ -56,7 +56,9 @@ const Quests = (() => {
     }
   }
   function tick(dt) {
-    for (const p of Q.pops) p.t += dt;
+    // one celebration at a time (the rest wait their turn), and only on the explore screen
+    const p0 = Q.pops[0];
+    if (p0 && Game.mode === 'explore' && !(HUD.banUp && HUD.banUp()) && !(typeof Moves !== 'undefined' && Moves.wheel) && !(typeof Progress !== 'undefined' && Progress.celebrating && Progress.celebrating())) p0.t += dt;
     Q.pops = Q.pops.filter((p) => p.t < p.life);
     Q.lastUnlockCheck += dt;
     if (Q.lastUnlockCheck > 3) { Q.lastUnlockCheck = 0; checkUnlocks(); checkBirch(); }
@@ -70,19 +72,26 @@ const Quests = (() => {
   function unseen() { return Q.unseenN > 0; }
   function seen() { Q.unseenN = 0; }
   // request completed: a slim ribbon that slides in at the top-right (not a pop-up)
+  // "QUEST COMPLETE!" / "NEW PLACE!": a note slides in under the top-right buttons with a burst of sparkles
   function drawPop(fb, t) {
     const p = Q.pops[0];
-    if (!p || p.t < 0) return;
-    const S = UI.skin();
-    const k = Math.min(1, p.t / 0.3, (p.life - p.t) / 0.4);
-    if (k <= 0) return;
-    const sub = p.reward ? 'Reward: ' + p.reward.label : p.sub ? p.sub + ' — open the map!' : '';
-    const w = Math.max(Font.measure(p.text, 'body'), sub ? Font.measure(sub, 'small') : 0) + 26, h = sub ? 26 : 16;
-    const x = Math.round(fb.w - 6 - w + (1 - k) * (w + 10)), y = 34;
-    UI.rectA(fb, x, y, w, h, 0xff0a0e20, 0.5 * k);
-    UI.rect(fb, x + w - 2, y, 2, h, S.accent);
-    Font.draw(fb, (p.unlock ? '{spark} ' : '{check} ') + p.text, x + 6, y + 3, 0xffffffff, { font: 'body', shadow: 0xff0a0e20 });
-    if (sub) Font.draw(fb, sub, x + 6, y + 16, 0xffffe08a, { font: 'small', shadow: 0xff0a0e20 });
+    if (!p || p.t < 0 || (typeof Progress !== 'undefined' && Progress.celebrating && Progress.celebrating())) return;
+    const C = UI.C, hx = U.hex, kin = U.ease.outBack(Math.min(1, p.t / 0.35)), kout = Math.min(1, (p.life - p.t) / 0.4);
+    if (kout <= 0) return;
+    const head = p.unlock ? 'NEW PLACE!' : /^Quest complete: /.test(p.text) ? 'QUEST COMPLETE!' : p.reward ? 'REWARD!' : 'DONE!';
+    const title = p.text.replace(/^Quest complete: /, '');
+    const sub = p.reward ? 'Reward: ' + p.reward.label : p.sub ? p.sub + '  ·  open the map!' : '';
+    const maxW = Math.min(fb.w - 12, 230), w = Math.min(maxW, Math.max(Font.measure(title, 'body') + 18, sub ? Font.measure(sub, 'small') + 18 : 0, Font.measure(head, 'small') + 30)), h = sub ? 32 : 22;
+    const x = Math.round(fb.w - 6 - w + (1 - kin) * (w + 16) + (1 - kout) * 24), y = 40;
+    if (!p.fired && p.t > 0.25) { p.fired = 1; UI.burst(x + w / 2, y + h / 2, 16, { speed: 65, c: C.goldL }); UI.pop(x + w / 2, y + h / 2, 20); }
+    UI.plate(fb, x, y, w, h, { r: 4, fill: C.navy, a: 0.9 * kout });
+    UI.rect(fb, x + 2, y + 2, 2, h - 4, p.unlock ? C.cyan : C.gold);
+    UI.chip(fb, x + 8, y - 5, head, { bg: p.unlock ? hx('#2a86d8') : hx('#e8a020'), fg: p.unlock ? 0xffffffff : C.ink, h: 9, pad: 8 });
+    Font.draw(fb, title, x + 9, y + 7, 0xffffffff, { font: 'body', shadow: C.ink, clip: { x0: x, y0: y, x1: x + w - 4, y1: y + h } });
+    if (sub) Font.draw(fb, sub, x + 9, y + 21, hx('#ffe08a'), { font: 'small', shadow: C.ink, clip: { x0: x, y0: y, x1: x + w - 4, y1: y + h } });
+    // a shine runs over it once
+    const ph = (p.t - 0.35) / 0.7;
+    if (ph > 0 && ph < 1) { const gx = x + Math.round(ph * (w + 20)) - 10; for (let yy = y + 1; yy < y + h - 1; yy++) { const xx = Math.round(gx - (yy - y) * 0.5); if (xx > x + 1 && xx < x + w - 2) { UI.blend(fb, xx, yy, 0xffffffff, 0.35); UI.blend(fb, xx + 1, yy, 0xffffffff, 0.2); } } }
   }
   return { BIRCH, stamps, checkPhoto, checkBirch, checkUnlocks, tick, onStart, unseen, seen, drawPop, Q };
 })();

@@ -109,17 +109,20 @@ const Style = (() => {
     else if (id === 'fun.stache') { for (let i = -6; i <= 6; i++) { const yy = Math.round(Math.abs(i) * Math.abs(i) * 0.06); UI.rect(fb, x + i, y - yy, 1, 3, a); } }
     else if (id === 'fun.ring') { UI.ring(fb, x, y, s - 1, a, 3); for (let k = 0; k < 4; k++) { const an = k * Math.PI / 2; UI.disc(fb, Math.round(x + Math.cos(an) * (s - 2)), Math.round(y + Math.sin(an) * (s - 2)), 1, b); } }
   }
+  // a representative item per category, drawn as the tab's icon
+  const TABI = { hat: 'hat.party', shirt: 'shirt.heart', glasses: 'glasses.round', neck: 'neck.bow', shoes: 'shoes.sneakers', fun: 'fun.stache' };
   function draw(fb, t) {
-    const W = fb.w, H = fb.h, S = UI.skin();
+    const W = fb.w, H = fb.h, S = UI.skin(), C = UI.C, hx = U.hex;
     fb.d.fill(0xff182040);
     // the living beach, scaled to cover the screen (portrait: the top half)
     const portrait = H > W * 1.1;
     const sceneH = portrait ? Math.round(H * 0.56) : H;
+    const pw = portrait ? W - 16 : Math.min(236, Math.round(W * 0.44));
     if (ST.pt) {
       ST.pt.draw(ST.buf);
       const sc = Math.max(1, Math.ceil(Math.max(W / ST.buf.w, sceneH / ST.buf.h)));
       const mk = actor(), fx = mk ? mk.x : ST.buf.w / 2;
-      const panelW = portrait ? 0 : Math.min(230, Math.round(W * 0.42));
+      const panelW = portrait ? 0 : pw + 8;
       // keep Mudkip in the middle of the free space
       let ox = Math.round((W - panelW) / 2 - fx * sc), oy = Math.round(sceneH / 2 - ST.buf.h * 0.62 * sc);
       ox = clamp(ox, W - ST.buf.w * sc, 0); oy = clamp(oy, sceneH - ST.buf.h * sc, 0);
@@ -127,58 +130,83 @@ const Style = (() => {
       for (let y = 0; y < sceneH; y++) { const sy = Math.floor((y - oy) / sc); if (sy < 0 || sy >= ST.buf.h) continue; const row = y * W; for (let x = 0; x < W; x++) { const sx = Math.floor((x - ox) / sc); if (sx < 0 || sx >= bw) continue; fb.d[row + x] = src[sy * bw + sx] | 0xff000000; } }
       ST.view = { ox, oy, sc, h: sceneH };
       HUD.btn('stplay', 0, 0, W - panelW, sceneH, (ux, uy) => { if (!ST.view) return; const r = ST.pt.tap((ux - ST.view.ox) / ST.view.sc, (uy - ST.view.oy) / ST.view.sc); if (r === 'mudkip') Game.sfx('mud', null, 0.7); });
-      if (ST.spin > 0) for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 + t * 4, r = 26 + (0.6 - ST.spin) * 40; const [px, py] = mk ? [ox + mk.x * sc, oy + (mk.gy - mk.h - 20) * sc] : [W / 2, H / 2]; UI.put(fb, Math.round(px + Math.cos(a) * r), Math.round(py + Math.sin(a) * r * 0.6), 0xfffff4a0); }
+      if (ST.spin > 0) for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 + t * 4, r = 26 + (0.6 - ST.spin) * 40; const [px, py] = mk ? [ox + mk.x * sc, oy + (mk.gy - mk.h - 20) * sc] : [W / 2, H / 2]; UI.twinkle(fb, px + Math.cos(a) * r, py + Math.sin(a) * r * 0.6, i % 3 ? 1 : 2, hx('#fff4a0')); }
     }
     // title ribbon
-    UI.panel(fb, 8, 8, 104, 18, { r: 5, ol: INK, fill: 0xffc04a9a }); Font.draw(fb, 'WARDROBE', 60, 12, WHITE, { font: 'small', align: 'center' });
-    // the panel
-    const pw = portrait ? W - 16 : Math.min(230, Math.round(W * 0.42)), px = portrait ? 8 : W - pw - 8, py = portrait ? sceneH + 4 : 34;
-    const rowsN = Math.ceil(CATS[ST.tab].items.length / Math.max(1, Math.floor((pw - 12) / 40)));
-    const ph = portrait ? H - sceneH - 12 : Math.min(H - 42, 32 + rowsN * 42 + 40);
-    UI.rrect(fb, px, py + 3, pw, ph, 10, 0x800a0e1a);
-    UI.rrect(fb, px, py, pw, ph, 10, INK); UI.rrect(fb, px + 1, py + 1, pw - 2, ph - 2, 9, 0xfff6f0e4); UI.rectA(fb, px + 4, py + 30, pw - 8, ph - 64, 0xfff6f0e4, 0.0);
-    // category tabs (icons + names)
-    const tw = Math.floor((pw - 12) / CATS.length);
+    UI.plate(fb, 8, 8, 104, 18, { r: 5, fill: hx('#c04a9a') });
+    Font.icon(fb, 'shirt', 15, 14, 1);
+    Font.draw(fb, 'WARDROBE', 64, 14, WHITE, { font: 'small', align: 'center', shadow: C.ink });
+    // the panel slides in from the side
+    const k = UI.openK(ST.t, 0.3);
+    const px = portrait ? 8 : W - pw - 8 + Math.round((1 - k) * (pw + 20)), py = portrait ? sceneH + 4 : 8, ph = portrait ? H - sceneH - 36 : H - 16;
+    UI.shadow(fb, px, py, pw, ph, 10, 3, 0.5);
+    UI.rrect(fb, px, py, pw, ph, 10, C.ink); UI.rrect(fb, px + 1, py + 1, pw - 2, ph - 2, 9, hx('#f6f0e4'));
+    const cat = CATS[ST.tab];
+    // header: category + how many you own, points
+    Font.draw(fb, cat.name, px + 9, py + 6, C.text, { font: 'body' });
+    const own = cat.items.filter(owned).length;
+    Font.draw(fb, own + '/' + cat.items.length, px + 13 + Font.measure(cat.name, 'body'), py + 9, C.dim, { font: 'small' });
+    const pts = '{coin}' + Save.data.points;
+    UI.chip(fb, px + pw - 8, py + 6, pts, { align: 'right', bg: hx('#7a5a3a'), h: 10, pad: 10 });
+    // category tabs (icons)
+    const tw = Math.floor((pw - 12) / CATS.length), ty = py + 22;
     CATS.forEach((c, i) => {
-      const x = px + 6 + i * tw, on = ST.tab === i;
-      UI.panel(fb, x, py + 6 + (on ? 0 : 2), tw - 2, 18, { r: 4, ol: INK, fill: on ? 0xffffd23a : 0xff5a8ad8, hi: null, sh: null });
-      Font.draw(fb, c.name, x + (tw - 2) / 2, py + 11 + (on ? 0 : 2), on ? INK : WHITE, { font: 'small', align: 'center' });
-      if (c.items.some((id) => ST.fresh[id])) { UI.disc(fb, x + tw - 5, py + 7, 2, 0xff3a4aff); }
-      HUD.btn('stc' + i, x, py + 4, tw - 2, 22, () => { ST.tab = i; ST.sel = 0; Game.sfx('page', null, 0.4); });
+      const x = px + 6 + i * tw, on = ST.tab === i, id = 'stc' + i;
+      UI.button(fb, x, ty, tw - 2, 17, { fill: on ? hx('#ffd23a') : hx('#5a8ad8'), hover: HUD.hoverId === id, down: HUD.pressed(id), r: 4 });
+      swatch(fb, TABI[c.slot], x + Math.round((tw - 2) / 2), ty + 8 + (HUD.pressed(id) ? 1 : 0), 6, false);
+      if (c.items.some((id2) => ST.fresh[id2])) { UI.disc(fb, x + tw - 5, ty + 2, 2, hx('#ff3a4a')); }
+      HUD.btn(id, x, ty - 2, tw - 2, 21, () => { if (ST.tab !== i) { ST.tab = i; ST.sel = 0; ST.scroll = 0; Game.sfx('page', null, 0.4); } });
     });
-    // item grid
-    const cat = CATS[ST.tab], cell = 40, cols = Math.max(1, Math.floor((pw - 12) / cell));
+    // item grid (scrolls to keep the selection in view)
+    const gy = ty + 22, infoH = 32, cols = Math.max(1, Math.floor((pw - 20) / 38)), cell = Math.floor((pw - 20) / cols);
+    const rowsVis = Math.max(1, Math.floor((py + ph - infoH - gy) / (cell + 2))), rowsAll = Math.ceil(cat.items.length / cols);
     ST.sel = clamp(ST.sel, 0, cat.items.length - 1);
+    const sr = Math.floor(ST.sel / cols);
+    ST.scroll = clamp(ST.scroll || 0, Math.max(0, sr - rowsVis + 1), Math.min(sr, Math.max(0, rowsAll - rowsVis)));
     cat.items.forEach((id, i) => {
       const c = Rewards.C[id]; if (!c) return;
-      const x = px + 8 + (i % cols) * cell, y = py + 32 + Math.floor(i / cols) * (cell + 2);
-      if (y + cell > py + ph - 34) return;
-      const own = owned(id), eq = Save.data.equip[c.slot] === id, sel = ST.sel === i;
-      UI.rrect(fb, x, y, cell - 4, cell - 4, 6, sel ? 0xffff9a3a : INK);
-      UI.rrect(fb, x + 1, y + 1, cell - 6, cell - 6, 5, eq ? 0xffb8f0ff : own ? WHITE : 0xffd8d4cc);
-      swatch(fb, id, x + (cell - 4) / 2, y + (cell - 4) / 2 - 2, 9, !own);
-      if (eq) { UI.disc(fb, x + cell - 9, y + 5, 4, 0xff2ab870); Font.icon(fb, 'check', x + cell - 12, y + 2, 1); }
+      const row = Math.floor(i / cols) - ST.scroll; if (row < 0 || row >= rowsVis) return;
+      const x = px + 8 + (i % cols) * cell, y = gy + row * (cell + 2), cs = cell - 4;
+      const own2 = owned(id), eq = Save.data.equip[c.slot] === id, sel = ST.sel === i, hov = HUD.hoverId === 'sti' + i;
+      UI.rrect(fb, x, y + 1, cs, cs, 6, hx('#d8ccb4'));
+      UI.rrect(fb, x, y, cs, cs, 6, sel ? hx('#ff8a2a') : hov ? hx('#e0a060') : C.ink);
+      UI.rrect(fb, x + 1, y + 1, cs - 2, cs - 2, 5, eq ? hx('#bff0ff') : own2 ? WHITE : hx('#dcd6ca'));
+      if (sel) UI.rrect(fb, x + 2, y + 2, cs - 4, 2, 1, hx('#ffd8a8'));
+      swatch(fb, id, x + cs / 2, y + cs / 2 - 2, Math.min(9, Math.floor(cs / 4)), !own2);
+      if (eq) { UI.disc(fb, x + cs - 5, y + 5, 4, hx('#2ab870')); Font.icon(fb, 'check', x + cs - 8, y + 2, 1); }
       if (ST.fresh[id]) Font.icon(fb, 'new', x + 1, y + 1, 1);
-      if (!own && PRICE[id]) Font.draw(fb, PRICE[id] + '', x + (cell - 4) / 2, y + cell - 13, 0xff6a5a3a, { font: 'small', align: 'center' });
-      HUD.btn('sti' + i, x, y, cell - 4, cell - 4, () => { ST.sel = i; toggle(id); });
+      if (!own2 && PRICE[id]) Font.draw(fb, PRICE[id] + '', x + cs / 2, y + cs - 9, Save.data.points >= PRICE[id] ? hx('#2a8a4a') : hx('#8a6a4a'), { font: 'small', align: 'center' });
+      HUD.btn('sti' + i, x, y, cs, cs, () => { ST.sel = i; UI.pop(x + cs / 2, y + cs / 2, cs / 2); toggle(id); });
     });
+    // page buttons when the grid has more rows than fit
+    if (rowsAll > rowsVis) {
+      const bx = px + pw - 15, b1 = gy, b2 = gy + rowsVis * (cell + 2) - 16;
+      [['stup', b1, -1, 'up'], ['stdn', b2, 1, 'down']].forEach(([bid, by, d, ic]) => {
+        const off = d < 0 ? ST.scroll <= 0 : ST.scroll >= rowsAll - rowsVis;
+        UI.button(fb, bx, by, 11, 14, { fill: hx('#5a8ad8'), off, hover: HUD.hoverId === bid, down: HUD.pressed(bid), r: 3 });
+        Font.icon(fb, ic, bx + 2, by + (d < 0 ? 5 : 6) + (HUD.pressed(bid) ? 1 : 0), 1);
+        HUD.btn(bid, bx - 2, by - 1, 15, 16, () => { if (off) return; ST.scroll += d; ST.sel = clamp(ST.sel + d * cols, 0, cat.items.length - 1); Game.sfx('blip', null, 0.4); });
+      });
+      // the scroll track between them
+      const tTop = b1 + 16, tH = b2 - b1 - 18, th = Math.max(4, Math.round(tH * rowsVis / rowsAll)), tyy = tTop + Math.round((tH - th) * ST.scroll / Math.max(1, rowsAll - rowsVis));
+      if (tH > 6) { UI.rect(fb, bx + 4, tTop, 2, tH, hx('#e2d6bc')); UI.rect(fb, bx + 4, tyy, 2, th, hx('#b08a5a')); }
+    }
     // selected item info
     const id = cat.items[ST.sel], c = Rewards.C[id];
     if (c) {
-      const own = owned(id), iy = py + ph - 30;
-      UI.rect(fb, px + 8, iy - 3, pw - 16, 1, 0xffd8d0bc);
-      Font.draw(fb, own ? c.name : '???', px + 10, iy, INK, { font: 'small' });
-      Font.wrap(own ? c.desc : (HOW[id] || 'Keep exploring to find it.') + (PRICE[id] ? '  (' + PRICE[id] + ' pts)' : ''), 'small', pw - 20).slice(0, 2).forEach((l, i) => Font.draw(fb, l, px + 10, iy + 9 + i * 9, 0xff5a5e72, { font: 'small' }));
+      const own2 = owned(id), iy = py + ph - infoH + 3;
+      UI.hline(fb, px + 8, px + pw - 9, iy - 3, hx('#d8d0bc'));
+      Font.draw(fb, own2 ? c.name : '???', px + 10, iy, C.text, { font: 'small' });
+      if (Save.data.equip[c.slot] === id) UI.chip(fb, px + pw - 9, iy - 1, 'WEARING', { align: 'right', bg: hx('#2ab870'), h: 9, pad: 8, ol: null });
+      Font.wrap(own2 ? c.desc : (HOW[id] || 'Keep exploring to find it.') + (PRICE[id] ? '  (' + PRICE[id] + ' pts)' : ''), 'small', pw - 20).slice(0, 2).forEach((l, i) => Font.draw(fb, l, px + 10, iy + 10 + i * 9, hx('#5a5e72'), { font: 'small' }));
     }
     // buttons: random outfit, done
-    const by = portrait ? py - 24 : H - 30;
-    const b1x = portrait ? 8 : 8, b2x = portrait ? W - 64 : px - 62;
-    const p1 = HUD.pressed('strnd') ? 1 : 0, p2 = HUD.pressed('stdone') ? 1 : 0;
-    UI.panel(fb, b1x, by + p1, 58, 18, { r: 5, ol: INK, fill: 0xff8a4ac8 }); Font.draw(fb, 'Random!', b1x + 29, by + 5 + p1, WHITE, { font: 'small', align: 'center' });
-    HUD.btn('strnd', b1x - 2, by - 2, 62, 22, randomize);
-    UI.panel(fb, b2x, by + p2, 56, 18, { r: 5, ol: INK, fill: 0xff2ab870 }); Font.draw(fb, 'Done', b2x + 28, by + 5 + p2, WHITE, { font: 'small', align: 'center' });
-    HUD.btn('stdone', b2x - 2, by - 2, 60, 22, close);
-    Font.draw(fb, '{coin}' + Save.data.points, portrait ? W - 10 : px - 8, portrait ? 12 : 12, WHITE, { font: 'small', align: 'right', outline: INK });
+    const by = portrait ? H - 28 : H - 30;
+    const b1x = 8, b2x = portrait ? W - 64 : px - 66;
+    UI.button(fb, b1x, by, 60, 19, { label: 'Random!', fill: hx('#8a4ac8'), hover: HUD.hoverId === 'strnd', down: HUD.pressed('strnd'), r: 5 });
+    HUD.btn('strnd', b1x - 2, by - 2, 64, 23, () => { UI.burst(b1x + 30, by + 8, 10, { c: hx('#e0b0ff') }); randomize(); });
+    UI.button(fb, b2x, by, 58, 19, { label: 'Done', icon: 'check', fill: hx('#2ab870'), hover: HUD.hoverId === 'stdone', down: HUD.pressed('stdone'), r: 5 });
+    HUD.btn('stdone', b2x - 2, by - 2, 62, 23, close);
   }
   return Object.assign(ST, { open, close, update, key, wheel, draw, markNew, fresh, CATS });
 })();

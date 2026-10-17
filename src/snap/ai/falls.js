@@ -27,12 +27,12 @@ const FallsAI = (() => {
 
   /* ---------------- shared geometry ---------------- */
   const GEO = {
-    W: 3600,
-    ground: [[0, 540], [60, 552], [200, 556], [320, 560], [345, 600], [420, 680], [560, 700], [700, 676], [790, 600], [815, 562], [900, 556], [1100, 554], [1300, 558], [1500, 556], [1690, 562], [1712, 600], [1780, 672], [1880, 684], [1960, 660], [1995, 600], [2012, 560], [2150, 552], [2450, 546], [2750, 552], [2860, 562], [2960, 590], [3060, 598], [3160, 588], [3260, 560], [3340, 558], [3375, 600], [3450, 650], [3530, 640], [3565, 590], [3600, 560]],
-    POOL: { x0: 330, x1: 805, level: 566 }, GLOW: { x0: 1700, x1: 2005, level: 570 }, SPRING: { x0: 3365, x1: 3590, level: 568 },
-    FALL: 560, FALL2: 3470, CHIMES: [1060, 1100, 1140, 1180, 1220], BOULDER: 1370,
-    LEDGE: { x0: 1480, x1: 1690, y: 470 }, STEP: { x: 1440, y: 516 }, NEST: { x0: 2030, x1: 2200, y: 405 }, NESTX: 2140,
-    GEYSER: 1780, SHAFT: 2450, SCOPE: 2330, MIRROR: 2600, METEOR: 3060, GEODE: 960,
+    W: 4080,
+    ground: [[0, 540], [60, 552], [200, 556], [320, 560], [345, 600], [420, 680], [560, 700], [700, 676], [790, 600], [815, 562], [900, 556], [1100, 554], [1400, 558], [1600, 556], [1790, 562], [1812, 600], [1880, 672], [1980, 684], [2060, 660], [2095, 600], [2112, 560], [2250, 552], [2670, 546], [3110, 552], [3220, 562], [3440, 590], [3540, 598], [3640, 588], [3740, 560], [3820, 558], [3855, 600], [3930, 650], [4010, 640], [4045, 590], [4080, 560]],
+    POOL: { x0: 330, x1: 805, level: 566 }, GLOW: { x0: 1800, x1: 2105, level: 570 }, SPRING: { x0: 3845, x1: 4070, level: 568 },
+    FALL: 560, FALL2: 3950, CHIMES: [1060, 1100, 1140, 1180, 1220], BOULDER: 1470,
+    LEDGE: { x0: 1580, x1: 1790, y: 470 }, STEP: { x: 1540, y: 516 }, NEST: { x0: 2130, x1: 2300, y: 405 }, NESTX: 2240,
+    GEYSER: 1880, SHAFT: 2670, SCOPE: 2430, MIRROR: 2820, METEOR: 3540, GEODE: 960,
     TUNE: [0, 2, 4, 3],
   };
   const P_LEDGE = 0, P_NEST = 1;
@@ -60,7 +60,7 @@ const FallsAI = (() => {
     constructor(i, x, plat) {
       super(sp('Bagon'), { kind: 'bagon', dex: 'bagon', x, y: gy(x), yaw: Math.PI / 2 + 0.5, z: 2, scale: 0.5, qPose: 0.05, qFields: { step: 0.5, jump: 0.1, headbutt: 0.1, sleep: 0.25, mouth: 0.25, squash: 0.05 }, persona: 'grumpy', speed: 34 });
       this.i = i; this.stepPh = 0; this.senseR = 120; this.pester = 0; this.zd = -1; this.dreamT = 0; this.bubble = 0;
-      if (plat) { this.plat = plat; this.x = x; this.minX = plat.x0 + 12; this.maxX = plat.x1 - 14; } else { this.minX = 1250; this.maxX = 1460; }
+      if (plat) { this.plat = plat; this.x = x; this.minX = plat.x0 + 12; this.maxX = plat.x1 - 14; } else { this.minX = 1250; this.maxX = 1560; }
     }
     animate(dt, t) {
       if (this.moving) this.stepPh += dt * 8;
@@ -214,7 +214,7 @@ const FallsAI = (() => {
           yield* hold(this, rnd(4, 7), 'spin', () => 0.5 + this.facing() * 0.4, () => S.align && S.align.t > 0);
         } else {
           if (hourIs('night', 'dusk')) { yield* this.flyTo(GEO.SHAFT + rnd(-30, 30), gy(GEO.SHAFT) - rnd(55, 95), 22); yield* hold(this, rnd(4, 7), 'glow', () => 0.4 + this.glowK * 0.6, () => S.align && S.align.t > 0); }
-          else { yield* this.flyTo(clamp(this.home + rnd(-160, 160), 2150, 2350), gy(2250) - rnd(40, 90), 18); yield* hold(this, rnd(3, 6), 'float', 0.4); }
+          else { yield* this.flyTo(clamp(this.home + rnd(-160, 160), 2250, 2450), gy(2350) - rnd(40, 90), 18); yield* hold(this, rnd(3, 6), 'float', 0.4); }
         }
       }
     }
@@ -368,7 +368,7 @@ const FallsAI = (() => {
       while (this.stay > 0) {
         const r = Math.random();
         if (r < 0.4) yield* this.changeForme();
-        else { const x = clamp(GEO.METEOR + rnd(-260, 260), 2600, 3300); this.o.fly = 0.8; yield* this.flyTo(x, gy(x) - rnd(60, 130), 110, { act: 'fly', peak: () => 0.8 }); yield* hold(this, rnd(1.5, 3), 'fly', 0.5); }
+        else { const x = clamp(GEO.METEOR + rnd(-260, 260), 2820, 3780); this.o.fly = 0.8; yield* this.flyTo(x, gy(x) - rnd(60, 130), 110, { act: 'fly', peak: () => 0.8 }); yield* hold(this, rnd(1.5, 3), 'fly', 0.5); }
       }
       while (this.y > -260) { const dt = yield; this.x = lerp(this.x, GEO.SHAFT, dt); this.y -= dt * 160; this.o.fly = 1; this.setAct('fly', 0.6); }
       this.remove(); S.deoxys = null;
@@ -413,10 +413,10 @@ const FallsAI = (() => {
     S = S0; A0 = A; G0 = G;
     Object.assign(S, { seq: [], chimeT: -9, hintT: 20, hinted: false, geyserT: 0, geyserCool: 0, shower: 0, showerCool: 0, starT: rnd(10, 25), align: null, alignCool: 20, heart: Save.found('falls.meteorite') ? 1 : 0, heartBeam: 0, boulderHits: 0, boulderOpen: false, geodeOpen: false, flash: 0, jirachi: null, deoxys: null, deoxysDone: false, wishT: -999, leaping: null, mirrorT: -9, roarT: 0, stars: [] });
     const add = (m) => { if (m && m.sp) G.addMon(m); return m; };
-    if (sp('Bagon')) { add(new BagonM(0, 1560, World.plats[P_LEDGE])); add(new BagonM(1, 1300, null)); }
+    if (sp('Bagon')) { add(new BagonM(0, 1660, World.plats[P_LEDGE])); add(new BagonM(1, 1400, null)); }
     if (sp('Solrock')) add(new RockM('Solrock', 'solrock', GEO.SHAFT + 20, gy(GEO.SHAFT) - 70));
-    if (sp('Lunatone')) add(new RockM('Lunatone', 'lunatone', 2250, gy(2250) - 60));
-    for (const x of [2230, 2380, 2560, 2690, 2860]) addMinior(x, newColour(), 'shell');
+    if (sp('Lunatone')) add(new RockM('Lunatone', 'lunatone', 2350, gy(2350) - 60));
+    for (const x of [2330, 2480, 2780, 3050, 3220]) addMinior(x, newColour(), 'shell');
     if (hourIs('night')) spawnJirachi();
     if (sp('Deoxys') && Save.found('falls.deoxys') && hourIs('night') && chance(0.3)) { S.deoxysDone = true; S.deoxys = add(new DeoxysM()); }
   }
@@ -445,7 +445,7 @@ const FallsAI = (() => {
       Ripples.poke(GEO.GEYSER, 40, 3);
     } else if (Math.random() < dt * 3) FX.bubbles(GEO.GEYSER + rnd(-4, 4), gy(GEO.GEYSER) - 4, 1, GEO.GLOW.level);
     // waterfalls: foam, spray, ripples, roar
-    for (const [fx, lv] of [[GEO.FALL, GEO.POOL.level], [GEO.FALL2, GEO.SPRING.level], [2025, GEO.GLOW.level]]) {
+    for (const [fx, lv] of [[GEO.FALL, GEO.POOL.level], [GEO.FALL2, GEO.SPRING.level], [2125, GEO.GLOW.level]]) {
       if (Math.abs(fx - (Game.cam.x + Game.VW / 2)) > Game.VW) continue;
       Ripples.poke(fx + rnd(-10, 10), 25, 2);
       if (Math.random() < dt * 25) FX.add({ type: 'drop', x: fx + rnd(-16, 16), y: lv - 1, vx: rnd(-40, 40), vy: -rnd(30, 110), g: 300, life: 1, c: 0xffffffff, c2: hex('#c8ecfa'), size: 1, floor: lv + 1, layer: 3 });
@@ -518,7 +518,7 @@ const FallsAI = (() => {
   }
   function* slide(m) {
     m.target = null;
-    const pts = [[GEO.NEST.x0 + 6, GEO.NEST.y], [2012, 470], [1985, 540], [1950, GEO.GLOW.level + 10]];
+    const pts = [[GEO.NEST.x0 + 6, GEO.NEST.y], [2112, 470], [2085, 540], [2050, GEO.GLOW.level + 10]];
     m.mode = 'toy'; m.plat = null; Game.sfx('whoosh', m.x, 0.9);
     for (let i = 0; i < pts.length - 1; i++) { const [xa, ya] = i ? pts[i] : [m.x, m.y], [xb, yb] = pts[i + 1]; let e = 0; const T = 0.35; while (e < T) { const dt = yield; e += dt; const k = Math.min(1, e / T); m.x = lerp(xa, xb, k); m.y = lerp(ya, yb, k); m.yaw = m.face(-1, true); m.o.legF = -0.9; m.o.legB = 0.9; m.happyT = 0.2; if (Math.random() < dt * 30) FX.add({ type: 'drop', x: m.x, y: m.y - 4, vx: rnd(-30, 30), vy: -rnd(20, 60), g: 300, life: 0.6, c: 0xffffffff, c2: hex('#c8ecfa'), size: 1, layer: 3 }); } }
     FX.splashAt(m.x, GEO.GLOW.level, { power: 1 }); Game.sfx('splash', m.x, 1);
@@ -559,7 +559,7 @@ const FallsAI = (() => {
     const b = Mons.all.filter((q) => q.kind === 'bagon' && !q.sleeping && !q.busy(3) && q.mode === 'land').sort((a, c) => Math.abs(a.x - GEO.BOULDER) - Math.abs(c.x - GEO.BOULDER))[0];
     if (!b) { HUD.toast(hourIs('night') ? 'Knock knock... the Bagon are asleep.' : 'Knock knock! Too hard for Mudkip... a hard-headed Pokémon might crack it.', { life: 2.4 }); return; }
     HUD.toast('Bagon heard that! It wants to show off...', { life: 2 });
-    if (b.plat) { b.plat = null; b.x = World.plats[P_LEDGE].x0 - 10; b.minX = 1250; b.maxX = 1460; }
+    if (b.plat) { b.plat = null; b.x = World.plats[P_LEDGE].x0 - 10; b.minX = 1250; b.maxX = 1560; }
     b.doTask((function* () { for (let k = 0; k < 3 && !S.boulderOpen; k++) yield* b.headbutt(GEO.BOULDER, () => hitBoulder(A)); })(), 4);
   }
   function hitBoulder(A) {

@@ -92,13 +92,13 @@ const BackMons = (() => {
   const SPAWN = {
     beach(G) {
       // only seagulls over the cove: small flocks of Wingull far out, high over the horizon
-      flock(G, 'wingull', 600, 3, { p: 0.16, alt: rnd(60, 90), k: 0.7 }); flock(G, 'wingull', 4200, 2, { p: 0.12, alt: rnd(70, 100), k: 0.6 });
-      flock(G, 'wingull', 7600, 3, { p: 0.14, alt: rnd(60, 90), k: 0.65 }); flock(G, 'wingull', 10400, 2, { p: 0.15, alt: rnd(66, 96), k: 0.65 });
+      flock(G, 'wingull', 800, 3, { p: 0.16, alt: rnd(60, 90), k: 0.7 }); flock(G, 'wingull', 4940, 2, { p: 0.12, alt: rnd(70, 100), k: 0.6 });
+      flock(G, 'wingull', 8780, 3, { p: 0.14, alt: rnd(60, 90), k: 0.65 }); flock(G, 'wingull', 11800, 2, { p: 0.15, alt: rnd(66, 96), k: 0.65 });
     },
-    forest(G) { flock(G, 'swellow', 900, 2, { p: 0.16, alt: 70, k: 0.7 }); flock(G, 'taillow', 3000, 3, { p: 0.18, alt: 64, k: 0.7 }); add(G, 'tropius', 4200, { p: 0.14, alt: 80, k: 0.7 }); },
-    canopy(G) { add(G, 'swablu', 800, { p: 0.18, alt: 66, k: 0.7 }); add(G, 'swablu', 2000, { p: 0.16, alt: 80, k: 0.7 }); add(G, 'altaria', 3000, { p: 0.14, alt: 86, k: 0.7 }); flock(G, 'wingull', 1500, 2, { p: 0.14, alt: 76, k: 0.7 }); },
+    forest(G) { flock(G, 'swellow', 1060, 2, { p: 0.16, alt: 70, k: 0.7 }); flock(G, 'taillow', 3710, 3, { p: 0.18, alt: 64, k: 0.7 }); add(G, 'tropius', 5070, { p: 0.14, alt: 80, k: 0.7 }); },
+    canopy(G) { add(G, 'swablu', 900, { p: 0.18, alt: 66, k: 0.7 }); add(G, 'swablu', 2240, { p: 0.16, alt: 80, k: 0.7 }); add(G, 'altaria', 3360, { p: 0.14, alt: 86, k: 0.7 }); flock(G, 'wingull', 1740, 2, { p: 0.14, alt: 76, k: 0.7 }); },
     stage(G) { flock(G, 'swablu', 900, 3, { p: 0.16, alt: 72, k: 0.7 }); },
-    volcano(G) { add(G, 'swablu', 1200, { p: 0.15, alt: 80, k: 0.7 }); add(G, 'altaria', 2600, { p: 0.13, alt: 90, k: 0.7 }); },
+    volcano(G) { add(G, 'swablu', 1500, { p: 0.15, alt: 80, k: 0.7 }); add(G, 'altaria', 2900, { p: 0.13, alt: 90, k: 0.7 }); },
   };
   for (const id of Object.keys(SPAWN)) {
     const A = Areas[id]; if (!A) continue;

@@ -18,7 +18,8 @@
 ------------------------------------------------------------------- */
 const Progress = (() => {
   const { clamp } = U;
-  const INK = 0xff1b2240, WHITE = 0xffffffff, GOLD = 0xffffd23a, CYAN = 0xff3ad8ff;
+  // (packed ABGR: quest things are gold, unregistered Pokémon cyan)
+  const INK = 0xff1b2240, WHITE = 0xffffffff, GOLD = U.hex('#ffd23a'), CYAN = U.hex('#3ad8ff');
   const qs = new URLSearchParams(location.search);
   const P = { all: qs.get('unlock') === 'all', ready: false, pollT: 0, fl: [], cards: [], lvUp: null, pings: [], log: null, noFlagT: 0, scanHit: 0, deepT: 0, sp: [], stars: [], bar: null, geo: null, toastY: 62 };
   // XP needed to reach each level (index = level)
@@ -73,6 +74,8 @@ const Progress = (() => {
     if (!D.rep) D.rep = {};
     return D;
   }
+  // the level-up show is on: everything else (notes, XP numbers, quest cards) waits for it
+  const celebrating = () => !!(P.lvUp && P.lvUp.t >= -0.2);
   function levelOf(xp) { let l = 1; while (l < MAXLV && xp >= XP[l + 1]) l++; return l; }
   const level = () => (P.all ? Math.max(MAXLV, levelOf(L().xp)) : levelOf(L().xp));
   function has(id) {
@@ -399,7 +402,7 @@ const Progress = (() => {
     P.pollT += dt;
     if (P.pollT > 0.5) { P.pollT = 0; poll(false); }
     stampAccepted(false);
-    for (const f of P.fl) f.t += dt; P.fl = P.fl.filter((f) => f.t < 2.2);
+    if (!(HUD.banUp && HUD.banUp()) && !celebrating()) for (const f of P.fl) f.t += dt; P.fl = P.fl.filter((f) => f.t < 2.2);
     for (const p of P.pings) p.t += dt; P.pings = P.pings.filter((p) => p.t < p.life);
     barUpdate(dt);
     for (const s of P.sp) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += (s.g ?? 90) * dt; s.vx *= 1 - dt * 1.5; }
@@ -414,7 +417,7 @@ const Progress = (() => {
       if (t0 < FLIP && U0.t >= FLIP) lvFlip();
       if (U0.t > LVT) { P.lvUp = null; lvLand(); }
     }
-    if (!P.lvUp && P.cards.length && !(typeof Cards !== 'undefined' && Cards.live)) { P.cards[0].t += dt; if (P.cards[0].t > 3.8) P.cards.shift(); }
+    if (!P.lvUp && P.cards.length && !(typeof Cards !== 'undefined' && Cards.live) && !(HUD.banUp && HUD.banUp())) { P.cards[0].t += dt; if (P.cards[0].t > 3.8) P.cards.shift(); }
     // unlock=all: locked moves stay out of the way
     if (!has('wheel') && Moves.wheel) Moves.closeWheel();
     // collecting revealed clues
@@ -433,10 +436,11 @@ const Progress = (() => {
   /* ---------- drawing: HUD ---------- */
   function icon(fb, cx, cy, t) {
     // a rolled quest scroll with a "!"
-    UI.rrect(fb, cx - 6, cy - 7, 12, 14, 2, INK); UI.rrect(fb, cx - 5, cy - 6, 10, 12, 1, 0xfff4e2b0);
+    const pa = U.hex('#f4e2b0'), pd = U.hex('#d8b070'), rd = U.hex('#e8384a');
+    UI.rrect(fb, cx - 6, cy - 7, 12, 14, 2, INK); UI.rrect(fb, cx - 5, cy - 6, 10, 12, 1, pa);
     UI.hline(fb, cx - 7, cx + 6, cy - 7, INK); UI.hline(fb, cx - 7, cx + 6, cy + 7, INK);
-    UI.hline(fb, cx - 6, cx + 5, cy - 6, 0xffd8b870); UI.hline(fb, cx - 6, cx + 5, cy + 6, 0xffd8b870);
-    UI.rect(fb, cx - 1, cy - 4, 2, 5, 0xffe8384a); UI.rect(fb, cx - 1, cy + 3, 2, 2, 0xffe8384a);
+    UI.hline(fb, cx - 6, cx + 5, cy - 6, pd); UI.hline(fb, cx - 6, cx + 5, cy + 6, pd); UI.vline(fb, cx + 4, cy - 5, cy + 5, U.mix(pa, pd, 0.5));
+    UI.rect(fb, cx - 1, cy - 4, 2, 5, rd); UI.rect(fb, cx - 1, cy + 3, 2, 2, rd);
   }
   function logBadge() { return QS().some((q) => status(q) === 'ready'); }
 
@@ -594,29 +598,33 @@ const Progress = (() => {
       const k = s.t / s.life; if (k > 0.7 && Math.floor(s.t * 24) % 2) continue;
       if (s.big && k < 0.6) twinkle(fb, s.x, s.y, 2, hx('#ffe07a')); else twinkle(fb, s.x, s.y, k < 0.4 ? 1 : 0, hx('#aef0ff'));
     }
-    // floating "+XP" (newest on top)
+    // floating "+XP" notes beside the plate (newest on top); they wait while the area card is up
+    const quiet = (HUD.banUp && HUD.banUp()) || (typeof Moves !== 'undefined' && Moves.wheel) || celebrating();
     let fy = py + 1;
-    for (let i = P.fl.length - 1; i >= 0; i--) {
+    if (!quiet) for (let i = P.fl.length - 1; i >= 0; i--) {
       const f = P.fl[i], kk = f.t / 2.2, pop = f.t < 0.12 ? Math.round((1 - f.t / 0.12) * 3) : 0;
-      if (kk > 0.8 && Math.floor(f.t * 20) % 2) { fy -= 10; continue; }
-      const X = px + pw + 5, Y = fy - Math.round(kk * 6) - pop, head = '+' + f.n + ' XP', big = f.cat === 'dex' || f.cat === 'quest' || f.cat === 'area' || f.cat === 'fight';
-      const hw = Font.measure(head, 'small'), rw = f.why ? Math.max(0, Math.min(230, fb.w - X - 60) - hw - 10) : 0, wt = rw > 30 ? fit(f.why, rw) : '';
-      // a soft plate behind the line keeps it readable over bright scenery
-      UI.rectA(fb, X - 2, Y - 1, hw + (wt ? Font.measure(wt, 'small') + 10 : 0) + 4, 9, 0xff0a0e20, 0.4 * (1 - kk));
-      Font.draw(fb, head, X, Y, big ? hx('#ffe07a') : hx('#aef7ff'), { font: 'small', outline: INK });
-      if (wt) { Font.draw(fb, '·', X + hw + 3, Y, hx('#8fd4ff'), { font: 'small', outline: INK }); Font.draw(fb, wt, X + hw + 8, Y, WHITE, { font: 'small', outline: INK }); }
-      fy -= 10;
+      if (kk > 0.8 && Math.floor(f.t * 20) % 2) { fy -= 11; continue; }
+      const X = px + pw + 6, Y = fy - Math.round(kk * 5) - pop, head = '+' + f.n + ' XP', big = f.cat === 'dex' || f.cat === 'quest' || f.cat === 'area' || f.cat === 'fight';
+      const right = Y < 34 && HUD.rightX ? HUD.rightX - 6 : fb.w - 8;
+      const hw = Font.measure(head, 'small'), rw = f.why ? Math.min(220, right - X - hw - 16) : 0, wt = rw > 30 ? fit(f.why, rw) : '';
+      const w = hw + (wt ? Font.measure(wt, 'small') + 9 : 0) + 8;
+      UI.plate(fb, X, Y - 2, w, 10, { r: 3, fill: UI.C.navy, a: 0.78 * Math.min(1, (1 - kk) * 3), sa: 0.2, hi: null });
+      Font.draw(fb, head, X + 4, Y, big ? hx('#ffe07a') : hx('#aef7ff'), { font: 'small', shadow: UI.C.ink });
+      if (wt) Font.draw(fb, wt, X + hw + 9, Y, WHITE, { font: 'small', shadow: UI.C.ink });
+      fy -= 11;
     }
-    // tracked quest
+    // tracked quest (steps aside for the area card): a slim note under the plate
     const q = tracked(), ty = py + ph + 4;
     P.toastY = ty;
-    if (q && Game.mode === 'explore') {
-      const txt = '> ' + q.title + ': ' + objective(q) + (q.area !== Game.areaId ? ' [' + areaName(q.area) + ']' : '');
-      const w = Math.min(fb.w * 0.5, Font.measure(txt, 'small') + 8);
-      UI.rectA(fb, 6, ty, w, 11, 0xff0a0e20, 0.45);
-      Font.draw(fb, fit(txt, w - 6), 10, ty + 2, GOLD, { font: 'small' });
-      HUD.btn('track', 6, ty, w, 11, () => openLog());
-      P.toastY = ty + 14;
+    if (q && Game.mode === 'explore' && !quiet) {
+      const where = q.area !== Game.areaId ? '  [' + areaName(q.area) + ']' : '';
+      const txt = q.title + ': ' + objective(q) + where, maxW = Math.min(Math.round(fb.w * 0.48), 230);
+      const w = Math.min(maxW, Font.measure(txt, 'small') + 18), hovT = HUD.hoverId === 'track';
+      UI.plate(fb, 6, ty, w, 12, { r: 3, fill: hovT ? UI.C.navyL : UI.C.navy, a: 0.72, sa: 0.25, hi: null });
+      Font.icon(fb, 'pin', 9, ty + 3, 1);
+      Font.draw(fb, fit(txt, w - 18), 16, ty + 3, hx('#ffe07a'), { font: 'small', shadow: UI.C.ink });
+      HUD.btn('track', 6, ty, w, 12, () => openLog());
+      P.toastY = ty + 15;
     }
     HUD.btn('lvbadge', 4, py - 4, px + pw - 4, ph + 6, () => openLog());
   }
@@ -631,7 +639,7 @@ const Progress = (() => {
       const X = Math.round(ux), Y = Math.round(uy) - 8 + Math.round(Math.sin(t * 5) * 2);
       for (let i = 0; i < 5; i++) UI.hline(fb, X - 4 + i, X + 4 - i, Y + i, i === 0 || i === 4 ? INK : GOLD);
       UI.hline(fb, X - 5, X + 5, Y - 1, INK);
-      Font.draw(fb, tg.label, X, Y - 10, GOLD, { font: 'small', align: 'center', outline: INK });
+      UI.chip(fb, X, Y - 13, tg.label, { align: 'center', bg: UI.C.navy, fg: U.hex('#ffe07a'), h: 10, pad: 10 });
       return;
     }
     // off screen: an arrow on the edge
@@ -639,10 +647,11 @@ const Progress = (() => {
     const s = Math.min((W / 2 - m - 4) / Math.max(1e-3, Math.abs(dx)), (H / 2 - m - 30) / Math.max(1e-3, Math.abs(dy)));
     const X = Math.round(cx + dx * s), Y = Math.round(cy + dy * s), ca = Math.cos(a), sa = Math.sin(a);
     const pulse = 1 + Math.round((Math.sin(t * 6) + 1) * 0.8);
-    UI.disc(fb, X, Y, 8 + pulse, INK); UI.disc(fb, X, Y, 7 + pulse, 0xcc1b2240 | 0);
+    UI.disc(fb, X, Y + 1, 8 + pulse, UI.C.shadow); UI.disc(fb, X, Y, 8 + pulse, UI.C.ink); UI.disc(fb, X, Y, 7 + pulse, UI.C.navy); UI.ring(fb, X, Y, 7 + pulse, U.hex('#7a5a20'), 1);
     for (let r = -6; r <= 6; r++) for (let w = -Math.round((6 - Math.abs(r)) * 0.7); w <= Math.round((6 - Math.abs(r)) * 0.7); w++) UI.put(fb, Math.round(X + ca * r - sa * w), Math.round(Y + sa * r + ca * w), GOLD);
     const dist = Math.round(Math.abs(tg.x - Game.mudkip.x) / 10);
-    Font.draw(fb, tg.label + ' ' + dist + 'm', clamp(X - ca * 20, 30, W - 30), clamp(Y - sa * 16 - 3, 50, H - 20), GOLD, { font: 'small', align: 'center', outline: INK });
+    const lt = tg.label + '  ' + dist + 'm', lw2 = Font.measure(lt, 'small') + 10;
+    UI.chip(fb, clamp(X - ca * 22, lw2 / 2 + 3, W - lw2 / 2 - 3), clamp(Y - sa * 16 - 4, 50, H - 20), lt, { align: 'center', bg: UI.C.navy, fg: U.hex('#ffe07a'), h: 10, pad: 10 });
   }
   function drawClues(fb, t) {
     if (Game.mode !== 'explore' && Game.mode !== 'camera') return;
@@ -737,198 +746,221 @@ const Progress = (() => {
     const W = fb.w;
     lvFb = fb;
     if (P.lvUp) { if (P.lvUp.t >= 0) drawLevelUp(fb, t); return; }
-    const c = P.cards[0]; if (!c) return;
-    const k = c.t, e = Math.min(1, k / 0.3), out = k > 3.4 ? (k - 3.4) / 0.4 : 0;
-    const f = c.f, w = Math.max(Font.measure('NEW: ' + f.name, 'body'), Font.measure(f.desc, 'small')) + 24, h = 32;
-    const x = Math.round(W / 2 - w / 2), y = Math.round(66 - (1 - U.ease.outBack(e)) * 50 - out * 60);
-    UI.rrect(fb, x, y + 2, w, h, 6, 0xff0a0e1a); UI.rrect(fb, x, y, w, h, 6, INK); UI.rrect(fb, x + 1, y + 1, w - 2, h - 2, 5, 0xfff4f6fb);
-    UI.rect(fb, x + 4, y + 4, 3, h - 8, 0xffff3a4a);
-    Font.draw(fb, '{new} ' + f.name, x + 12, y + 5, INK, { font: 'body' });
-    Font.draw(fb, f.desc, x + 12, y + 20, 0xff5a6080, { font: 'small' });
+    const c = P.cards[0]; if (!c || (HUD.banUp && HUD.banUp())) return;
+    // "NEW: feature" card: drops in under the top bar with a sparkle, a shine runs over it, then it lifts away
+    const k = c.t, e = Math.min(1, k / 0.3), out = k > 3.4 ? U.ease.inCubic((k - 3.4) / 0.4) : 0, C = UI.C;
+    const f = c.f, nwid = Font.ICONS.new.w + 4, w = Math.min(W - 16, Math.max(Font.measure(f.name, 'body') + nwid, Font.measure(f.desc, 'small')) + 26), h = 32;
+    const x = Math.min(W - 6 - w, Math.max(Math.round(W / 2 - w / 2), 128)), y = Math.round(38 - (1 - U.ease.outBack(e)) * 46 - out * 56);
+    if (!c.fired && k > 0.25) { c.fired = 1; UI.burst(x + w / 2, y + h / 2, 14, { speed: 60 }); try { Game.sfx('sparkle', null, 0.6); } catch (er) { /* audio */ } }
+    UI.shadow(fb, x, y, w, h, 6, 3, 0.55); UI.rrect(fb, x, y, w, h, 6, C.ink); UI.rrect(fb, x + 1, y + 1, w - 2, h - 2, 5, hx('#fffaf0'));
+    UI.hline(fb, x + 6, x + w - 7, y + 1, 0xffffffff); UI.rect(fb, x + 4, y + 4, 3, h - 8, hx('#ff3a4a'));
+    Font.icon(fb, 'new', x + 12, y + 6, 1);
+    Font.draw(fb, f.name, x + 12 + nwid, y + 5, C.text, { font: 'body' });
+    Font.draw(fb, fit(f.desc, w - 22), x + 12, y + 20, C.dim, { font: 'small' });
+    const ph = (k - 0.3) / 0.8;
+    if (ph > 0 && ph < 1) { const gx = x + Math.round(ph * (w + 20)) - 10; for (let yy = y + 2; yy < y + h - 2; yy++) for (let d = 0; d < 3; d++) { const xx = Math.round(gx + d - (yy - y) * 0.5); if (xx > x + 2 && xx < x + w - 3) UI.blend(fb, xx, yy, 0xffffffff, 0.5); } }
   }
-  { const b0 = Talk.drawBubbles; Talk.drawBubbles = function (fb, t) { const r = b0.call(this, fb, t); try { drawClues(fb, t); if (Game.mode === 'explore' && !(typeof Arcade !== 'undefined' && Arcade.live)) { drawLevel(fb, t); arrowTo(fb, t); } } catch (e) { console.error(e); } return r; }; }
+  { const b0 = Talk.drawBubbles; Talk.drawBubbles = function (fb, t) { const r = b0.call(this, fb, t); try { drawClues(fb, t); if (Game.mode === 'explore' && !(typeof Arcade !== 'undefined' && Arcade.live) && !(typeof Moves !== 'undefined' && Moves.wheel)) { drawLevel(fb, t); arrowTo(fb, t); } } catch (e) { console.error(e); } return r; }; }
   { const d0 = Talk.drawDialog; Talk.drawDialog = function (fb, t) { const r = d0.call(this, fb, t); try { if (P.log) drawLog(fb, t); else if (!Talk.dlg && !(typeof Cards !== 'undefined' && Cards.live && !(P.lvUp && P.lvUp.t >= 0))) drawCards(fb, t); } catch (e) { console.error(e); } return r; }; }
 
   /* ---------- world map markers ---------- */
-  { const w0 = WorldMap.draw; WorldMap.draw = function (fb, t) {
-    const r = w0.call(this, fb, t);
-    try {
-      const tq = tracked();
-      for (const id in WorldMap.LOC) {
-        const b = HUD.btns.find((x) => x.id === 'pin-' + id); if (!b) continue;
-        const qq = QS().filter((q) => q.area === id);
-        // only jobs the player has accepted get a pin
-        const rd = qq.some((q) => status(q) === 'ready'), ac = qq.some((q) => status(q) === 'active');
-        if (!rd && !ac) continue;
-        const X = b.x + b.w + 5, Y = b.y + 7, isT = tq && tq.area === id;
-        if (isT) UI.ring(fb, X, Y, 7 + Math.round(Math.sin(t * 5)), GOLD, 1);
-        UI.disc(fb, X, Y, 5, INK); UI.disc(fb, X, Y, 4, rd ? 0xff30d8ff : 0xff4a5470);
-        if (rd) Font.icon(fb, 'star', X - 3, Y - 3, 1); else Font.draw(fb, '?', X, Y - 3, WHITE, { font: 'small', align: 'center' });
-      }
-      if (tq && !WorldMap.travel) Font.draw(fb, 'Tracked: ' + tq.title + ' — ' + areaName(tq.area), fb.w / 2, 24, GOLD, { font: 'small', align: 'center', outline: INK });
-    } catch (e) { console.error(e); }
-    return r;
-  }; }
+  // the map asks: which places have accepted jobs (a badge on their label), and what is tracked
+  WorldMap.questMark = (id) => {
+    const qq = QS().filter((q) => q.area === id), tq = tracked();
+    if (qq.some((q) => status(q) === 'ready')) return 'ready';
+    if (qq.some((q) => status(q) === 'active')) return tq && tq.area === id ? 'tracked' : 'active';
+    return null;
+  };
+  WorldMap.trackText = () => { const tq = tracked(); return tq ? 'Tracked: ' + tq.title + '  ·  ' + areaName(tq.area) : null; };
 
   /* ---------- quest log ---------- */
   function openLog() {
     if (Game.mode !== 'explore' || Talk.dlg) return;
-    P.log = { tab: 'active', sel: 0, scroll: 0, rects: [], t: 0 };
+    P.log = { tab: 'active', sel: 0, scroll: 0, rects: [], t: 0, closing: 0 };
     if (Game.mudkip) { Game.mudkip.stop && Game.mudkip.stop(); Game.mudkip.keyDir = 0; }
     Game.sfx('page');
   }
-  function closeLog() { P.log = null; Game.sfx('back', null, 0.6); }
+  // the log slides away, then lets go of the input
+  function closeLog() { if (!P.log || P.log.closing) return; P.log.closing = 0.001; Game.sfx('back', null, 0.6); }
   function logList() { const e = entries(); if (P.log.tab === 'exp') return []; return P.log.tab === 'done' ? e.filter((x) => x.s === 'done') : e.filter((x) => x.s !== 'done'); }
   function trackSel() {
     const l = logList(), e = l[P.log.sel]; if (!e || e.q.birch || e.s === 'done') return;
     L().track = L().track === e.q.id ? null : e.q.id; Save.save(); Game.sfx('select');
-    HUD.toast(L().track ? 'Tracking: ' + e.q.title : 'Tracking: automatic', { life: 1.8, col: GOLD });
+    HUD.toast(L().track ? 'Tracking: ' + e.q.title : 'Tracking: automatic', { life: 1.8, col: GOLD, icon: 'pin' });
   }
-  const STC = { ready: [0xff30d8ff, 'Ready!'], active: [0xffffd23a, 'In progress'], avail: [0xff2ac8ff, 'New'], lvl: [0xff8a90a8, 'Locked'], done: [0xff5ad07a, 'Done'] };
+  const STC = { ready: [hx('#ffb81a'), 'Ready!'], active: [hx('#3a9af0'), 'In progress'], avail: [hx('#2ac8c8'), 'New'], lvl: [hx('#8a90a8'), 'Locked'], done: [hx('#3ab86a'), 'Done'] };
+  const hovR = (r) => P.mouse && P.mouse[0] >= r.x && P.mouse[1] >= r.y && P.mouse[0] < r.x + r.w && P.mouse[1] < r.y + r.h;
+  // a log button: drawn in the shared style, registered for taps, lit on hover
+  function logBtn(fb, G, x, y, w, h, label, fn, o = {}) {
+    const r = { x, y, w, h, fn }, hov = !G.closing && hovR(r);
+    UI.button(fb, x, y, w, h, Object.assign({ label, hover: hov, down: hov && P.mdown }, o));
+    G.rects.push(r);
+  }
   function drawLog(fb, t) {
     const G = P.log; G.t += 1 / 60; G.rects = [];
-    const S = UI.skin(), W = Math.min(fb.w - 12, 460), H = Math.min(fb.h - 12, 260), x = Math.round((fb.w - W) / 2), y = Math.round((fb.h - H) / 2);
-    UI.rectA(fb, 0, 0, fb.w, fb.h, 0xff0a0e20, 0.45);
-    UI.rrect(fb, x, y + 3, W, H, 8, 0xff0a0e1a);
+    if (G.closing) { G.closing += 1 / 60; if (G.closing > 0.16) { P.log = null; return; } }
+    const S = UI.skin(), C = UI.C;
+    const W = Math.min(fb.w - 10, 470), H = Math.min(fb.h - 8, 270), out = G.closing ? G.closing / 0.16 : 0;
+    const x = Math.round((fb.w - W) / 2), y = Math.round((fb.h - H) / 2 + (1 - UI.openK(G.t)) * 26 + U.ease.inCubic(out) * 30);
+    UI.dim(fb, Math.min(1, G.t / 0.15) * (1 - out), 0.5);
+    UI.shadow(fb, x, y, W, H, 8, 3, 0.6);
     UI.body(fb, x, y, W, H, S, { r: 8 });
-    Font.draw(fb, 'QUEST LOG', x + 10, y + 7, WHITE, { font: 'title', outline: INK });
-    // level summary
-    const lv = level();
-    Font.draw(fb, 'Mudkip Lv ' + lv + '  ·  ' + L().xp + ' XP' + (lv < MAXLV ? '  (next: ' + XP[lv + 1] + ')' : ''), x + W - 30, y + 9, WHITE, { font: 'small', align: 'right', outline: INK });
-    UI.panel(fb, x + W - 22, y + 5, 16, 14, { r: 3, ol: S.ink, fill: S.btn }); Font.icon(fb, 'cross', x + W - 17, y + 9, 1);
-    G.rects.push({ x: x + W - 24, y: y + 3, w: 20, h: 18, fn: closeLog });
+    // title row: the scroll emblem, the title, the level summary, close
+    icon(fb, x + 15, y + 13, t);
+    Font.draw(fb, 'QUEST LOG', x + 26, y + 7, WHITE, { font: 'title', outline: S.ink });
+    const lv = level(), sumTxt = 'Lv ' + lv + '  ·  ' + L().xp + ' XP' + (lv < MAXLV ? '  ·  next ' + XP[lv + 1] : '');
+    Font.draw(fb, fit(sumTxt, W - 150), x + W - 28, y + 9, WHITE, { font: 'small', align: 'right', outline: S.ink });
+    const cr = { x: x + W - 22, y: y + 5, w: 16, h: 14, fn: closeLog };
+    UI.closeBtn(fb, cr.x, cr.y, { hover: hovR(cr), down: hovR(cr) && P.mdown }); G.rects.push({ x: cr.x - 3, y: cr.y - 3, w: 22, h: 20, fn: closeLog });
     // tabs
     const all = entries(), nA = all.filter((e) => e.s !== 'done').length, nD = all.length - nA;
-    [['active', 'Active (' + nA + ')'], ['done', 'Done (' + nD + ')'], ['exp', 'EXP & Levels']].forEach(([id, lab], i) => {
-      const tx = x + 10 + i * 78, on = G.tab === id;
-      UI.panel(fb, tx, y + 24, 74, 14, { r: 3, ol: S.ink, fill: on ? S.accent : S.btn });
-      Font.draw(fb, lab, tx + 37, y + 27, WHITE, { font: 'small', align: 'center' });
-      G.rects.push({ x: tx, y: y + 24, w: 74, h: 14, fn: () => { G.tab = id; G.sel = 0; G.scroll = 0; Game.sfx('page', null, 0.5); } });
+    let tx = x + 9;
+    [['active', 'Active ' + nA], ['done', 'Done ' + nD], ['exp', 'EXP & Levels']].forEach(([id, lab]) => {
+      const tw = Font.measure(lab, 'small') + 18, on = G.tab === id;
+      logBtn(fb, G, tx, y + 24, tw, 14, lab, () => { if (G.tab !== id) { G.tab = id; G.sel = 0; G.scroll = 0; Game.sfx('page', null, 0.5); } }, { fill: on ? S.accent : S.btn, on, ol: S.ink });
+      tx += tw + 4;
     });
-    if (G.tab === 'exp') { drawExp(fb, x, y, W, H, S); return; }
+    const ly = y + 43, lh = H - 50;
+    if (G.tab === 'exp') { drawExp(fb, x, y, W, H, S, ly, lh); return; }
     // list (left)
-    const lx = x + 8, ly = y + 42, lw = Math.min(170, Math.round(W * 0.4)), lh = H - 50;
-    UI.screen(fb, lx, ly, lw, lh, { fill: 0xfffbfaf4, rim: S.ink, glare: false });
-    const list = logList(), rowH = 20, vis = Math.floor((lh - 4) / rowH);
+    const lx = x + 8, lw = Math.min(176, Math.round(W * 0.4));
+    UI.screen(fb, lx, ly, lw, lh, { fill: C.cream, rim: S.ink, glare: false });
+    const list = logList(), rowH = 20, vis = Math.max(1, Math.floor((lh - 4) / rowH));
     G.sel = clamp(G.sel, 0, Math.max(0, list.length - 1));
     if (G.sel < G.scroll) G.scroll = G.sel; if (G.sel >= G.scroll + vis) G.scroll = G.sel - vis + 1;
-    const tr = tracked();
+    const tr = tracked(), clipL = { x0: lx + 1, y0: ly + 1, x1: lx + lw - 1, y1: ly + lh - 1 };
     list.slice(G.scroll, G.scroll + vis).forEach((e, j) => {
-      const i = j + G.scroll, ry = ly + 2 + j * rowH, sel = i === G.sel, [col, lab] = STC[e.s];
-      if (sel) UI.rrect(fb, lx + 2, ry, lw - 4, rowH - 2, 3, 0xffd8e8ff);
-      UI.disc(fb, lx + 9, ry + 8, 4, INK); UI.disc(fb, lx + 9, ry + 8, 3, col);
-      Font.draw(fb, fit((tr && tr.id === e.q.id ? '> ' : '') + e.q.title, lw - 20), lx + 16, ry + 2, INK, { font: 'small' });
-      Font.draw(fb, fit((e.q.birch ? 'Prof. Birch' : nm(e.q.giver) + ' · ' + areaName(e.q.area)) + ' · ' + lab, lw - 20), lx + 16, ry + 10, 0xff6a7090, { font: 'small' });
-      G.rects.push({ x: lx, y: ry, w: lw, h: rowH, fn: () => { if (G.sel === i) trackSel(); else { G.sel = i; Game.sfx('blip', null, 0.4); } } });
+      const i = j + G.scroll, ry = ly + 2 + j * rowH, sel = i === G.sel, [col, lab] = STC[e.s], r = { x: lx + 2, y: ry, w: lw - 4, h: rowH - 1 };
+      if (sel) { UI.rrect(fb, lx + 2, ry, lw - 4, rowH - 2, 3, C.sel); UI.rect(fb, lx + 2, ry + 2, 2, rowH - 6, S.accent); }
+      else if (hovR(r)) UI.rrect(fb, lx + 2, ry, lw - 4, rowH - 2, 3, hx('#eef2fa'));
+      UI.disc(fb, lx + 10, ry + 8, 4, C.ink); UI.disc(fb, lx + 10, ry + 8, 3, col);
+      if (e.s === 'ready') UI.put(fb, lx + 9, ry + 7, WHITE);
+      const isT = tr && tr.id === e.q.id;
+      if (isT) Font.icon(fb, 'pin', lx + lw - 10, ry + 2, 1);
+      Font.draw(fb, fit(e.q.title, lw - (isT ? 30 : 22)), lx + 17, ry + 2, C.text, { font: 'small' });
+      Font.draw(fb, fit((e.q.birch ? 'Prof. Birch' : nm(e.q.giver) + ' · ' + areaName(e.q.area)) + ' · ' + lab, lw - 22), lx + 17, ry + 10, C.dim, { font: 'small', clip: clipL });
+      G.rects.push({ x: r.x, y: r.y, w: r.w, h: r.h, fn: () => { if (G.sel === i) trackSel(); else { G.sel = i; Game.sfx('blip', null, 0.4); } } });
     });
     if (!list.length) {
-      if (G.tab === 'done') Font.draw(fb, 'Nothing finished yet.', lx + lw / 2, ly + 20, 0xff6a7090, { font: 'small', align: 'center' });
-      else Font.draw(fb, 'No quests yet. Talk to Pokémon with a ! over their head to take on a job.', lx + 8, ly + 14, 0xff6a7090, { font: 'small', maxW: lw - 16, lh: 9 });
+      if (G.tab === 'done') Font.draw(fb, 'Nothing finished yet.', lx + lw / 2, ly + 20, C.dim, { font: 'small', align: 'center' });
+      else Font.draw(fb, 'No quests yet. Talk to Pokémon with a ! over their head to take on a job.', lx + 8, ly + 14, C.dim, { font: 'small', maxW: lw - 16, lh: 9 });
     }
-    if (list.length > vis) Font.draw(fb, (G.scroll + 1) + '-' + Math.min(list.length, G.scroll + vis) + ' of ' + list.length, lx + lw / 2, ly + lh - 9, 0xff6a7090, { font: 'small', align: 'center' });
+    // scroll bar
+    if (list.length > vis) {
+      const th = Math.max(8, Math.round((lh - 6) * vis / list.length)), tY = ly + 3 + Math.round((lh - 6 - th) * G.scroll / Math.max(1, list.length - vis));
+      UI.rect(fb, lx + lw - 4, ly + 3, 2, lh - 6, C.line); UI.rect(fb, lx + lw - 4, tY, 2, th, C.dim);
+    }
     // details (right)
     const dx = lx + lw + 6, dw = x + W - 8 - dx;
-    UI.screen(fb, dx, ly, dw, lh, { fill: 0xfffbfaf4, rim: S.ink, glare: false });
+    UI.screen(fb, dx, ly, dw, lh, { fill: C.cream, rim: S.ink, glare: false });
     const e = list[G.sel]; if (!e) return;
-    const q = e.q, [col, lab] = STC[e.s];
+    const q = e.q, [col, lab] = STC[e.s], bot = ly + lh - 4, clip = { x0: dx + 1, y0: ly + 1, x1: dx + dw - 1, y1: bot };
     let yy = ly + 5;
-    Font.draw(fb, fit(q.title, dw - 12, 'body'), dx + 6, yy, INK, { font: 'body' }); yy += 14;
-    UI.rrect(fb, dx + 6, yy, Font.measure(lab, 'small') + 8, 10, 3, col); Font.draw(fb, lab, dx + 10, yy + 2, WHITE, { font: 'small' });
-    Font.draw(fb, q.birch ? 'From Professor Birch' : 'From ' + nm(q.giver) + ' in ' + areaName(q.area), dx + 14 + Font.measure(lab, 'small'), yy + 2, 0xff5a6080, { font: 'small' }); yy += 15;
-    const line = (head, txt, c = INK) => { Font.draw(fb, head, dx + 6, yy, 0xff3a78e8, { font: 'small' }); yy += 9; const ls = Font.wrap(star(txt), 'small', dw - 16); ls.slice(0, 3).forEach((l) => { Font.draw(fb, l, dx + 10, yy, c, { font: 'small' }); yy += 9; }); yy += 3; };
+    // title + the Track button on the same row
+    let trW = 0;
+    if (e.s !== 'done' && !q.birch) {
+      const isT = tr && tr.id === q.id && L().track === q.id, bl = isT ? 'Untrack' : 'Track';
+      trW = Font.measure(bl, 'small') + 16;
+      logBtn(fb, G, dx + dw - trW - 5, ly + 4, trW, 13, bl, trackSel, { fill: isT ? S.btn : S.accent, icon: isT ? null : 'pin' });
+      trW += 8;
+    }
+    Font.draw(fb, fit(q.title, dw - 12 - trW, 'body'), dx + 6, yy, C.text, { font: 'body' }); yy += 15;
+    const cw = UI.chip(fb, dx + 6, yy, lab, { bg: col, h: 9, pad: 8 });
+    Font.draw(fb, fit(q.birch ? 'From Professor Birch' : 'From ' + nm(q.giver) + ' in ' + areaName(q.area), dw - cw - 20), dx + 12 + cw, yy + 2, C.dim, { font: 'small' }); yy += 14;
+    // sections: a label column on the left, the text wrapping beside it
+    const labW = 50, tw = dw - 14 - labW;
+    const line = (head, txt, c = C.text) => {
+      if (yy > bot - 8) return;
+      Font.draw(fb, head, dx + 6, yy, hx('#e0702a'), { font: 'small', clip });
+      const ls = Font.wrap(star(txt), 'small', tw);
+      ls.slice(0, 3).forEach((l, i) => { if (yy + i * 9 <= bot - 8) Font.draw(fb, l, dx + 8 + labW, yy + i * 9, c, { font: 'small', clip }); });
+      yy += Math.min(3, ls.length) * 9 + 3;
+    };
     if (q.birch) {
-      line('Objective', q.birch.t);
-      if (e.s !== 'done') line('Hint', q.birch.hint);
-      line('Reward', rewardLabel(q.birch.reward) + ' + 50 XP');
+      line('GOAL', q.birch.t);
+      if (e.s !== 'done') line('HINT', q.birch.hint);
+      line('REWARD', rewardLabel(q.birch.reward) + ' + 50 XP');
       return;
     }
-    line('Objective', objective(q));
-    if (typeof Bosses !== 'undefined' && Bosses.recLv) { const rl = Bosses.recLv(q.area), pk = typeof Punks !== 'undefined' ? Punks.tally(q.area) : null; line(areaName(q.area), 'Recommended Lv ' + rl + (level() < rl ? ' (you are Lv ' + level() + ')' : ' {check}') + (pk ? '  ·  Road fights ' + pk.won + '/' + pk.n : ''), level() < rl ? 0xffc03030 : INK); }
-    if (e.s !== 'done') { const s = st(q); const hint = s ? (q.wait && q.wait[0] ? q.wait[0].replace(/\{have\}/g, s.n || 0).replace(/\{left\}/g, Math.max(0, (q.n || 1) - (s.n || 0))) : '') : q.intro[q.intro.length - 1]; if (hint) line('Hint', String(hint).replace(/\{[a-z]+\}/g, '')); }
-    line('Reward', rewardLabel(q.reward) + ' + ' + questXP(q) + ' XP' + (q.unlock ? ' + a flight to ' + areaName(q.unlock) : ''));
+    line('GOAL', objective(q));
+    if (typeof Bosses !== 'undefined' && Bosses.recLv) { const rl = Bosses.recLv(q.area), pk = typeof Punks !== 'undefined' ? Punks.tally(q.area) : null; line('AREA', 'Recommended Lv ' + rl + (level() < rl ? ' (you: Lv ' + level() + ')' : ' {check}') + (pk ? '  ·  Road fights ' + pk.won + '/' + pk.n : ''), level() < rl ? hx('#c03030') : C.text); }
+    if (e.s !== 'done') { const s = st(q); const hint = s ? (q.wait && q.wait[0] ? q.wait[0].replace(/\{have\}/g, s.n || 0).replace(/\{left\}/g, Math.max(0, (q.n || 1) - (s.n || 0))) : '') : q.intro[q.intro.length - 1]; if (hint) line('HINT', String(hint).replace(/\{[a-z]+\}/g, '')); }
+    line('REWARD', rewardLabel(q.reward) + ' + ' + questXP(q) + ' XP' + (q.unlock ? ' + a flight to ' + areaName(q.unlock) : ''));
     const dl = dexOf(q);
-    if (dl.length) {
-      Font.draw(fb, 'Helps the Pokédex', dx + 6, yy, 0xff3a78e8, { font: 'small' }); yy += 10;
-      let xx = dx + 10;
+    if (dl.length && yy <= bot - 18) {
+      Font.draw(fb, 'POKéDEX', dx + 6, yy + 1, hx('#e0702a'), { font: 'small' });
+      let xx = dx + 8 + labW;
       for (const k of dl) {
-        const seen = !!Save.data.seen[k], lbl = (seen ? '{check}' : '?') + (seen ? nm(k) : '???');
-        const w = Font.measure(lbl, 'small') + 6;
-        if (xx + w > dx + dw - 4) { xx = dx + 10; yy += 11; }
-        UI.rrect(fb, xx, yy - 1, w, 10, 3, seen ? 0xffcff0d8 : 0xffe4e6ee);
-        Font.draw(fb, lbl, xx + 3, yy + 1, INK, { font: 'small' });
+        const seen = !!Save.data.seen[k], lbl = (seen ? '{check}' : '? ') + (seen ? nm(k) : '???'), w = Font.measure(lbl, 'small') + 6;
+        if (xx + w > dx + dw - 4) { xx = dx + 8 + labW; yy += 11; if (yy > bot - 9) break; }
+        UI.rrect(fb, xx, yy - 1, w, 10, 3, seen ? hx('#cff0d8') : hx('#e4e6ee'));
+        Font.draw(fb, lbl, xx + 3, yy + 1, C.text, { font: 'small' });
         xx += w + 3;
       }
-      yy += 14;
-    }
-    if (e.s !== 'done') {
-      const isT = tr && tr.id === q.id && L().track === q.id, bl = isT ? 'Untrack' : 'Track', bw = Font.measure(bl, 'small') + 16, bx = dx + dw - bw - 6, by = ly + lh - 18;
-      UI.panel(fb, bx, by, bw, 14, { r: 3, ol: S.ink, fill: S.accent });
-      Font.draw(fb, bl, bx + bw / 2, by + 3, WHITE, { font: 'small', align: 'center' });
-      G.rects.push({ x: bx, y: by, w: bw, h: 14, fn: trackSel });
-      Font.draw(fb, 'L / Esc: close', dx + 6, by + 3, 0xff8a90a8, { font: 'small' });
     }
   }
-  // the EXP page: level, what the next levels unlock, and XP by source
-  function drawExp(fb, x, y, W, H, S) {
-    const D = L(), lv = level(), xp = D.xp, ly = y + 42, lh = H - 50, lw = Math.min(200, Math.round(W * 0.46)), lx = x + 8;
-    const DIM = hx('#6a7090'), BLUE = hx('#e8783a');
-    UI.screen(fb, lx, ly, lw, lh, { fill: 0xfffbfaf4, rim: S.ink, glare: false });
+  // the EXP page: level and what it unlocks next (left), recommended levels and XP by source (right)
+  function drawExp(fb, x, y, W, H, S, ly, lh) {
+    const C = UI.C, D = L(), lv = level(), xp = D.xp, lw = Math.min(196, Math.round(W * 0.42)), lx = x + 8;
+    const DIM = C.dim, ORG = hx('#e0702a'), OK = hx('#2a8a4a'), LOW = hx('#c03030');
+    UI.screen(fb, lx, ly, lw, lh, { fill: C.cream, rim: S.ink, glare: false });
     let yy = ly + 5;
-    Font.draw(fb, 'Mudkip Lv ' + lv, lx + 6, yy, INK, { font: 'body' }); yy += 14;
+    Font.draw(fb, 'Mudkip  Lv ' + lv, lx + 6, yy, C.text, { font: 'body' }); yy += 15;
     const a = XP[Math.min(lv, MAXLV)], b = XP[Math.min(lv + 1, MAXLV)], k = lv >= MAXLV ? 1 : clamp((xp - a) / (b - a), 0, 1), bw = lw - 12;
-    UI.rrect(fb, lx + 6, yy, bw, 7, 3, INK); UI.rect(fb, lx + 7, yy + 1, bw - 2, 5, hx('#d8deea'));
-    if (k > 0) UI.rect(fb, lx + 7, yy + 1, Math.max(1, Math.round((bw - 2) * k)), 5, hx('#30a8f0'));
-    yy += 10;
-    Font.draw(fb, lv >= MAXLV ? xp + ' XP · max level!' : (xp - a) + ' / ' + (b - a) + ' XP  ·  ' + (b - xp) + ' to Lv ' + (lv + 1), lx + 6, yy, DIM, { font: 'small' }); yy += 13;
-    // the next unlocks
-    Font.draw(fb, 'Coming up', lx + 6, yy, BLUE, { font: 'small' }); yy += 10;
+    drawBar(fb, lx + 6, yy, bw, 8, { shown: k, ghost: k, moving: false }, Game.rt || 0, lv >= MAXLV);
+    yy += 11;
+    Font.draw(fb, fit(lv >= MAXLV ? xp + ' XP  ·  max level!' : (xp - a) + ' / ' + (b - a) + ' XP  ·  ' + (b - xp) + ' to Lv ' + (lv + 1), bw), lx + 6, yy, DIM, { font: 'small' }); yy += 13;
+    UI.header(fb, 'COMING UP', lx + 6, yy, lw - 12, ORG); yy += 10;
     const up = FEATS.filter((f) => !has(f.id)).slice(0, 2);
-    if (!up.length) { Font.draw(fb, '{check} Every feature unlocked', lx + 10, yy, INK, { font: 'small' }); yy += 9; }
-    for (const f of up) { Font.draw(fb, fit('Lv ' + f.lv + ': ' + f.name, lw - 16), lx + 10, yy, INK, { font: 'small' }); yy += 9; }
-    yy += 4;
-    if (typeof Bosses !== 'undefined' && Bosses.REC) {
-      Font.draw(fb, 'Recommended levels', lx + 6, yy, BLUE, { font: 'small' }); yy += 10;
-      const ar = ['beach', 'forest', 'canopy', 'falls', 'volcano', 'shoal'].filter((id) => Bosses.REC[id]);
-      ar.forEach((id) => {
-        const r = Bosses.REC[id], ok = lv >= r, un = Save.unlocked(id), here = Game.areaId === id;
-        if (yy > ly + lh - 10) return;
-        Font.draw(fb, fit((ok ? '{check} ' : un ? '' : '{lock} ') + areaName(id) + (here ? ' (here)' : ''), lw - 50), lx + 10, yy, ok ? hx('#2a8a4a') : un ? hx('#c03030') : hx('#6a7090'), { font: 'small' });
-        Font.draw(fb, 'Lv ' + r, lx + lw - 8, yy, ok ? hx('#2a8a4a') : un ? hx('#c03030') : hx('#6a7090'), { font: 'small', align: 'right' });
-        yy += 9;
-      });
+    if (!up.length) { Font.draw(fb, '{check} Every feature unlocked', lx + 8, yy, C.text, { font: 'small' }); yy += 9; }
+    for (const f of up) { Font.draw(fb, fit('Lv ' + f.lv + '  ' + f.name, lw - 16), lx + 8, yy, C.text, { font: 'small' }); yy += 9; }
+    // this session (bottom of the left card)
+    const mins = Math.max(1, Math.round((Date.now() - SES.t0) / 60000)), sy = ly + lh - 22;
+    if (sy > yy + 4) {
+      UI.header(fb, 'THIS SESSION', lx + 6, sy - 2, lw - 12, ORG);
+      Font.draw(fb, fit('+' + SES.xp + ' XP in ' + mins + ' min' + (lv > SES.lv0 ? '  ·  +' + (lv - SES.lv0) + ' Lv' : '') + (SES.best >= 2 ? '  ·  streak x' + SES.best : ''), lw - 14), lx + 8, sy + 8, C.text, { font: 'small' });
     }
-    // XP by source (right)
+    // right: recommended levels, then XP by source
     const dx = lx + lw + 6, dw = x + W - 8 - dx;
-    UI.screen(fb, dx, ly, dw, lh, { fill: 0xfffbfaf4, rim: S.ink, glare: false });
+    UI.screen(fb, dx, ly, dw, lh, { fill: C.cream, rim: S.ink, glare: false });
     yy = ly + 5;
-    Font.draw(fb, 'XP by source', dx + 6, yy, INK, { font: 'body' });
-    Font.draw(fb, 'all · today', dx + dw - 6, yy + 3, DIM, { font: 'small', align: 'right' }); yy += 15;
+    if (typeof Bosses !== 'undefined' && Bosses.REC) {
+      UI.header(fb, 'RECOMMENDED LEVELS', dx + 6, yy, dw - 12, ORG); yy += 10;
+      const ar = ['beach', 'forest', 'canopy', 'falls', 'volcano', 'shoal'].filter((id) => Bosses.REC[id]);
+      const two = ar.length * 9 + 60 > lh, colW = two ? Math.floor((dw - 12) / 2) : dw - 12;
+      ar.forEach((id, i) => {
+        const r = Bosses.REC[id], ok = lv >= r, un = Save.unlocked(id), here = Game.areaId === id, c = ok ? OK : un ? LOW : DIM;
+        const cx = dx + 6 + (two ? (i % 2) * colW : 0), ry = yy + (two ? Math.floor(i / 2) : i) * 9;
+        Font.draw(fb, fit((ok ? '{check}' : un ? '' : '{lock}') + (ok || !un ? ' ' : '') + areaName(id) + (here ? ' *' : ''), colW - 30), cx + 2, ry, c, { font: 'small' });
+        Font.draw(fb, 'Lv ' + r, cx + colW - 4, ry, c, { font: 'small', align: 'right' });
+      });
+      yy += (two ? Math.ceil(ar.length / 2) : ar.length) * 9 + 5;
+    }
+    UI.header(fb, 'XP BY SOURCE', dx + 6, yy, dw - 70, ORG);
+    Font.draw(fb, 'all   today', dx + dw - 6, yy, DIM, { font: 'small', align: 'right' }); yy += 11;
     const rows = Object.keys(SRC).map((id) => [id, D.src[id] || 0, SES.src[id] || 0]).filter((r) => r[1] > 0 || r[2] > 0).sort((p, q) => q[1] - p[1]);
-    const known = rows.reduce((t, r) => t + r[1], 0), max = Math.max(1, ...rows.map((r) => r[1]));
+    const known = rows.reduce((s2, r) => s2 + r[1], 0), max = Math.max(1, ...rows.map((r) => r[1]));
     if (xp - known > 0) rows.push(['early', xp - known, 0]);
     if (!rows.length) Font.draw(fb, 'No XP yet: snap a new Pokémon!', dx + 6, yy, DIM, { font: 'small' });
-    const nmW = Math.min(140, Math.round(dw * 0.52)), barX = dx + 6 + nmW, barW = Math.max(10, dw - nmW - 70);
-    for (const [id, all, ses] of rows) {
-      if (yy > ly + lh - 32) break;
-      Font.draw(fb, fit(id === 'early' ? 'Earlier progress' : SRC[id], nmW - 4), dx + 6, yy, INK, { font: 'small' });
-      UI.rect(fb, barX, yy + 2, barW, 4, hx('#e4e6ee')); UI.rect(fb, barX, yy + 2, Math.max(1, Math.round(barW * Math.min(1, all / max))), 4, id === 'fight' ? hx('#f05a3a') : id === 'dex' || id === 'quest' ? hx('#ffb21a') : hx('#30a8f0'));
-      Font.draw(fb, String(all), dx + dw - 30, yy, INK, { font: 'small', align: 'right' });
-      Font.draw(fb, ses ? '+' + ses : '-', dx + dw - 6, yy, ses ? hx('#2a8a4a') : DIM, { font: 'small', align: 'right' });
+    const nmW = Math.min(118, Math.round(dw * 0.44)), barX = dx + 6 + nmW, barW = Math.max(10, dw - nmW - 76);
+    const shown = Math.max(1, Math.floor((ly + lh - 4 - yy) / 10));
+    rows.slice(0, shown).forEach(([id, all, ses]) => {
+      Font.draw(fb, fit(id === 'early' ? 'Earlier progress' : SRC[id], nmW - 4), dx + 6, yy, C.text, { font: 'small' });
+      UI.rect(fb, barX, yy + 1, barW, 4, hx('#e4e6ee')); UI.rect(fb, barX, yy + 1, Math.max(1, Math.round(barW * Math.min(1, all / max))), 4, id === 'fight' ? hx('#f05a3a') : id === 'dex' || id === 'quest' ? hx('#ffb21a') : hx('#30a8f0'));
+      Font.draw(fb, String(all), dx + dw - 38, yy, C.text, { font: 'small', align: 'right' });
+      Font.draw(fb, ses ? '+' + ses : '-', dx + dw - 6, yy, ses ? OK : DIM, { font: 'small', align: 'right' });
       yy += 10;
-    }
-    const mins = Math.max(1, Math.round((Date.now() - SES.t0) / 60000));
-    const by = ly + lh - 22;
-    UI.rect(fb, dx + 6, by - 3, dw - 12, 1, hx('#d8deea'));
-    Font.draw(fb, fit('This session: +' + SES.xp + ' XP in ' + mins + ' min' + (lv > SES.lv0 ? ' · +' + (lv - SES.lv0) + ' Lv' : '') + (SES.best >= 2 ? ' · best streak x' + SES.best : ''), dw - 12), dx + 6, by, INK, { font: 'small' });
-    Font.draw(fb, fit('New finds pay most. Repeats pay less.', dw - 12), dx + 6, by + 9, DIM, { font: 'small' });
+    });
   }
   { const d0 = Talk.down; Talk.down = function (ux, uy) {
-    if (P.log) { const G = P.log; for (let i = G.rects.length - 1; i >= 0; i--) { const r = G.rects[i]; if (ux >= r.x && uy >= r.y && ux < r.x + r.w && uy < r.y + r.h) { r.fn(); return true; } } return true; }
+    if (P.log) { P.mouse = [ux, uy]; P.mdown = true; setTimeout(() => { P.mdown = false; }, 120); const G = P.log; if (G.closing) return true; for (let i = G.rects.length - 1; i >= 0; i--) { const r = G.rects[i]; if (ux >= r.x && uy >= r.y && ux < r.x + r.w && uy < r.y + r.h) { r.fn(); return true; } } return true; }
     return d0.call(this, ux, uy);
   }; }
+  { const h0 = HUD.hover; HUD.hover = function (x, y) { P.mouse = [x, y]; return h0.apply(this, arguments); }; }
   { const k0 = Talk.key; Talk.key = function (k, e) {
     if (P.log) {
       const G = P.log, n = logList().length;
+      if (G.closing) return true;
       if (k === 'Escape' || k === 'l') closeLog();
       else if (k === 'ArrowDown' || k === 's') { G.sel = Math.min(n - 1, G.sel + 1); Game.sfx('blip', null, 0.4); }
       else if (k === 'ArrowUp' || k === 'w') { G.sel = Math.max(0, G.sel - 1); Game.sfx('blip', null, 0.4); }
@@ -989,5 +1021,5 @@ const Progress = (() => {
     X.D.scroll.prog = clamp(X.D.scroll.prog || 0, 0, Math.max(0, (X.D.progH || 0) - R.h + 8));
   }
 
-  return Object.assign(P, { SES, SRC, TIER, questXP, drawExp, badgeSpr, has, hudOk, level, gain, award, FEATS, XP, openLog, closeLog, logBadge, icon, toastTop, dexPage, objective, status, tracked, entries, onScan });
+  return Object.assign(P, { celebrating, SES, SRC, TIER, questXP, drawExp, badgeSpr, has, hudOk, level, gain, award, FEATS, XP, openLog, closeLog, logBadge, icon, toastTop, dexPage, objective, status, tracked, entries, onScan });
 })();

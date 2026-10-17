@@ -68,6 +68,17 @@ const Player = (() => {
       this.physics(dt, t);
       this.animate(dt, t);
       this.juice(dt, t);
+      // ease out of a position snap (climbing out of the water) instead of popping
+      if (this.exitOff) { this.jy = (this.jy || 0) + this.exitOff; this.exitOff *= Math.exp(-dt * 14); if (Math.abs(this.exitOff) < 0.3) this.exitOff = 0; }
+      // fresh out of the water: drip, drip
+      if (this.wetT > 0) {
+        if (this.mode === 'swim') this.wetT = 0;
+        else {
+          this.wetT -= dt;
+          if (Math.random() < dt * 9 * Math.min(1, this.wetT)) FX.add({ type: 'drop', x: this.x + rnd(-9, 9), y: this.y - rnd(6, 20), vx: rnd(-8, 8), vy: rnd(0, 20), g: 420, life: 0.7, c: 0xffffffff, c2: AQUA(), size: 1, floor: (this.plat ? World.platY(this.plat, this.x) : World.groundAt(this.x)) + 1, layer: 3 });
+          if (Math.random() < dt * 1.5 * Math.min(1, this.wetT)) Game.sfx('drip', this.x, 0.25);
+        }
+      }
     }
     control(dt, t) {
       const direct = this.keyDir || this.keyY || this.jumpBuf > 0 || this.mode === 'fall' || (this.mode === 'land' && (this.air > 0 || this.vair !== 0) && !this.target);
@@ -136,7 +147,8 @@ const Player = (() => {
     arrive() { const tg = this.target; this.target = null; if (Game.pin) Game.pin.done = true; if (tg && tg.then) tg.then(); }
     // horizontal motion with acceleration (land)
     drive(want, dt) {
-      const acc = Math.abs(want) > Math.abs(this.vx) ? 520 : 700;
+      // accelerate briskly, brake harder, and turn round hardest (a quick skid instead of ice-skating)
+      const acc = want && this.vx && Math.sign(want) !== Math.sign(this.vx) ? 1150 : Math.abs(want) > Math.abs(this.vx) ? 560 : 760;
       this.vx = approach(this.vx, want, acc * dt);
       this.x += this.vx * dt;
       if (Math.abs(this.vx) > 4) this.moving = Math.abs(this.vx);
@@ -148,13 +160,39 @@ const Player = (() => {
       return x1;
     }
 
+    // is there ground (or a dock / floe / water surface) within d pixels below a falling Mudkip?
+    nearGround(d) {
+      const g = World.groundAt(this.x);
+      if (g - this.y < d) return true;
+      if (World.waterAt(this.x) !== null && WorldRender.surfaceAt(this.x, Game.t) - this.y < d) return true;
+      return !!this.platBelow(this.x, this.y, this.y + d, true);
+    }
+    // what Mudkip is standing on (footstep and landing sounds, dust colour)
+    surface() {
+      if (this.floe) return 'ice';
+      if (this.plat) return this.plat.ice ? 'ice' : this.plat.kind === 'ledge' || this.plat.stone ? 'rock' : 'wood';
+      const id = Game.areaId;
+      if (id === 'beach') return World.groundAt(this.x) > World.SEA - 14 ? 'wet' : 'sand';
+      if (id === 'shoal') { const I = Game.area && Game.area.def.GEO && Game.area.def.GEO.ICE; return I && this.x > I.x0 && this.x < I.x1 ? 'ice' : 'snow'; }
+      if (id === 'falls' || id === 'volcano') return 'rock';
+      if (id === 'canopy') return 'wood'; // tree-house decks and branches
+      return 'grass';
+    }
+    stepSound(vol) { Game.sfx('step' + this.surface(), this.x, vol); }
+    dustCol() {
+      const s = this.surface();
+      return s === 'grass' ? [0xffc8e8c8, 0xff98c098] : s === 'rock' ? [0xffc8c4c0, 0xff98908a] : s === 'snow' || s === 'ice' ? [0xfffff8f0, 0xfff0e0d0] : s === 'wood' ? [0xffb8d0e0, 0xff90a8c0] : s === 'wet' ? [0xffe8f0f4, 0xffc0d4e0] : SAND;
+    }
+
     /* ================= direct platformer control ================= */
     platform(dt, t) {
       const kx = this.keyDir, ky = this.keyY;
       const run = this.running && !this.sneak;
       if (this.mode === 'swim') {
-        const sp = ((run ? 140 : 95) + (this.dashT > 0 ? 120 : 0)) * (this.buffT > 0 ? 1.35 : 1);
-        this.vx = lerp(this.vx, kx * sp, dt * (this.dashT > 0 ? 2 : 5)); this.vy = lerp(this.vy, ky * sp * 0.8, dt * 5);
+        const sp = ((run ? 140 : 95) * (this.keyMag ?? 1) + (this.dashT > 0 ? 120 : 0)) * (this.buffT > 0 ? 1.35 : 1);
+        // water has momentum: brisk to speed up, a long glide when you let go
+        this.vx = lerp(this.vx, kx * sp, Math.min(1, dt * (this.dashT > 0 ? 2 : kx ? 4.2 : 1.6)));
+        this.vy = lerp(this.vy, ky * sp * 0.8, Math.min(1, dt * (ky ? 4.2 : 1.8)));
         if (kx) this.turn(this.face(kx, true), dt, 8);
         // dive: press down at the surface for a nose-first plunge
         if (ky > 0 && !(this.diveT > 0) && this.y < WorldRender.surfaceAt(this.x, t) + 16 && (this.diveCool || 0) < t) { this.diveT = 0.6; this.diveCool = t + 1; FX.splashAt(this.x, WorldRender.surfaceAt(this.x, t), { power: 0.5, n: 8 }); Game.sfx('splash', this.x, 0.5); FX.bubbles(this.x, this.y, 8, WorldRender.surfaceAt(this.x, t)); }
@@ -171,6 +209,8 @@ const Player = (() => {
         if (kx) { this.vx = approach(this.vx, kx * (run ? 150 : 105), 420 * dt); this.turn(this.face(kx), dt, 9); }
         if (this.jumpBuf > 0) {
           if (this.coyote > 0) { this.jumpBuf = 0; this.coyote = 0; this.vy = -268; this.jumping = true; this.cut = false; this.boing(); }
+          // about to land: keep the press buffered so it becomes a jump on touchdown (not a flip)
+          else if (this.vy > 0 && this.nearGround(22)) { /* buffered */ }
           else if (!this.flipped && !this.pound) { this.jumpBuf = 0; this.somersault(); }
         }
         if (this.jumping && !this.jumpHeld && this.vy < -90 && !this.cut) { this.vy *= 0.5; this.cut = true; }
@@ -180,13 +220,16 @@ const Player = (() => {
       if (this.mode !== 'land') return;
       const grounded = this.air <= 0 && this.vair === 0;
       const sp = this.sneak ? 45 : run ? 150 : 92;
-      const want = this.crouch > 0.5 ? 0 : kx * sp;
+      // analog stick: a gentle push walks slowly; slopes slow Mudkip a little going up, speed it going down
+      let want = this.crouch > 0.5 ? 0 : kx * sp * (this.keyMag ?? 1);
+      if (kx && grounded && !this.plat && !this.floe) { const sl = (World.groundAt(this.x + kx * 5) - World.groundAt(this.x - kx * 5)) / 10; want *= 1 + clamp(sl, -0.6, 0.5) * 0.45; }
       if (kx) this.turn(this.face(kx), dt, grounded ? 12 : 9);
       if (grounded) this.drive(want, dt);
       else { this.vx = approach(this.vx, want, (kx ? 460 : 150) * dt); this.x += this.vx * dt; if (Math.abs(this.vx) > 4) this.moving = Math.abs(this.vx); }
       // jump (buffered, and still allowed a moment after running off an edge)
       if (this.jumpBuf > 0) {
         if (grounded || this.coyote > 0) { this.jumpBuf = 0; this.jump(); }
+        else if (this.vair < 0 && this.air < 20) { /* about to land: buffered, it jumps on touchdown */ }
         else if (!this.flipped && !this.pound && this.air > 5) { this.jumpBuf = 0; this.somersault(); }
       }
       // variable height: let go early for a short hop
@@ -197,7 +240,7 @@ const Player = (() => {
       this.crouch = grounded && ky > 0 ? Math.min(1, this.crouch + dt * 6) : Math.max(0, this.crouch - dt * 6);
       if (!grounded) return;
       // skid when turning round at speed
-      if (kx && Math.sign(this.vx) === -kx && Math.abs(this.vx) > 70) { this.skidT = 0.18; if (Math.random() < dt * 30) FX.add({ type: 'dust', x: this.x, y: this.y - 1, vx: -kx * 20, vy: -10, r: 2, life: 0.35, c: SAND[0], c2: SAND[1], layer: 2 }); }
+      if (kx && Math.sign(this.vx) === -kx && Math.abs(this.vx) > 70) { if (!(this.skidT > 0)) Game.sfx('dust', this.x, 0.35); this.skidT = 0.18; if (Math.random() < dt * 30) { const [c1, c2] = this.dustCol(); FX.add({ type: 'dust', x: this.x, y: this.y - 1, vx: -kx * 20, vy: -10, r: 2, life: 0.35, c: c1, c2, layer: 2 }); } }
       if (run && Math.abs(this.vx) > 125) {
         if (Math.random() < dt * 10) FX.add({ type: 'speed', x: this.x - this.dirX() * 14, y: this.y - rnd(6, 20), dx: this.dirX(), dy: 0, len: 9, life: 0.22, c: 0xc0ffffff, layer: 3 });
         // every so often Mudkip trips over absolutely nothing
@@ -208,7 +251,9 @@ const Player = (() => {
     boing(k = 1) {
       this.sq.kick(-0.35 * k); this.finS.kick(-2); this.tailS.kick(3);
       Game.sfx('boing', this.x, 0.32);
-      for (let i = 0; i < 4; i++) FX.add({ type: 'dust', x: this.x + rnd(-6, 6), y: this.y - 1, vx: rnd(-25, 25), vy: -rnd(4, 12), r: 1.6, life: 0.35, c: SAND[0], c2: SAND[1], layer: 2 });
+      if (this.mode === 'land') this.stepSound(0.45);
+      const [c1, c2] = this.dustCol();
+      for (let i = 0; i < 4; i++) FX.add({ type: 'dust', x: this.x + rnd(-6, 6), y: this.y - 1, vx: rnd(-25, 25), vy: -rnd(4, 12), r: 1.6, life: 0.35, c: c1, c2, layer: 2 });
     }
     jump() {
       const fast = Math.abs(this.vx) > 120;
@@ -220,8 +265,11 @@ const Player = (() => {
     somersault() {
       this.flipped = true; this.flipT = 0.5; this.flipLen = 0.5; this.flipSpins = 1; this.flipDir = this.keyDir || this.dirX();
       if (this.mode === 'fall') this.vy = Math.min(this.vy, -250); else { this.vair = 245; this.jumping = true; this.cut = true; }
-      Game.sfx('whoosh', this.x, 0.45); this.happyT = 0.6;
+      Game.sfx('whoosh', this.x, 0.45); Game.sfx('boing', this.x, 0.2); this.happyT = 0.6;
       FX.sparkles(this.x, this.y - 10, 5, 18);
+      // a puff of air kicked off under its feet (the "double jump" ring)
+      FX.add({ type: 'ring', x: this.x, y: this.y + 1, r0: 2, r1: 13, flat: 0.35, life: 0.3, c: 0xffffffff, layer: 3 });
+      for (let i = 0; i < 4; i++) FX.add({ type: 'dust', x: this.x + rnd(-5, 5), y: this.y + 1, vx: rnd(-40, 40), vy: rnd(10, 30), r: 1.4, life: 0.3, c: 0xfff4f8ff, c2: 0xffd8e8f4, layer: 2 });
     }
     startPound() {
       this.pound = true; this.hang = 0.13; this.flipT = 0; this.rot = 0;
@@ -246,10 +294,11 @@ const Player = (() => {
     // a hard landing from a belly flop: a shockwave everybody feels
     slam() {
       const x = this.x, y = this.y;
-      Game.shake(3.2); Game.sfx('thud', x, 1); this.sq.kick(1.4); this.splatT = 0.6;
+      Game.shake(3.2); Game.kick(0, 2.2); Game.hitStop(0.085); Game.buzz(35); Game.sfx('thud', x, 1); Game.sfx('impact', x, 0.8); this.sq.kick(1.4); this.splatT = 0.6;
       FX.add({ type: 'ring', x, y: y + 1, r0: 3, r1: 34, flat: 0.28, life: 0.5, c: 0xffffffff, layer: 2 });
       FX.add({ type: 'ring', x, y: y + 1, r0: 2, r1: 22, flat: 0.28, life: 0.4, c: 0xffffe8b0, layer: 2 });
-      for (let i = 0; i < 14; i++) { const d = i % 2 ? 1 : -1; FX.add({ type: 'dust', x: x + d * rnd(4, 14), y: y - 1, vx: d * rnd(30, 90), vy: -rnd(10, 40), r: rnd(1.6, 3), life: 0.5, c: SAND[0], c2: SAND[1], layer: 2 }); }
+      const [d1, d2] = this.dustCol();
+      for (let i = 0; i < 14; i++) { const d = i % 2 ? 1 : -1; FX.add({ type: 'dust', x: x + d * rnd(4, 14), y: y - 1, vx: d * rnd(30, 90), vy: -rnd(10, 40), r: rnd(1.6, 3), life: 0.5, c: d1, c2: d2, layer: 2 }); }
       FX.add({ type: 'burst', x, y: y - 3, r: 7, life: 0.25, layer: 3 });
       for (const m of Mons.all) {
         if (m === this || !m.alive) continue;
@@ -276,7 +325,7 @@ const Player = (() => {
         const w = m.width() * 0.4 + 6;
         if ((m.x - this.x) * d > 0 && Math.abs(m.x - this.x) < w && Math.abs((m.y - 8) - (this.y - 8)) < 16) {
           this.bumpCool = 1.4;
-          FX.bonk(this.x + d * 10, this.y - 12, 7); Game.sfx('bonk', this.x, 0.8); Game.shake(1.2);
+          FX.bonk(this.x + d * 10, this.y - 12, 7); Game.sfx('bonk', this.x, 0.8); Game.shake(1.2); Game.kick(-d * 1.2, 0); Game.hitStop(0.05); Game.buzz(15);
           this.vx = -d * 110; this.vair = 150; this.air = Math.max(this.air, 0.5); this.dizzy = 0.8; this.jumping = false;
           if (m.onBump) m.onBump(this); else if (typeof Social !== 'undefined') Social.bumped(m, this, d);
           if (this.sayCool < 0) { this.say(pick(['Oof!', 'Mud!?', 'Sorry!'])); this.sayCool = 3; }
@@ -288,9 +337,20 @@ const Player = (() => {
       const wasPound = this.pound;
       this.jumping = false; this.flipped = false; this.flipT = 0; this.rot = 0; this.pound = false; this.hang = 0;
       if (wasPound) { this.slam(); return; }
-      if (v > 140) { this.sq.kick(Math.min(1.2, v * 0.004)); Game.sfx('pat', this.x, 0.4); for (let i = 0; i < 3; i++) FX.add({ type: 'dust', x: this.x + rnd(-7, 7), y: this.y - 1, vx: rnd(-30, 30), vy: -rnd(4, 10), r: 1.6, life: 0.35, c: SAND[0], c2: SAND[1], layer: 2 }); }
+      // every landing is felt: a squash that scales with the fall, a puff of dust to both sides, a
+      // footfall on whatever is underfoot (and a thump for the big ones)
+      if (v > 60) {
+        const k = clamp((v - 60) / 480, 0, 1);
+        this.sq.kick(0.2 + k * 1.0); this.finS.kick(1.5 + k * 3); this.tailS.kick(-2 - k * 3);
+        this.landT = 0.12 + k * 0.1;
+        this.stepSound(0.5 + k * 0.6);
+        if (v > 260) Game.sfx('pat', this.x, 0.3 + k * 0.4);
+        const n = 2 + Math.round(k * 7), [c1, c2] = this.dustCol();
+        for (let i = 0; i < n; i++) { const d = i % 2 ? 1 : -1; FX.add({ type: 'dust', x: this.x + d * rnd(2, 8), y: this.y - 1, vx: d * rnd(20, 40 + k * 60), vy: -rnd(3, 8 + k * 14), r: 1.4 + k * 1.2, life: 0.3 + k * 0.2, c: c1, c2, layer: 2 }); }
+        if (v > 380) { Game.shake(0.6 + k); Game.kick(0, 0.5 + k); }
+      }
       // a long fall: splat!
-      if (v > 540) { this.splatT = 0.7; this.dizzy = 0.9; Game.shake(2); Game.sfx('thud', this.x, 0.6); if (this.sayCool < 0) { this.say('Splat.'); this.sayCool = 3; } }
+      if (v > 540) { this.splatT = 0.7; this.dizzy = 0.9; Game.shake(2); Game.hitStop(0.06); Game.buzz(25); Game.sfx('thud', this.x, 0.6); if (this.sayCool < 0) { this.say('Splat.'); this.sayCool = 3; } }
       if (typeof Social !== 'undefined') Social.mudkipLanded(this, v);
     }
     // a platform (dock, bridge, ledge, ice floe) crossed while coming down from y0 to y1
@@ -504,14 +564,22 @@ const Player = (() => {
           else { this.x += (f.x - (f.px ?? f.x)); if (Math.abs(this.x - f.x) > f.w / 2 + 1) { this.floe = null; this.coyote = 0.1; } }
         }
         if (World.isWet(this.x, 16) && this.air <= 0 && !this.plat && !this.floe) {
-          this.mode = 'swim'; this.vx = Math.cos(this.yaw) * 40; this.vy = 20; this.rot = 0;
-          FX.splashAt(this.x, WorldRender.surfaceAt(this.x, t), { power: 0.45, n: 8 }); Game.sfx('splash', this.x, 0.5);
+          // wade in: keep the momentum and glide under the surface (no dead stop at the waterline)
+          this.mode = 'swim'; this.vx = this.vx ? clamp(this.vx, -110, 110) * 0.8 : Math.cos(this.yaw) * 40; this.vy = 45; this.rot = 0;
+          const s0 = WorldRender.surfaceAt(this.x, t);
+          FX.splashAt(this.x, s0, { power: 0.45, n: 8 }); Game.sfx('splash', this.x, 0.5); Game.sfx('dive', this.x, 0.35);
+          FX.bubbles(this.x, s0 + 8, 6, s0);
           for (const m of Mons.all) if (m !== this) m.hear('splash', this.x, 0.4);
         }
         const base0 = this.floe ? this.floe.y - 3 : this.plat ? World.platY(this.plat, this.x) : World.groundAt(this.x);
         if (this.air > 0 || this.vair !== 0) {
           if (this.hang > 0) { this.hang -= dt; this.vair = 0.001; if (this.hang <= 0) this.vair = -480; }
-          else this.vair -= (this.pound ? 1700 : this.vair > 0 ? (this.jumpHeld && this.jumping ? 720 : 1000) : 1150) * dt;
+          else {
+            // floaty apex while the button is held (a moment of hang time), snappier fall
+            const apex = this.jumping && this.jumpHeld && Math.abs(this.vair) < 50 ? 0.55 : 1;
+            this.vair -= (this.pound ? 1700 : this.vair > 0 ? (this.jumpHeld && this.jumping ? 720 : 1000) : 1150) * apex * dt;
+            if (!this.pound) this.vair = Math.max(this.vair, -620);
+          }
           const y0 = base0 - this.air;
           this.air += this.vair * dt;
           // coming down onto a dock, a bridge, a ledge or a floe above the ground we are over
@@ -524,14 +592,21 @@ const Player = (() => {
         if (this.plat && (this.x < this.plat.x0 || this.x > this.plat.x1)) {
           // walked off the end of a dock/bridge
           const py = World.platY(this.plat, this.x);
-          if (World.groundAt(this.x) > py + 12) { this.mode = 'fall'; this.vx = this.vx || (Math.cos(this.yaw) > 0 ? 60 : -60); this.vy = this.air > 0 ? -this.vair : -40; this.y = py - this.air; this.air = 0; this.vair = 0; this.plat = null; this.coyote = 0.1; }
+          if (World.groundAt(this.x) > py + 12) { this.mode = 'fall'; this.vx = this.vx || (Math.cos(this.yaw) > 0 ? 60 : -60); this.vy = this.air > 0 ? -this.vair : -40; this.y = py - this.air; this.air = 0; this.vair = 0; this.plat = null; this.coyote = 0.12; }
           else this.plat = null;
         }
         if (this.mode === 'land') {
           const base = this.floe ? this.floe.y - 3 : this.plat ? World.platY(this.plat, this.x) : World.groundAt(this.x);
           // running off a cliff edge: fall for real (with a moment of coyote time)
-          if (!this.plat && !this.floe && this.air <= 0 && base > World.groundAt(x0) + 18 && Math.abs(this.x - x0) > 0.2) { this.mode = 'fall'; this.y = World.groundAt(x0); this.vy = 0; this.coyote = 0.1; }
-          else this.y = base - this.air;
+          if (!this.plat && !this.floe && this.air <= 0 && base > World.groundAt(x0) + 18 && Math.abs(this.x - x0) > 0.2) { this.mode = 'fall'; this.y = World.groundAt(x0); this.vy = 0; this.coyote = 0.12; }
+          else {
+            const yPrev = this.y;
+            this.y = base - this.air;
+            // small steps (a rock, a root, the edge of a dock) are eased over visually instead of popping
+            const dy = yPrev - this.y;
+            // (only real steps — far steeper than any slope — so walking up hills never lags behind the ground)
+            if (this.air <= 0 && this.vair === 0 && Math.abs(dy) > 2.5 && Math.abs(dy) < 18 && Math.abs(dy) > Math.abs(this.x - x0) * 2) this.exitOff = clamp((this.exitOff || 0) + dy, -18, 18);
+          }
         }
         // sandy footprints
         if (this.moving && !this.plat && !this.floe && this.air <= 0 && Game.area && Game.area.footprint && Math.floor(this.phase / Math.PI) !== this.lastStep) { this.lastStep = Math.floor(this.phase / Math.PI); Game.area.footprint(this.x - Math.cos(this.yaw) * 6, this.y, this.lastStep & 1); }
@@ -543,7 +618,16 @@ const Player = (() => {
         if (this.y < s + 10) { this.y = s + 10; this.vy = Math.max(0, this.vy); }
         if (this.y > g - 8) { this.y = g - 8; this.vy = Math.min(0, this.vy); }
         if (Game.swimCap) { const cap = Game.swimCap(this.x, s); if (this.y > cap) { this.y = cap; this.vy = Math.min(0, this.vy); this.diveT = 0; } }
-        if (!World.isWet(this.x, 12)) { this.mode = 'land'; this.air = 0; this.vx = 0; this.rot = 0; this.target = this.target && this.target.kind === 'swim' ? null : this.target; if (!this.target && !this.keyDir) this.idleTask(this.shakeOff()); }
+        if (!World.isWet(this.x, 12)) {
+          // climb out onto the shore with a little hop, keep walking speed, and drip for a while
+          const y0 = this.y, kept = clamp(this.vx, -95, 95) * 0.7;
+          this.mode = 'land'; this.rot = 0; this.target = this.target && this.target.kind === 'swim' ? null : this.target;
+          this.vx = this.keyDir ? kept : 0; this.air = 0.5; this.vair = 120; this.jumping = false;
+          this.y = World.groundAt(this.x) - this.air;
+          this.exitOff = clamp(y0 - this.y, -24, 24); this.wetT = 2.2;
+          FX.splashAt(this.x, WorldRender.surfaceAt(this.x, t), { power: 0.3, n: 6 }); Game.sfx('surface', this.x, 0.5);
+          if (!this.target && !this.keyDir) this.idleTask(this.shakeOff());
+        }
         const sp2 = Math.abs(this.vx) + Math.abs(this.vy);
         if (sp2 > 25 && Math.random() < dt * (4 + sp2 * 0.08)) FX.bubbles(this.x - Math.cos(this.yaw) * 12, this.y - 6, 1, WorldRender.surfaceAt(this.x, t));
         if (Math.sign(this.vx) !== (this.lastVxS || 0) && Math.abs(this.vx) > 30) { this.lastVxS = Math.sign(this.vx); FX.bubbles(this.x, this.y - 8, 4, WorldRender.surfaceAt(this.x, t)); }
@@ -552,7 +636,11 @@ const Player = (() => {
         if (Math.abs(this.vx) + Math.abs(this.vy) > 20) this.moving = 60;
       } else if (this.mode === 'fall') {
         if (this.hang > 0) { this.hang -= dt; this.vy = 0; if (this.hang <= 0) this.vy = 480; }
-        else this.vy += (this.pound ? 1700 : this.vy < 0 && this.jumpHeld && this.jumping ? 720 : 900) * dt;
+        else {
+          const apex = this.jumping && this.jumpHeld && Math.abs(this.vy) < 50 ? 0.55 : 1;
+          this.vy += (this.pound ? 1700 : this.vy < 0 && this.jumpHeld && this.jumping ? 720 : 900) * apex * dt;
+          if (!this.pound) this.vy = Math.min(this.vy, 620); // terminal velocity
+        }
         const y0 = this.y;
         this.x += this.vx * dt; this.y += this.vy * dt;
         const s = WorldRender.surfaceAt(this.x, t), g = World.groundAt(this.x);
@@ -564,8 +652,9 @@ const Player = (() => {
         } else if (World.waterAt(this.x) !== null && this.y > s + 4 && this.vy > 0) {
           const big = this.pound;
           this.mode = 'swim'; this.diving = false; this.rot = 0; this.flipT = 0; this.pound = false; this.jumping = false; this.flipped = false;
-          FX.splashAt(this.x, s, { power: big ? 1.6 : Math.min(1.3, this.vy / 350), n: big ? 30 : 16 }); Game.sfx('splash', this.x, 1);
-          if (big) { Game.shake(2.5); if (typeof Ripples !== 'undefined') Ripples.poke(this.x, -120, 8); }
+          FX.splashAt(this.x, s, { power: big ? 1.6 : Math.min(1.3, this.vy / 350), n: big ? 30 : 16 }); Game.sfx('splash', this.x, 1); Game.sfx('dive', this.x, big ? 0.9 : 0.5);
+          FX.bubbles(this.x, s + 10, big ? 14 : 8, s);
+          if (big) { Game.shake(2.5); Game.kick(0, 1.2); Game.hitStop(0.05); Game.buzz(20); if (typeof Ripples !== 'undefined') Ripples.poke(this.x, -120, 8); }
           FX.add({ type: 'ring', x: this.x, y: s, r0: 2, r1: 16, flat: 0.3, life: 0.6, c: 0xffffffff, layer: 2 });
           for (const m of Mons.all) if (m !== this) m.hear('splash', this.x, big ? 1 : 0.8);
           this.vy = 60; this.vx *= 0.3; this.diveT = 0.5;
@@ -596,11 +685,13 @@ const Player = (() => {
         const step = Math.floor(this.phase / Math.PI);
         if (step !== this.lastFall) {
           this.lastFall = step; this.sq.kick(0.12 + fast * 0.1);
-          if (typeof Cries !== 'undefined') Cries.step(this.plat ? 'wood' : Game.areaId === 'beach' ? 'sand' : 'grass', this.x);
+          this.stepSound(this.sneak ? 0.25 : 0.55 + fast * 0.35);
           if (Weather.W.rain > 0.3) { // splashing through rain puddles
             for (let k = 0; k < 3; k++) FX.add({ type: 'drop', x: this.x - Math.cos(this.yaw) * 6 + rnd(-3, 3), y: this.y - 1, vx: rnd(-30, 30), vy: -rnd(30, 70), g: 420, life: 0.5, c: 0xffffffff, c2: AQUA(), size: 1, floor: this.y, layer: 2 });
             if (Math.random() < 0.3) Game.sfx('plop', this.x, 0.25);
-          } else if (Math.random() < 0.55) FX.add({ type: 'dust', x: this.x - Math.cos(this.yaw) * 8, y: this.y - 1, vx: -Math.cos(this.yaw) * 14, vy: -6, r: 1.6 + fast, life: 0.4, c: SAND[0], c2: SAND[1], layer: 2 });
+          } else if (this.surface() === 'wet') { // wet sand at the waterline: little splashes
+            for (let k = 0; k < 2; k++) FX.add({ type: 'drop', x: this.x - Math.cos(this.yaw) * 6 + rnd(-2, 2), y: this.y - 1, vx: -Math.cos(this.yaw) * rnd(10, 30), vy: -rnd(20, 50), g: 420, life: 0.4, c: 0xffffffff, c2: AQUA(), size: 1, floor: this.y, layer: 2 });
+          } else if (Math.random() < (this.sneak ? 0.15 : 0.55)) { const [c1, c2] = this.dustCol(); FX.add({ type: 'dust', x: this.x - Math.cos(this.yaw) * 8, y: this.y - 1, vx: -Math.cos(this.yaw) * 14, vy: -6, r: 1.6 + fast, life: 0.4, c: c1, c2, layer: 2 }); }
         }
       }
       const sq = this.sq.step(dt);
@@ -640,6 +731,7 @@ const Player = (() => {
         const tilt = this.diveT > 0 ? this.dirX() * 1.1 * Math.sin((this.diveT / 0.6) * Math.PI) : clamp(Math.atan2(this.vy, Math.abs(this.vx) + 30) * 0.6, -0.5, 0.7) * this.dirX();
         if (this.flipT <= 0 && !(this.task && !this.task.done)) this.rot = this.rot + (tilt - this.rot) * Math.min(1, dt * 6);
       }
+      if (this.landT > 0) { this.landT -= dt; const k = clamp(this.landT / 0.2, 0, 1); P.bodyDip = Math.max(P.bodyDip, 2.4 * k); P.legSplay = Math.max(P.legSplay || 0, 0.35 * k); P.headPitch += 0.1 * k; }
       if (this.crouch > 0) { P.bodyDip = Math.max(P.bodyDip, this.crouch * 2.2); P.headPitch += this.crouch * 0.3; P.legSplay = this.crouch * 0.4; P.look = 0.2 * this.crouch; }
       if (this.skidT > 0) { this.skidT -= dt; P.lean = -0.14; P.headPitch = -0.12; P.eyes = 'open'; P.mouth = 1; P.legF = 0.8; P.legB = 0.3; }
       if (this.splatT > 0) { this.splatT -= dt; const k = Math.min(1, this.splatT / 0.3); P.squash = Math.max(P.squash, 0.3 * k); P.bodyDip = 3 * k; P.legSplay = 1 * k; P.eyes = 'blink'; P.mouth = 1; }
@@ -686,7 +778,13 @@ const Player = (() => {
           const T = 0.45, vx = (tx - mx) / T + rnd(-12, 12), vy = (ty - my - 0.5 * 420 * T * T) / T + rnd(-12, 12);
           FX.add({ type: 'drop', x: mx, y: my, vx, vy, g: 420, life: 1.4, c: 0xffffffff, c2: AQUA(), size: 2, layer: 3, floor: World.groundAt(tx) });
         }
-        if (e > 0.35) for (const h of Game.hitsAt(tx, ty, 26)) if (!hits.has(h)) { hits.add(h); if (h.onWater) h.onWater(this); }
+        if (e > 0.35) for (const h of Game.hitsAt(tx, ty, 26)) if (!hits.has(h)) {
+          hits.add(h); if (h.onWater) h.onWater(this);
+          // a splash right where the jet hits
+          const [hx, hy] = h.center ? h.center() : [tx, ty];
+          Game.sfx('plop', hx, 0.6); FX.add({ type: 'ring', x: hx, y: hy, r0: 2, r1: 12, life: 0.3, c: 0xffffffff, layer: 3 });
+          for (let i = 0; i < 8; i++) FX.add({ type: 'drop', x: hx + rnd(-4, 4), y: hy + rnd(-4, 4), vx: rnd(-70, 70), vy: -rnd(40, 120), g: 420, life: 0.8, c: 0xffffffff, c2: AQUA(), size: 1 + (Math.random() < 0.4 ? 1 : 0), floor: World.groundAt(hx) + 1, layer: 3 });
+        }
       }
       if (World.waterAt(tx) !== null) FX.splashAt(tx, WorldRender.surfaceAt(tx, Game.t), { power: 0.5, n: 8 });
       else FX.poof(tx, World.groundAt(tx), 0xffd8f4ff, 0xff9fd0e8, 4, 3);
@@ -750,7 +848,8 @@ const Player = (() => {
           const [cx, cy] = m.center(), hw = m.width() * 0.5 + 6, hh = Math.max(14, (m.spr ? m.spr.h : 20) * 0.55);
           if (Math.abs(cx - hx) < hw && Math.abs(cy - hy) < hh) {
             hit.add(m); bonked = true;
-            FX.bonk(hx, hy, 9); Game.sfx('bonk', this.x, 0.9); Game.shake(1.6);
+            FX.bonk(hx, hy, 9); Game.sfx('bonk', this.x, 0.9); Game.sfx('hit', this.x, 0.6); Game.shake(1.6); Game.kick(d * 1.6, 0); Game.hitStop(0.07); Game.buzz(20);
+            for (let i = 0; i < 6; i++) FX.add({ type: 'spark', x: hx + rnd(-4, 4), y: hy + rnd(-6, 6), size: 1 + (Math.random() * 2 | 0), life: 0.3, c: 0xffffffff, c2: 0xff7ae0ff, layer: 3 });
             if (m.onTackle) m.onTackle(this, d); else if (typeof Social !== 'undefined') Social.bumped(m, this, d, true);
           }
         }
@@ -758,7 +857,7 @@ const Player = (() => {
           if (hit.has(h) || h.off || hx < h.x0 || hx > h.x1 || hy < h.y0 - 12 || hy > h.y1 + 12) continue;
           if (!h.onTackle && !h.tap) continue;
           hit.add(h); bonked = true;
-          FX.bonk(hx, hy, 8); Game.sfx('bonk', this.x, 0.8); Game.shake(1.2);
+          FX.bonk(hx, hy, 8); Game.sfx('bonk', this.x, 0.8); Game.shake(1.2); Game.kick(d * 1.2, 0); Game.hitStop(0.05);
           if (h.onTackle) h.onTackle(this, d); else h.tap((h.x0 + h.x1) / 2, (h.y0 + h.y1) / 2);
         }
         const b = Game.area.def.ball && Game.area.def.ball();
@@ -856,7 +955,8 @@ const Player = (() => {
         if (!smashed) for (const m of Mons.all) { if (m === this || !m.alive || !m.visible || m.layer) continue; const [cx, cy] = m.center(); if (Math.abs(cx - hx) < m.width() * 0.5 + 4 && Math.abs(cy - hy) < 18) { bonk = true; if (m.onTackle) m.onTackle(this, d); else if (typeof Social !== 'undefined') Social.bumped(m, this, d, true); break; } }
       }
       const hx = this.x + d * 14, hy = this.y - 10;
-      FX.bonk(hx, hy, smashed ? 12 : 8); Game.shake(smashed ? 3 : 1.5);
+      FX.bonk(hx, hy, smashed ? 12 : 8); Game.shake(smashed ? 3 : 1.5); Game.kick(d * (smashed ? 2 : 1.2), smashed ? 0.6 : 0); Game.hitStop(smashed ? 0.1 : 0.06); Game.buzz(smashed ? 40 : 18);
+      if (smashed) Game.sfx('impact', this.x, 0.7);
       if (smashed) { Game.sfx('crack', this.x, 1); for (let i = 0; i < 12; i++) FX.add({ type: 'drop', x: hx, y: hy, vx: rnd(-120, 120), vy: -rnd(40, 180), g: 480, life: 1.2, c: 0xff8a96a8, c2: 0xff5a6478, size: 2, floor: World.groundAt(hx) + 2, layer: 3 }); this.happyT = 1; }
       else {
         Game.sfx('bonk', this.x, 1);

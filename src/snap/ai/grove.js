@@ -25,7 +25,7 @@ const GroveAI = (() => {
   const { Walker, mk, hourIs, surf } = AI;
   const gy = (x) => World.groundAt(x);
   const sp = (name) => { try { return (0, eval)(name); } catch (e) { return null; } };
-  const POND = { x0: 2250, x1: 2780, level: 576 }, MUSH = 2188, TREE = 560;
+  const POND = { x0: 2840, x1: 3370, level: 576 }, MUSH = 2778, TREE = 720;
   let S = {};
   function* hold(m, T, act, peak = 0.3, stop = null) { let e = 0; while (e < T) { const dt = yield; e += dt; m.setAct(act, typeof peak === 'function' ? peak(e) : peak); if (stop && stop()) return; } }
 
@@ -511,14 +511,14 @@ const GroveAI = (() => {
   function spawn(A, G) {
     S = { party: false, findT: -99, seedot: [], seedAir: 0, duoT: 0, plusle: null, minun: null };
     const add = (m) => { if (m && m.sp) G.addMon(m); return m; };
-    if (sp('Zigzagoon')) { add(new ZigzagoonM(420, 260, 880)); add(new ZigzagoonM(3000, 2830, 3220)); }
-    if (sp('Surskit')) { add(new SurskitM(2400)); add(new SurskitM(2640)); }
-    if (sp('Shroomish')) { add(new ShroomishM(2120, MUSH - 40)); add(new ShroomishM(2900, 2940)); add(new ShroomishM(3050, 2980)); }
+    if (sp('Zigzagoon')) { add(new ZigzagoonM(420, 260, 1040)); add(new ZigzagoonM(3710, 3540, 4090)); }
+    if (sp('Surskit')) { add(new SurskitM(2990)); add(new SurskitM(3230)); }
+    if (sp('Shroomish')) { add(new ShroomishM(2710, MUSH - 40)); add(new ShroomishM(3610, 3650)); add(new ShroomishM(3920, 3690)); }
     // Seedot dangle from the fruit tree's lower boughs
     if (sp('Seedot')) { const hy = gy(TREE) - 96; S.seedot = [add(new SeedotM(0, TREE - 40, hy + 6)), add(new SeedotM(1, TREE + 4, hy - 4)), add(new SeedotM(2, TREE + 44, hy + 8))]; }
     // Slakoth lolls on the mossy log near the start
     if (sp('Slakoth')) add(new SlakothM(446, 425, 468, { zd: -8 }));
-    if (sp('Plusle') && sp('Minun')) { S.plusle = add(new CheerM('plusle', 1640, 1545, 1830)); S.minun = add(new CheerM('minun', 1690, 1545, 1830)); }
+    if (sp('Plusle') && sp('Minun')) { S.plusle = add(new CheerM('plusle', 1960, 1705, 2270)); S.minun = add(new CheerM('minun', 2010, 1705, 2270)); }
   }
   function update(A, dt, t, G) {
     S.party = hourIs('dusk');
@@ -532,7 +532,7 @@ const GroveAI = (() => {
   // Treetop Town: a Slakoth lazing on the great branch
   function spawnCanopy(A, G) {
     if (!S.canopy) S.canopy = {};
-    if (sp('Slakoth')) G.addMon(new SlakothM(1790, 1770, 1815));
+    if (sp('Slakoth')) G.addMon(new SlakothM(2110, 2090, 2255));
   }
   return { spawn, update, shake, spawnCanopy, get S() { return S; }, classes: { ZigzagoonM, SurskitM, ShroomishM, SeedotM, SlakothM, CheerM } };
 })();

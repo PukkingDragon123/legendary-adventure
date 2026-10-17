@@ -13,20 +13,20 @@ const ShoalAI = (() => {
   function spawn(A, G, geo) {
     Object.assign(S, geo, { duoT: rnd(12, 22), duo: [] });
     const E = typeof Eco !== 'undefined' ? Eco : null; if (!E) return;
-    E.herd(G, 'sphealS', 330, 640, 3, { range: 260 });
-    E.add(G, 'sealeoS', 560, { range: 180 });
-    [2140, 2420, 2700].forEach((x) => E.add(G, 'snorunt', x, { range: 220 }));
+    E.herd(G, 'sphealS', 300, 960, 3, { range: 260 });
+    E.add(G, 'sealeoS', 860, { range: 180 });
+    [2440, 2720, 3000].forEach((x) => E.add(G, 'snorunt', x, { range: 220 }));
     const box = { x0: geo.POOL.x0 + 20, x1: geo.POOL.x1 - 20, y0: geo.POOL.level + 10, y1: geo.POOL.level + 56 };
     const h = Game.hour();
-    if (h === 'night' || h === 'dusk') { E.add(G, 'starmie', 1300, { box, minX: box.x0, maxX: box.x1 }); E.add(G, 'staryuS', 1380, { box, minX: box.x0, maxX: box.x1 }); }
+    if (h === 'night' || h === 'dusk') { E.add(G, 'starmie', 1600, { box, minX: box.x0, maxX: box.x1 }); E.add(G, 'staryuS', 1680, { box, minX: box.x0, maxX: box.x1 }); }
     const a = E.add(G, 'latias', 360, { y: 420, minX: 120, maxX: geo.MOUTH - 60, range: 400 });
-    const b = E.add(G, 'latios', 560, { y: 400, minX: 120, maxX: geo.MOUTH - 60, range: 400 });
+    const b = E.add(G, 'latios', 820, { y: 400, minX: 120, maxX: geo.MOUTH - 60, range: 400 });
     S.duo = [a, b].filter(Boolean);
     if (typeof Legends !== 'undefined') Legends.spawnRegice(G, geo.REGI);
   }
   // the Eon duo: every so often the two fly a loop together over the shore
   function* duoFlight(m, other, lead) {
-    let e = 0; const T = 7, cx = 420, cy = 430;
+    let e = 0; const T = 7, cx = 560, cy = 430;
     m.mode = 'fly'; m.perched = false;
     while (e < T) {
       const dt = yield; e += dt;

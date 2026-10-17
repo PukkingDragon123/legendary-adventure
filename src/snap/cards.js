@@ -770,9 +770,10 @@ const Cards = (() => {
     else if (k === 'e') endTurn();
     return true;
   }
+  const fbW = () => (Game.ufb ? Game.ufb.w : 480);
   function down(ux, uy) {
     if (!C.live) return false;
-    for (let i = C.btns.length - 1; i >= 0; i--) { const b = C.btns[i]; if (ux >= b.x && ux < b.x + b.w && uy >= b.y && uy < b.y + b.h) { b.fn(); return true; } }
+    for (let i = C.btns.length - 1; i >= 0; i--) { const b = C.btns[i]; if (ux >= b.x && ux < b.x + b.w && uy >= b.y && uy < b.y + b.h) { if (b.card === undefined && b.w < fbW() * 0.8) { C.mouse = [ux, uy]; C.mdown = true; setTimeout(() => { C.mdown = false; }, 110); UI.pop(b.x + b.w / 2, b.y + b.h / 2, Math.min(b.w, b.h) / 2 + 3); } b.fn(); return true; } }
     const G = C.g;
     if (C.deckView) C.deckView = false;
     else if (G && (G.step === 'intro' || G.step === 'walk')) flee();
@@ -783,6 +784,7 @@ const Cards = (() => {
   }
   // mouse hover (desktop): lifts the card under the pointer
   function hover(ux, uy) {
+    C.mouse = [ux, uy];
     if (!C.live || !C.g || C.g.step !== 'you' || C.deckView) { C.hov = -1; return; }
     let hit = -1;
     for (let i = C.btns.length - 1; i >= 0; i--) { const b = C.btns[i]; if (b.card !== undefined && ux >= b.x && ux < b.x + b.w && uy >= b.y && uy < b.y + b.h) { hit = b.card; break; } }
@@ -887,10 +889,10 @@ const Cards = (() => {
     else txt(fb, '!', X + 6, Y + 4, hex('#ff8aff'));
     txt(fb, s, X + 16, Y + 4, WHITE);
   }
+  // battle buttons share the game's button style (hover: gold rim, press: the face sinks)
   function btn(fb, x, y, w, h, label, col, fn, o = {}) {
-    UI.rrect(fb, x, y + 2, w, h, 5, 0xff0a0e1a);
-    UI.panel(fb, x, y - (o.on ? 1 : 0), w, h, { r: 5, ol: o.on ? hex('#ffe070') : INK, fill: o.dim ? 0xff505060 : hex(col) });
-    txt(fb, label, x + w / 2, y + Math.round(h / 2 - 2) - (o.on ? 1 : 0), WHITE, { align: 'center' });
+    const m = C.mouse, hov = !o.dim && m && m[0] >= x - 2 && m[1] >= y - 3 && m[0] < x + w + 2 && m[1] < y + h + 3;
+    UI.button(fb, x, y - (o.on && !hov ? 1 : 0), w, h, { label, fill: hex(col), off: o.dim, hover: hov || o.on, down: hov && C.mdown, r: 5 });
     C.btns.push({ x: x - 2, y: y - 3, w: w + 4, h: h + 6, fn });
   }
   // sizes for this screen

@@ -8,7 +8,7 @@
    a Memory.
 ------------------------------------------------------------------- */
 const Talk = (() => {
-  const { clamp, rnd, pick } = U;
+  const { clamp, rnd, pick, hex } = U;
   const INK = 0xff1b2240, WHITE = 0xffffffff;
   const T = { bubbles: [], dlg: null, near: null, markT: 0 };
 
@@ -100,7 +100,7 @@ const Talk = (() => {
     s.n = (s.n || 0) + k; Save.save();
     const left = Math.max(0, (q.n || 1) - s.n);
     const g = giverOf(q);
-    if (left <= 0) { HUD.toast(q.title + ': go back and tell ' + (DexData.S[q.giver] ? DexData.S[q.giver].name : 'them') + '!', { life: 2.6, col: 0xffffd23a }); Game.sfx('sparkle'); }
+    if (left <= 0) { HUD.toast(q.title + ': go back and tell ' + (DexData.S[q.giver] ? DexData.S[q.giver].name : 'them') + '!', { life: 2.6, col: 0xff3ad2ff }); Game.sfx('sparkle'); }
     else if (g) bubble(() => g.headPt(), q.progress === 'flops' ? pick(['WHOA!', 'Ha! ' + s.n + '!', 'Again!']) : '(' + s.n + ' / ' + q.n + ')', { life: 1.6, who: g });
   }
   function finish(q, g) {
@@ -195,7 +195,7 @@ const Talk = (() => {
       if (kind === 'song' && q.progress === 'song' && near) progress(q.id);
       if (kind === 'spot' && q.progress === 'spots' && a === q.id) progress(q.id);
       if (kind === 'pearl' && q.progress === 'pearl' && a === q.id) progress(q.id);
-      if (kind === 'photo' && q.photo && a && a.species === q.photo.sp && (!q.photo.beh || a.beh === q.photo.beh)) { s.ok = 1; Save.save(); HUD.toast(q.title + ': show it to ' + (DexData.S[q.giver] ? DexData.S[q.giver].name : 'them') + '!', { life: 2.6, col: 0xffffd23a }); }
+      if (kind === 'photo' && q.photo && a && a.species === q.photo.sp && (!q.photo.beh || a.beh === q.photo.beh)) { s.ok = 1; Save.save(); HUD.toast(q.title + ': show it to ' + (DexData.S[q.giver] ? DexData.S[q.giver].name : 'them') + '!', { life: 2.6, col: 0xff3ad2ff }); }
     }
     // naps: standing still next to Slakoth
     if (kind === 'still') for (const q of QUESTS) { const s = qState(q.id); if (s && s.s === 'active' && q.progress === 'nap' && q.area === Game.areaId) { const g = giverOf(q); if (g && Math.abs(g.x - Game.mudkip.x) < 90) progress(q.id); } }
@@ -264,10 +264,17 @@ const Talk = (() => {
         if (pr === 3) Font.icon(fb, 'star', X - 3, Y - 3, 1); else Font.draw(fb, '?', X, Y - 4, WHITE, { font: 'small', align: 'center' });
       }
       // talk prompt when Mudkip is close
-      if (mk && Math.hypot(mk.x - g.x, mk.y - g.y) < 80) Font.draw(fb, (typeof Pad !== 'undefined' && Pad.touch ? 'Tap' : 'R') + ': Talk', X, Y + 8, WHITE, { font: 'small', align: 'center', outline: INK });
+      if (mk && Math.hypot(mk.x - g.x, mk.y - g.y) < 80) keycap(fb, typeof Pad !== 'undefined' && Pad.touch ? null : 'R', 'Talk', X, Y + 9);
     }
   }
 
+  // a key hint: [R] Talk (a little keycap), or just the word on touch screens
+  function keycap(fb, key, word, cx, y) {
+    const C = UI.C, ww = Font.measure(word, 'small'), kw = key ? Font.measure(key, 'small') + 6 : 0, w = kw + (key ? 3 : 0) + ww + 8, x = Math.round(cx - w / 2);
+    UI.plate(fb, x, y, w, 11, { r: 3, fill: C.navy, a: 0.78, sa: 0.3, hi: null });
+    if (key) { UI.rrect(fb, x + 2, y + 2, kw, 7, 2, 0xffffffff); UI.hline(fb, x + 3, x + kw, y + 8, hex('#b8c0d8')); Font.draw(fb, key, x + 2 + kw / 2, y + 3, C.ink, { font: 'small', align: 'center' }); }
+    Font.draw(fb, word, x + (key ? kw + 6 : 4), y + 3, 0xffffffff, { font: 'small', shadow: C.ink });
+  }
   /* ---------- dialogue box ---------- */
   function open(lines, o = {}) {
     if (o.who && typeof Cries !== 'undefined') Cries.play(o.who.dex, o.who.x, 0.8, true);
@@ -328,7 +335,7 @@ const Talk = (() => {
     const S = UI.skin(), L = cur();
     const k = Math.min(1, D.t / 0.18);
     const w = Math.min(fb.w - 16, 420), h = 62, x = Math.round((fb.w - w) / 2), y = Math.round(fb.h - h - 10 + (1 - U.ease.outBack(k)) * 40);
-    UI.rrect(fb, x, y + 3, w, h, 8, 0xff0a0e1a);
+    UI.shadow(fb, x, y, w, h, 8, 3, 0.6);
     UI.body(fb, x, y, w, h, S, { r: 8 });
     UI.screen(fb, x + 54, y + 6, w - 60, h - 12, { fill: 0xfffbfaf4, rim: S.ink, glare: false });
     // portrait
@@ -346,8 +353,8 @@ const Talk = (() => {
       }
     }
     // name tag
-    if (D.name) { const nw = Font.measure(D.name, 'small') + 10; UI.panel(fb, x + 54, y - 7, nw, 12, { r: 3, ol: S.ink, fill: S.accent }); Font.draw(fb, D.name, x + 59, y - 5, WHITE, { font: 'small' }); }
-    if (D.title && D.i === 0) Font.draw(fb, D.title, x + w - 8, y - 5, 0xffffe890, { font: 'small', align: 'right', outline: INK });
+    if (D.name) UI.chip(fb, x + 55, y - 6, D.name, { bg: S.accent, h: 10, pad: 12, ol: S.ink });
+    if (D.title && D.i === 0) UI.chip(fb, x + w - 9, y - 6, D.title, { align: 'right', bg: UI.C.navy, fg: hex('#ffe07a'), h: 10, pad: 10, ol: S.ink });
     // text
     const shown = L.text.slice(0, Math.floor(D.ch));
     const lines = Font.wrap(shown, 'body', w - 72);
@@ -355,16 +362,20 @@ const Talk = (() => {
     D.rects = [];
     if (D.ch >= L.text.length) {
       if (L.choices) {
+        // choice buttons pop in; the highlighted one is lit with a bobbing cursor
+        const ck = U.ease.outBack(Math.min(1, (D.t - (D.chT ?? (D.chT = D.t))) / 0.2));
         let cx = x + w - 8;
         for (let i = L.choices.length - 1; i >= 0; i--) {
-          const lab = L.choices[i], bw = Font.measure(lab, 'small') + 14, sel = D.choice === i;
+          const lab = L.choices[i], bw = Font.measure(lab, 'small') + 18, sel = D.choice === i, by = y + h - 20 + Math.round((1 - ck) * 8);
           cx -= bw;
-          UI.panel(fb, cx, y + h - 20, bw, 14, { r: 4, ol: S.ink, fill: sel ? S.accent : S.btn });
-          Font.draw(fb, lab, cx + bw / 2, y + h - 17, WHITE, { font: 'small', align: 'center' });
-          D.rects.push({ x: cx, y: y + h - 22, w: bw, h: 18, i });
-          cx -= 4;
+          const hov = T.mouse && T.mouse[0] >= cx && T.mouse[1] >= by && T.mouse[0] < cx + bw && T.mouse[1] < by + 14;
+          if (hov && D.choice !== i) D.choice = i;
+          UI.button(fb, cx, by, bw, 14, { label: lab, fill: sel ? S.accent : S.btn, hover: sel, ol: S.ink });
+          if (sel) { const ax = cx - 5 + Math.round(Math.sin(t * 8)), ay = by + 4; for (let j = 0; j < 3; j++) UI.vline(fb, ax + j, ay + j, ay + 6 - j, 0xffffffff); }
+          D.rects.push({ x: cx, y: by - 2, w: bw, h: 18, i });
+          cx -= 6;
         }
-      } else if (Math.sin(t * 8) > -0.2) { const ax = x + w - 14, ay = y + h - 14; for (let j = 0; j < 4; j++) UI.hline(fb, ax - 3 + j, ax + 3 - j, ay + j, INK); }
+      } else if (Math.sin(t * 8) > -0.2) { const ax = x + w - 14, ay = y + h - 14 + Math.round(Math.abs(Math.sin(t * 5)) * 2); for (let j = 0; j < 4; j++) UI.hline(fb, ax - 3 + j, ax + 3 - j, ay + j, INK); }
     }
   }
   function reset() { T.bubbles.length = 0; T.dlg = null; }

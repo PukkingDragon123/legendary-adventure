@@ -40,8 +40,13 @@ Areas.falls = (() => {
       wood: ['#3a2414', '#553820', '#74502e', '#946a40'],
       fall: { c: ['#8ed8f0', '#b8ecfa', '#e0f8ff', '#ffffff', '#c8f0ff', '#9ee0f4'], cycle: true },
       foam: ['#d8f4ff', '#ffffff'],
+      glowW: { c: ['#3a8aa8', '#8af0ff'], emit: true },
+      mossG: { c: ['#164a3a', '#1e7a5a', '#3ab088'], emit: true },
     },
   };
+  // rock lit by the crystals: a tinted copy of each wall ramp per crystal colour (blue, violet, cyan)
+  const LITC = [['B', '#4a8aff'], ['P', '#b06aff'], ['C', '#3ae8d8']];
+  for (const key of ['far', 'mid', 'rock', 'floor']) for (const [k, c] of LITC) def.mats[key + k] = { c: Scenic.tint(def.mats[key], c, key === 'far' ? 0.48 : 0.56, key === 'far' ? 0.14 : 0.2), noSeason: true };
   def.cycleRate = 11;
   def.waterCols = (hour) => {
     const night = hour === 'night';
@@ -177,22 +182,55 @@ Areas.falls = (() => {
       s.paste(st, Math.round(xx - st.ax), Math.round(ceilAt(x) - SKY0 - 3));
     }
     Paint.outline(s, M.ink[0]);
+    // glow-worm silk: little threads of light dangling from the ceiling (their tips twinkle at runtime)
+    for (let xx = 2; xx < w - 2; xx += 2 + Math.floor(r() * 7)) {
+      const x = x0 + xx; if (Math.abs(x - GEO.SHAFT) < SHAFT_HW + 20 || r() < 0.35) continue;
+      let yb = 0; for (let y = H - 1; y >= 0; y--) if (s.d[y * w + xx]) { yb = y; break; }
+      if (!yb || yb > H - 10) continue;
+      const L = 2 + Math.floor(r() * 7);
+      for (let j = 1; j <= L; j++) s.set(xx, yb + j, j === L ? M.glowW[1] : M.glowW[0]);
+      if (r() < 0.5) (S.worms || (S.worms = [])).push([x, SKY0 + yb + L, r() * 6, 1]);
+    }
     s.ax = 0; s.ay = 0;
     return s;
   }
-  // a big backdrop wall: noisy rock, alcoves, crystal clusters, stalactite silhouettes
-  function wallLayer(M, ramp, w, h, base, seed, o = {}) {
-    const s = new ISpr(w, h), r = rng(seed);
-    const alc = []; for (let k = 0; k < w / 260; k++) alc.push([r() * w, base - 120 - r() * 160, 60 + r() * 90, 40 + r() * 70]);
+  // a big backdrop wall: strata with lit ledge lips and shadowed overhangs, fissures and flowstone, dark alcoves,
+  // crystal clusters growing on the ledges that bathe the rock around them in coloured light
+  function wallLayer(M, key, w, h, base, seed, o = {}) {
+    const ramp = M[key], s = new ISpr(w, h), r = rng(seed), bandH = o.band || 30;
+    const alc = []; for (let k = 0; k < w / 200; k++) alc.push([r() * w, base - 90 - r() * 220, 36 + r() * 80, 26 + r() * 60]);
+    // tilted, warped strata: g() climbs monotonically with depth but bands vary in thickness
+    const wavAt = (x, y) => Math.sin(x * 0.011 + seed) * 12 + Math.sin(x * 0.0023 + seed * 2) * x * 0.035 + (n1(x * 0.4 + seed, y * 0.05) - 0.5) * 26;
+    const gAt = (x, y) => { const u = (y + wavAt(x, y)) / bandH; return u + 0.3 * Math.sin(u * 1.7 + seed); };
+    const ledgeAbove = (x, y0) => { for (let y = Math.round(y0); y > y0 - bandH * 2.5; y--) { const g = gAt(x, y); if (g - Math.floor(g) < 0.05) return y; } return null; };
+    const colAt = (x, y) => !o.cols || o.cols.some((q) => Math.abs(x - q[0]) < q[1] * (0.8 + 0.25 * Math.sin(y * 0.02 + q[0])));
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      if (o.cols) { const c = o.cols.find((q) => Math.abs(x - q[0]) < q[1] * (0.8 + 0.25 * Math.sin(y * 0.02 + q[0]))); if (!c) continue; }
-      let lit = 0.45 + (n2(x * 0.7 + seed, y * 0.9) - 0.5) * 0.45 + (n3(x * 0.2, y * 0.3 + seed) - 0.5) * 0.3 - Math.max(0, base - y) / 900;
-      for (const [ax, ay, rx, ry] of alc) { const q = ((x - ax) / rx) ** 2 + ((y - ay) / ry) ** 2; if (q < 1) lit -= (1 - q) * 0.45; }
-      if (((x + Math.floor(n1(x * 0.5, y * 0.1) * 13)) % 37) === 0) lit -= 0.15;
+      if (!colAt(x, y)) continue;
+      const g = gAt(x, y), bi = Math.floor(g), v = g - bi;
+      let lit = 0.44 + (hash(bi, Math.floor(x / 150), seed) - 0.5) * 0.16;
+      if (v < 0.07) lit += 0.3; else if (v < 0.16) lit += 0.12; else lit -= (v - 0.16) * 0.4;
+      if (v > 0.9) lit -= 0.22;
+      lit += (n2(x * 0.9 + seed, y * 1.1) - 0.5) * 0.3;
+      const f = (x + Math.floor(n1(x * 0.3, y * 0.02 + seed) * 24)) % 53;
+      if (f === 0) lit -= 0.3; else if (f === 1) lit += 0.1;
+      if (v > 0.2 && hash(Math.floor(x / 9), bi, seed + 3) > 0.8) lit += Math.sin(x * 1.3 + bi) * 0.08; // flowstone ripples
+      for (const [ax, ay, rx, ry] of alc) { const q = ((x - ax) / rx) ** 2 + ((y - ay) / ry) ** 2; if (q < 1) lit -= (1 - q) * 0.5; else if (q < 1.2 && y > ay) lit += 0.1; }
+      lit -= Math.max(0, base - y) / 900;
       s.set(x, y, pickR(ramp, lit, x, y));
     }
-    const C = CRY(M);
-    for (let k = 0; k < (o.crys ?? w / 90); k++) { const c = Props2.crystal(M, 4 + r() * (o.big || 8), seed + k * 3, C[Math.floor(r() * 5)]); const x = r() * w, y = base - r() * (o.span || 260); if (s.get(Math.round(x), Math.round(y))) s.paste(c, Math.round(x - c.ax), Math.round(y - c.ay)); }
+    // crystal clusters sitting on the ledges, each lighting its patch of wall
+    const C = CRY(M), tints = ['B', 'P', 'C'];
+    for (let k = 0; k < (o.crys ?? w / 90); k++) {
+      const x = 4 + r() * (w - 8), y0 = base - 6 - Math.pow(r(), 1.3) * (o.span || 200), ci = Math.floor(r() * 3), cs = [0, 1, 2][ci];
+      if (!colAt(x, y0)) continue;
+      const yTop = ledgeAbove(x, y0);
+      if (yTop === null || !s.get(Math.round(x), yTop + 1)) continue;
+      const sz = 4 + r() * (o.big || 8), c = Props2.crystal(M, sz, seed + k * 3, C[cs]);
+      Scenic.bakeLight(s, x, yTop - sz * 0.4, sz * (o.halo ?? 4) + 8, [ramp], M[key + tints[ci]], { flat: 1.15, k: o.haloK ?? 1.1 });
+      s.paste(c, Math.round(x - c.ax), Math.round(yTop + 2 - c.ay));
+      // a few smaller shards around the main cluster
+      for (let q = 0; q < 2; q++) { const xx = x + (r() - 0.5) * sz * 3, yt = ledgeAbove(xx, yTop + 4); if (yt === null || !s.get(Math.round(xx), yt + 1)) continue; const c2 = Props2.crystal(M, 2 + r() * 3, seed + k * 7 + q, C[cs]); s.paste(c2, Math.round(xx - c2.ax), Math.round(yt + 2 - c2.ay)); }
+    }
     return s;
   }
 
@@ -219,24 +257,28 @@ Areas.falls = (() => {
       },
     });
     const put = (s, x, zd, o) => A.put(s, x, zd, o);
+    // the floor's edge: a lip of luminous moss, crystal shards and pebbles sunk in the rock below
+    Scenic.laneRoots(A, M, { p: 0, rock: M.floor, ok: (x) => !inPool(x), seed: 57, stones: Math.round(A.W / 18), big: 4, lip: M.mossG, lipLen: 4 });
+    for (let k = 0; k < A.W / 60; k++) { const x = r() * A.W; if (inPool(x)) continue; const c = Props2.crystal(M, 2 + r() * 4, 7000 + k, CRY(M)[Math.floor(r() * 5)]); Terrain.stamp(A, c, x, gy(x) + 18 + Math.pow(r(), 1.4) * 120); }
     const C = CRY(M);
     A.crysGlow = [];
     const glowC = ['#6ab8ff', '#b88aff', '#5af0e0', '#ff8ad0', '#ffe070'];
-    const crystalAt = (x, sz, ci, zd = -2, glow = true) => { if (inPool(x)) return; const c = Props2.crystal(M, sz, Math.floor(x * 7), C[ci]); put(c, x, zd, { sink: 2 }); if (glow && sz > 8) { const g = { x, y: gy(x) - sz, r: Math.min(24, sz * 2 + 6), c: hex(glowC[ci]), a: 0.45, always: true, k: 0.5 }; A.glows.push(g); A.crysGlow.push(g); } };
+    S.worms = []; S.tips = [];
+    const crystalAt = (x, sz, ci, zd = -2, glow = true) => { if (inPool(x)) return; const c = Props2.crystal(M, sz, Math.floor(x * 7), C[ci]); const pp = put(c, x, zd, { sink: 2 }); S.tips.push([x + (r() - 0.5) * sz * 0.6, pp.y - c.ay + 2 + r() * 3, r() * 6, sz > 8 ? 2 : 1, ci]); if (glow && sz > 8) { const g = { x, y: gy(x) - sz, r: Math.min(24, sz * 2 + 6), c: hex(glowC[ci]), a: 0.45, always: true, k: 0.5 }; A.glows.push(g); A.crysGlow.push(g); } };
     // ---- the ceiling (world-locked, leaves the shaft open) ----
     for (let x0 = -40; x0 < A.W + 40; x0 += 300) A.props.push({ frames: [ceilingChunk(M, x0, 300, 900 + x0)], x: x0, y: SKY0, zd: -9 });
     // ---- waterfalls pouring from cracks in the ceiling ----
     const fall = (x, top, bot, w) => { const s = Props2.waterfall(M, w, Math.round(bot - top), Math.floor(x)); A.props.push({ frames: [s], x, y: bot + 1, zd: -2 }); A.glows.push({ x, y: bot - 6, r: w * 1.8 + 16, c: hex('#bff0ff'), a: 0.3, always: true, flat: 1.6 }); };
     fall(GEO.FALL, ceilAt(GEO.FALL) - 6, GEO.POOL.level + 2, 40);
     fall(GEO.FALL2, ceilAt(GEO.FALL2) - 6, GEO.SPRING.level + 2, 34);
-    fall(2022, GEO.NEST.y + 2, GEO.GLOW.level + 2, 10);
+    fall(2122, GEO.NEST.y + 2, GEO.GLOW.level + 2, 10);
     // the glowing pool and its geyser vent
     A.glows.push({ x: (GEO.GLOW.x0 + GEO.GLOW.x1) / 2, y: GEO.GLOW.level + 6, r: 140, flat: 4, c: hex('#40e8d0'), a: 0.35, always: true });
     A.glows.push({ x: GEO.GEYSER, y: GEO.GLOW.level + 20, r: 30, c: hex('#8af0e8'), a: 0.5, always: true });
     // ---- ledges: the Bagon ledge with its hop stone, the high nest ledge ----
-    A.props.push({ frames: [shelfSpr(M, GEO.LEDGE.x1 - GEO.LEDGE.x0, gy(1600) - GEO.LEDGE.y + 4, 120, 26, 31, true)], x: GEO.LEDGE.x0, y: GEO.LEDGE.y, zd: -3 });
+    A.props.push({ frames: [shelfSpr(M, GEO.LEDGE.x1 - GEO.LEDGE.x0, gy(1700) - GEO.LEDGE.y + 4, 120, 26, 31, true)], x: GEO.LEDGE.x0, y: GEO.LEDGE.y, zd: -3 });
     A.props.push({ frames: [stoneSpr(M, gy(GEO.STEP.x) - GEO.STEP.y + 4, 12)], x: GEO.STEP.x, y: GEO.STEP.y, zd: -3 });
-    A.props.push({ frames: [shelfSpr(M, GEO.NEST.x1 - GEO.NEST.x0, gy(2100) - GEO.NEST.y + 4, 80, 60, 47, true)], x: GEO.NEST.x0, y: GEO.NEST.y, zd: -3 });
+    A.props.push({ frames: [shelfSpr(M, GEO.NEST.x1 - GEO.NEST.x0, gy(2200) - GEO.NEST.y + 4, 80, 60, 47, true)], x: GEO.NEST.x0, y: GEO.NEST.y, zd: -3 });
     A.props.push({ frames: [nestSpr(M)], x: GEO.NESTX, y: GEO.NEST.y + 1, zd: -2 });
     A.glows.push({ x: GEO.NESTX, y: GEO.NEST.y - 6, r: 34, c: hex('#ffe890'), a: 0.4, always: true });
     // ---- singing crystals ----
@@ -261,7 +303,7 @@ Areas.falls = (() => {
     /* ---- backdrop ---- */
     const P = (p) => Math.ceil(620 + (A.W - 380) * p) + 80;
     {
-      const w = P(0.14), s = wallLayer(M, M.far, w, 820, 520, 5, { crys: w / 70, big: 7 });
+      const w = P(0.14), s = wallLayer(M, 'far', w, 820, 520, 5, { crys: w / 30, big: 6, band: 24, span: 210, halo: 4.4 });
       // far waterfalls: pale streaks down the back wall
       for (const fx of [w * 0.22, w * 0.63]) for (let y = 120; y < 520; y++) for (let q = -3; q <= 3; q++) if (hash(Math.round(fx + q), y >> 2, 3) > 0.3) s.set(fx + q + Math.sin(y * 0.04) * 1.5, y, q === 0 || hash(q, y, 4) > 0.7 ? M.foam[0] : M.far[4]);
       const L = A.layer(s, 0.14, { haze: 0, base: 520, x: -60 }); L.skirt = M.far[1];
@@ -269,13 +311,13 @@ Areas.falls = (() => {
     {
       const w = P(0.4), cols = [];
       for (let x = 60; x < w; x += 150 + r() * 220) cols.push([x, 20 + r() * 26]);
-      const s = wallLayer(M, M.mid, w, 760, 470, 17, { cols, crys: w / 50, big: 9, span: 400 });
+      const s = wallLayer(M, 'mid', w, 760, 470, 17, { cols, crys: w / 14, big: 8, span: 200, band: 28, halo: 3.6 });
       A.layer(s, 0.4, { haze: 0, base: 470, x: -30 });
     }
     {
       const w = P(0.7), cols = [];
       for (let x = 120; x < w; x += 330 + r() * 380) cols.push([x, 26 + r() * 20]);
-      const s = wallLayer(M, M.rock, w, 700, 420, 29, { cols, crys: w / 120, big: 10, span: 380 });
+      const s = wallLayer(M, 'rock', w, 700, 420, 29, { cols, crys: w / 26, big: 9, span: 190, band: 34, halo: 2.6, haloK: 0.95 });
       A.layer(s, 0.7, { haze: 0, base: 420, x: 0 });
     }
 
@@ -298,7 +340,7 @@ Areas.falls = (() => {
     GEO.CHIMES.forEach((x, i) => A.addHot({ x0: x - 10, x1: x + 10, y0: gy(x) - 50, y1: gy(x), x, reach: 34, tap() { FallsAI.ring(A, i); } }));
     A.addHot({ x0: GEO.BOULDER - 24, x1: GEO.BOULDER + 24, y0: gy(GEO.BOULDER) - 38, y1: gy(GEO.BOULDER), x: GEO.BOULDER, reach: 40, tap() { FallsAI.boulder(A); } });
     A.addHot({ x0: GEO.GEYSER - 22, x1: GEO.GEYSER + 22, y0: GEO.GLOW.level - 14, y1: GEO.GLOW.level + 40, x: GEO.GEYSER, reach: 90, mode: 'swim', tap() { FallsAI.geyser(A); } });
-    A.addHot({ x0: 2004, x1: 2040, y0: GEO.NEST.y - 10, y1: GEO.GLOW.level, x: 2030, reach: 60, tap() { FallsAI.slideTap(); } });
+    A.addHot({ x0: 2104, x1: 2140, y0: GEO.NEST.y - 10, y1: GEO.GLOW.level, x: 2130, reach: 60, tap() { FallsAI.slideTap(); } });
     A.addHot({ x0: GEO.MIRROR - 14, x1: GEO.MIRROR + 14, y0: gy(GEO.MIRROR) - 58, y1: gy(GEO.MIRROR), x: GEO.MIRROR, reach: 40, tap() { FallsAI.mirror(A); } });
     A.addHot({ x0: GEO.SCOPE - 12, x1: GEO.SCOPE + 12, y0: gy(GEO.SCOPE) - 26, y1: gy(GEO.SCOPE), x: GEO.SCOPE, reach: 36, tap() { FallsAI.scope(A); } });
     A.addHot({ x0: GEO.METEOR - 30, x1: GEO.METEOR + 30, y0: gy(GEO.METEOR) - 40, y1: gy(GEO.METEOR), x: GEO.METEOR, reach: 50, tap() { HUD.toast(FallsAI.S.heart ? 'The meteorite heart hums with space... Minior cores make it pulse.' : 'A cold, dark meteorite. Legends say sun and moon woke it once.', { life: 2.6 }); } });
@@ -367,8 +409,14 @@ Areas.falls = (() => {
     Stage.drawLayers(fb, cx, cy, t);
     shaftSky(fb, cx, cy, t);
   };
+  const TW = [hex('#8ab8ff'), hex('#d0a0ff'), hex('#8afff0'), hex('#ffa0d8'), hex('#ffe890')];
   def.post = (A, fb, cx, cy, t) => {
+    // spray mist boiling up where the falls hit their pools
+    for (const [fx, lv, wd] of [[GEO.FALL, GEO.POOL.level, 70], [GEO.FALL2, GEO.SPRING.level, 60], [2125, GEO.GLOW.level, 26]]) if (Math.abs(fx - cx - fb.w / 2) < fb.w) Scenic.mist(fb, cx, cy, t, { k: 0.5, c: hex('#d8f4ff'), y: lv, up: 46, down: 6, speed: 9, x0: fx - wd, x1: fx + wd, fade: wd * 0.6, step: 2 });
     beam(fb, cx, cy, t);
+    // glow-worms twinkling on the ceiling, glints running over the crystals
+    if (S.worms) Scenic.twinkle(fb, cx, cy, t, S.worms, hex('#7af0ff'), { rate: 0.9, k: 0.8 });
+    if (S.tips) for (let c = 0; c < 5; c++) Scenic.twinkle(fb, cx, cy, t, S.tips.filter((p) => p[4] === c), TW[c], { rate: 1.6 });
     FallsAI.post(A, fb, cx, cy, t);
   };
   def.spawn = (A, G) => FallsAI.spawn(A, G, S);
@@ -377,6 +425,9 @@ Areas.falls = (() => {
   def.ambient = (hour) => {
     const out = [{ kind: 'mote', rate: 3, c: hex('#bff4ff'), life: 6, sway: 10, bob: 5, vy: -3 }];
     out.push({ kind: 'firefly', rate: hour === 'night' ? 3 : 1.4, c: hex('#8af0e0'), life: 7, sway: 12, bob: 6, y: (x) => World.groundAt(x) - 10 - Math.random() * 120 });
+    // glowing spores drifting up from the luminous moss, and Zubat-like bats flitting under the ceiling
+    out.push({ kind: 'spore', rate: 2.2, c: hex(Math.random() < 0.5 ? '#6affc8' : '#9ab8ff'), life: 8, sway: 8, bob: 4, vy: -5, y: (x) => World.groundAt(x) - 2 - Math.random() * 30 });
+    out.push({ kind: 'bat', rate: hour === 'night' || hour === 'dusk' ? 0.6 : 0.25, group: [2, 5], vx0: 46, c: hex('#0c0c18'), eye: hex('#ff7a8a'), life: 14, sway: 26, bob: 16, wob: 3, y: () => CEIL + 30 + Math.random() * 90 });
     return out;
   };
   def.onScan = (A) => FallsAI.onScan(A);

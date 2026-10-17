@@ -18,6 +18,9 @@ const Font = (() => {
   }
   // per-font vertical metrics tuned for layout (top of caps sits near y)
   const TOP = { body: 5, title: 5, small: 3 };
+  // hand-fixed glyphs: the small font's "&" was a copy of "$"
+  const fix = (font, ch, adv, rows, dx, dy) => { const F = FONTS[font]; if (!F) return; const w = rows[0].length, h = rows.length, a = new Uint8Array(w * h); rows.forEach((r, y) => { for (let x = 0; x < w; x++) a[y * w + x] = r[x] === '#' ? 1 : 0; }); F.g[ch.charCodeAt(0)] = { adv, w, h, dx, dy, a }; };
+  fix('small', '&', 7, ['.#...', '#.#..', '.##.#', '#..#.', '.##.#'], 1, 4);
 
   /* ---- inline pixel icons ---- */
   const IC = {
@@ -44,7 +47,16 @@ const Font = (() => {
     shirt: { c: { k: '#1b2240', p: '#ff7aa8', r: '#ff3a6a' }, m: ['kk.kk', 'kpkpk', '.prp.', '.ppp.', '.kkk.'] },
     warn: { c: { y: '#ffd23a', k: '#1b2240', o: '#c07a10' }, m: ['...o...', '..oyo..', '..oko..', '.oykyo.', '.oyyyo.', 'oyykyyo', 'ooooooo'] },
     disk: { c: { k: '#1b2240', b: '#3a78e8', s: '#d8e0ee', w: '#f4f7fb' }, m: ['kkkkkk.', 'kbsksbk', 'kbsssbk', 'kbbbbbk', 'kbwwwbk', 'kbwwwbk', 'kkkkkkk'] },
-    new: { c: { r: '#ff3a4a', w: '#ffffff' }, m: ['rrrrrrrrrrr', 'rwrrwrwwwrr', 'rwwrwrwrrrr', 'rwrwwrwwrrr', 'rwrrwrwwwrr', 'rrrrrrrrrrr'] },
+    new: { c: { r: '#ff3a4a', w: '#ffffff', d: '#b81e30' }, m: (() => {
+      // "NEW" in 5-row pixel letters on a red tag with a darker bottom edge
+      const L = [['w..w', 'ww.w', 'w.ww', 'w..w', 'w..w'], ['www', 'w..', 'ww.', 'w..', 'www'], ['w...w', 'w...w', 'w.w.w', 'w.w.w', '.w.w.']];
+      const rows = []; for (let y = 0; y < 5; y++) rows.push('r' + L.map((l) => l[y].replace(/\./g, 'r')).join('r') + 'r');
+      const W = rows[0].length; return ['r'.repeat(W)].concat(rows, ['d'.repeat(W)]);
+    })() },
+    gear: { c: { k: '#ffffff', d: '#9aa4c0' }, m: ['..k.k..', '.kkkkk.', 'kkdddkk', '.kd.dk.', 'kkdddkk', '.kkkkk.', '..k.k..'] },
+    trophy: { c: { y: '#ffd23a', o: '#c88a18', w: '#fff6c0' }, m: ['ywyyyyo', 'ywyyyyo', '.yyyyo.', '..yyo..', '...y...', '..yyo..', '.ooooo.'] },
+    pin: { c: { r: '#ff4a5a', d: '#a8202e', w: '#ffffff' }, m: ['.rrr.', 'rwrrr', 'rrrrd', '.rrd.', '..d..'] },
+    bolt: { c: { y: '#ffe060', o: '#c88a18' }, m: ['..yy', '.yy.', 'yyyy', '.yy.', 'yy..', 'o...'] },
   };
   const ICONS = {};
   for (const k in IC) {

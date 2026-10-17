@@ -164,8 +164,20 @@ const Harvest = (() => {
   /* ---------- collecting, digging, pounding ---------- */
   function collect(it) {
     const mk = Game.mudkip;
-    it.taken = 1; it.t = 0;
+    it.taken = 1; it.t = 0; it.fly = null;
     FX.sparkles(it.x, it.y - 4, 7, 14);
+    // the pop: a bright ring where it lands in Mudkip's mouth, a squash, and a note that climbs with each
+    // pick-up in quick succession
+    H.combo = Game.rt - (H.lastPick || -9) < 2.6 ? (H.combo || 0) + 1 : 0; H.lastPick = Game.rt;
+    if (mk) {
+      const [mx, my] = mk.at('mouth');
+      FX.add({ type: 'ring', x: mx, y: my, r0: 2, r1: 11, life: 0.28, c: 0xffffffff, layer: 4 });
+      FX.add({ type: 'burst', x: mx, y: my, r: 4, life: 0.16, layer: 4 });
+      FX.sparkles(mx, my - 2, 5, 12);
+      mk.sq.kick(-0.35); mk.finS.kick(2);
+      if (typeof SFX !== 'undefined' && SFX.collect) { const pan = clamp((mx - Game.cam.x - Game.VW / 2) / Game.VW, -0.8, 0.8); SFX.collect(pan, 0.8, H.combo); }
+      Game.buzz(8);
+    }
     if (it.kind === 'tm') { Moves.unlock(it.tm, 'Found a TM disc!'); it.gone = true; FX.confetti(it.x, it.y - 10, 30); return; }
     if (it.kind === 'qpearl') { it.gone = true; Game.sfx('twinkle', it.x); Talk.event('pearl', it.quest); HUD.toast('Found the lost pearl! Take it back to Luvdisc.', { life: 2.6 }); return; }
     if (it.kind === 'plant') {
@@ -192,18 +204,42 @@ const Harvest = (() => {
   // the nearest thing Mudkip could pick up (E)
   function nearest() {
     const mk = Game.mudkip; if (!mk) return null;
-    let best = null, bd = 18;
+    let best = null, bd = 24;
     for (const it of H.items) {
-      if (it.taken || it.gone) continue;
+      if (it.taken || it.gone || it.fly) continue;
       if (it.kind === 'plant' && it.ripe <= 0) continue;
-      const d = Math.abs(mk.x - it.x); if (d < bd && Math.abs((mk.y - 8) - (it.y - 6)) < 22) { bd = d; best = it; }
+      const d = Math.abs(mk.x - it.x); if (d < bd && Math.abs((mk.y - 8) - (it.y - 6)) < 26) { bd = d; best = it; }
     }
     return best;
   }
   function pick() {
     const mk = Game.mudkip, it = H.near; if (!mk || !it || mk.busy(2)) return false;
     mk.wakeUp(); mk.doTask(mk.pickUp(it, () => { if (!it.taken && !it.gone && (it.kind !== 'plant' || it.ripe > 0)) collect(it); }), 2);
+    magnet(it);
     return true;
+  }
+  // the pick-up is pulled up into Mudkip's mouth on a little arc (berries hop off the bush one by one)
+  function magnet(it, auto = false) {
+    const mk = Game.mudkip; if (!mk) return;
+    Game.sfx('magnet', it.x, 0.6);
+    if (it.kind === 'plant') {
+      const bm = (BERRY[it.berry] || BERRY.oran).mat, n = Math.max(1, Math.min(5, it.ripe * 2 - 1)), spots = [[-6, -8], [5, -12], [0, -16], [-9, -14], [8, -5]];
+      for (let i = 0; i < n; i++) flyer(it.x + spots[i][0], it.y + spots[i][1], i * 0.05, (fb, X, Y) => berryDot(fb, X, Y, bm));
+      it.pluck = Game.rt;
+      return;
+    }
+    it.fly = { t: 0, x0: it.x, y0: it.y, auto, dur: auto ? 0.22 : 0.3 };
+  }
+  function berryDot(fb, X, Y, bm) { palette(); for (let yy = -2; yy <= 2; yy++) for (let xx = -2; xx <= 2; xx++) { const q = xx * xx + yy * yy; if (q > 5) continue; put(fb, X + xx, Y + yy, q > 3.5 ? C(bm, 0.1) : C(bm, clamp(0.75 - (xx + yy) * 0.14, 0, 1))); } put(fb, X - 1, Y - 1, 0xffffffff); }
+  // an FX that flies from (x0, y0) into Mudkip's mouth, drawn by draw(fb, X, Y)
+  function flyer(x0, y0, delay, draw) {
+    FX.add({ type: 'fn', x: x0, y: y0, life: 0.32 + delay, layer: 4, draw: (fb, p, k, cx, cy) => {
+      const mk = Game.mudkip; if (!mk) return;
+      const e = clamp((p.age - delay) / 0.3, 0, 1); if (e <= 0 && p.age < delay) { draw(fb, Math.round(x0 - cx), Math.round(y0 - cy)); return; }
+      const [mx, my] = mk.at('mouth'), q = U.ease.inOut(e);
+      const X = Math.round(lerp(x0, mx, q) - cx), Y = Math.round(lerp(y0, my, q) - Math.sin(e * Math.PI) * 12 - cy);
+      if (e < 1) draw(fb, X, Y);
+    } });
   }
   function reveal(sp, how) {
     sp.found = true;
@@ -231,6 +267,13 @@ const Harvest = (() => {
     const mk = Game.mudkip;
     for (const it of H.items) {
       it.t += dt;
+      if (it.fly) {
+        it.fly.t += dt;
+        if (it.fly.t >= it.fly.dur && it.fly.auto) { if (!it.taken) collect(it); }
+        else if (it.fly.t > 1.2) it.fly = null; // the grab was interrupted: drop it back where it was
+      }
+      // loose berries shaken out of the grass hop to Mudkip when it walks up
+      if (it.kind === 'berry' && it.extra && !it.taken && !it.fly && mk && mk.mode === 'land' && Math.abs(mk.x - it.x) < 18 && Math.abs(mk.y - it.y) < 20) magnet(it, true);
       if (it.hop > 0) it.hop = Math.max(0, it.hop - dt * 2.5);
       if (it.taken) { if (it.gone) continue; if (it.t > it.respawn) { it.taken = 0; it.t = 0; } continue; }
       if (it.kind === 'plant' && it.ripe < 3) { it.grow += dt; if (it.grow > 40) { it.grow = 0; it.ripe++; } }
@@ -390,7 +433,12 @@ const Harvest = (() => {
     for (const it of H.items) {
       if (it.taken) continue;
       const bob = it.kind === 'tm' ? Math.sin(t * 2.4) * 2 : 0, hop = it.hop ? -Math.sin((1 - it.hop) * Math.PI) * 10 : 0;
-      const X = Math.round(it.x - cx), Y = Math.round(it.y - cy + bob + hop);
+      let X = Math.round(it.x - cx), Y = Math.round(it.y - cy + bob + hop);
+      if (it.fly && Game.mudkip) {
+        const e = clamp(it.fly.t / it.fly.dur, 0, 1), q = U.ease.inOut(e), [mx, my] = Game.mudkip.at('mouth');
+        if (e >= 1) continue; // in Mudkip's mouth
+        X = Math.round(lerp(it.fly.x0, mx, q) - cx); Y = Math.round(lerp(it.fly.y0, my + 4, q) - Math.sin(e * Math.PI) * 12 - cy);
+      }
       if (X < -12 || X > fb.w + 12 || Y < -20 || Y > fb.h + 12) continue;
       drawItem(fb, it, X, Y, t, occ, hr);
     }
@@ -410,7 +458,7 @@ const Harvest = (() => {
           putO(fb, X + sx, cyB + yy, d > lob - 0.16 ? C('leafB', 0.05) : C('leafB', lit), occ, o);
         }
         for (let k = 0; k < 7; k++) { const lx = X + Math.round((k - 3) * 3.4 + sw * 1.4), ly = cyB - RY + 1 + Math.abs(k - 3) * 0.9; putO(fb, lx, Math.round(ly) - 1, C('leafB', 0.95), occ, o); putO(fb, lx + 1, Math.round(ly), C('leafB', 0.8), occ, o); putO(fb, lx, Math.round(ly), C('leafB', 0.7), occ, o); }
-        const spots = [[-6, -8], [5, -12], [0, -16], [-9, -14], [8, -5]], nB = Math.min(5, it.ripe * 2 - 1);
+        const spots = [[-6, -8], [5, -12], [0, -16], [-9, -14], [8, -5]], nB = it.pluck && Game.rt - it.pluck < 0.6 ? 0 : Math.min(5, it.ripe * 2 - 1);
         for (let n = 0; n < nB; n++) {
           const [bx, by] = spots[n], BX = X + bx + Math.round(sw), BY = Y + by;
           for (let yy = -2; yy <= 2; yy++) for (let xx = -2; xx <= 2; xx++) { const q = xx * xx + yy * yy; if (q > 5) continue; putO(fb, BX + xx, BY + yy, q > 3.5 ? C(bm, 0.1) : C(bm, clamp(0.75 - (xx + yy) * 0.14, 0, 1)), occ, o); }

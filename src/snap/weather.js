@@ -109,6 +109,7 @@ const Weather = (() => {
       } else if (p.kind === 'sand') d[i] = mix(d[i], p.c, 0.7 * k);
       else if (p.kind === 'bubble') { d[i] = U.screen(d[i], 0xffffffff, 0.6 * k); }
       else if (p.kind === 'sparkle') { const s = Math.sin(t * 6 + p.ph); if (s > 0.5) { d[i] = 0xffffffff; if (s > 0.85) { d[i - 1] = U.screen(d[i - 1], p.c, 0.7); d[i + 1] = U.screen(d[i + 1], p.c, 0.7); d[i - VW] = U.screen(d[i - VW], p.c, 0.7); d[i + VW] = U.screen(d[i + VW], p.c, 0.7); } } }
+      else if (typeof Scenic !== 'undefined' && Scenic.amb[p.kind]) Scenic.amb[p.kind](d, i, x, y, VW, VH, p, t, k);
       else d[i] = p.c;
     }
     // meteors

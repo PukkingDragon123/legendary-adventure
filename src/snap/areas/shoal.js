@@ -12,13 +12,13 @@
 ------------------------------------------------------------------- */
 Areas.shoal = (() => {
   const { clamp, lerp, rng, hash, bayer4, vnoise, mix, hex } = U;
-  const MOUTH = 760, CEIL = 452, TIDE = { x0: 0, x1: 250, level: 568 }, POOL = { x0: 1150, x1: 1480, level: 578 };
-  const ICE = { x0: 2060, x1: 2820 }, FALLX = 2420, WALL = 3470, RING = 3570, REGI = 3740;
+  const MOUTH = 1060, CEIL = 452, TIDE = { x0: 0, x1: 250, level: 568 }, POOL = { x0: 1450, x1: 1780, level: 578 };
+  const ICE = { x0: 2360, x1: 3120 }, FALLX = 2720, WALL = 3770, RING = 3870, REGI = 4040;
   const def = {
     id: 'shoal', name: 'Shoal Cave', sub: 'Route 125 · Ice Cave', music: 'shoal', seed: 88, noSeason: true, cave: true,
-    W: 3900, H: 1000, sea: null, refY: 560, h0: 118, cy0: 330, ph: 0.05, skyH: 300, sunH: 130, band: 11, waves: 0.4,
+    W: 4200, H: 1000, sea: null, refY: 560, h0: 118, cy0: 330, ph: 0.05, skyH: 300, sunH: 130, band: 11, waves: 0.4,
     camY: [-40, 860], frameY: 0.74, start: 380,
-    ground: [[0, 640], [120, 620], [230, 584], [300, 562], [500, 558], [760, 560], [900, 562], [1100, 566], [1160, 588], [1200, 620], [1300, 638], [1420, 626], [1470, 590], [1500, 566], [1700, 560], [1900, 558], [2060, 562], [2400, 564], [2820, 562], [2960, 556], [3100, 552], [3400, 550], [3900, 548]],
+    ground: [[0, 640], [120, 620], [230, 584], [300, 562], [500, 558], [1060, 560], [1200, 562], [1400, 566], [1460, 588], [1500, 620], [1600, 638], [1720, 626], [1770, 590], [1800, 566], [2000, 560], [2200, 558], [2360, 562], [2700, 564], [3120, 562], [3260, 556], [3400, 552], [3700, 550], [4200, 548]],
     water: [{ x0: TIDE.x0, x1: TIDE.x1, level: TIDE.level, kind: 'tide' }, { x0: POOL.x0, x1: POOL.x1, level: POOL.level, kind: 'pool' }],
     plats: [],
     sky: {
@@ -42,8 +42,12 @@ Areas.shoal = (() => {
       braille: { c: ['#1a2a4a', '#3a8aff', '#bfe8ff'], emit: true },
       ring: { c: ['#2a6ab8', '#6ad0ff', '#e0faff'], emit: true },
       aur: { c: ['#20c89a', '#6affc8', '#b88aff'], emit: true },
+      iceL: ['#4a8ab8', '#6aaed4', '#94d0ec', '#c4ecfa', '#f0fcff'],
+      frost: { c: ['#a8d8f0', '#e4f6ff', '#ffffff'], emit: false },
     },
   };
+  // cave rock and ice lit by the glowing ice crystals
+  for (const key of ['wall', 'wallI', 'rock']) def.mats[key + 'G'] = { c: Scenic.tint(def.mats[key], '#6ad8ff', 0.5, 0.18), noSeason: true };
   def.cycleRate = 4;
   def.waterCols = (hour) => {
     const night = hour === 'night';
@@ -73,26 +77,74 @@ Areas.shoal = (() => {
       for (let y = 0; y < yb; y++) { let lit = 0.35 - (yb - y) / 300 + (n2(x * 1.2, y * 2) - 0.5) * 0.35 + (y > yb - 3 ? 0.25 : 0); s.set(xx, y, pickR(y > yb - 5 ? M.wallI : M.wall, lit, x, y)); }
       if (hash(x, 5, seed) > 0.985) { const c = crystal(M, 3 + hash(x, 6, seed) * 4, x); for (let y = 0; y < c.h; y++) for (let q = 0; q < c.w; q++) { const v = c.d[y * c.w + q]; if (v) s.set(xx - c.ax + q, yb + c.h - 1 - y - 3, v); } }
     }
-    for (let xx = 6; xx < w - 6; xx += 7 + r() * 22) { const x = x0 + xx; if (x < MOUTH + 20) continue; const ic = icicle(M, 3 + r() * 7, 8 + r() * 30, Math.floor(x)); s.paste(ic, Math.round(xx - ic.ax), Math.round(ceilAt(x) - top - 2)); }
+    for (let xx = 6; xx < w - 6; xx += 7 + r() * 22) { const x = x0 + xx; if (x < MOUTH + 20) continue; const ic = icicle(M, 3 + r() * 7, 8 + r() * 30, Math.floor(x)); s.paste(ic, Math.round(xx - ic.ax), Math.round(ceilAt(x) - top - 2)); if (r() < 0.45) (S.tips || (S.tips = [])).push([x, ceilAt(x) - 4 + ic.h, r() * 6, ic.h > 20 ? 2 : 1]); }
     Paint.outline(s, M.ink[0]);
     s.ax = 0; s.ay = 0; s.top = top;
     return s;
   }
+  // the cave's back wall: dark rock gripped by sheets of faceted blue ice — each facet catches the light at its
+  // own angle, bright refraction lines run along the facet edges, frozen bubbles and cracks glint inside, and
+  // glowing ice crystals light up the ice around them
   function wallSpr(M, w, h, seed) {
     const s = new ISpr(w, h), r = rng(seed);
+    const iceK = (x, y) => n1(x * 0.35 + seed, y * 0.45) + (Terrain.n3(x & 0xffff, (y + seed) & 0xffff) - 0.5) * 0.5 + Math.sin(x * 0.006 + seed) * 0.12;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      let lit = 0.42 + (n2(x * 0.7 + seed, y * 0.9) - 0.5) * 0.4 + (Terrain.n3(x & 0xffff, (y + seed) & 0xffff) - 0.5) * 0.3 - Math.abs(y - h * 0.55) / h * 0.3;
-      if (((x + Math.floor(n1(x * 0.5, y * 0.1) * 13)) % 29) === 0) lit += 0.12;
-      s.set(x, y, pickR(n1(x * 0.3, y * 0.3) > 0.62 ? M.wallI : M.wall, lit, x, y));
+      const wx = x + Math.sin(y * 0.05 + seed) * 8, wy = y + Math.sin(x * 0.04) * 6;
+      const ice = iceK(x, y) > 0.5;
+      const gy = Math.abs(y - h * 0.55) / h;
+      if (ice) {
+        // facets: a slanted cell grid; each cell its own tilt; bright seams on the facet edges
+        const u = (wx + wy * 0.6) / 46, v = (wy - wx * 0.25) / 30, cu = Math.floor(u), cv = Math.floor(v), fu = u - cu, fv = v - cv;
+        const tilt = hash(cu, cv, seed);
+        let lit = 0.32 + tilt * 0.45 - gy * 0.35 + (fu - 0.5) * 0.18 + (n2(x * 0.8, y * 0.8) - 0.5) * 0.16;
+        const seam = fu < 0.04 || fv < 0.05;
+        if (seam && tilt > 0.3) { s.set(x, y, pickR(M.iceL, 0.55 + tilt * 0.4, x, y)); continue; }
+        // refraction streaks: thin diagonal bands of light inside the ice
+        const st = Math.sin((x + y * 1.7) * 0.09 + tilt * 6) + Math.sin((x - y * 0.4) * 0.031);
+        if (st > 1.55) { s.set(x, y, pickR(M.iceL, 0.3 + (st - 1.55) * 1.2, x, y)); continue; }
+        s.set(x, y, pickR(M.wallI, lit, x, y));
+      } else {
+        let lit = 0.4 + (n2(x * 0.7 + seed, y * 0.9) - 0.5) * 0.4 - gy * 0.3;
+        if (((x + Math.floor(n1(x * 0.5, y * 0.1) * 13)) % 29) === 0) lit += 0.12;
+        // a rime of frost where the rock meets the ice
+        if (iceK(x, y - 2) > 0.5 || iceK(x - 2, y) > 0.5) lit += 0.25;
+        s.set(x, y, pickR(M.wall, lit, x, y));
+      }
     }
-    for (let k = 0; k < w / 40; k++) { const c = crystal(M, 3 + r() * 6, seed + k); s.paste(c, Math.round(r() * w), Math.round(h * 0.3 + r() * h * 0.6)); }
+    // cracks and frozen bubbles inside the ice
+    for (let k = 0; k < w / 30; k++) {
+      let x = r() * w, y = r() * h; if (iceK(x | 0, y | 0) <= 0.5) continue;
+      let a = r() * Math.PI * 2;
+      for (let j = 0; j < 10 + r() * 30; j++) { if (iceK(x | 0, y | 0) > 0.5) s.set(x, y, M.iceL[j % 3 === 0 ? 4 : 3]); x += Math.cos(a); y += Math.sin(a); a += (r() - 0.5) * 0.8; }
+    }
+    for (let k = 0; k < w / 12; k++) { const x = Math.round(r() * w), y = Math.round(r() * h), rr = r() < 0.3 ? 2 : 1; if (iceK(x, y) <= 0.5) continue; for (let q = -rr; q <= rr; q++) for (let p = -rr; p <= rr; p++) if (Math.abs(q * q + p * p - rr * rr) <= rr) s.set(x + q, y + p, M.iceL[3]); s.set(x - (rr > 1 ? 1 : 0), y - (rr > 1 ? 1 : 0), M.iceL[4]); }
+    // glowing ice crystals, each lighting the ice and rock around it
+    for (let k = 0; k < w / 34; k++) {
+      const c = crystal(M, 3 + r() * 7, seed + k), x = Math.round(r() * w), y = Math.round(h * 0.3 + r() * h * 0.62);
+      Scenic.bakeLight(s, x, y - c.h * 0.4, c.h * 2.8 + 8, [M.wall, M.wallI], M.wallIG, { k: 1.05 });
+      s.paste(c, x - c.ax, y - c.ay);
+    }
     return s;
   }
+  // a frozen cascade: ribbed columns of blue ice with frosted ridges, trapped bubbles, an icicle fringe at the lip
+  // and a mound of ice where it pooled at the bottom
   function frozenFall(M, w, h) {
-    const s = new ISpr(w, h);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const u = x / w, edge = Math.min(u, 1 - u) * w + Math.sin(y * 0.07) * 3; if (edge < 1) continue; const band = Math.sin(x * 0.5 + y * 0.02) + Math.sin(x * 0.13); s.set(x, y, pickR(M.ice, 0.55 + band * 0.18 + (y > h - 10 ? 0.2 : 0), x, y)); }
+    const W2 = w + 24, s = new ISpr(W2, h), cx = W2 / 2;
+    for (let y = 0; y < h; y++) {
+      const k = y / h, hw = w / 2 + Math.sin(y * 0.07) * 3 + Math.pow(Math.max(0, k - 0.82) / 0.18, 2) * 12;
+      for (let x = Math.floor(cx - hw); x <= Math.ceil(cx + hw); x++) {
+        const u = (x - cx) / hw; if (Math.abs(u) > 1) continue;
+        const rib = Math.sin((x - cx) * 0.62 + Math.sin(y * 0.05) * 1.5), ridge = rib > 0.78;
+        let lit = 0.5 - u * 0.25 + rib * 0.14 + (n2(x * 2, y * 0.6) - 0.5) * 0.2 + (k > 0.85 ? 0.1 : 0);
+        if (Math.abs(u) > 0.9) lit -= 0.2;
+        s.set(x, y, ridge ? pickR(M.iceL, 0.6 + rib * 0.3 - u * 0.2, x, y) : pickR(M.ice, lit, x, y));
+      }
+    }
+    const r = rng(9);
+    for (let k = 0; k < h / 6; k++) { const x = Math.round(cx + (r() - 0.5) * w * 0.8), y = Math.round(r() * h * 0.85); if (s.get(x, y)) { s.set(x, y, M.iceL[4]); if (r() < 0.4) s.set(x + 1, y + 1, M.iceL[3]); } }
+    for (let x = Math.floor(cx - w / 2 - 6); x < cx + w / 2 + 6; x += 3 + Math.floor(r() * 3)) { const L = 3 + Math.floor(r() * 9); for (let j = 0; j < L; j++) s.under(x, h * 0.04 + j, j < L - 1 ? M.ice[4] : M.iceL[4]); }
     Paint.outline(s, M.ink[1]);
-    s.ax = w >> 1; s.ay = h - 1;
+    s.ax = W2 >> 1; s.ay = h - 1;
     return s;
   }
   function brailleWall(M) {
@@ -103,10 +155,30 @@ Areas.shoal = (() => {
     s.ax = w >> 1; s.ay = h - 1;
     return s;
   }
+  // a snow-laden pine: drooping tiers lit from the left, snow lying thick on each tier's upper slope, clumps on the tips
   function snowPine(M, H, seed) {
-    const s = new ISpr(Math.round(H * 0.7) + 4, H + 2), r = rng(seed), cx = s.w / 2;
-    for (let y = H - 8; y < H; y++) { s.set(cx, y, M.bark[1]); s.set(cx + 1, y, M.bark[2]); }
-    for (let t = 0; t < 5; t++) { const y0 = Math.round(t * (H - 10) / 5), y1 = Math.round((t + 1.3) * (H - 10) / 5); for (let y = y0; y < y1; y++) { const hw = ((y - y0) / (y1 - y0)) * (H * 0.12 + t * H * 0.06); for (let x = -hw; x <= hw; x++) { const top = (y - y0) < 2 || hash(Math.round(x), y, seed) > 0.8 && (y - y0) < (y1 - y0) * 0.4; s.set(cx + x, y, top ? M.snow[4] : pickR(M.pine, 0.7 - (x + hw) / (2 * hw + 1) * 0.5, x, y)); } } }
+    const W2 = Math.round(H * 0.74) + 6, s = new ISpr(W2, H + 2), r = rng(seed), cx = W2 / 2;
+    for (let y = H - 9; y <= H; y++) for (let x = -1; x <= 1; x++) s.set(cx + x, y, M.bark[x < 0 ? 2 : x > 0 ? 0 : 1]);
+    const nT = H > 70 ? 6 : 5, top = 2, span = H - 10 - top;
+    for (let t = 0; t < nT; t++) {
+      const y0 = Math.round(top + t * span / nT * 0.92), th = span / nT * 1.45, hw1 = H * (0.07 + 0.29 * (t + 1) / nT);
+      const hwAt = (y) => Math.max(0.5, (y - y0) / th * hw1);
+      for (let y = y0; y < Math.min(H - 6, y0 + th); y++) {
+        const k = (y - y0) / th, hw = hwAt(y) + (hash(y, t, seed) - 0.5) * 1.6;
+        for (let x = -Math.round(hw); x <= Math.round(hw); x++) {
+          const ax = Math.abs(x), droop = k > 0.85 && ax < hw * 0.6;
+          if (droop && hash(x, y, seed + t) > 0.5) continue; // ragged hem between the branch tips
+          // snow where the pixel sits just under the tier's upper slope
+          const snowD = 1.6 + hash(x >> 1, t, seed) * 2.4 - k * 1.2;
+          const onSlope = ax > hwAt(y - snowD) - 0.5 && k < 0.9;
+          const lit = 0.72 - (x + hw) / (2 * hw + 1) * 0.55 - k * 0.18 + (hash(x, y, seed) - 0.5) * 0.14;
+          s.set(cx + x, y, onSlope ? pickR(M.snow, 0.55 + (x < 0 ? 0.35 : 0) - k * 0.2, x, y) : pickR(M.pine, lit, x, y));
+        }
+      }
+      // snow clumps weighing down the branch tips
+      for (const sgn of [-1, 1]) { const tx = Math.round(cx + sgn * hw1 * 0.95), ty = Math.round(y0 + th * 0.92); s.set(tx, ty, M.snow[sgn < 0 ? 4 : 3]); s.set(tx - sgn, ty, M.snow[3]); s.set(tx, ty - 1, M.snow[4]); }
+    }
+    s.set(cx, 1, M.snow[4]); s.set(cx, 2, M.snow[3]);
     void r; Paint.outline(s, M.ink[0]);
     s.ax = Math.round(cx); s.ay = H;
     return s;
@@ -115,6 +187,7 @@ Areas.shoal = (() => {
   /* ---------------- build ---------------- */
   def.build = (A) => {
     const M = A.M, r = rng(A.seed);
+    S.tips = []; S.frostPts = [];
     const gy = (x) => World.groundAt(x);
     const wet = (x) => (x > TIDE.x0 && x < TIDE.x1 - 10) || (x > POOL.x0 + 16 && x < POOL.x1 - 16);
     Terrain.paint(A, {
@@ -154,7 +227,12 @@ Areas.shoal = (() => {
     A.wall = put(brailleWall(M), WALL, -4, { sink: 2 });
     A.glows.push(S.ringGlow = { x: RING, y: gy(RING) - 2, r: 30, flat: 3, c: hex('#6ad0ff'), a: 0.3, always: true, k: 0.4 });
     A.glows.push(S.wallGlow = { x: WALL, y: gy(WALL) - 40, r: 50, c: hex('#3a8aff'), a: 0.4, always: true, k: 0.2 });
-    for (const x of [3040, 3200, 3860]) { put(icicle(M, 16, 70, x, true), x, -5, { sink: 3 }); }
+    for (const x of [3340, 3500, 4160]) { put(icicle(M, 16, 70, x, true), x, -5, { sink: 3 }); }
+    // the lane's edge: a crust of frost and snow, buried stones and ice shards in the rock below
+    Scenic.laneRoots(A, M, { p: 0, rock: M.rock, ok: (x) => !wet(x), seed: 88, stones: Math.round(A.W / 22), big: 4, lip: M.snow, lipLen: 4 });
+    for (let k = 0; k < A.W / 70; k++) { const x = r() * A.W; if (wet(x) || !inside(x)) continue; const c = crystal(M, 2 + r() * 3, 8000 + k); Terrain.stamp(A, c, x, gy(x) + 18 + Math.pow(r(), 1.4) * 110); }
+    // frost glints on the snow and the ice floor
+    for (let x = 20; x < A.W; x += 9 + r() * 26) if (!wet(x)) S.frostPts.push([x, gy(x) - 1 - r() * 4, r() * 6, x > ICE.x0 && x < ICE.x1 ? 2 : 1]);
     const det = (key, ramp, x, zd) => { const s = Paint.miniSpr(key, ramp); A.details.push({ s, x, y: gy(x) + zd, zd }); };
     for (let x = 10; x < A.W; x += 6 + r() * 14) { if (wet(x)) continue; const k = r(), zd = (r() - 0.5) * 8; if (k < 0.3) det('pebble2', inside(x) ? M.rock : M.snow, x, zd); else if (k < 0.4) det('pebble', M.ice, x, zd); else if (k < 0.45 && !inside(x)) det('shell1', M.snow, x, zd); }
 
@@ -170,7 +248,7 @@ Areas.shoal = (() => {
       for (let x = 0; x < w; x += 20 + r() * 40) { const p = snowPine(M, 24 + r() * 20, Math.floor(x)); s.paste(p, Math.round(x - p.ax), h - p.ay - 6 - Math.round(r() * 20)); }
       const L = A.layer(s, 0.2, { haze: 0.3, base: h - 1, x: 0 }); L.out = true; L.skirt = M.rock[1];
     }
-    S.wallS = wallSpr(M, 1800, 330, 17); S.wall2 = wallSpr(M, 2600, 300, 29);
+    S.wallS = wallSpr(M, 1800, 330, 17); S.wall2 = wallSpr(M, 2800, 300, 29);
     // ---- 2.5D floor: snowy sand and the icy sea outside, frosted rock and ice inside ----
     {
       A.depthP0 = 0.55; A.depthHaze = 0.24;
@@ -244,7 +322,15 @@ Areas.shoal = (() => {
     void hz;
   };
   def.post = (A, fb, cx, cy, t) => {
-    const W = fb.w, H = fb.h, d = fb.d;
+    const W = fb.w, H = fb.h, d = fb.d, hr = Stage.S.hour;
+    // cold light slanting down through cracks in the cave roof, glitter drifting in it
+    const xm = Math.round(MOUTH + 40 - cx);
+    if (xm < W) Scenic.shafts(fb, cx, cy, t, { c: hex(hr === 'night' ? '#6a90ff' : hr === 'dusk' ? '#c8a8ff' : '#bfefff'), k: hr === 'night' ? 0.08 : 0.13, slant: 0.32, par: 0.8, freq: 0.013, th: 0.66, motes: 34, xMin: Math.max(0, xm), bottom: Math.round(World.groundAt(cx + W / 2) - cy + 6) });
+    // a low freezing mist rolling over the ice and the shore
+    Scenic.mist(fb, cx, cy, t, { k: hr === 'dawn' ? 0.42 : 0.22, c: hex(hr === 'night' ? '#4a6aa8' : '#e4f4ff'), ground: World.groundAt, up: 26, down: 8, speed: 3 });
+    // glints on icicle tips and frost on the floor
+    if (S.tips) Scenic.twinkle(fb, cx, cy, t, S.tips, hex('#bfefff'), { rate: 1.1 });
+    if (S.frostPts) Scenic.twinkle(fb, cx, cy, t, S.frostPts, hex('#d8f4ff'), { rate: 1.9, k: 0.85 });
     for (const p of S.snow || []) { const x = Math.round(p.x - cx), y = Math.round(p.y - cy); if (x < 0 || y < 0 || x >= W - 1 || y >= H - 1) continue; const i = y * W + x; d[i] = mix(d[i], 0xffffffff, 0.9); if (p.big) { d[i + 1] = mix(d[i + 1], 0xfff0f4ff, 0.7); d[i + W] = mix(d[i + W], 0xfff0f4ff, 0.7); } }
     // the stillness ring glows brighter as Mudkip waits in it; the wall's dots light one by one
     const X = Math.round(RING - cx), Y = Math.round(World.groundAt(RING) - cy);
@@ -264,6 +350,8 @@ Areas.shoal = (() => {
   };
   def.update = (A, dt, t, G) => {
     const mk = G.mudkip;
+    // meltwater dripping off the icicles
+    if (S.tips && S.tips.length && Math.random() < dt * 4) { const p = S.tips[Math.floor(Math.random() * S.tips.length)]; if (Math.abs(p[0] - Game.cam.x - Game.VW / 2) < Game.VW / 2) { const fl = World.waterAt(p[0]) !== null ? WorldRender.surfaceAt(p[0], t) : World.groundAt(p[0]); FX.add({ type: 'drop', x: p[0], y: p[1] + 1, vx: 0, vy: 10, g: 300, life: 2.5, c: 0xffffffff, c2: hex('#9ae0ff'), size: 1, floor: fl, layer: 2 }); } }
     // snow falls on the open shore only (the cave roof keeps it out)
     const cx = Game.cam.x, cy = Game.cam.y, VW = Game.VW, VH = Game.VH;
     S.snow = S.snow || [];
@@ -293,9 +381,15 @@ Areas.shoal = (() => {
   def.ambient = (hour) => {
     const out = [{ kind: 'sparkle', rate: 2.2, c: hex('#bfefff'), life: 1.6, sway: 4, bob: 2, y: (x) => World.groundAt(x) - 10 - Math.random() * 90 }];
     out.push({ kind: 'mote', rate: 2, c: hex('#e8f8ff'), life: 6, sway: 8, bob: 4, vy: 3 });
+    // inside: diamond dust sifting down from the roof; drips off the icicles
+    const inCave = Game.cam.x + Game.VW * 0.5 > MOUTH;
+    if (inCave) {
+      out.push({ kind: 'flake', rate: 3, c: hex('#d8f4ff'), big: Math.random() < 0.3, life: 9, sway: 10, bob: 3, vy: 10, y: (x) => CEIL + Math.random() * 60 });
+      out.push({ kind: 'spore', rate: 1, c: hex('#6ad8ff'), life: 7, sway: 6, bob: 4, vy: -2, y: (x) => World.groundAt(x) - 6 - Math.random() * 50 });
+    } else if (hour === 'night') out.push({ kind: 'spore', rate: 0.8, c: hex('#6affc8'), life: 6, sway: 8, bob: 4, vy: -2, y: (x) => World.groundAt(x) - 20 - Math.random() * 80 });
     return out;
   };
-  def.onScan = (A) => { const mk = Game.mudkip; if (mk && mk.x > 3300) { HUD.toast(S.awake ? 'Scan: an ancient Pokémon made of ice, awake and humming.' : 'Scan: something enormous is frozen in the ice beyond the circle.', { life: 3 }); return true; } return false; };
+  def.onScan = (A) => { const mk = Game.mudkip; if (mk && mk.x > 3600) { HUD.toast(S.awake ? 'Scan: an ancient Pokémon made of ice, awake and humming.' : 'Scan: something enormous is frozen in the ice beyond the circle.', { life: 3 }); return true; } return false; };
   def.photoBonus = (A, crop, subs) => {
     if (subs.some((s) => s.sp === 'regice')) return { pts: 800, name: 'Iceberg giant' };
     if (subs.some((s) => s.sp === 'latias') && subs.some((s) => s.sp === 'latios')) return { pts: 900, name: 'Eon duo' };
