@@ -97,7 +97,7 @@ const Pad = (() => {
     if (P.b && P.b.t > 0.18) { const k = Math.min(1, (P.b.t - 0.18) / 0.3); for (let a = 0; a < 32 * k; a++) { const an = -Math.PI / 2 + a / 32 * Math.PI * 2; UI.put(fb, Math.round(L.bx + Math.cos(an) * (L.bR + 3)), Math.round(L.by + Math.sin(an) * (L.bR + 3)), 0xffffffff); } }
     Font.draw(fb, 'B', L.bx + L.bR - 3, L.by - L.bR - 2, 0xffffffff, { font: 'small', outline: INK });
     // keyboard hint (fades after the first jump)
-    if (!P.touch && P.hint > 0 && Game.t > 3 && !(typeof Arcade !== 'undefined' && Arcade.live)) { P.hint = Math.max(0, P.hint - 1 / 900); const a = Math.min(1, P.hint * 3); if (a > 0.05) { // (wrapped to fit beside the buttons, on a soft plate)
+    if (!P.touch && P.hint > 0 && Game.t > 3 && !(typeof Arcade !== 'undefined' && Arcade.live) && !(typeof Moves !== 'undefined' && Moves.wheel)) { P.hint = Math.max(0, P.hint - 1 / 900); const a = Math.min(1, P.hint * 3); if (a > 0.05) { // (wrapped to fit beside the buttons, on a soft plate)
         const lines = Font.wrap('Arrows move  ·  Space jump (again: flip, Down: belly flop)  ·  E pick up  ·  X move  ·  Q wheel  ·  F throw berry  ·  G guitar jam  ·  C camera  ·  Shift run', 'small', W - 140).slice(0, 3);
         const lw = Math.max(...lines.map((l) => Font.measure(l, 'small'))) + 12, lh = lines.length * 9 + 4, lx = Math.round((W - 100) / 2 - lw / 2), ly = H - lh - 4;
         UI.rectA(fb, lx, ly, lw, lh, 0xff200e0a, 0.5 * a);

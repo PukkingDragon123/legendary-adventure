@@ -58,7 +58,7 @@ const Quests = (() => {
   function tick(dt) {
     // one celebration at a time (the rest wait their turn), and only on the explore screen
     const p0 = Q.pops[0];
-    if (p0 && Game.mode === 'explore' && !(HUD.banUp && HUD.banUp()) && !(typeof Moves !== 'undefined' && Moves.wheel) && !(typeof Progress !== 'undefined' && Progress.celebrating && Progress.celebrating())) p0.t += dt;
+    if (p0 && Game.mode === 'explore' && !(HUD.banUp && HUD.banUp()) && !(typeof Moves !== 'undefined' && Moves.wheel) && !busy()) p0.t += dt;
     Q.pops = Q.pops.filter((p) => p.t < p.life);
     Q.lastUnlockCheck += dt;
     if (Q.lastUnlockCheck > 3) { Q.lastUnlockCheck = 0; checkUnlocks(); checkBirch(); }
@@ -73,9 +73,11 @@ const Quests = (() => {
   function seen() { Q.unseenN = 0; }
   // request completed: a slim ribbon that slides in at the top-right (not a pop-up)
   // "QUEST COMPLETE!" / "NEW PLACE!": a note slides in under the top-right buttons with a burst of sparkles
+  // (a feature-unlock card or the level-up show goes first; this waits its turn)
+  const busy = () => typeof Progress !== 'undefined' && ((Progress.celebrating && Progress.celebrating()) || (Progress.cards && Progress.cards.length > 0));
   function drawPop(fb, t) {
     const p = Q.pops[0];
-    if (!p || p.t < 0 || (typeof Progress !== 'undefined' && Progress.celebrating && Progress.celebrating())) return;
+    if (!p || p.t < 0 || busy()) return;
     const C = UI.C, hx = U.hex, kin = U.ease.outBack(Math.min(1, p.t / 0.35)), kout = Math.min(1, (p.life - p.t) / 0.4);
     if (kout <= 0) return;
     const head = p.unlock ? 'NEW PLACE!' : /^Quest complete: /.test(p.text) ? 'QUEST COMPLETE!' : p.reward ? 'REWARD!' : 'DONE!';

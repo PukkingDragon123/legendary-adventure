@@ -47,7 +47,7 @@ Areas.shoal = (() => {
     },
   };
   // cave rock and ice lit by the glowing ice crystals
-  for (const key of ['wall', 'wallI', 'rock']) def.mats[key + 'G'] = { c: Scenic.tint(def.mats[key], '#6ad8ff', 0.5, 0.18), noSeason: true };
+  for (const key of ['wall', 'wallI', 'rock']) def.mats[key + 'G'] = { c: Scenic.tint(def.mats[key], '#6ad8ff', 0.5, 0.18), emit: true };
   def.cycleRate = 4;
   def.waterCols = (hour) => {
     const night = hour === 'night';

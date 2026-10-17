@@ -46,7 +46,7 @@ Areas.falls = (() => {
   };
   // rock lit by the crystals: a tinted copy of each wall ramp per crystal colour (blue, violet, cyan)
   const LITC = [['B', '#4a8aff'], ['P', '#b06aff'], ['C', '#3ae8d8']];
-  for (const key of ['far', 'mid', 'rock', 'floor']) for (const [k, c] of LITC) def.mats[key + k] = { c: Scenic.tint(def.mats[key], c, key === 'far' ? 0.48 : 0.56, key === 'far' ? 0.14 : 0.2), noSeason: true };
+  for (const key of ['far', 'mid', 'rock', 'floor']) for (const [k, c] of LITC) def.mats[key + k] = { c: Scenic.tint(def.mats[key], c, key === 'far' ? 0.48 : 0.56, key === 'far' ? 0.14 : 0.2), emit: true };
   def.cycleRate = 11;
   def.waterCols = (hour) => {
     const night = hour === 'night';

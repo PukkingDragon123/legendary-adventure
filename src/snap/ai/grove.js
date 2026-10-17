@@ -532,7 +532,7 @@ const GroveAI = (() => {
   // Treetop Town: a Slakoth lazing on the great branch
   function spawnCanopy(A, G) {
     if (!S.canopy) S.canopy = {};
-    if (sp('Slakoth')) G.addMon(new SlakothM(2110, 2090, 2255));
+    if (sp('Slakoth')) G.addMon(new SlakothM(2030, 2010, 2055));
   }
   return { spawn, update, shake, spawnCanopy, get S() { return S; }, classes: { ZigzagoonM, SurskitM, ShroomishM, SeedotM, SlakothM, CheerM } };
 })();

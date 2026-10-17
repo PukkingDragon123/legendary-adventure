@@ -953,14 +953,15 @@ const Progress = (() => {
     });
   }
   { const d0 = Talk.down; Talk.down = function (ux, uy) {
-    if (P.log) { P.mouse = [ux, uy]; P.mdown = true; setTimeout(() => { P.mdown = false; }, 120); const G = P.log; if (G.closing) return true; for (let i = G.rects.length - 1; i >= 0; i--) { const r = G.rects[i]; if (ux >= r.x && uy >= r.y && ux < r.x + r.w && uy < r.y + r.h) { r.fn(); return true; } } return true; }
+    if (P.log && P.log.closing) P.log = null; // (fading out: input goes straight through)
+    if (P.log) { P.mouse = [ux, uy]; P.mdown = true; setTimeout(() => { P.mdown = false; }, 120); const G = P.log; for (let i = G.rects.length - 1; i >= 0; i--) { const r = G.rects[i]; if (ux >= r.x && uy >= r.y && ux < r.x + r.w && uy < r.y + r.h) { r.fn(); return true; } } return true; }
     return d0.call(this, ux, uy);
   }; }
   { const h0 = HUD.hover; HUD.hover = function (x, y) { P.mouse = [x, y]; return h0.apply(this, arguments); }; }
   { const k0 = Talk.key; Talk.key = function (k, e) {
+    if (P.log && P.log.closing) P.log = null; // (fading out: keys go straight through)
     if (P.log) {
       const G = P.log, n = logList().length;
-      if (G.closing) return true;
       if (k === 'Escape' || k === 'l') closeLog();
       else if (k === 'ArrowDown' || k === 's') { G.sel = Math.min(n - 1, G.sel + 1); Game.sfx('blip', null, 0.4); }
       else if (k === 'ArrowUp' || k === 'w') { G.sel = Math.max(0, G.sel - 1); Game.sfx('blip', null, 0.4); }
@@ -972,7 +973,7 @@ const Progress = (() => {
     if (k === 'l' && !Talk.dlg && Game.mode === 'explore') { openLog(); return true; }
     return k0.call(this, k, e);
   }; }
-  { const b0 = Talk.busy; Talk.busy = function () { return !!P.log || b0.call(this); }; }
+  { const b0 = Talk.busy; Talk.busy = function () { return !!(P.log && !P.log.closing) || b0.call(this); }; }
   if (typeof U.on === 'function') U.on('area', () => { P.pings.length = 0; P.sp.length = 0; if (P.log) P.log = null; });
 
   /* ---------- Rotom Dex: Progress page ---------- */

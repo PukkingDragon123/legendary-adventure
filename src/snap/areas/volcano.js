@@ -64,7 +64,7 @@ Areas.volcano = (() => {
     },
   };
   // basalt and ash lit from below by the lava (a hot, tinted copy of each ramp)
-  for (const key of ['rock', 'rockR', 'mid', 'far']) def.mats[key + 'L'] = { c: Scenic.tint(def.mats[key], '#ff5a14', key === 'far' ? 0.4 : 0.5, 0.22), noSeason: true };
+  for (const key of ['rock', 'rockR', 'mid', 'far']) def.mats[key + 'L'] = { c: Scenic.tint(def.mats[key], '#ff5a14', key === 'far' ? 0.4 : 0.5, 0.22), emit: true };
   def.cycleRate = 5;
   def.waterCols = (hour) => {
     const night = hour === 'night';
@@ -113,7 +113,7 @@ Areas.volcano = (() => {
       for (let j = 0; j < 14 + r() * 40; j++) { if (!s.get(x | 0, y | 0)) break; pts.push([x | 0, y | 0]); x += Math.cos(a) * 1.2; y += Math.sin(a); a += (r() - 0.5) * 0.9; if (r() < 0.06) a += (r() < 0.5 ? -1 : 1) * 0.9; }
       if (pts.length < 6) continue;
       const [mx, my] = pts[pts.length >> 1];
-      Scenic.bakeLight(s, mx, my, 10 + pts.length * 0.4, from, to, { k: 0.8 });
+      Scenic.bakeLight(s, mx, my, 5 + pts.length * 0.22, from, to, { k: 0.55 });
       for (const [px, py] of pts) { s.set(px, py, M.crack[2]); if (r() < 0.5) s.set(px + 1, py, M.crack[1]); }
     }
   }
@@ -195,7 +195,7 @@ Areas.volcano = (() => {
     // steam vents
     for (const x of VENTS) { const s = Paint.rock(M, 18, 8, Math.floor(x), { ramp: M.stone }); put(s, x, 1, { sink: 2 }); }
     // ---- Jagged Pass ----
-    for (const p of def.plats) A.props.push({ frames: [shelf(M, p.x1 - p.x0, gy((p.x0 + p.x1) / 2) - p.y + 6, p.x0)], x: p.x0, y: p.y, zd: -3 });
+    for (const p of def.plats) { const sh = shelf(M, p.x1 - p.x0, gy((p.x0 + p.x1) / 2) - p.y + 6, p.x0); cracks(sh, M, 4, sh.w - 4, 5, sh.h - 2, 3, p.x0, [M.rock], M.rockL); A.props.push({ frames: [sh], x: p.x0, y: p.y, zd: -3 }); }
     for (let x = 3100; x < 4020; x += 50 + r() * 90) { if (x > PUDDLE.x0 - 10 && x < PUDDLE.x1 + 10) continue; put(Paint.rock(M, 20 + r() * 30, 14 + r() * 22, Math.floor(x), { ramp: r() < 0.5 ? M.rock : M.rockR, cracks: 2 }), x, r() < 0.5 ? -3 : 2, { sink: 4 }); }
     A.glows.push({ x: (PUDDLE.x0 + PUDDLE.x1) / 2, y: PUDDLE.y, r: 60, flat: 2.2, c: hex('#ff7020'), a: 0.5, always: true, flicker: true });
     // ---- the crater ----
@@ -218,8 +218,8 @@ Areas.volcano = (() => {
       // ash streaks down the slopes
       for (let k = 0; k < 40; k++) { let x = S.peakU + (r() - 0.5) * 240, y = h - 96 + r() * 30; for (let j = 0; j < 24; j++) { if (s.get(x, y)) s.set(x, y, M.far[4]); x += (x < S.peakU ? -1 : 1) * 0.7; y += 1.3; } }
       // lava rivulets running down the cone from the crater lip (they glow through the dusk and night)
-      for (let k = 0; k < 7; k++) { let x = S.peakU + (r() - 0.5) * 30, y = h - 104 * 0.98 + 10; const dir = x < S.peakU ? -1 : 1; for (let j = 0; j < 30 + r() * 40; j++) { if (!s.get(x | 0, y | 0)) break; s.set(x, y, j < 8 ? M.lava[4] : M.lava[j % 5 === 0 ? 2 : 3]); x += dir * (0.3 + r() * 0.6); y += 1; } }
-      Scenic.bakeLight(s, S.peakU, h - 96, 40, [M.far], M.farL, { flat: 0.8, k: 0.8 });
+      for (let k = 0; k < 5; k++) { let x = S.peakU + (r() - 0.5) * 26, y = h - 104 * 0.98 + 9, a = Math.PI / 2 + (x < S.peakU ? 0.5 : -0.5); for (let j = 0, L = 8 + r() * 14; j < L; j++) { if (!s.get(x | 0, y | 0)) break; s.set(x, y, j < 4 ? M.lava[4] : M.lava[j > L - 4 ? 1 : 2]); x += Math.cos(a); y += Math.sin(a); a += (r() - 0.5) * 0.7; } }
+      Scenic.bakeLight(s, S.peakU, h - 98, 22, [M.far], M.farL, { flat: 1, k: 0.6 });
       const L = A.layer(s, 0.04, { haze: 0.5, base: h - 1, x: -80 }); L.skirt = M.far[2]; S.farL = L;
     }
     // jagged volcanic hills with ashy tree lines
@@ -245,8 +245,10 @@ Areas.volcano = (() => {
       const w = 3200, h = 120, s = new ISpr(w, h);
       Paint.ridge(s, M, { ramp: M.rock, base: h, amp: 64, seed: 45, freq: 0.009, peaks: [[2656, 400, 1]] });
       for (let x = 0; x < 1256; x += 110 + r() * 150) { const tr = ashTree(M, 50 + r() * 30, Math.floor(x * 11)); s.paste(tr, Math.round(x - tr.ax), h - tr.ay - 2); }
+      // columnar basalt: the black rock splits into tall hexagonal columns, lit on their left faces
+      { const isR = Scenic.setOf(M.rock), rk = M.rock; for (let x = 1500; x < w; x++) { const cw = 6 + Math.floor(hash(Math.floor(x / 7), 1, 45) * 3), ph = (x + Math.floor(n1(x * 0.2, 3) * 6)) % cw; for (let y = 0; y < h; y++) { const i = y * w + x, v = s.d[i]; if (!isR[v]) continue; const k = rk.indexOf(v); if (ph === 0) s.d[i] = rk[Math.max(0, k - 2)]; else if (ph === 1) s.d[i] = rk[Math.min(rk.length - 1, k + 1)]; else if ((y + Math.floor(hash(Math.floor(x / cw), 2, 45) * 30)) % 37 === 0) s.d[i] = rk[Math.max(0, k - 1)]; } } }
       cracks(s, M, 1560, w, 30, h, 70, 45, [M.rock], M.rockL);
-      for (const fx of [2436, 2716, 2856]) Scenic.bakeLight(s, fx, h - 10, 46, [M.rock], M.rockL, { flat: 0.7, k: 1 });
+      for (const fx of [2436, 2716, 2856]) Scenic.bakeLight(s, fx, h - 10, 30, [M.rock], M.rockL, { flat: 0.7, k: 0.8 });
       for (const fx of [2436, 2716, 2856]) for (let y = 40; y < h; y++) { const top = s.get(fx, y); if (!top) continue; for (let q = -2; q <= 2; q++) s.set(fx + q + Math.round(Math.sin(y * 0.1) * 1.2), y, M.lava[(y + q) % 6 < 3 ? 3 : 4]); }
       const L = A.layer(s, 0.52, { haze: 0.18, base: h - 1, x: 0 }); L.skirt = M.rock[1];
     }

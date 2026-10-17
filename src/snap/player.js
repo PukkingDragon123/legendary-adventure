@@ -210,7 +210,7 @@ const Player = (() => {
         if (this.jumpBuf > 0) {
           if (this.coyote > 0) { this.jumpBuf = 0; this.coyote = 0; this.vy = -268; this.jumping = true; this.cut = false; this.boing(); }
           // about to land: keep the press buffered so it becomes a jump on touchdown (not a flip)
-          else if (this.vy > 0 && this.nearGround(22)) { /* buffered */ }
+          else if (this.vy > 0 && this.nearGround(Math.max(22, this.vy * 0.12))) { /* buffered (lands within ~0.12 s) */ }
           else if (!this.flipped && !this.pound) { this.jumpBuf = 0; this.somersault(); }
         }
         if (this.jumping && !this.jumpHeld && this.vy < -90 && !this.cut) { this.vy *= 0.5; this.cut = true; }
@@ -229,7 +229,7 @@ const Player = (() => {
       // jump (buffered, and still allowed a moment after running off an edge)
       if (this.jumpBuf > 0) {
         if (grounded || this.coyote > 0) { this.jumpBuf = 0; this.jump(); }
-        else if (this.vair < 0 && this.air < 20) { /* about to land: buffered, it jumps on touchdown */ }
+        else if (this.vair < 0 && this.air < Math.max(20, -this.vair * 0.12)) { /* about to land: buffered, it jumps on touchdown */ }
         else if (!this.flipped && !this.pound && this.air > 5) { this.jumpBuf = 0; this.somersault(); }
       }
       // variable height: let go early for a short hop
